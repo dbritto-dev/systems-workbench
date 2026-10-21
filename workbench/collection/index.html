@@ -60,14 +60,21 @@ h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:
 .stats div:last-child{border-right:0}
 .stats b{display:block;font:500 22px/1.15 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
 .stats span{font:500 10px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.filters-wrap{position:relative;margin-bottom:22px}
-.filters{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding-inline:28px;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px}
+.filters-wrap{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:stretch;gap:6px;margin-bottom:22px}
+.filters-wrap[data-fits]{grid-template-columns:minmax(0,1fr)}
+.filters-wrap[data-fits] .scroll-btn{display:none}
+.filters-view{position:relative;min-width:0}
+.filters{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px}
 .filters::-webkit-scrollbar{display:none}
 .filters button{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
-.filters-wrap::before,.filters-wrap::after{content:"";position:absolute;top:0;bottom:0;width:36px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:3}
-.filters-wrap::before{left:0;background:linear-gradient(to right,var(--sheet),transparent)}
-.filters-wrap::after{right:0;background:linear-gradient(to left,var(--sheet),transparent)}
-.filters-wrap[data-more-left]::before,.filters-wrap[data-more-right]::after{opacity:1}
+.filters-view::before,.filters-view::after{content:"";position:absolute;top:0;bottom:0;width:28px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:3}
+.filters-view::before{left:0;background:linear-gradient(to right,var(--sheet),transparent)}
+.filters-view::after{right:0;background:linear-gradient(to left,var(--sheet),transparent)}
+.filters-wrap[data-more-left] .filters-view::before,.filters-wrap[data-more-right] .filters-view::after{opacity:1}
+.scroll-btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;width:34px;min-height:34px;padding:0;border:1px solid var(--edge);background:var(--plate);color:var(--ink);cursor:pointer}
+.scroll-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.scroll-btn:hover:not(:disabled){border-color:var(--anatomy-hi)}
+.scroll-btn:disabled{opacity:.35;cursor:default}
 .filters button b{font-weight:500;opacity:.6}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
 .card{display:flex;flex-direction:column;background:var(--plate);border:1px solid var(--rule);min-width:0}
@@ -130,7 +137,7 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
       <div><b>203</b><span>Questions</span></div>
     </div>
   </header>
-  <div class="filters-wrap"><div class="filters" role="group" aria-label="Filter by area"><button type="button" data-filter="all" aria-pressed="true">All <b>34</b></button><button type="button" data-filter="Fundamentals" aria-pressed="false">Fundamentals <b>2</b></button><button type="button" data-filter="Data" aria-pressed="false">Data <b>7</b></button><button type="button" data-filter="Concurrency" aria-pressed="false">Concurrency <b>5</b></button><button type="button" data-filter="Messaging" aria-pressed="false">Messaging <b>3</b></button><button type="button" data-filter="Distributed" aria-pressed="false">Distributed <b>4</b></button><button type="button" data-filter="Traffic" aria-pressed="false">Traffic <b>2</b></button><button type="button" data-filter="Resilience" aria-pressed="false">Resilience <b>4</b></button><button type="button" data-filter="Delivery" aria-pressed="false">Delivery <b>4</b></button><button type="button" data-filter="Observability" aria-pressed="false">Observability <b>1</b></button><button type="button" data-filter="Frontend" aria-pressed="false">Frontend <b>2</b></button></div></div>
+  <div class="filters-wrap"><button type="button" class="scroll-btn" data-scroll="-1" aria-label="Scroll filters left" aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button><div class="filters-view"><div class="filters" id="area-filters" role="group" aria-label="Filter by area"><button type="button" data-filter="all" aria-pressed="true">All <b>34</b></button><button type="button" data-filter="Fundamentals" aria-pressed="false">Fundamentals <b>2</b></button><button type="button" data-filter="Data" aria-pressed="false">Data <b>7</b></button><button type="button" data-filter="Concurrency" aria-pressed="false">Concurrency <b>5</b></button><button type="button" data-filter="Messaging" aria-pressed="false">Messaging <b>3</b></button><button type="button" data-filter="Distributed" aria-pressed="false">Distributed <b>4</b></button><button type="button" data-filter="Traffic" aria-pressed="false">Traffic <b>2</b></button><button type="button" data-filter="Resilience" aria-pressed="false">Resilience <b>4</b></button><button type="button" data-filter="Delivery" aria-pressed="false">Delivery <b>4</b></button><button type="button" data-filter="Observability" aria-pressed="false">Observability <b>1</b></button><button type="button" data-filter="Frontend" aria-pressed="false">Frontend <b>2</b></button></div></div><button type="button" class="scroll-btn" data-scroll="1" aria-label="Scroll filters right" aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button></div>
   <main class="grid">
 <article class="card" data-area="Data" id="lesson-01">
   <button type="button" class="shot" data-preview="cache" aria-label="Preview Cache Workbench">
@@ -844,13 +851,23 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
     filters.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === area)));
     cards.forEach((c) => { c.hidden = area !== "all" && c.dataset.area !== area; });
   };
-  filters.forEach((b) => b.addEventListener("click", () => { setFilter(b.dataset.filter); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }));
-  const strip = document.querySelector(".filters"), wrap = strip.parentElement;
+  filters.forEach((b) => b.addEventListener("click", () => { setFilter(b.dataset.filter); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" }); }));
+  const strip = document.querySelector(".filters"), wrap = document.querySelector(".filters-wrap");
+  const arrows = wrap.querySelectorAll("[data-scroll]");
+  const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const edges = () => {
+    wrap.removeAttribute("data-fits");
     const max = strip.scrollWidth - strip.clientWidth;
-    wrap.toggleAttribute("data-more-left", strip.scrollLeft > 2);
-    wrap.toggleAttribute("data-more-right", strip.scrollLeft < max - 2);
+    if (max <= 2) { wrap.setAttribute("data-fits", ""); wrap.removeAttribute("data-more-left"); wrap.removeAttribute("data-more-right"); return; }
+    const left = strip.scrollLeft > 2, right = strip.scrollLeft < max - 2;
+    wrap.toggleAttribute("data-more-left", left);
+    wrap.toggleAttribute("data-more-right", right);
+    arrows[0].disabled = !left;
+    arrows[1].disabled = !right;
   };
+  arrows.forEach((b) => b.addEventListener("click", () => {
+    strip.scrollBy({ left: Number(b.dataset.scroll) * Math.max(120, strip.clientWidth * 0.75), behavior: reduce() ? "auto" : "smooth" });
+  }));
   strip.addEventListener("scroll", edges, { passive: true });
   addEventListener("resize", edges);
   strip.addEventListener("wheel", (e) => {
