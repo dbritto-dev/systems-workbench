@@ -106,6 +106,8 @@ const css = `
 .stamp{fill:none;stroke:var(--anatomy-lo);stroke-width:.6}
 .stamp[data-on]{fill:var(--anatomy-strong);stroke:var(--anatomy-strong)}
 .xmark{fill:none;stroke:var(--anatomy-strong);stroke-width:1.1;stroke-linecap:round}
+body.lit-fill .wb-lit-group:has(.iso-solid[data-lit]:not([data-lit-outline])) .stamp{stroke:color-mix(in srgb,var(--anatomy-page) 55%,var(--anatomy-lit))}
+body.lit-fill .wb-lit-group:has(.iso-solid[data-lit]:not([data-lit-outline])) .stamp[data-on]{fill:var(--anatomy-page);stroke:var(--anatomy-page)}
 .cell{fill:none;stroke:var(--anatomy-lo);stroke-width:.6}
 .cell[data-on]{fill:var(--anatomy-strong);stroke:var(--anatomy-strong)}
 .cell[data-undo]{fill:none;stroke:var(--anatomy-lit);stroke-width:1.4}

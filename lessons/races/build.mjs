@@ -102,6 +102,7 @@ const controls = panel({
 }).replace(/<\/div>$/, "  " + NOTE + "\n</div>");
 
 const css = `
+body.lit-fill [data-slip]:has(> [data-slip-lit]:not([style*="none"])) :is([data-slip-value],[data-slip-note]){fill:var(--anatomy-page)}
 .iso-stage .iso-face-text[data-tone="lit"]{fill:var(--anatomy-lit)}
 `;
 
@@ -110,7 +111,7 @@ const live = `
 ${sim}
 const P = ${JSON.stringify(P)};
 const G = ${JSON.stringify(GEOMETRY)};
-const EXPERIMENTS = ${JSON.stringify(EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })))};
+const EXPERIMENTS = ${JSON.stringify(EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, title, answer, watch })))};
 const CLERK_SVG = ${JSON.stringify(clerkSvg())};
 const NAMES = "ABCD";
 const NS = "http://www.w3.org/2000/svg";

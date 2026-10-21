@@ -107,13 +107,13 @@ export function carSvg() {
   const top = CAR.z + CAR.h;
   const dots = Array.from({ length: 6 }, (_, n) => {
     const pts = Array.from({ length: n + 1 }, (_, i) => at([-4.5 + i * 1.8, 0, top]));
-    return `<g data-key="${n}" style="display:none">${D(pts, { size: 0.55, tone: "hi" })}</g>`;
+    return `<g data-key="${n}" style="display:none">${D(pts, { size: 0.55, tone: "hi" }).replace("<g ", '<g data-on-lit="fill" ')}</g>`;
   }).join("");
-  const stamp = `<g data-stamp style="display:none">${L(k.lineOnTop([-CAR.w / 2, -CAR.d / 2 + 1.6], [CAR.w / 2, -CAR.d / 2 + 1.6], top, P), { tone: "mid" })}</g>`;
+  const stamp = `<g data-stamp style="display:none">${L(k.lineOnTop([-CAR.w / 2, -CAR.d / 2 + 1.6], [CAR.w / 2, -CAR.d / 2 + 1.6], top, P), { tone: "mid" }).replace("<path ", '<path data-on-lit="stroke" ')}</g>`;
   const front = CAR.d / 2;
-  const plate = L(k.faceRectY(P, -5.2, 5.2, front, CAR.z + 1, CAR.z + 5.6), { tone: "lo" });
+  const plate = L(k.faceRectY(P, -5.2, 5.2, front, CAR.z + 1, CAR.z + 5.6), { tone: "lo" }).replace("<path ", '<path data-on-lit="stroke" ');
   const num = k.faceTextSvg(k.sideMatrix([0, front], CAR.z + 2, P, "left"), "0", { size: 4.2, tone: "hi", anchor: "middle" }).replace("<text ", "<text data-num ");
-  return chassis + box + plate + num + stamp + dots;
+  return `<g class="wb-lit-group">${chassis + box + plate + num + stamp + dots}</g>`;
 }
 
 function traverserTable() {

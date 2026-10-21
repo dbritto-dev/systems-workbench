@@ -87,7 +87,7 @@ function tag(c, index) {
   const plan = { x: c.cx - 6.5, y: CASE.y0 + 3, w: 13, d: 10, r: 1 };
   const plaque = S(k.slabOf(plan, CASE.h, 1, P, 3, 0.2), { tone: "mid", crease: "none" });
   const text = k.faceTextSvg(k.topMatrix([c.cx, plan.y + plan.d - 2.2], CASE.h + 1, P, "x"), String(index + 1), { size: 6.4, tone: "mid", anchor: "middle" });
-  return `<g data-tag="${index}">${plaque}${text}</g>`;
+  return `<g class="wb-lit-group" data-tag="${index}">${plaque}${text}</g>`;
 }
 
 function cabinet(cab, i) {
@@ -118,7 +118,7 @@ function tray(cab, i) {
   out.push(S(k.slabOf({ x: x0, y: y0, w: x1 - x0, d: TRAY.out, r: 0.3 }, z0, 0.8, P, 2), { tone: "lo", crease: "none" }));
   out.push(S(k.slabOf({ x: x0, y: y0, w: 1, d: TRAY.out, r: 0.2 }, z0, wall, P, 2), { tone: "mid", crease: "none" }));
   for (let j = 0; j < TRAY.cards; j++) out.push(card(cab.x0 + 4, y0 + 1.2 + j * TRAY.gap, z0 + 0.8, j, false));
-  out.push(`<g data-card="${i}" style="display:none">${card(cab.x0 + 4, y0 + TRAY.slot, z0 + 0.8, 3, true)}${k.faceTextSvg(k.sideMatrix([cab.cx, y0 + TRAY.slot + 0.6], z0 + 0.8 + 1.5, P, "left"), "SHELF 1", { size: 5, tone: "lit", anchor: "middle" })}</g>`);
+  out.push(`<g class="wb-lit-group" data-card="${i}" style="display:none">${card(cab.x0 + 4, y0 + TRAY.slot, z0 + 0.8, 3, true)}${k.faceTextSvg(k.sideMatrix([cab.cx, y0 + TRAY.slot + 0.6], z0 + 0.8 + 1.5, P, "left"), "SHELF 1", { size: 5, tone: "lit", anchor: "middle" })}</g>`);
   out.push(S(k.slabOf({ x: x1 - 1, y: y0, w: 1, d: TRAY.out, r: 0.2 }, z0, wall, P, 2), { tone: "mid", crease: "none" }));
   const face = S(k.slabOf({ x: x0 - 0.4, y: y1 - 1.2, w: x1 - x0 + 0.8, d: 1.2, r: 0.3 }, z0 - 0.2, TRAY.h, P, 2), { tone: "mid" });
   out.push(`<g data-drawer="${i}">${face}</g>`);

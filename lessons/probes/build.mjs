@@ -111,7 +111,7 @@ const live = `
 ${sim}
 const P = ${JSON.stringify(P)};
 const G = ${JSON.stringify(GEOMETRY)};
-const EXPERIMENTS = ${JSON.stringify(EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })))};
+const EXPERIMENTS = ${JSON.stringify(EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, title, answer, watch })))};
 const TOKEN_SVG = ${JSON.stringify(tokenSvg())};
 const NS = "http://www.w3.org/2000/svg";
 const WALK = 95, SPAWN_EVERY = 0.28;

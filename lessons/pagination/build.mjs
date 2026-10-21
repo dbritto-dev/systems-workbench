@@ -111,7 +111,7 @@ const live = `
 ${sim}
 const P = ${JSON.stringify(P)};
 const G = ${JSON.stringify(GEOMETRY)};
-const EXPERIMENTS = ${JSON.stringify(EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })))};
+const EXPERIMENTS = ${JSON.stringify(EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, title, answer, watch })))};
 const FOLDER_SVG = ${JSON.stringify([0, 1, 2].map((t) => folderSvg(t)))};
 const RATES = { off: 0, slow: 0.15, fast: 0.4 };
 const NS = "http://www.w3.org/2000/svg";

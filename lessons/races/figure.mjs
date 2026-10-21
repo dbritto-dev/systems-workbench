@@ -79,7 +79,7 @@ function ledger() {
   out.push(L(k.planOutline(k.insetPlan(PLINTH, 2), PLINTH_H, P, 3), { tone: "faint" }));
   const card = k.slabOf(CARD, CARD_Z[0], CARD_Z[1] - CARD_Z[0], P, 2, 0.4);
   out.push(S(card, { tone: "hi", crease: "lo" }));
-  out.push(`<g data-card-lit style="display:none">${S(card, { tone: "hi", crease: "lo", lit: true })}</g>`);
+  out.push(`<g data-card-lit style="display:none">${S(card, { tone: "hi", crease: "lo", lit: true }).replace('class="iso-solid"', 'class="iso-solid" data-lit-outline')}</g>`);
   const x0 = CARD.x + 3, x1 = CARD.x + CARD.w - 3;
   // Header: title, a rule, and the version stamp at the top right.
   out.push(text(x0, FACE, 55.6, "LEDGER · ACCOUNT 7", { size: 2.8, tone: "lo" }));

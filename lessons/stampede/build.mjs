@@ -102,6 +102,7 @@ const controls = panel({
 
 const css = `
 .iso-dial-fill{fill:var(--anatomy-faint);stroke:none}
+body.lit-fill [data-shelf-tag]:has(> [data-shelf-lit]:not([style*="none"])) [data-shelf-num]{fill:var(--anatomy-page)}
 `;
 
 // ---------- live code ----------
