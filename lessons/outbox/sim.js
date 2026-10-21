@@ -55,7 +55,7 @@ export function makeSim(cfg, seed = 7) {
     push(t + dur, (te) => { const stop = step.end ? step.end(te) : false; run(actor, stop ? stop : rest, te, done); });
   }
   const clerkDone = (t) => { sim.clerk.carrying = false; if (sim.inbox.length) nextOrder(t); };
-  const down = (where, onUp) => [{ kind: "down", dur: T.DOWN, from: where.from, to: where.to, cut: where.cut, end: onUp }, { kind: "respawn", dur: 0.01 }];
+  const down = (where, onUp) => [{ kind: "down", dur: T.DOWN, from: where.from, to: where.to, cut: where.cut, id: where.id, end: onUp }, { kind: "respawn", dur: 0.01 }];
 
   function letterToRail(id, t) {
     S.sent++;
@@ -87,7 +87,7 @@ export function makeSim(cfg, seed = 7) {
       steps = [
         { kind: "write", dur: T.WRITE, id, end: (te) => { commit(id, te); c.carrying = true; } },
         { kind: "walk", dur: T.WALK, from: "home", to: "post", id, cut,
-          end: (te) => { if (!dies) return false; c.carrying = false; S.lost++; sim.dropped.push({ id, t: te, x: cut }); return down({ from: "home", to: "post", cut }, null); } },
+          end: (te) => { if (!dies) return false; c.carrying = false; S.lost++; sim.dropped.push({ id, t: te, x: cut }); return down({ from: "home", to: "post", cut, id }, null); } },
         { kind: "post", dur: T.POST, id, end: (te) => { c.carrying = false; letterToRail(id, te); sim.flashes.post = te; } },
         { kind: "walk", dur: T.WALK, from: "post", to: "home" },
       ];
@@ -98,14 +98,14 @@ export function makeSim(cfg, seed = 7) {
         { kind: "post", dur: T.POST, id, end: (te) => { c.carrying = false; letterToRail(id, te); sim.flashes.post = te; } },
         { kind: "walk", dur: T.WALK, from: "post", to: "home" },
         { kind: "write", dur: T.WRITE, id, cut: dies ? 0.6 : null,
-          end: (te) => { if (!dies) { commit(id, te); return false; } sim.binned++; S.failed++; S.phantom++; sim.flashes.fail = te; return down({ from: "home", to: "home" }, null); } },
+          end: (te) => { if (!dies) { commit(id, te); return false; } sim.binned++; S.failed++; S.phantom++; sim.flashes.fail = te; return down({ from: "home", to: "home", id }, null); } },
       ];
     } else {
       const dies = fails(crash);
       steps = [
         { kind: "write", dur: T.WRITE, id, cut: dies ? 0.6 : null,
           end: (te) => {
-            if (dies) { sim.binned++; S.failed++; sim.flashes.fail = te; return down({ from: "home", to: "home" }, null); }
+            if (dies) { sim.binned++; S.failed++; sim.flashes.fail = te; return down({ from: "home", to: "home", id }, null); }
             commit(id, te); sim.pending.push(id); return false;
           } },
       ];

@@ -249,6 +249,8 @@ body.lit-fill .iso-solid[data-lit]:not([data-lit-outline])>.iso-shade{fill:color
 body.lit-fill .iso-solid[data-lit]:not([data-lit-outline])>.iso-line{stroke:color-mix(in srgb,var(--anatomy-lit) 70%,var(--anatomy-page))}
 body.lit-fill .iso-solid[data-lit]:not([data-lit-outline])>.iso-edge{stroke:var(--anatomy-lit)}
 body.lit-fill .iso-solid[data-lit]:not([data-lit-outline])~.iso-face-text[data-tone="on-lit"]{fill:var(--anatomy-page)}
+body.lit-fill .wb-lit-group:has(.iso-solid[data-lit]:not([data-lit-outline])) :is(.iso-face-text,[data-on-lit~="fill"],[data-on-lit~="fill"] circle){fill:var(--anatomy-page)}
+body.lit-fill .wb-lit-group:has(.iso-solid[data-lit]:not([data-lit-outline])) :is(.wb-digit,[data-on-lit~="stroke"]){stroke:var(--anatomy-page)}
 
 .bar-group{font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted);margin-top:6px}
 .bar-group:first-child{margin-top:0}

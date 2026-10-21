@@ -116,9 +116,9 @@ function callStack(initial) {
   const rays = L([3.8, 5.2].map((r) => k.ring(BACK.x + 6, BACK.y + 1.7, r, BACK_TOP + 4.4, P, 24)).join(""), { tone: "lit" });
   out.push(`<g data-lamp="off">${lamp(false)}</g><g data-lamp="on" style="display:none">${lamp(true)}${rays}</g>`);
   // Plates, bottom to top; slot LIMIT is the plate that didn't fit (shown above the beam on overflow).
-  const slot = (i, z) => `<g data-cs-slot="${i}" transform="${k.translateAlong(P, [0, 0, z])}"${hidden(i < initial.length)}>${framePlate(i < initial.length ? initial[i] : "", i === LIMIT, `data-cs-label="${i}"`)}</g>`;
+  const slot = (i, z) => `<g class="wb-lit-group" data-cs-slot="${i}" transform="${k.translateAlong(P, [0, 0, z])}"${hidden(i < initial.length)}>${framePlate(i < initial.length ? initial[i] : "", i === LIMIT, `data-cs-label="${i}"`)}</g>`;
   for (let i = 0; i < LIMIT; i++) out.push(slot(i, csZ(i)));
-  out.push(`<g data-cs-fly style="display:none">${framePlate("", true, "data-cs-fly-label")}</g>`);
+  out.push(`<g class="wb-lit-group" data-cs-fly style="display:none">${framePlate("", true, "data-cs-fly-label")}</g>`);
   // The limit: a shelf over the stack, bracketed to the backboard. Nothing fits above it.
   const shelf = { x: CS.x - 1.6, y: BACK.y + BACK.d, w: CS.w + 3.2, d: CS.front + 1.6 - (BACK.y + BACK.d), r: 1.2 };
   out.push(S(k.slabOf(shelf, CEIL_Z, 1.6, P, 3, 0.3), { tone: "mid" }));
@@ -165,9 +165,9 @@ function undoRedo(state) {
     out.push(S(k.cylinder(p.x - 0.4, p.y - 0.4, 0.8, UR_BASE_H, urZ(UR_LIMIT) + 1 - UR_BASE_H, P, 12), { tone: "mid", crease: "none" }));
     out.push(S(k.cylinder(p.x + p.w + 0.4, p.y - 0.4, 0.8, UR_BASE_H, urZ(UR_LIMIT) + 1 - UR_BASE_H, P, 12), { tone: "mid", crease: "none" }));
     const pile = i ? state.redo : state.undo;
-    for (let s = 0; s < UR_LIMIT; s++) out.push(`<g data-ur-slot="${i}-${s}" transform="${k.translateAlong(P, [0, 0, urZ(s)])}"${hidden(s < pile.length)}>${letterPlate(i, pile[s] || "", false, `data-ur-label="${i}-${s}"`)}</g>`);
+    for (let s = 0; s < UR_LIMIT; s++) out.push(`<g class="wb-lit-group" data-ur-slot="${i}-${s}" transform="${k.translateAlong(P, [0, 0, urZ(s)])}"${hidden(s < pile.length)}>${letterPlate(i, pile[s] || "", false, `data-ur-label="${i}-${s}"`)}</g>`);
   });
-  out.push(`<g data-ur-fly style="display:none">${letterPlate(0, "", true, "data-ur-fly-label")}</g>`);
+  out.push(`<g class="wb-lit-group" data-ur-fly style="display:none">${letterPlate(0, "", true, "data-ur-fly-label")}</g>`);
   // The bin in front of the redo tower: thrown-away redo plates lie flat in it.
   out.push(S(k.slabOf(BIN, 0, 0.8, P, 3), { tone: "lo" }));
   for (let s = 0; s < 3; s++) out.push(`<g data-bin="${s}"${hidden(s < state.binned)}>${S(k.slabOf({ x: BIN.x + 2.4 + s * 1.2, y: BIN.y + 1.6 + s * 0.6, w: 11, d: 7.6, r: 1 }, 0.8 + s * 0.9, 0.8, P, 3), { tone: "hi", crease: "lo" })}</g>`);
@@ -195,8 +195,8 @@ function server(state) {
   }
   // The bottom slot (where a queue takes from): a notch in the base front.
   out.push(L(k.faceRectY(P, COL.x + 1, COL.x + COL.w - 1, base.y + base.d, COL_BASE_H - 2.2, COL_BASE_H - 0.6), { tone: "lo" }));
-  for (let s = 0; s < TK_SHOW; s++) out.push(`<g data-tk="${s}" transform="${k.translateAlong(P, [0, 0, tkZ(s)])}"${hidden(s < state.tickets.length)}${state.tickets[s] ? " data-stale" : ""}>${ticketSvg(false)}</g>`);
-  out.push(`<g data-tk-fly style="display:none">${ticketSvg(true)}</g>`);
+  for (let s = 0; s < TK_SHOW; s++) out.push(`<g class="wb-lit-group" data-tk="${s}" transform="${k.translateAlong(P, [0, 0, tkZ(s)])}"${hidden(s < state.tickets.length)}${state.tickets[s] ? " data-stale" : ""}>${ticketSvg(false)}</g>`);
+  out.push(`<g class="wb-lit-group" data-tk-fly style="display:none">${ticketSvg(true)}</g>`);
   out.push(digitCounter(P, { ...COUNTERS.waiting, housing: false, name: "waiting", value: state.tickets.length }));
   // Desk, the request in hand, and the grabber arm reaching from the desk to the column.
   out.push(S(k.slabOf(DESK, 0, DESK_H, P, 4, 0.6), { tone: "mid" }));

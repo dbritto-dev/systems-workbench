@@ -160,7 +160,7 @@ function rail() {
     out.push(L(RACK_SLOTS.slice(r * 8, r * 8 + 8).map((s) => k.faceRectY(P, s.x, s.x + TICKET.w, RAIL.y, s.z, s.z + TICKET.h)).join(""), { tone: "lo", dashed: true }));
     RACK_SLOTS.slice(r * 8, r * 8 + 8).forEach((s, i) => {
       const n = r * 8 + i;
-      out.push(`<g data-slot="${n}" style="display:none" transform="${k.translateAlong(P, [s.x, s.y, s.z])}"><g data-plain>${ticketSvg(false)}</g><g data-lit style="display:none">${ticketSvg(true)}</g></g>`);
+      out.push(`<g data-slot="${n}" style="display:none" transform="${k.translateAlong(P, [s.x, s.y, s.z])}"><g data-plain>${ticketSvg(false)}</g><g data-lit class="wb-lit-group" style="display:none">${ticketSvg(true)}</g></g>`);
     });
   });
   return out.join("");
@@ -188,7 +188,7 @@ function displayCase() {
       + S(k.slabOf({ x: x - 12, y: TRAY_Y - 8, w: 24, d: 16, r: 1 }, CASE_H, 1, P, 2), { tone: "mid", crease: "none" })
       + S(k.slabOf(loaf, CASE_H + 1, 6, P, 6, 1.6), { tone: "hi", crease: "lo" })
       + L(k.lineOnTop([x - 5, TRAY_Y - 3], [x - 2, TRAY_Y + 3], CASE_H + 7, P) + k.lineOnTop([x, TRAY_Y - 3], [x + 3, TRAY_Y + 3], CASE_H + 7, P) + k.lineOnTop([x + 5, TRAY_Y - 3], [x + 8, TRAY_Y + 3], CASE_H + 7, P), { tone: "lo", free: true })
-      + `<g data-old style="display:none">`
+      + `<g data-old class="wb-lit-group" style="display:none">`
       + S(k.cylinder(x + 6, TRAY_Y + 1, 0.4, CASE_H + 7, 8, P, 8), { tone: "mid", crease: "none" })
       + S(k.slabOf({ x: x + 6.4, y: TRAY_Y + 0.6, w: 9, d: 0.8, r: 0.2 }, CASE_H + 10.5, 4.5, P, 2), { tone: "hi", crease: "none", lit: true })
       + text(x + 10.9, TRAY_Y + 1.4, CASE_H + 11.6, "OLD", { size: 2.8, tone: "hi", anchor: "middle" })

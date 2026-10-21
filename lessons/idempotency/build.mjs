@@ -103,6 +103,8 @@ const controls = panel({
 
 const css = `
 .iso-stage .iso-face-text[data-tone="lit"]{fill:var(--anatomy-lit)}
+body.lit-fill [data-slip]:has(> [data-slip-lit]:not([style*="none"])) :is([data-slip-top],[data-slip-note]){fill:var(--anatomy-page)}
+body.lit-fill [data-hole]:has(> [data-card-lit]:not([style*="none"])) [data-hole-key]{fill:var(--anatomy-page)}
 `;
 
 // ---------- live code ----------

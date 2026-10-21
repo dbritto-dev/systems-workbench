@@ -225,8 +225,8 @@ export function actorSvg(kind) {
     + `<g data-pose="down" style="display:none">${fallen({ cap })}</g>`;
 }
 // A letter lying flat: an envelope with its flap drawn on top.
-const envelope = (z, h, lit) => S(k.slabOf({ x: -4.5, y: -3, w: 9, d: 6, r: 0.5 }, z, h, P, 2, 0.2), { tone: "hi", crease: "lo", lit })
-  + L(k.onTop([[-4.1, -2.6], [0, 0.6], [4.1, -2.6]], z + h, P), { tone: lit ? "lit" : "mid" });
+const envelope = (z, h, lit) => `<g class="wb-lit-group">` + S(k.slabOf({ x: -4.5, y: -3, w: 9, d: 6, r: 0.5 }, z, h, P, 2, 0.2), { tone: "hi", crease: "lo", lit })
+  + L(k.onTop([[-4.1, -2.6], [0, 0.6], [4.1, -2.6]], z + h, P), { tone: lit ? "lit" : "mid" }).replace("<path ", '<path data-on-lit="stroke" ') + `</g>`;
 export const railLetterSvg = () => envelope(0.6, 1.4, true);
 export const droppedLetterSvg = () => envelope(0, 1, false);
 

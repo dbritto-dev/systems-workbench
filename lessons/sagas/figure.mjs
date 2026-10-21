@@ -133,10 +133,10 @@ function station(svc) {
 
 export function tagSvg(hx, hz, y = BOARD_FACE) {
   const plan = { x: hx - 2.6, y, w: 5.2, d: 0.8, r: 0.3 };
-  return L(k.segment([hx, y, hz], [hx, y + 0.4, hz - 1.2], P), { tone: "mid", free: true })
+  return `<g class="wb-lit-group">` + L(k.segment([hx, y, hz], [hx, y + 0.4, hz - 1.2], P), { tone: "mid", free: true })
     + S(k.slabOf(plan, hz - 8.5, 7.3, P, 1, 0.2), { tone: "hi", crease: "lo" })
-    + D([at([hx, y + 0.8, hz - 2.6])], { size: 0.4, tone: "lo" })
-    + `<path class="xmark" data-x style="display:none" d="${k.segment([hx - 1.8, y + 0.8, hz - 3.6], [hx + 1.8, y + 0.8, hz - 7.6], P) + k.segment([hx + 1.8, y + 0.8, hz - 3.6], [hx - 1.8, y + 0.8, hz - 7.6], P)}"/>`;
+    + D([at([hx, y + 0.8, hz - 2.6])], { size: 0.4, tone: "lo" }).replace("<g ", '<g data-on-lit="fill" ')
+    + `<path class="xmark" data-on-lit="stroke" data-x style="display:none" d="${k.segment([hx - 1.8, y + 0.8, hz - 3.6], [hx + 1.8, y + 0.8, hz - 7.6], P) + k.segment([hx + 1.8, y + 0.8, hz - 3.6], [hx - 1.8, y + 0.8, hz - 7.6], P)}"/></g>`;
 }
 
 // The orchestrator: a desk with a checklist board (one row per trip in progress, one cell per step) and its keeper.
@@ -193,9 +193,9 @@ export function folderSvg() {
   const plan = { x: -7, y: -4.8, w: 14, d: 9.6, r: 0.8 };
   const top = 3;
   const stamps = Array.from({ length: 5 }, (_, i) => `<path class="stamp" data-stamp="${i}" d="${k.onTop([[-5.8 + i * 2.6, -0.4], [-3.8 + i * 2.6, -0.4], [-3.8 + i * 2.6, 2.8], [-5.8 + i * 2.6, 2.8]], top, P, true)}"/>`).join("");
-  return S(k.slabOf(plan, 0, 3, P, 2, 0.3), { tone: "hi", crease: "lo" })
+  return `<g class="wb-lit-group">` + S(k.slabOf(plan, 0, 3, P, 2, 0.3), { tone: "hi", crease: "lo" })
     + S(k.slabOf({ x: -7, y: -4.8, w: 5, d: 2.2, r: 0.4 }, top, 0.9, P, 1), { tone: "hi", crease: "lo" })
-    + stamps;
+    + stamps + `</g>`;
 }
 export function puckSvg() {
   return S(k.cylinder(0, 0, 2.2, 0.2, 2.2, P, 16), { tone: "mid", crease: "lo" });

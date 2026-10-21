@@ -73,6 +73,9 @@ export const litFill = (svg) => svg.replace(/data-lit=""/g, 'data-lit="" data-li
 // Page default (renderPage({ litFill: true }), the default): every lit solid fills. A solid that should keep
 // the outline-only lit style (a large body that would turn into a black block, a face carrying dark text)
 // opts out with data-lit-outline: S(..., { lit: true }).replace('class="iso-solid"', 'class="iso-solid" data-lit-outline').
+// Text printed on a part that can be lit: wrap the part and its marks in <g class="wb-lit-group">. While the solid
+// inside is lit (also when data-lit is toggled live), its face text, digit wheels and marks tagged
+// data-on-lit="fill" | "stroke" switch to the page colour so they stay readable on the fill. One lit-able solid per group.
 const LF = (sel) => `body.lit-fill .iso-solid[data-lit]:not([data-lit-outline])${sel}`;
 export const LIT_FILL_PAGE_CSS = `
 ${LF(">.iso-fill")},${LF(">.iso-top")}{fill:var(--anatomy-lit)}
@@ -80,6 +83,8 @@ ${LF(">.iso-shade")}{fill:color-mix(in srgb,var(--anatomy-lit) 78%,var(--anatomy
 ${LF(">.iso-line")}{stroke:color-mix(in srgb,var(--anatomy-lit) 70%,var(--anatomy-page))}
 ${LF(">.iso-edge")}{stroke:var(--anatomy-lit)}
 ${LF("~.iso-face-text[data-tone=\"on-lit\"]")}{fill:var(--anatomy-page)}
+body.lit-fill .wb-lit-group:has(.iso-solid[data-lit]:not([data-lit-outline])) :is(.iso-face-text,[data-on-lit~="fill"],[data-on-lit~="fill"] circle){fill:var(--anatomy-page)}
+body.lit-fill .wb-lit-group:has(.iso-solid[data-lit]:not([data-lit-outline])) :is(.wb-digit,[data-on-lit~="stroke"]){stroke:var(--anatomy-page)}
 `;
 export const LIT_FILL_CSS = `
 .iso-solid[data-lit-fill]>.iso-fill,.iso-solid[data-lit-fill]>.iso-top{fill:var(--anatomy-lit)}
