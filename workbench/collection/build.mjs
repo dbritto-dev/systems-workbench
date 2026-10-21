@@ -67,7 +67,14 @@ h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:
 .stats div:last-child{border-right:0}
 .stats b{display:block;font:500 22px/1.15 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
 .stats span{font:500 10px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.filters{display:flex;flex-wrap:wrap;margin-bottom:22px}
+.filters-wrap{position:relative;margin-bottom:22px}
+.filters{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding-inline:28px;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px}
+.filters::-webkit-scrollbar{display:none}
+.filters button{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
+.filters-wrap::before,.filters-wrap::after{content:"";position:absolute;top:0;bottom:0;width:36px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:3}
+.filters-wrap::before{left:0;background:linear-gradient(to right,var(--sheet),transparent)}
+.filters-wrap::after{right:0;background:linear-gradient(to left,var(--sheet),transparent)}
+.filters-wrap[data-more-left]::before,.filters-wrap[data-more-right]::after{opacity:1}
 .filters button b{font-weight:500;opacity:.6}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
 .card{display:flex;flex-direction:column;background:var(--plate);border:1px solid var(--rule);min-width:0}
@@ -130,7 +137,7 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
       <div><b>${lessons.reduce((s, l) => s + l.questions, 0)}</b><span>Questions</span></div>
     </div>
   </header>
-  <div class="filters" role="group" aria-label="Filter by area">${filters}</div>
+  <div class="filters-wrap"><div class="filters" role="group" aria-label="Filter by area">${filters}</div></div>
   <main class="grid">
 ${lessons.map(card).join("\n")}
   </main>
@@ -165,7 +172,22 @@ ${lessons.map(card).join("\n")}
     filters.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === area)));
     cards.forEach((c) => { c.hidden = area !== "all" && c.dataset.area !== area; });
   };
-  filters.forEach((b) => b.addEventListener("click", () => setFilter(b.dataset.filter)));
+  filters.forEach((b) => b.addEventListener("click", () => { setFilter(b.dataset.filter); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }));
+  const strip = document.querySelector(".filters"), wrap = strip.parentElement;
+  const edges = () => {
+    const max = strip.scrollWidth - strip.clientWidth;
+    wrap.toggleAttribute("data-more-left", strip.scrollLeft > 2);
+    wrap.toggleAttribute("data-more-right", strip.scrollLeft < max - 2);
+  };
+  strip.addEventListener("scroll", edges, { passive: true });
+  addEventListener("resize", edges);
+  strip.addEventListener("wheel", (e) => {
+    if (strip.scrollWidth <= strip.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    const max = strip.scrollWidth - strip.clientWidth;
+    if ((e.deltaY < 0 && strip.scrollLeft <= 0) || (e.deltaY > 0 && strip.scrollLeft >= max)) return;
+    e.preventDefault(); strip.scrollLeft += e.deltaY;
+  }, { passive: false });
+  edges();
 
   const dlg = document.getElementById("preview");
   const d = (k) => dlg.querySelector('[data-d="' + k + '"]');
