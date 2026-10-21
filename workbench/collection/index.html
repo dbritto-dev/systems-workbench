@@ -1,0 +1,642 @@
+<title>Systems Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: an instrument catalogue. A header plate, a row of area filters, then a two-column grid of lesson plates whose previews are real screenshots of each running machine. */
+:root{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+
+  --sheet:var(--anatomy-page);--plate:var(--anatomy-card);--ink:var(--anatomy-strong);--text:var(--anatomy-text);--muted:var(--anatomy-muted);--rule:var(--anatomy-faint);--edge:var(--anatomy-lo);
+  --display:"IBM Plex Sans Condensed","Arial Narrow",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding-block:48px 88px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex}
+.seg button,.btn,.filters button{appearance:none;font:500 11.5px/1.2 var(--mono);letter-spacing:.04em;color:var(--text);background:transparent;border:1px solid var(--edge);padding:7px 11px;min-height:32px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.seg button+button,.filters button+button{margin-left:-1px}
+.seg button[aria-pressed="true"],.filters button[aria-pressed="true"],.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--plate);position:relative;z-index:1}
+.seg button:hover,.btn:hover,.filters button:hover{border-color:var(--anatomy-hi);color:var(--ink);position:relative;z-index:2}
+.seg button[aria-pressed="true"]:hover,.filters button[aria-pressed="true"]:hover,.btn.primary:hover{color:var(--plate)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+header.head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 40px;align-items:end;margin:40px 0 28px;padding-bottom:28px;border-bottom:1px solid var(--rule)}
+h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
+.intro{max-width:60ch;margin:16px 0 0;font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(3,auto);gap:0;border:1px solid var(--rule);background:var(--plate)}
+.stats div{padding:10px 16px;border-right:1px solid var(--rule)}
+.stats div:last-child{border-right:0}
+.stats b{display:block;font:500 22px/1.15 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.stats span{font:500 10px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;margin-bottom:22px}
+.filters button b{font-weight:500;opacity:.6}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.card{display:flex;flex-direction:column;background:var(--plate);border:1px solid var(--rule);min-width:0}
+.card[hidden]{display:none}
+.shot{position:relative;display:block;width:100%;padding:0;border:0;border-bottom:1px solid var(--rule);background:var(--plate);cursor:zoom-in}
+.shot img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:contain;max-width:100%}
+.plate-corner{position:absolute;top:12px;font:500 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.plate-corner.tl{left:14px;color:var(--text)}
+.plate-corner.tr{right:14px}
+.on-dark{display:none!important}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .on-dark{display:block!important}:root:not([data-theme="light"]) .on-light{display:none!important}}
+:root[data-theme="dark"] .on-dark{display:block!important}
+:root[data-theme="dark"] .on-light{display:none!important}
+.card-body{display:flex;flex-direction:column;gap:8px;padding:16px 18px 18px;flex:1}
+.meta{display:flex;gap:14px;font:500 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.card h2{font:600 24px/1.2 var(--display);letter-spacing:-.01em;color:var(--ink);margin:2px 0 0;height:1.2em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card p{margin:0;font-size:14.5px;line-height:1.5;height:4.5em;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:auto;padding-top:10px}
+.counts{font:500 11px/1 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.card-actions{display:flex;gap:8px}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)}
+footer a{color:inherit}
+dialog{width:min(1040px,100% - 32px);max-height:calc(100% - 32px);padding:0;border:1px solid var(--edge);background:var(--plate);color:var(--text)}
+dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);backdrop-filter:blur(2px)}
+.dlg{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+.dlg-shot{position:relative;padding:36px 18px 18px;border-right:1px solid var(--rule);display:flex;align-items:center}
+.dlg-shot img{width:100%;height:auto;display:block}
+.dlg-text{padding:22px 22px 20px;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:auto}
+.dlg-text h2{font:600 30px/1.05 var(--display);color:var(--ink);margin:0}
+.dlg-text p{margin:0;font-size:14.5px}
+.dlg-text ol{margin:0;padding:0;list-style:none;display:grid;gap:0;border-top:1px solid var(--rule)}
+.dlg-text li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:6px;padding:9px 0;border-bottom:1px solid var(--rule)}
+.dlg-text li span{font:500 11px/1.6 var(--mono);color:var(--muted)}
+.dlg-text li b{display:block;font-weight:600;color:var(--ink);font-size:14px}
+.dlg-text li em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
+.dlg-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:auto}
+.close{position:absolute;top:8px;right:8px}
+@media (max-width:760px){
+  header.head{grid-template-columns:1fr}
+  .grid{grid-template-columns:1fr}
+  .dlg{grid-template-columns:1fr}
+  .dlg-shot{border-right:0;border-bottom:1px solid var(--rule)}
+}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .2s}.card:hover{border-color:var(--edge)}}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<div class="wrap">
+  <div class="top"><span>Distributed systems, one machine at a time</span>
+    <div class="seg" role="group" aria-label="Theme"><button type="button" data-theme-choice="auto">Auto</button><button type="button" data-theme-choice="light">Light</button><button type="button" data-theme-choice="dark">Dark</button></div>
+  </div>
+  <header class="head">
+    <div>
+      <h1>Systems Workbench</h1>
+      <p class="intro">Each lesson turns one idea into a small machine you can watch and adjust: a cache becomes a card rack, a circuit breaker a switchboard, a rolling deploy a crane swapping modules. Watch the machine, predict what an experiment will do, run it, then explain it back.</p>
+    </div>
+    <div class="stats" aria-label="Collection size">
+      <div><b>23</b><span>Lessons</span></div>
+      <div><b>115</b><span>Experiments</span></div>
+      <div><b>137</b><span>Questions</span></div>
+    </div>
+  </header>
+  <div class="filters" role="group" aria-label="Filter by area"><button type="button" data-filter="all" aria-pressed="true">All <b>23</b></button><button type="button" data-filter="Data" aria-pressed="false">Data <b>4</b></button><button type="button" data-filter="Concurrency" aria-pressed="false">Concurrency <b>5</b></button><button type="button" data-filter="Messaging" aria-pressed="false">Messaging <b>2</b></button><button type="button" data-filter="Distributed" aria-pressed="false">Distributed <b>3</b></button><button type="button" data-filter="Traffic" aria-pressed="false">Traffic <b>2</b></button><button type="button" data-filter="Resilience" aria-pressed="false">Resilience <b>3</b></button><button type="button" data-filter="Delivery" aria-pressed="false">Delivery <b>4</b></button></div>
+  <main class="grid">
+<article class="card" data-area="Data" id="lesson-01">
+  <button type="button" class="shot" data-preview="cache" aria-label="Preview Cache Workbench">
+    <img class="on-light" src="previews/cache-light.webp" alt="Records office, the machine in Cache Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/cache-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 01</span>
+    <span class="plate-corner tr">Records office</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Data</span><span>Caching</span></div>
+    <h2 title="Cache Workbench">Cache Workbench</h2>
+    <p>A cache is a small, fast shelf of copies in front of a big, slow store.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 5 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="cache">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/Sx59AgrbR6CHKJYRpsYXbm" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Messaging" id="lesson-02">
+  <button type="button" class="shot" data-preview="pubsub" aria-label="Preview Pub/Sub Workbench">
+    <img class="on-light" src="previews/pubsub-light.webp" alt="Dispatch office, the machine in Pub/Sub Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/pubsub-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 02</span>
+    <span class="plate-corner tr">Dispatch office</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Messaging</span><span>Pub/sub</span></div>
+    <h2 title="Pub/Sub Workbench">Pub/Sub Workbench</h2>
+    <p>Publish/subscribe lets one part of a system announce something without knowing who listens.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="pubsub">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/NwZDpVfURTSBhGxfYi8sSx" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Traffic" id="lesson-03">
+  <button type="button" class="shot" data-preview="loadbalancing" aria-label="Preview Load Balancer Workbench">
+    <img class="on-light" src="previews/loadbalancing-light.webp" alt="Sorting station, the machine in Load Balancer Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/loadbalancing-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 03</span>
+    <span class="plate-corner tr">Sorting station</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Traffic</span><span>Load balancing</span></div>
+    <h2 title="Load Balancer Workbench">Load Balancer Workbench</h2>
+    <p>A load balancer decides which server gets each request, and that one decision sets how long users wait.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="loadbalancing">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/CdDNmJinhxK9g2376AeeKH" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Resilience" id="lesson-04">
+  <button type="button" class="shot" data-preview="breaker" aria-label="Preview Circuit Breaker Workbench">
+    <img class="on-light" src="previews/breaker-light.webp" alt="Switchboard, the machine in Circuit Breaker Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/breaker-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 04</span>
+    <span class="plate-corner tr">Switchboard</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Resilience</span><span>Circuit breakers</span></div>
+    <h2 title="Circuit Breaker Workbench">Circuit Breaker Workbench</h2>
+    <p>When a service you depend on gets slow or fails, the danger is not the failed calls: it is your own workers waiting on them.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="breaker">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/HvhTcv55F812QTNnu2C3v1" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Traffic" id="lesson-05">
+  <button type="button" class="shot" data-preview="ratelimit" aria-label="Preview Rate Limiter Workbench">
+    <img class="on-light" src="previews/ratelimit-light.webp" alt="Ticket dispenser, the machine in Rate Limiter Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/ratelimit-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 05</span>
+    <span class="plate-corner tr">Ticket dispenser</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Traffic</span><span>Rate limiting</span></div>
+    <h2 title="Rate Limiter Workbench">Rate Limiter Workbench</h2>
+    <p>A rate limiter hands out permission at a fixed pace and says &quot;not now&quot; (HTTP 429) when it runs out.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="ratelimit">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/1L5Xbwm5A67sSS9McXiRgP" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Resilience" id="lesson-06">
+  <button type="button" class="shot" data-preview="retrystorm" aria-label="Preview Retry Storm Workbench">
+    <img class="on-light" src="previews/retrystorm-light.webp" alt="Ticket office, the machine in Retry Storm Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/retrystorm-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 06</span>
+    <span class="plate-corner tr">Ticket office</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Resilience</span><span>Retry storms</span></div>
+    <h2 title="Retry Storm Workbench">Retry Storm Workbench</h2>
+    <p>Retries feel safe, but when many clients retry at once they keep a system overloaded long after the fault is gone.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="retrystorm">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/Ktr19naTLYHCqxhFiSKKPH" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Data" id="lesson-07">
+  <button type="button" class="shot" data-preview="hashring" aria-label="Preview Hash Ring Workbench">
+    <img class="on-light" src="previews/hashring-light.webp" alt="Sorting carousel, the machine in Hash Ring Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/hashring-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 07</span>
+    <span class="plate-corner tr">Sorting carousel</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Data</span><span>Consistent hashing</span></div>
+    <h2 title="Hash Ring Workbench">Hash Ring Workbench</h2>
+    <p>When data is split across nodes, every key needs a home, and adding or losing a node should move as few keys as possible.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="hashring">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/NH26K4bNvwx5W7uxBTSPcf" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Delivery" id="lesson-08">
+  <button type="button" class="shot" data-preview="canary" aria-label="Preview Canary Deploy Workbench">
+    <img class="on-light" src="previews/canary-light.webp" alt="Railway junction, the machine in Canary Deploy Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/canary-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 08</span>
+    <span class="plate-corner tr">Railway junction</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Delivery</span><span>Canary deploys</span></div>
+    <h2 title="Canary Deploy Workbench">Canary Deploy Workbench</h2>
+    <p>A canary deploy sends a small share of real traffic to the new version, watches it, and either rolls it back or promotes it.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="canary">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/Di41rMtQag8fnQDqpa7cg2" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Delivery" id="lesson-09">
+  <button type="button" class="shot" data-preview="bluegreen" aria-label="Preview Blue-Green Workbench">
+    <img class="on-light" src="previews/bluegreen-light.webp" alt="Two press lines, the machine in Blue-Green Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/bluegreen-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 09</span>
+    <span class="plate-corner tr">Two press lines</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Delivery</span><span>Blue-green deploys</span></div>
+    <h2 title="Blue-Green Workbench">Blue-Green Workbench</h2>
+    <p>Two full copies of production: deploy to the idle one, flip all traffic with one switch, keep the old one ready.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="bluegreen">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/7CVx3GMvemQRvJoXE4MNjk" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Delivery" id="lesson-10">
+  <button type="button" class="shot" data-preview="rolling" aria-label="Preview Rolling Deploy Workbench">
+    <img class="on-light" src="previews/rolling-light.webp" alt="Module yard, the machine in Rolling Deploy Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/rolling-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 10</span>
+    <span class="plate-corner tr">Module yard</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Delivery</span><span>Rolling deploys</span></div>
+    <h2 title="Rolling Deploy Workbench">Rolling Deploy Workbench</h2>
+    <p>A rolling deploy replaces a service one piece at a time, so it never has to stop.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="rolling">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/RcCWmJHXdzaqSo9qARGWCm" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Data" id="lesson-11">
+  <button type="button" class="shot" data-preview="indexes" aria-label="Preview Index Workbench">
+    <img class="on-light" src="previews/indexes-light.webp" alt="Library, the machine in Index Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/indexes-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 11</span>
+    <span class="plate-corner tr">Library</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Data</span><span>Database indexes</span></div>
+    <h2 title="Index Workbench">Index Workbench</h2>
+    <p>An index is a sorted copy of a few columns that points back to the rows: fast lookups, paid for on every write.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="indexes">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/VgunwCRjSW5qaaqugCA9fs" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Data" id="lesson-12">
+  <button type="button" class="shot" data-preview="pagination" aria-label="Preview Pagination Workbench">
+    <img class="on-light" src="previews/pagination-light.webp" alt="Filing machine, the machine in Pagination Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/pagination-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 12</span>
+    <span class="plate-corner tr">Filing machine</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Data</span><span>Pagination</span></div>
+    <h2 title="Pagination Workbench">Pagination Workbench</h2>
+    <p>How a list API remembers where the last page ended decides how fast deep pages are and whether rows repeat or vanish.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="pagination">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/BwXQU6HJuA4frwY2fqW96N" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Concurrency" id="lesson-13">
+  <button type="button" class="shot" data-preview="concurrency" aria-label="Preview Concurrency Workbench">
+    <img class="on-light" src="previews/concurrency-light.webp" alt="Range and stirring head, the machine in Concurrency Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/concurrency-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 13</span>
+    <span class="plate-corner tr">Range and stirring head</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Concurrency</span><span>Concurrency</span></div>
+    <h2 title="Concurrency Workbench">Concurrency Workbench</h2>
+    <p>Concurrency is one worker juggling many tasks by switching between them. It hides waiting but adds no extra hands.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="concurrency">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/6oPkLhMEVDATRXN3FzVtup" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Concurrency" id="lesson-14">
+  <button type="button" class="shot" data-preview="parallelism" aria-label="Preview Parallelism Workbench">
+    <img class="on-light" src="previews/parallelism-light.webp" alt="Workshop, the machine in Parallelism Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/parallelism-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 14</span>
+    <span class="plate-corner tr">Workshop</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Concurrency</span><span>Parallelism</span></div>
+    <h2 title="Parallelism Workbench">Parallelism Workbench</h2>
+    <p>Parallelism is many pieces of work at the same instant. More workers help only as far as the work can be split.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="parallelism">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/8vzMp7K9mZ1UMkhSbL5EME" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Concurrency" id="lesson-15">
+  <button type="button" class="shot" data-preview="async" aria-label="Preview Async Workbench">
+    <img class="on-light" src="previews/async-light.webp" alt="Restaurant pass, the machine in Async Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/async-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 15</span>
+    <span class="plate-corner tr">Restaurant pass</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Concurrency</span><span>Async I/O</span></div>
+    <h2 title="Async Workbench">Async Workbench</h2>
+    <p>Async I/O lets one worker start many slow operations and handle each result when it's ready, instead of waiting.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="async">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/HcHMs1eh4Lw3ifsxmJNL3n" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Concurrency" id="lesson-16">
+  <button type="button" class="shot" data-preview="eventloop" aria-label="Preview Event Loop Workbench">
+    <img class="on-light" src="previews/eventloop-light.webp" alt="Event loop, the machine in Event Loop Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/eventloop-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 16</span>
+    <span class="plate-corner tr">Event loop</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Concurrency</span><span>The event loop</span></div>
+    <h2 title="Event Loop Workbench">Event Loop Workbench</h2>
+    <p>JavaScript runs your code on one thread, one task at a time. Timers, network replies and drawing all wait their turn.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="eventloop">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/KJMmeXb3co4Y7Rf4yyWTz4" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Concurrency" id="lesson-17">
+  <button type="button" class="shot" data-preview="races" aria-label="Preview Race Condition Workbench">
+    <img class="on-light" src="previews/races-light.webp" alt="Bank office, the machine in Race Condition Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/races-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 17</span>
+    <span class="plate-corner tr">Bank office</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Concurrency</span><span>Race conditions</span></div>
+    <h2 title="Race Condition Workbench">Race Condition Workbench</h2>
+    <p>Two requests read the same value, both write, and one quietly undoes the other. Nothing crashes, so it hides.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="races">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/SAJKy3hGKdW1k9KL7umxbK" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Distributed" id="lesson-18">
+  <button type="button" class="shot" data-preview="broadcast" aria-label="Preview Broadcast Workbench">
+    <img class="on-light" src="previews/broadcast-light.webp" alt="Signal network, the machine in Broadcast Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/broadcast-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 18</span>
+    <span class="plate-corner tr">Signal network</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Distributed</span><span>Broadcast</span></div>
+    <h2 title="Broadcast Workbench">Broadcast Workbench</h2>
+    <p>Broadcast means every node learns every value; the topology decides how many messages that costs and how long it takes.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="broadcast">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/4CsJPPBX1tHZ77RQhWcmKb" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Distributed" id="lesson-19">
+  <button type="button" class="shot" data-preview="gossip" aria-label="Preview Gossip Workbench">
+    <img class="on-light" src="previews/gossip-light.webp" alt="Gossip village, the machine in Gossip Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/gossip-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 19</span>
+    <span class="plate-corner tr">Gossip village</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Distributed</span><span>Gossip protocols</span></div>
+    <h2 title="Gossip Workbench">Gossip Workbench</h2>
+    <p>Every round, whoever knows tells a few random others. Nobody coordinates, nothing is retried, and everyone hears it fast.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="gossip">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/8KZkt7pzEWouJBm4WYnh3s" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Messaging" id="lesson-20">
+  <button type="button" class="shot" data-preview="kafkalog" aria-label="Preview Kafka Log Workbench">
+    <img class="on-light" src="previews/kafkalog-light.webp" alt="Rail yard, the machine in Kafka Log Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/kafkalog-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 20</span>
+    <span class="plate-corner tr">Rail yard</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Messaging</span><span>Logs and offsets</span></div>
+    <h2 title="Kafka Log Workbench">Kafka Log Workbench</h2>
+    <p>A log keeps records in arrival order and doesn't delete them on read; each consumer group keeps a bookmark instead.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="kafkalog">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/SL3pFZGPz9r6hhzNeBvGEr" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Distributed" id="lesson-21">
+  <button type="button" class="shot" data-preview="counter" aria-label="Preview Counter Workbench">
+    <img class="on-light" src="previews/counter-light.webp" alt="Branch tally, the machine in Counter Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/counter-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 21</span>
+    <span class="plate-corner tr">Branch tally</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Distributed</span><span>Distributed counters</span></div>
+    <h2 title="Counter Workbench">Counter Workbench</h2>
+    <p>Counting sounds trivial until several machines count at once: lost updates, retries, and counters that never conflict.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="counter">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/Nt8fVY6UDqz7vKPighZmwD" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Delivery" id="lesson-22">
+  <button type="button" class="shot" data-preview="featureflags" aria-label="Preview Feature Flag Workbench">
+    <img class="on-light" src="previews/featureflags-light.webp" alt="Lighting console, the machine in Feature Flag Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/featureflags-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 22</span>
+    <span class="plate-corner tr">Lighting console</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Delivery</span><span>Feature flags</span></div>
+    <h2 title="Feature Flag Workbench">Feature Flag Workbench</h2>
+    <p>A feature flag ships new code switched off and lets you decide, at run time, who sees it.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="featureflags">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/6d3m5gL31GdPxWbaRMsYxA" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+<article class="card" data-area="Resilience" id="lesson-23">
+  <button type="button" class="shot" data-preview="probes" aria-label="Preview Health Probe Workbench">
+    <img class="on-light" src="previews/probes-light.webp" alt="Shopping street, the machine in Health Probe Workbench" loading="lazy" width="1200" height="800">
+    <img class="on-dark" src="previews/probes-dark.webp" alt="" loading="lazy" width="1200" height="800">
+    <span class="plate-corner tl">Lesson 23</span>
+    <span class="plate-corner tr">Shopping street</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>Resilience</span><span>Health checks</span></div>
+    <h2 title="Health Probe Workbench">Health Probe Workbench</h2>
+    <p>Readiness asks “can you take traffic now?”, liveness asks “do you need a restart?” Mix them up and blips become outages.</p>
+    <div class="card-foot">
+      <span class="counts">5 experiments · 6 questions</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview="probes">Preview</button>
+        <a class="btn primary" href="https://claude.ai/artifact/DTQnWvNA8y5iJFxNSL87mU" target="_blank" rel="noopener">Open lesson</a>
+      </span>
+    </div>
+  </div>
+</article>
+  </main>
+  <footer>Machines drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Previews are screenshots of each machine running; the lessons are interactive.</footer>
+</div>
+<dialog id="preview" aria-labelledby="dlg-title">
+  <div class="dlg">
+    <div class="dlg-shot"><span class="plate-corner tl" data-d="no"></span><span class="plate-corner tr" data-d="machine"></span><img class="on-light" data-d="light" alt=""><img class="on-dark" data-d="dark" alt=""></div>
+    <div class="dlg-text">
+      <div class="meta"><span data-d="area"></span><span data-d="concept"></span></div>
+      <h2 id="dlg-title" data-d="title"></h2>
+      <p data-d="lede"></p>
+      <ol data-d="exps"></ol>
+      <div class="dlg-actions"><span class="counts" data-d="counts"></span><span class="card-actions"><button type="button" class="btn" data-close>Close</button><a class="btn primary" data-d="url" target="_blank" rel="noopener">Open lesson</a></span></div>
+    </div>
+  </div>
+</dialog>
+<script>
+(() => {
+  const LESSONS = [{"n":1,"slug":"cache","area":"Data","url":"https://claude.ai/artifact/Sx59AgrbR6CHKJYRpsYXbm","title":"Cache Workbench","concept":"Caching","lede":"A cache is a small, fast shelf of copies in front of a big, slow store.","machine":"Records office","exps":[{"title":"Shorter freshness","change":"TTL 60 s → 6 s · a card now leaves the rack ten times sooner","question":"What happens to the share of requests answered from the rack?"},{"title":"A smaller rack","change":"Rack 12 slots → 4 slots · a third of the room","question":"The rack can now hold 4 of the 40 records. The hit rate…"},{"title":"No favourites","change":"Popular traffic → even traffic · every record equally likely","question":"Same rack, same TTL, but no record is more popular than another. The hit rate…"},{"title":"The rack is emptied","change":"Empty the rack while traffic flows · a deploy, a restart, a flush","question":"Right after the rack is emptied, how long do requests take?"},{"title":"A record changes","change":"Record #1 is updated in the archive · its card is still in the rack","question":"Of the next reads of #1 answered from the rack, how many show the old version?"}],"questions":5},{"n":2,"slug":"pubsub","area":"Messaging","url":"https://claude.ai/artifact/NwZDpVfURTSBhGxfYi8sSx","title":"Pub/Sub Workbench","concept":"Pub/sub","lede":"Publish/subscribe lets one part of a system announce something without knowing who listens.","machine":"Dispatch office","exps":[{"title":"More subscribers","change":"Subscribers 2 → 5 · three more stations now want every message","question":"The press now feeds five stations instead of two. How long does it spend on each message?"},{"title":"A slow subscriber","change":"Station C takes 2 s per card · the press still prints one every 1.2 s","question":"After two minutes, what has happened?"},{"title":"A subscriber goes away","change":"Station C is offline for 20 s · its subscription is not durable","question":"The cards printed while C was away…"},{"title":"Crash before the ack","change":"Stations crash 1 time in 10 after doing the work, before stamping the card","question":"Over 100 messages, how many times does station A's handler run?"},{"title":"One queue, two workers","change":"A and B read from one shared queue instead of each having a subscription","question":"Of 100 messages, how many does each of A and B get?"}],"questions":6},{"n":3,"slug":"loadbalancing","area":"Traffic","url":"https://claude.ai/artifact/CdDNmJinhxK9g2376AeeKH","title":"Load Balancer Workbench","concept":"Load balancing","lede":"A load balancer decides which server gets each request. That one decision, made thousands of times a second, sets how long users wait.","machine":"Sorting station","exps":[{"title":"One more counter","change":"Counters 3 → 4 at 0.9 parcels/s · a third more capacity, same traffic","question":"What happens to the slowest 5% of waits (p95)?"},{"title":"One slow counter","change":"Counter 1 works at a third of the speed · 4 counters, round robin","question":"With round robin, what happens to p95?"},{"title":"Uneven parcels","change":"1 parcel in 10 takes 11× longer than the rest · same total work","question":"Switching from round robin to least connections changes p95 by…"},{"title":"A counter crashes","change":"Counter 2 dies · the balancer only finds out at its next health check","question":"With a health check every 30 s, how many parcels fail?"},{"title":"Sticky customers","change":"Two customers send 40% of the parcels · sticky sessions pin each customer to one counter","question":"Twenty customers in total. What happens to the counters?"}],"questions":6},{"n":4,"slug":"breaker","area":"Resilience","url":"https://claude.ai/artifact/HvhTcv55F812QTNnu2C3v1","title":"Circuit Breaker Workbench","concept":"Circuit breakers","lede":"When a service you depend on gets slow or fails, the danger is not the failed calls: it is your own workers waiting on them.","machine":"Switchboard","exps":[{"title":"The supplier slows down","change":"Supplier healthy → slow · each call now takes about 6 s · no timeout, no breaker","question":"Three in ten requests never call the supplier. What happens to them?"},{"title":"Add a timeout","change":"Slow supplier, as before · timeout off → 1.5 s","question":"With a 1.5 s timeout, what happens to the requests that need the supplier?"},{"title":"Add the breaker","change":"Supplier failing · timeout 1.5 s · breaker off → on (opens after 5 failures in a row, 5 s cooldown)","question":"With the breaker on, what happens to the load on the supplier?"},{"title":"Retry three times","change":"Supplier failing, fixed after 20 s · timeout 1.5 s · retries 0 → 3, no backoff, no breaker","question":"The cause is fixed after 20 s. With three immediate retries per request, when do supplier calls succeed again?"},{"title":"A long cooldown","change":"Supplier failing, fixed after 20 s · timeout 1.5 s · breaker on · cooldown 5 s → 30 s","question":"With a 30 s cooldown, how soon after the fix does traffic flow again?"}],"questions":6},{"n":5,"slug":"ratelimit","area":"Traffic","url":"https://claude.ai/artifact/1L5Xbwm5A67sSS9McXiRgP","title":"Rate Limiter Workbench","concept":"Rate limiting","lede":"A rate limiter hands out permission at a fixed pace and says \"not now\" (HTTP 429) when it runs out.","machine":"Ticket dispenser","exps":[{"title":"A bigger bucket","change":"Bucket 8 tokens → 16 tokens · refill stays at 4 per second","question":"Clients want more than the limit all the time. How many requests get through per minute now?"},{"title":"The window boundary","change":"Fixed window (8 per 2 s) vs token bucket (4/s, holds 8) · a client sends 16 just before a window ends and 16 just after","question":"With the fixed window, how many get through in that 0.4 s?"},{"title":"One noisy client","change":"Client C sends 8 requests/s, A and B send 1/s · one shared limit of 6/s vs a third of it per client","question":"With one shared limit, what happens to A and B?"},{"title":"Retrying on 429","change":"Client A bursts 30 requests at once · impatient clients retry every 0.25 s vs clients that wait the Retry-After time (plus jitter)","question":"How many rejected attempts does the limiter see?"},{"title":"Two app instances","change":"1 → 2 app instances behind a load balancer · each keeps its own bucket in memory (4/s, holds 8)","question":"Clients ask for 7.5 requests/s. How many get through per minute now?"}],"questions":6},{"n":6,"slug":"retrystorm","area":"Resilience","url":"https://claude.ai/artifact/Ktr19naTLYHCqxhFiSKKPH","title":"Retry Storm Workbench","concept":"Retry storms","lede":"A retry feels like the safe thing to do: if a call fails, try again. When many clients do it at once, retries can keep a system overloaded long after the original problem is gone.","machine":"Ticket office","exps":[{"title":"Three quick retries","change":"No retries → 3 retries, sent at once · then a rush of 16 visitors","question":"Without retries, the trouble from a rush is over in about ten seconds. With three immediate retries, how long does it last?"},{"title":"Wait before retrying","change":"Immediate retries → exponential backoff · wait 2, then 4, then 8 s","question":"Clients now wait on the benches before trying again. What happens after the rush?"},{"title":"Add jitter","change":"Exponential backoff → backoff with jitter · each wait spread between ½ and 1½ times its delay","question":"The average wait is exactly the same as before. What does jitter change?"},{"title":"A timeout that's too short","change":"Timeout 3 s → 0.8 s · the window normally takes 0.7 to 1.3 s · no rush","question":"Nothing else is wrong. With three retries, what share of the window's work reaches a client who is still waiting?"},{"title":"Retries at every layer","change":"1 layer retries → 3 layers retry (app, client library, proxy) · 3 retries each","question":"In the worst case, how many attempts reach the window for one request?"}],"questions":6},{"n":7,"slug":"hashring","area":"Data","url":"https://claude.ai/artifact/NH26K4bNvwx5W7uxBTSPcf","title":"Hash Ring Workbench","concept":"Consistent hashing","lede":"When data is split across nodes, every key needs a home, and adding or losing a node should move as few keys as possible.","machine":"Sorting carousel","exps":[{"title":"Add a node, modulo style","change":"bin = hash mod n · nodes 4 → 5","question":"One node joins a cluster of four. What share of the 1,000 keys has to move to a different node?"},{"title":"Add a node, on a ring","change":"Hash ring, 1 marker per node · nodes 4 → 5","question":"Same change, but keys go to the next marker clockwise. Which keys move?"},{"title":"Is the ring fair?","change":"Hash ring, 5 nodes · 1 marker per node","question":"Five nodes, one marker each, placed by hashing. How much does the busiest node get compared with a fair fifth?"},{"title":"A node fails","change":"Hash ring, 5 nodes, 1 marker per node · node C fails","question":"C's keys must go somewhere. Where do they go?"},{"title":"One very popular key","change":"Hash ring, 100 markers per node · key 7 gets 30% of all requests","question":"Does consistent hashing spread a hot key's traffic?"}],"questions":6},{"n":8,"slug":"canary","area":"Delivery","url":"https://claude.ai/artifact/Di41rMtQag8fnQDqpa7cg2","title":"Canary Deploy Workbench","concept":"Canary deploys","lede":"A canary deploy sends a small share of real traffic to the new version, watches it, and either rolls it back or promotes it.","machine":"Railway junction","exps":[{"title":"How many people does a bad build hurt?","change":"Bad build (1 in 5 orders fail) · canary 25% → 1% · automatic rollback on","question":"At 25%, the rollback arm catches the bad build after about 11 failed orders. At 1%, how many orders fail before it is caught?"},{"title":"A rare bug","change":"1 order in 200 fails on the new build · canary 10% → 1%","question":"At 10% the arm needs about 2 hours to be sure. At 1%, how long?"},{"title":"A twitchy rollback","change":"Good build at 10% for 2 hours · threshold normal → tight (any failure above 0.15%)","question":"The new build is fine. Both tracks fail 1 order in 1,000 by bad luck. How often does the tight rule roll it back anyway?"},{"title":"Who sees what","change":"Good build at 25% for 10 minutes · 100 users, each ordering about 7 times","question":"With random routing, how many users see both the old and the new version?"},{"title":"The bug that doesn't fail","change":"New build charges the wrong price on 3 orders in 10 · canary 10% · promoted after a 30-minute bake","question":"The rollback arm only watches failures. After an hour, how many wrong-price orders went out?"}],"questions":6},{"n":9,"slug":"bluegreen","area":"Delivery","url":"https://claude.ai/artifact/7CVx3GMvemQRvJoXE4MNjk","title":"Blue-Green Workbench","concept":"Blue-green deploys","lede":"Run two complete copies of production. Deploy the new version to the idle one, then move all traffic over with one switch, and keep the old one ready to switch back.","machine":"Two press lines","exps":[{"title":"Roll back a bad release","change":"Green ships with a bug that fails 40% of requests · the alarm fires 15 s after the flip","question":"You roll back by flipping the gate back to blue. How long until errors stop, compared with redeploying the old version server by server (one minute each)?"},{"title":"What it costs","change":"A normal deploy · blue is kept running after the flip so you can roll back","question":"What do you pay for that instant rollback while the deploy is in progress?"},{"title":"A cold green","change":"Green starts with an empty cache · you flip as soon as it is up","question":"Right after the flip, what happens to latency?"},{"title":"Flip without draining","change":"Draining off · blue stops the moment the gate flips","question":"What happens to the requests already on blue's lane, in its queue or under its presses?"},{"title":"A migration blue can't read","change":"Green's migration drops a column blue still reads · then green turns out to be bad","question":"You flip back to blue. What happens?"}],"questions":6},{"n":10,"slug":"rolling","area":"Delivery","url":"https://claude.ai/artifact/RcCWmJHXdzaqSo9qARGWCm","title":"Rolling Deploy Workbench","concept":"Rolling deploys","lede":"A rolling deploy replaces a service one piece at a time, so it never has to stop.","machine":"Module yard","exps":[{"title":"Take more bays out at once","change":"maxUnavailable 1 → 3 · busy traffic (2 requests/s, six bays serve 3/s)","question":"Half the bays may now be out at the same time. What happens?"},{"title":"Add before you remove","change":"maxUnavailable 1, maxSurge 0 → maxUnavailable 0, maxSurge 1 · busy traffic","question":"Now a new bay is added before any old one is taken out. What does that cost?"},{"title":"No readiness probe","change":"Readiness probe on → off · a new bay's flag rises as soon as it is installed","question":"The new version is fine, but every module needs 6 s to warm up. Without the probe…"},{"title":"A broken version","change":"Next version: broken · it starts, but never passes its health check","question":"With the readiness probe on, how far does the rollout get?"},{"title":"Two versions at once","change":"Next version saves user data in a new format that the old version cannot read","question":"During the rollout, old and new bays both serve. What do users see?"}],"questions":6},{"n":11,"slug":"indexes","area":"Data","url":"https://claude.ai/artifact/VgunwCRjSW5qaaqugCA9fs","title":"Index Workbench","concept":"Database indexes","lede":"An index is a second, sorted copy of a few columns that points back to the rows. It turns read-everything into look-it-up, and every write pays to keep it current.","machine":"Library","exps":[{"title":"The table grows ten times","change":"10,000 → 100,000 rows · query ISBN = … · a catalogue on ISBN","question":"A full scan gets about 10× slower. How much slower does the lookup through the ISBN catalogue get?"},{"title":"A third catalogue","change":"100,000 rows · catalogues: ISBN → ISBN, author, author + year · adding books","question":"You add two more catalogues so more queries are fast. What happens to adding a new book?"},{"title":"The wrong end of a composite","change":"100,000 rows · one catalogue sorted by author, then year · query: year = 1969","question":"The catalogue holds year on every card. What does the librarian do for a year-only search?"},{"title":"An index on a yes/no column","change":"100,000 rows · a catalogue on 'on loan' · 4 in 10 books are on loan","question":"You ask for every book that is on loan. What does the planner choose?"},{"title":"The title is on the card","change":"100,000 rows · titles by one author · catalogue on author → catalogue on author that also carries the title","question":"How much does it help when the card already carries the title?"}],"questions":6},{"n":12,"slug":"pagination","area":"Data","url":"https://claude.ai/artifact/BwXQU6HJuA4frwY2fqW96N","title":"Pagination Workbench","concept":"Pagination","lede":"Every list API has to hand data out a page at a time, and the way it remembers where the last page ended decides how fast deep pages are and whether rows get shown twice or never.","machine":"Filing machine","exps":[{"title":"A deep page","change":"20,000 rows, 20 per page · page 1 vs page 500","question":"How much more work is page 500 than page 1?"},{"title":"New rows while you page","change":"Offset paging, 10 pages of 20, newest first · about one new row per second while the reader pauses 2 s between pages","question":"What does the reader see?"},{"title":"Rows deleted while you page","change":"Offset paging, 10 pages of 20 · about one row deleted per second from the rows being paged","question":"Now rows disappear from pages already read. What does the reader miss?"},{"title":"A cursor on created_at alone","change":"Cursor paging, 10 pages of 20 · rows are imported three per second, so created_at has ties · cursor key created_at vs (created_at, id)","question":"With WHERE created_at \u003c :last, what happens at page boundaries?"},{"title":"Jump to page 37","change":"20 per page · a user clicks page 37 directly","question":"How does each kind of pagination get there?"}],"questions":6},{"n":13,"slug":"concurrency","area":"Concurrency","url":"https://claude.ai/artifact/6oPkLhMEVDATRXN3FzVtup","title":"Concurrency Workbench","concept":"Concurrency","lede":"Concurrency is one worker keeping many tasks in progress by switching between them. It hides waiting, but it never adds a second pair of hands.","machine":"Range and stirring head","exps":[{"title":"Dishes that mostly simmer","change":"4 dishes, each 3 s of stirring and 70% simmering · one at a time → switch when a pan starts simmering","question":"How much sooner is everything served?"},{"title":"Dishes that never simmer","change":"4 dishes, each 3 s of nonstop stirring · one at a time → round robin, 1 s each","question":"Does taking turns help when there is no waiting at all?"},{"title":"A very short turn","change":"Round robin, 4 nonstop dishes, switching costs 0.3 s · turns of 3 s → 0.3 s","question":"What share of the cook's time goes on moving between pans?"},{"title":"One huge stew","change":"A 12 s stew and four 1 s dishes, all nonstop, stew first in line · finish each step before moving → round robin, 1 s turns","question":"What happens to the four small dishes?"},{"title":"More pans on the stove","change":"Keep every pan busy, 70% simmering · 4 pans → 8 pans","question":"What happens to dishes served per minute, and to the time each dish takes?"}],"questions":6},{"n":14,"slug":"parallelism","area":"Concurrency","url":"https://claude.ai/artifact/8vzMp7K9mZ1UMkhSbL5EME","title":"Parallelism Workbench","concept":"Parallelism","lede":"Parallelism is doing many pieces of work at the same instant, on several cores or machines. More workers help only as far as the work can be split, shared things allow and coordination costs.","machine":"Workshop","exps":[{"title":"Eight workers","change":"1 → 8 workers on 8 benches · 10% of the job is packing, which only one station can do","question":"How much faster does a job finish?"},{"title":"More workers than benches","change":"8 → 16 workers · still 8 benches (cores) · job split into 16 chunks","question":"What happens to the job time?"},{"title":"One shared tool","change":"Shared tool off → on · the last 40% of every chunk needs the one tool on the rack","question":"With 8 workers, how fast is the job compared with one worker?"},{"title":"A tiny job","change":"A job of 0.3 s instead of 16 s · 1 worker with 1 chunk vs 8 workers with 8 chunks","question":"Which finishes first?"},{"title":"One heavy chunk","change":"Uneven data: the first eighth of the job holds a third of the work · 8 chunks vs 32 chunks, 8 workers","question":"With 8 chunks, what happens to the job time?"}],"questions":6},{"n":15,"slug":"async","area":"Concurrency","url":"https://claude.ai/artifact/HcHMs1eh4Lw3ifsxmJNL3n","title":"Async Workbench","concept":"Async I/O","lede":"Async I/O lets one worker start many slow operations and handle each result when it is ready, instead of standing still while it waits.","machine":"Restaurant pass","exps":[{"title":"Four waiters or one","change":"100 orders · each waits 200 ms in the kitchen · 4 blocking threads vs 1 async waiter","question":"Which finishes the 100 orders faster?"},{"title":"Orders that need real work","change":"100 orders · 40 ms of CPU each, 10 ms in the kitchen · 4 blocking threads vs 1 async waiter","question":"Now most of the time is spent working, not waiting. Which is faster?"},{"title":"Await in a loop","change":"20 orders · async · `for … await` one by one vs `Promise.all` / `asyncio.gather`","question":"How much faster is gathering them?"},{"title":"Gather a thousand","change":"1,000 orders · gather all at once vs at most 20 in flight · the kitchen has 32 burners, calls time out after 2 s","question":"Which way gets more orders delivered?"},{"title":"One blocking call","change":"100 orders · async · each handler also reads a file synchronously for 15 ms","question":"What happens to the batch?"}],"questions":6},{"n":16,"slug":"eventloop","area":"Concurrency","url":"https://claude.ai/artifact/KJMmeXb3co4Y7Rf4yyWTz4","title":"Event Loop Workbench","concept":"The event loop","lede":"JavaScript runs your code on one thread, one task at a time. Everything else, from timers to network replies to drawing the screen, waits for that one thread to be free.","machine":"Event loop","exps":[{"title":"One long job","change":"CPU job none → 200 ms of synchronous work every half second · setTimeout(…, 10) still armed every 100 ms","question":"What happens to a timer that is due 10 ms from now while the job runs?"},{"title":"Who goes first","change":"One script: setTimeout(cb, 0), then Promise.resolve().then(cb), then console.log(…)","question":"In what order do the three run?"},{"title":"A promise chain that never yields","change":"Promise chain on · 400 callbacks of 0.5 ms, each queuing the next","question":"Each callback is tiny. What happens to I/O callbacks and frames while the chain runs?"},{"title":"Split the job","change":"200 ms job → 40 chunks of 5 ms, each queued at the back of the conveyor","question":"What happens to the longest gap between frames, and to how long the job takes?"},{"title":"Hand it to a worker","change":"200 ms job → posted to a worker thread; the result comes back as a message","question":"What happens to the loop, and to how long the job takes?"}],"questions":6},{"n":17,"slug":"races","area":"Concurrency","url":"https://claude.ai/artifact/SAJKy3hGKdW1k9KL7umxbK","title":"Race Condition Workbench","concept":"Race conditions","lede":"A race condition happens when two requests read the same thing, both decide what to write, and one quietly undoes the other. Nothing crashes, so it hides until there is real traffic.","machine":"Bank office","exps":[{"title":"Two clerks, no protection","change":"2 clerks × 100 deposits each · read the card, work out the new balance at the desk (1 s), walk back and write it","question":"How many of the 200 deposits never reach the card?"},{"title":"Take the key first","change":"4 clerks · a clerk takes the key from the hook before reading and hangs it back after writing","question":"Nothing is lost now. What happens to deposits per minute compared with no protection?"},{"title":"Check the version","change":"Compare-and-swap: the card carries a version number; a write only lands if the version is still the one the clerk read, otherwise the clerk reads again and redoes the sum","question":"Going from 2 clerks to 4, what happens?"},{"title":"Check, then book","change":"3 clerks fill 24 seats · each checks the board for a free seat, fills in the form at the desk, then pins the seat","question":"Every clerk checked the seat was free. How many seats end up booked twice?"},{"title":"It passed locally","change":"The same unprotected code · 1 clerk (a unit test), 2 clerks at a quiet moment (a manual test), 4 clerks when the office is busy (production)","question":"What do the tests show?"}],"questions":6},{"n":18,"slug":"broadcast","area":"Distributed","url":"https://claude.ai/artifact/4CsJPPBX1tHZ77RQhWcmKb","title":"Broadcast Workbench","concept":"Broadcast","lede":"Broadcast means every node learns every value. Which nodes talk to which (the topology) decides how many messages that costs and how long it takes.","machine":"Signal network","exps":[{"title":"Pick a topology","change":"Grid → ring → hubs · 25 nodes, 100 values a second, 100 ms per message","question":"Challenge 3d asks for fewer than 30 messages per value, a median under 400 ms and a maximum under 600 ms. Which topology meets it?"},{"title":"Batch the messages","change":"Hubs · batching off → one message per neighbour every 200 ms","question":"Challenge 3e asks for fewer than 20 messages per value, a median under 1 s and a maximum under 2 s. With batching every 200 ms…"},{"title":"Cut the network","change":"Hubs · the fence goes up between columns 2 and 3 for 3 seconds · no retries","question":"What happens to the values sent while the network is cut?"},{"title":"Lose a hub","change":"Hubs · the top-left hub is switched off","question":"Which nodes stop hearing new values?"},{"title":"Forward everything","change":"Grid · forward every copy you receive, not only values you haven't seen","question":"One value enters the network. How many messages in the first second?"}],"questions":6},{"n":19,"slug":"gossip","area":"Distributed","url":"https://claude.ai/artifact/8KZkt7pzEWouJBm4WYnh3s","title":"Gossip Workbench","concept":"Gossip protocols","lede":"Gossip spreads information the way a rumour moves through a village: every round, whoever knows tells a few random others. Nobody coordinates, nothing is retried, and yet everyone hears it fast.","machine":"Gossip village","exps":[{"title":"Ten times the village","change":"40 houses → 400 houses · push, each house tells 2 random houses per round","question":"How many rounds until every house has heard the rumour?"},{"title":"Tell more neighbours","change":"Fanout 1 → 3 · push, 40 houses","question":"Each house now tells 3 random houses per round instead of 1. What happens?"},{"title":"Push, pull or both","change":"Push vs pull vs push-pull · fanout 1, 40 houses","question":"Once half the village knows, which way reaches the last houses fastest?"},{"title":"Lose a third of the messages","change":"Message loss 0% → 30% · push-pull, fanout 2, 40 houses","question":"Three in ten messages vanish on the way. What happens to the rumour?"},{"title":"How long before \"dead\"","change":"Failure timeout 4 → 8 → 16 rounds · heartbeats gossiped with fanout 2, slow links (3 in 10 messages arrive 1–3 rounds late)","question":"What does a short timeout do?"}],"questions":6},{"n":20,"slug":"kafkalog","area":"Messaging","url":"https://claude.ai/artifact/SL3pFZGPz9r6hhzNeBvGEr","title":"Kafka Log Workbench","concept":"Logs and offsets","lede":"A log keeps records in the order they arrive and doesn't delete them when they are read; each consumer group keeps a bookmark instead.","machine":"Rail yard","exps":[{"title":"Order per customer","change":"Records with no key (any track) vs keyed by customer · 3 tracks, 3 consumers, 4 records/s","question":"Each customer's records are created in order: created, paid, shipped. With no key, how often is a customer's record read before an earlier one of the same customer?"},{"title":"A consumer crashes","change":"Consumer 1 crashes in the middle of a batch every 10 s · commit after processing vs before","question":"Committing after processing, what happens to the records it had processed but not yet committed when it crashed?"},{"title":"More consumers than tracks","change":"3 tracks · producer at 8 records/s · consumers in the group 3 → 6","question":"Three consumers can't keep up. With six, how many records are read per minute?"},{"title":"A hot customer","change":"70% of records are for customer A · keyed by customer · 3 tracks, 3 consumers, 4 records/s","question":"After a minute, where is the lag?"},{"title":"Rebuild from the log","change":"After 90 s the customer totals are wiped · every bookmark is rewound to the oldest record and read again · keep all records vs keep 20 s","question":"Keeping every record, how many of the 6 customer totals come back right?"}],"questions":6},{"n":21,"slug":"counter","area":"Distributed","url":"https://claude.ai/artifact/Nt8fVY6UDqz7vKPighZmwD","title":"Counter Workbench","concept":"Distributed counters","lede":"Counting sounds trivial until several machines count at once.","machine":"Branch tally","exps":[{"title":"Read, add one, write it back","change":"One shared key · each add reads the count, adds 1 and writes the result · 3 branches, 0.3 adds/s each, for 60 s","question":"Every add does its read and its write successfully. What share of the adds end up in the register?"},{"title":"Compare-and-swap","change":"The write becomes \"set to v + 1 only if it is still v\" · on failure, read again and retry · traffic 0.1 → 0.6 adds/s per branch","question":"The count is now exact at both rates. What changes as traffic grows?"},{"title":"One slot per branch","change":"Each branch writes only its own slot (its own count) · the total is the sum of all slots · 0.6 adds/s per branch, where compare-and-swap struggled","question":"How many adds are lost or retried now?"},{"title":"Branch C is cut off","change":"One slot per branch · C's track is cut for 15 s, then healed · adds stop when it heals","question":"What happens to the count while C is cut off, and after?"},{"title":"Reading right after an add","change":"Compare-and-swap · B adds 1 and gets its acknowledgement · at that moment A and B each read the count · 20 tries","question":"Does A's read include B's add?"}],"questions":6},{"n":22,"slug":"featureflags","area":"Delivery","url":"https://claude.ai/artifact/6d3m5gL31GdPxWbaRMsYxA","title":"Feature Flag Workbench","concept":"Feature flags","lede":"A feature flag ships new code switched off and lets you decide, at run time, who sees it.","machine":"Lighting console","exps":[{"title":"A bad feature at 50%","change":"Buggy feature on for 50% of users · someone notices at 30 s · flip the kill switch (servers refresh every 5 s) vs redeploy the old build (90 s pipeline, then 30 s per server)","question":"How long until no user hits the bug, with each fix?"},{"title":"Random or sticky","change":"30% rollout for 2 minutes · each request rolls a die vs each user is hashed to a fixed bucket","question":"Out of about 200 users, how many see both the old and the new version?"},{"title":"Stale flags","change":"Feature on for everyone, turned off at 30 s · each server refreshes its copy of the settings every 5 s vs every 60 s","question":"With a 60 s refresh, how long do servers keep showing the feature after it's off?"},{"title":"Flag debt","change":"3 flags vs 10 flags in use, each on for half the users (sticky, independent)","question":"With 10 flags, how many different versions of the app are live at the same time?"},{"title":"Staff first","change":"A buggy feature for 60 s · on for internal staff only (5% of traffic) vs on for 10% of all users","question":"How many customers hit the bug in that minute?"}],"questions":6},{"n":23,"slug":"probes","area":"Resilience","url":"https://claude.ai/artifact/DTQnWvNA8y5iJFxNSL87mU","title":"Health Probe Workbench","concept":"Health checks","lede":"Kubernetes asks every pod two different questions: can you take traffic right now (readiness), and are you so broken that only a restart will help (liveness)? Mixing them up turns small problems into outages.","machine":"Shopping street","exps":[{"title":"No readiness probe","change":"A deploy restarts shops 4 and 5 under steady traffic · readiness probe on → off","question":"Each restarted shop takes 12 s to open its doors and 10 s to stock its shelves. Without a readiness probe, what do customers see?"},{"title":"Liveness checks the warehouse","change":"The warehouse (database) is down for 30 s · liveness checks the warehouse vs readiness checks it","question":"With the liveness probe checking the warehouse, when is the street fully open again?"},{"title":"A tight timeout on a busy street","change":"Traffic at 90% of capacity · liveness timeout 5 s → 1 s","question":"The shops are slow but healthy: probes wait in the same queue as customers. What does a 1 s liveness timeout do?"},{"title":"A slow start","change":"A shop takes 60 s to open its doors · liveness starts checking 10 s after start · no startup probe vs a startup probe","question":"Without a startup probe, when is the restarted shop ready?"},{"title":"A jammed shop","change":"Shop 3 jams: its doors are open but nobody answers · readiness only vs readiness and liveness","question":"With only a readiness probe, what happens to shop 3?"}],"questions":6}];
+  const root = document.documentElement;
+  const choices = document.querySelectorAll("[data-theme-choice]");
+  const read = () => { try { return localStorage.getItem("workbench-theme"); } catch (e) { return null; } };
+  const write = (v) => { try { v === "auto" ? localStorage.removeItem("workbench-theme") : localStorage.setItem("workbench-theme", v); } catch (e) {} };
+  const apply = (v) => { if (v === "light" || v === "dark") root.setAttribute("data-theme", v); else root.removeAttribute("data-theme"); choices.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === (v === "light" || v === "dark" ? v : "auto")))); };
+  apply(read() || (root.getAttribute("data-theme") || "auto"));
+  choices.forEach((b) => b.addEventListener("click", () => { apply(b.dataset.themeChoice); write(b.dataset.themeChoice); }));
+
+  const filters = document.querySelectorAll("[data-filter]");
+  const cards = document.querySelectorAll(".card");
+  const setFilter = (area) => {
+    filters.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === area)));
+    cards.forEach((c) => { c.hidden = area !== "all" && c.dataset.area !== area; });
+  };
+  filters.forEach((b) => b.addEventListener("click", () => setFilter(b.dataset.filter)));
+
+  const dlg = document.getElementById("preview");
+  const d = (k) => dlg.querySelector('[data-d="' + k + '"]');
+  const two = (n) => String(n).padStart(2, "0");
+  const open = (slug) => {
+    const l = LESSONS.find((x) => x.slug === slug);
+    d("no").textContent = "Lesson " + two(l.n);
+    d("machine").textContent = l.machine;
+    d("light").src = "previews/" + l.slug + "-light.webp"; d("light").alt = l.machine + ", the machine in " + l.title;
+    d("dark").src = "previews/" + l.slug + "-dark.webp";
+    d("area").textContent = l.area; d("concept").textContent = l.concept;
+    d("title").textContent = l.title; d("lede").textContent = l.lede;
+    d("exps").replaceChildren(...l.exps.map((e, i) => { const li = document.createElement("li"); const n = document.createElement("span"); n.textContent = two(i + 1); const t = document.createElement("div"); const b = document.createElement("b"); b.textContent = e.title; const em = document.createElement("em"); em.textContent = e.question; t.append(b, em); li.append(n, t); return li; }));
+    d("counts").textContent = l.exps.length + " experiments · " + l.questions + " questions";
+    d("url").href = l.url;
+    if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+  };
+  document.querySelectorAll("[data-preview]").forEach((b) => b.addEventListener("click", () => open(b.dataset.preview)));
+  dlg.querySelector("[data-close]").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+})();
+</script>
