@@ -1,0 +1,20 @@
+{
+  "name": "systems-workbench",
+  "private": true,
+  "description": "Interactive lessons that teach systems concepts through one simulated isometric machine per idea.",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build-all.mjs",
+    "collection": "node workbench/collection/extract.mjs && node workbench/collection/build.mjs",
+    "previews": "node workbench/collection/previews.cjs",
+    "gallery": "node workbench/parts-gallery.mjs",
+    "shot": "node tools/shot.cjs",
+    "compare": "node tools/compare.cjs"
+  },
+  "devDependencies": {
+    "pixelmatch": "^5.3.0",
+    "playwright": "^1.47.0",
+    "pngjs": "^7.0.0",
+    "sharp": "^0.33.5"
+  }
+}
