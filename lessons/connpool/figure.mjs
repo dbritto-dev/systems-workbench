@@ -9,6 +9,7 @@
 import * as k from "../../workbench/kit.mjs";
 import { basePlate } from "../../workbench/parts.mjs";
 import { digitPath, counterCells, digitsOf } from "./digits.js";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -203,7 +204,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label:
-      "A taxi rank model of connection pooling. Along the front, up to four hotels (app instances) each have a rank of parked cabs (its connection pool) and a queue of passengers (requests). A road runs from each hotel back to an airport terminal (the database). A cab at the terminal kerb is a query running; the board on the terminal front has one cell per connection the database allows, filled for every cab that exists. A booth at the end of each road registers new cabs, a lay-by holds cabs waiting on an outside call, and a fenced lot behind each hotel collects cabs that were never returned. A gauge on the roof shows how much slower each query runs.",
+      t("A taxi rank model of connection pooling. Along the front, up to four hotels (app instances) each have a rank of parked cabs (its connection pool) and a queue of passengers (requests). A road runs from each hotel back to an airport terminal (the database). A cab at the terminal kerb is a query running; the board on the terminal front has one cell per connection the database allows, filled for every cab that exists. A booth at the end of each road registers new cabs, a lay-by holds cabs waiting on an outside call, and a fenced lot behind each hotel collects cabs that were never returned. A gauge on the roof shows how much slower each query runs.",
+        "Un modelo de pool de conexiones como una parada de taxis. Al frente, hasta cuatro hoteles (instancias de la app) tienen cada uno una parada de taxis estacionados (su pool de conexiones) y una fila de pasajeros (solicitudes). Un camino va de cada hotel hasta una terminal de aeropuerto (la base de datos). Un taxi en el frente de la terminal es una consulta corriendo; el tablero del frente de la terminal tiene una celda por cada conexión que permite la base de datos, llena por cada taxi que existe. Una caseta al final de cada camino registra los taxis nuevos, una bahía retiene taxis que esperan una llamada externa, y un estacionamiento cercado detrás de cada hotel junta los taxis que nunca se devolvieron. Un indicador en el techo muestra cuánto más lenta corre cada consulta."),
     body: [
       basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H }),
       terminal(),

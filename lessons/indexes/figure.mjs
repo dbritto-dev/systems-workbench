@@ -3,6 +3,10 @@
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
 import { INDEXES } from "./sim.js";
+import { t, isT } from "../../workbench/i18n.mjs";
+
+// A static word on the machine: one <text> per language when bilingual.
+const faceText = (m, value, opts) => (isT(value) ? `<g data-l="en">${k.faceTextSvg(m, value.en, opts)}</g><g data-l="es">${k.faceTextSvg(m, value.es, opts)}</g>` : k.faceTextSvg(m, value, opts));
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -19,7 +23,7 @@ export const BOOK = { w: 3, d: 10, h: 11 };
 
 export const CAB = { w: 34, d: 24, h: 28, y0: -6 };
 export const CABS = INDEXES.map((index, i) => ({ id: index.id, x0: -112 + i * 40, cx: -112 + i * 40 + 17 }));
-export const CAB_NAMES = { isbn: ["ISBN"], author: ["AUTHOR"], authorYear: ["AUTHOR", "+ YEAR"], loan: ["ON LOAN"], authorTitle: ["AUTHOR", "+ TITLE"] };
+export const CAB_NAMES = { isbn: ["ISBN"], author: [t("AUTHOR", "AUTOR")], authorYear: [t("AUTHOR", "AUTOR"), t("+ YEAR", "+ AÑO")], loan: [t("ON LOAN", "PRESTADO")], authorTitle: [t("AUTHOR", "AUTOR"), t("+ TITLE", "+ TÍTULO")] };
 // The top drawer of every cabinet stands open: a tray of sorted cards, its tabs stepping across like A to Z.
 export const TRAY = { out: 14, z0: 20, h: 6, cards: 8, gap: 1.3, cardH: 6.6, slot: 11.6, rise: 9 };
 const CAB_FRONT = CAB.y0 + CAB.d;
@@ -107,7 +111,7 @@ function cabinet(cab, i) {
   out.push(S(k.slabOf(cap, CAB.h, 1.6, P, 3, 0.4), { tone: "mid" }));
   // The index name, engraved on the lid.
   const names = CAB_NAMES[cab.id];
-  names.forEach((line, n) => out.push(k.faceTextSvg(k.topMatrix([cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2], CAB.h + 1.6, P, "x"), line, { size: 5.6, tone: "hi" })));
+  names.forEach((line, n) => out.push(faceText(k.topMatrix([cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2], CAB.h + 1.6, P, "x"), line, { size: 5.6, tone: "hi" })));
   return `<g data-cab="${i}">${out.join("")}</g>`;
 }
 
@@ -137,7 +141,7 @@ function card(x, y, z, j, lit) {
 function footprints() {
   const out = [L(CABS.map((cab) => k.planOutline({ x: cab.x0 - 1, y: CAB.y0 - 1, w: CAB.w + 2, d: CAB.d + 2, r: 1.6 }, 0, P, 3)).join(""), { tone: "faint" })];
   // The empty slot keeps the index's name on the floor, so a catalogue you could add still has a place.
-  CABS.forEach((cab) => CAB_NAMES[cab.id].forEach((line, n) => out.push(k.faceTextSvg(k.topMatrix([cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2], 0, P, "x"), line, { size: 5.6, tone: "faint" }))));
+  CABS.forEach((cab) => CAB_NAMES[cab.id].forEach((line, n) => out.push(faceText(k.topMatrix([cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2], 0, P, "x"), line, { size: 5.6, tone: "faint" }))));
   return out.join("");
 }
 
@@ -216,7 +220,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label:
-      "A small library on a base plate. Eight numbered bookcases along the back hold the books, in no particular order. Five card catalogue cabinets at the front are the indexes, each with its column engraved on the lid and its top drawer open on a tray of sorted cards; a missing one leaves only its outline and name on the floor. A book trolley either walks past every bookcase while a counter climbs (a full scan) or reads a catalogue drawer, lifts the card that names a shelf number, and follows a lit route to that bookcase. New books file a card in every cabinet. A desk on the right holds a stopwatch and a tray for new books.",
+      t("A small library on a base plate. Eight numbered bookcases along the back hold the books, in no particular order. Five card catalogue cabinets at the front are the indexes, each with its column engraved on the lid and its top drawer open on a tray of sorted cards; a missing one leaves only its outline and name on the floor. A book trolley either walks past every bookcase while a counter climbs (a full scan) or reads a catalogue drawer, lifts the card that names a shelf number, and follows a lit route to that bookcase. New books file a card in every cabinet. A desk on the right holds a stopwatch and a tray for new books.",
+        "Una pequeña biblioteca sobre una placa base. Ocho estantes numerados al fondo guardan los libros, sin ningún orden. Cinco muebles de catálogo al frente son los índices, cada uno con su columna grabada en la tapa y el cajón de arriba abierto sobre una bandeja de fichas ordenadas; el que falta deja solo su contorno y su nombre en el piso. Un carrito de libros o pasa por todos los estantes mientras sube un contador (un escaneo completo) o lee un cajón del catálogo, levanta la ficha que dice un número de estante y sigue una ruta iluminada hasta ese estante. Cada libro nuevo archiva una ficha en cada mueble. Un escritorio a la derecha tiene un cronómetro y una bandeja para libros nuevos."),
     body: [
       plate(),
       aisle(),
