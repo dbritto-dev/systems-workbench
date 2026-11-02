@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A timing hall for request latency.
 //   Left: a fan-out rig. The front desk (one user request) calls ten backend towers over a bus on the floor and can
 //         only answer when the last one is back; a tower's lamp stays lit while its call is out, so a stalled call is
@@ -7,10 +8,11 @@
 //         rule: four pointers ride their own tracks to the mean, p50, p95 and p99. The p99 pointer is the lit one.
 //   Front: the readout console: mean, p50 and p99 in ms, and the share of requests over 100 ms.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, digitCounter, faceText, lamp } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { EDGES } from "./sim.js";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, digitCounter, faceText, lamp } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { EDGES } from "./sim";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -69,8 +71,7 @@ export const P = k.fitProjection(
   WIDTH, HEIGHT, { pad: 18, azimuth: 50 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const Ln = (d, style) => k.lineSvg(d, style);
+const { S, L } = shorthand(P);
 const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
 
 // A column of a histogram bin: a slab from the bin floor up to height h. Shared with the live script.
@@ -94,7 +95,7 @@ function pointerSvg(p) {
   const z0 = TRACK_Z[p.track], w = POINTER_W;
   const plan = { x: -w / 2, y: FACE_Y, w, d: 1.2, r: 0.3 };
   const out = [S(k.slabOf(plan, z0 + 0.2, TRACK_H - 0.4, P, 2, 0.2), { tone: "hi", crease: "lo", lit: !!p.lit })];
-  out.push(Ln(k.segment([0, FACE_Y + 1.2, z0 + 0.2], [0, FACE_Y + 1.2, z0 - 0.6], P), { tone: p.lit ? "lit" : "mid" }));
+  out.push(L(k.segment([0, FACE_Y + 1.2, z0 + 0.2], [0, FACE_Y + 1.2, z0 - 0.6], P), { tone: p.lit ? "lit" : "mid" }));
   out.push(text(0, FACE_Y + 1.2, z0 + 1.15, p.label, { size: 2.6, tone: p.lit ? "on-lit" : "hi", anchor: "middle" }));
   return out.join("");
 }
@@ -109,7 +110,7 @@ function rig(first) {
   out.push(S(k.slabOf(BUS, 0, 1.6, P, 2, 0.2), { tone: "mid", crease: "none" }));
   const feeds = [k.segment([DISP.x + 10, DISP.y, 0.2], [DISP.x + 10, BUS.y + BUS.d, 0.2], P)];
   TOWERS.forEach((tw) => feeds.push(k.segment([tw.cx, BUS.y, 0.2], [tw.cx, tw.front, 0.2], P)));
-  out.push(Ln(feeds.join(""), { tone: "lo" }));
+  out.push(L(feeds.join(""), { tone: "lo" }));
   // Towers back to front, so the front row covers the back row.
   const order = [...TOWERS.keys()].sort((a, b) => TOWERS[a].y - TOWERS[b].y || TOWERS[a].x - TOWERS[b].x);
   for (const i of order) {
@@ -118,7 +119,7 @@ function rig(first) {
     out.push(S(k.slabOf({ x: tw.x, y: tw.y, w: TOWER.w, d: TOWER.d, r: 0.8 }, 0, TOWER.h, P, 3, 0.3), { tone: "mid" }));
     const slots = [];
     for (const z of [5, 8, 11]) slots.push(k.segment([tw.x + 2, tw.front, z], [tw.x + TOWER.w - 2, tw.front, z], P));
-    out.push(Ln(slots.join(""), { tone: "lo" }));
+    out.push(L(slots.join(""), { tone: "lo" }));
     out.push(text(tw.cx, tw.front, 1.2, String(i + 1), { size: 2.4, tone: "mid", anchor: "middle" }));
     const lampAt = [tw.cx, tw.cy, TOWER.h];
     out.push(`<g data-lamp="${i}-off"${first.lit.includes(i) ? ' style="display:none"' : ""}>${lamp(P, lampAt, { r: 1.7 })}</g>`);
@@ -145,7 +146,7 @@ function histogram(first) {
   out.push(S(k.slabOf({ x: PANEL.x, y: PANEL.y, w: PANEL.w, d: PANEL.d, r: 1.2 }, PANEL_H, 1.2, P, 3, 0.3), { tone: "mid" }));
   const div = [];
   for (let i = 1; i < BINS; i++) div.push(k.segment([binX(i), PANEL.y + 1.5, TRAY_Z], [binX(i), PANEL.y + PANEL.d - 1.5, TRAY_Z], P));
-  out.push(Ln(div.join(""), { tone: "lo" }));
+  out.push(L(div.join(""), { tone: "lo" }));
   // Columns (redrawn live).
   out.push(`<g data-cols>${first.heights.map((h, i) => `<g class="wb-lit-group" data-col="${i}">${columnSvg(i, h, i >= 5)}</g>`).join("")}</g>`);
   // Falling chips are drawn into this layer.
@@ -153,9 +154,9 @@ function histogram(first) {
   // The slide rule: four tracks, the bin edges printed above them, a tick at every edge.
   const tracks = [], ticks = [];
   for (const z of TRACK_Z) tracks.push(k.faceRectY(P, BX0, binX(BINS), FACE_Y, z, z + TRACK_H));
-  out.push(Ln(tracks.join(""), { tone: "faint" }));
+  out.push(L(tracks.join(""), { tone: "faint" }));
   for (let i = 0; i <= BINS; i++) ticks.push(k.segment([binX(i), FACE_Y, TRACK_Z[3] + TRACK_H], [binX(i), FACE_Y, TRACK_Z[3] + TRACK_H + 1.4], P));
-  out.push(Ln(ticks.join(""), { tone: "lo" }));
+  out.push(L(ticks.join(""), { tone: "lo" }));
   const edgeLabel = (ms) => (ms >= 1000 ? ms / 1000 + "s" : String(ms));
   for (let i = 1; i < BINS; i++) out.push(text(binX(i), FACE_Y, TRACK_Z[3] + TRACK_H + 2, edgeLabel(EDGES[i]), { size: 2.6, tone: "mid", anchor: "middle" }));
   out.push(text(BX0 + 1, FACE_Y, TRACK_Z[3] + TRACK_H + 2, "ms", { size: 2.6, tone: "lo" }));

@@ -1,13 +1,15 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: how long requests take, and what percentiles say about it.
 //   A backend call usually takes about 10 ms (log-normal, median 10 ms). A small share of calls are slow: they hit
 //   a stall (a GC pause, a retransmit, a busy disk) and take 0.4 to 1.2 s instead.
 //   A user request fans out to N backends in parallel and is done only when the slowest one answers.
 //   A hedge sends a second copy of a call that is still out after a delay, to another host, and keeps whichever
 //   answer comes first.
-// Plain functions, no imports: the page inlines this file and the experiments run it at build time.
+// Run at build time (experiments, the first frame) and in the browser (the live figure).
+import { rng, normal } from "../../lib/random";
+import { mean, averageOver } from "../../lib/stats";
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
-export function normal(r) { const u = Math.max(1e-12, r()), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+export { rng };
 
 export const HOSTS = 10;          // backend hosts the calls spread over
 export const SLOW_MS = 100;       // a user request over this counts as "slow" in the readouts
@@ -45,11 +47,11 @@ export function userRequest(r, { fanout = 1, share = 0.01, hedgeAt = null, t = 0
 }
 
 // Percentiles by nearest rank: p99 is the value 99% of requests are at or below.
+// (Not src/lib/stats percentile(): that one takes sorted[floor(q * (n - 1))]; this lesson's numbers use ceil(p·n) − 1.)
 export function pct(sorted, p) { return sorted.length ? sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))] : 0; }
 export function summary(values) {
   const s = Float64Array.from(values).sort();
-  const mean = values.reduce((a, b) => a + b, 0) / (values.length || 1);
-  return { n: values.length, mean, p50: pct(s, 50), p90: pct(s, 90), p95: pct(s, 95), p99: pct(s, 99), p999: pct(s, 99.9), max: s[s.length - 1] || 0, slow: values.filter((v) => v > SLOW_MS).length / (values.length || 1) };
+  return { n: values.length, mean: mean(values), p50: pct(s, 50), p90: pct(s, 90), p95: pct(s, 95), p99: pct(s, 99), p999: pct(s, 99.9), max: s[s.length - 1] || 0, slow: values.filter((v) => v > SLOW_MS).length / (values.length || 1) };
 }
 
 // Histogram bins, ms (log-spaced, like most latency dashboards). Bin i holds edges[i] ≤ ms < edges[i + 1].
@@ -76,8 +78,7 @@ export function run({ n = 20000, seed = 1, rate = 400, ...cfg }) {
 
 // ---------- the five experiments ----------
 const SEEDS = [11, 23, 37, 41, 53, 67, 71, 89];
-const avg = (list, f) => list.reduce((s, x) => s + f(x), 0) / list.length;
-const over = (f) => { const runs = SEEDS.map(f); return Object.fromEntries(Object.keys(runs[0]).map((k) => [k, avg(runs, (x) => x[k])])); };
+const over = (f) => averageOver(SEEDS, f);
 
 // 1. One call in 50 stalls. Which of mean, p50 and p99 notices?
 export function tailRun() {
@@ -94,7 +95,7 @@ export function mergeRun() {
     const r = rng(seed), per = Array.from({ length: HOSTS }, () => []);
     for (let h = 0; h < HOSTS; h++) for (let i = 0; i < 5000; i++) per[h].push(callMs(r, h === 0 ? 0.15 : 0.002));
     const p99s = per.map((v) => summary(v).p99);
-    return { avgP99: p99s.reduce((a, b) => a + b, 0) / HOSTS, maxP99: Math.max(...p99s), goodP99: p99s.slice(1).reduce((a, b) => a + b, 0) / (HOSTS - 1), fleetP99: summary(per.flat()).p99 };
+    return { avgP99: mean(p99s), maxP99: Math.max(...p99s), goodP99: mean(p99s.slice(1)), fleetP99: summary(per.flat()).p99 };
   });
 }
 // 4. Fan-out to 10, one call in 100 stalls. Hedge any call still out after the backends' p95.
