@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A ring buffer you can watch: a round table with 16 numbered pockets, two hands on a hub and the stations around it.
 //   Back left: the producer at a table. Each item gets the next sequence number and goes into the pocket under the
 //              write hand. When the producer has to wait (policy "block"), the items it holds pile up on its table.
@@ -7,10 +8,11 @@
 //   Front left: the bin for lost items (overwritten unread, or dropped). Front: a console with the policy plate,
 //               FILL and LAG counters and the FULL lamp.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { sphereOf } from "../../workbench/kit.mjs";
-import { basePlate, digitCounter, faceText, person, plaque, litFill } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { sphereOf } from "../../../workbench/kit.mjs";
+import { basePlate, digitCounter, faceText, person, plaque, litFill } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 430;
@@ -62,10 +64,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 50 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const label = (x, y, z, text, size = 2.2, opts = {}) => faceText(P, [x, y, z], text, { size, tone: "mid", ...opts });
 
 function plate() {

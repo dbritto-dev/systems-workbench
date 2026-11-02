@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // A ring buffer: a fixed array of `cap` slots, a writer and a reader that both walk round it.
 // Event-driven and seeded, shared by the live figure and the experiments.
 //
@@ -21,16 +22,14 @@
 //   batch      a read operation takes every item available (up to maxBatch), not just one
 //   maxBatch   the most items one batched read takes
 
-export function makeRng(seed) {
-  let s = (seed >>> 0) || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
+import { xorshift32 } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
 
 export const DEFAULTS = { cap: 16, rate: 3, even: false, policy: "overwrite", check: true, overhead: 0.15, per: 0.1, batch: false, maxBatch: 64 };
 
 export function makeRing(cfgIn, seed = 1) {
   const cfg = { ...DEFAULTS, ...cfgIn };
-  const rnd = makeRng(seed);
+  const rnd = xorshift32(seed);
   const gap = () => (cfg.even ? 1 / cfg.rate : -Math.log(1 - rnd()) / cfg.rate);
   let t = 0, nextSeq = 0;
   let nextArrival = cfg.rate > 0 ? gap() : Infinity;
@@ -139,11 +138,7 @@ export function makeRing(cfgIn, seed = 1) {
 
 // ---------- experiments: headless runs (averaged over seeds where arrivals are random) ----------
 const SEEDS = [11, 23, 37, 41, 59, 67, 73, 89];
-const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
-function avg(fn) {
-  const rs = SEEDS.map(fn);
-  return Object.fromEntries(Object.keys(rs[0]).map((key) => [key, mean(rs.map((x) => x[key]))]));
-}
+const avg = (fn) => averageOver(SEEDS, fn);
 
 // 1. A burst of 40 into a ring of 16, under each policy. Steady 2/s, a reader that does 4/s.
 //    lostFrom / lostTo: which of the 40 were lost (1 = the first of the burst).
