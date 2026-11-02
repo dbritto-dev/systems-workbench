@@ -5,6 +5,7 @@
 //   compare-and-swap: a stamp over the shared counter and a spindle of rejected slips.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, digitCounter } from "../../workbench/parts.mjs";
 
 export const WIDTH = 700;
@@ -136,8 +137,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "Three branch offices on a base plate send couriers along tracks to a central register cabinet. Each branch desk has a hand tally clicker counting the adds it took and a counter display showing the total it last read. The register shows either one big shared counter, guarded by a stamp and a spindle of rejected slips for compare-and-swap, or one slot counter per branch. A boom barrier can cut the far branch's track.",
+      "Tres sucursales sobre una placa base envían mensajeros por vías hasta un gabinete de registro central. Cada escritorio de sucursal tiene un contador de mano que cuenta las sumas que recibió y una pantalla que muestra el total que leyó por última vez. El registro muestra un gran contador compartido, vigilado por un sello y un pincho de boletas rechazadas para compare-and-swap, o un contador por sucursal. Una barrera puede cortar la vía de la sucursal lejana.",
+    ),
     body: [
       plate(),
       tracks(),

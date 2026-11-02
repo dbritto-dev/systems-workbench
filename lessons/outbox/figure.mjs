@@ -5,6 +5,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t, isT } from "../../workbench/i18n.mjs";
 import { digitPath, counterCells, digitsOf } from "./digits.js";
 
 export const WIDTH = 700;
@@ -64,7 +65,11 @@ export const P = k.fitProjection(
 const at = (point) => k.iso(point, P);
 const S = (paths, style) => k.solidSvg(paths, style);
 const L = (d, style) => k.lineSvg(d, style);
-const text = (x, y, z, value, { size = 3.4, tone = "mid", anchor = "start" } = {}) => k.faceTextSvg(k.sideMatrix([x, y], z, P, "left"), value, { size, tone, anchor });
+// A bilingual value (t()) draws one face text per language; CSS shows the current one.
+const text1 = (x, y, z, value, { size = 3.4, tone = "mid", anchor = "start" } = {}) => k.faceTextSvg(k.sideMatrix([x, y], z, P, "left"), value, { size, tone, anchor });
+const text = (x, y, z, value, opts) => (isT(value)
+  ? `<g data-l="en">${text1(x, y, z, value.en, opts)}</g><g data-l="es">${text1(x, y, z, value.es, opts)}</g>`
+  : text1(x, y, z, value, opts));
 
 function counter(c, name, value = 0) {
   const out = [];
@@ -102,7 +107,7 @@ function cabinet() {
     tone: "mid",
     inner: L(k.faceRectY(P, DRAWER.x0, DRAWER.x1, CAB_FRONT, DRAWER.z0, DRAWER.z1) + k.faceRectY(P, CAB.x + 3, CAB.x + CAB.w - 3, CAB_FRONT, 17.5, CAB_H - 2), { tone: "lo" }),
   }));
-  out.push(text(COUNTERS.orders.housing.x, CAB_FRONT, 35, "ORDERS", { size: 3, tone: "hi" }));
+  out.push(text(COUNTERS.orders.housing.x, CAB_FRONT, 35, t("ORDERS", "PEDIDOS"), { size: 3, tone: "hi" }));
   out.push(`<g data-commit>${counter(COUNTERS.orders, "orders", 0)}</g>`);
   // The drawer's handle; in outbox mode the drawer is pulled out into a tray of pending letters.
   out.push(`<g data-drawer="closed">${S(k.slabOf({ x: -63, y: CAB_FRONT, w: 8, d: 1.2, r: 0.4 }, 9, 1.6, P, 2), { tone: "hi", crease: "none" })}</g>`);
@@ -161,10 +166,10 @@ function warehouse() {
   const out = [];
   const door = k.faceRectY(P, WH.x + 3, WH.x + 14, WH_FRONT, 0, 17);
   out.push(S(k.slabOf(WH, 0, WH_H, P, 4, 0.6), { tone: "mid", inner: L(door + k.faceRectY(P, WH.x + 4.2, WH.x + 12.8, WH_FRONT, 0, 15.8), { tone: "lo" }) }));
-  out.push(text(WH.x + 4, WH_FRONT, 35, "WAREHOUSE", { size: 3, tone: "mid" }));
-  out.push(text(64.5, WH_FRONT, 27, "SHIPPED", { size: 3, tone: "hi", anchor: "end" }));
-  out.push(`<g data-extra-label="twice">${text(64.5, WH_FRONT, 12.5, "TWICE", { size: 3, tone: "hi", anchor: "end" })}</g>`);
-  out.push(`<g data-extra-label="caught" style="display:none">${text(64.5, WH_FRONT, 12.5, "CAUGHT", { size: 3, tone: "hi", anchor: "end" })}</g>`);
+  out.push(text(WH.x + 4, WH_FRONT, 35, t("WAREHOUSE", "ALMACÉN"), { size: 3, tone: "mid" }));
+  out.push(text(64.5, WH_FRONT, 27, t("SHIPPED", "ENVIADOS"), { size: 3, tone: "hi", anchor: "end" }));
+  out.push(`<g data-extra-label="twice">${text(64.5, WH_FRONT, 12.5, t("TWICE", "DOBLES"), { size: 3, tone: "hi", anchor: "end" })}</g>`);
+  out.push(`<g data-extra-label="caught" style="display:none">${text(64.5, WH_FRONT, 12.5, t("CAUGHT", "COPIAS"), { size: 3, tone: "hi", anchor: "end" })}</g>`);
   out.push(`<g data-ship>${counter(COUNTERS.shipped, "shipped", 0)}</g>`);
   out.push(counter(COUNTERS.extra, "extra", 0));
   return out.join("");
@@ -234,8 +239,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "An order office on a base plate. At the back left a ledger cabinet counts committed orders on digit wheels; its lower drawer can be pulled out as an outbox tray of pending letters. A clerk stands in front of it, with an in-tray of waiting orders and a bin for cards that failed to commit. A postbox stands in the middle; a rail runs from it to an intake desk in front of the warehouse at the back right, where a spike keeps the order numbers already seen and a tray holds duplicates. The warehouse counts shipments and duplicate shipments on digit wheels. In outbox mode a relay runner in a cap waits by a poll timer next to the cabinet. Letters the clerk drops when failing on the way lie on the floor.",
+      "Una oficina de pedidos sobre una placa base. Atrás a la izquierda, un gabinete del libro cuenta los pedidos confirmados con ruedas de dígitos; su cajón inferior se puede sacar como una bandeja outbox de cartas pendientes. Delante hay un empleado, con una bandeja de entrada de pedidos en espera y un cesto para las tarjetas que no se pudieron confirmar. En el medio hay un buzón; de él sale un riel hasta un mostrador de recepción frente al almacén, atrás a la derecha, donde un pincho guarda los números de pedido ya vistos y una bandeja junta los duplicados. El almacén cuenta envíos y envíos duplicados con ruedas de dígitos. En modo outbox, un relé con gorra espera junto a un temporizador de sondeo al lado del gabinete. Las cartas que el empleado deja caer cuando falla en el camino quedan en el piso.",
+    ),
     body: [
       plate(),
       rail(),
