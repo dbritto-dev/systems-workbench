@@ -40,8 +40,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 64 },
 );
 
-const { S, L } = shorthand(P);
-const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
+const { S, L, text } = shorthand(P);
 const sup = ["", "", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
 
 // A carriage: a block riding the rail with its step count printed on the front.

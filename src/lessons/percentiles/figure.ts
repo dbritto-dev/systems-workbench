@@ -71,8 +71,7 @@ export const P = k.fitProjection(
   WIDTH, HEIGHT, { pad: 18, azimuth: 50 },
 );
 
-const { S, L } = shorthand(P);
-const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
+const { S, L, text } = shorthand(P);
 
 // A column of a histogram bin: a slab from the bin floor up to height h. Shared with the live script.
 export function columnSvg(i, h, lit) {

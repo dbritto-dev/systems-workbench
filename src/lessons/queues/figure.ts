@@ -70,8 +70,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 50 },
 );
 
-const { S, L, D, at } = shorthand(P);
-const seg = (a, b) => k.segment(a, b, P);
+const { S, L, D, at, seg } = shorthand(P);
 const label = (x, y, z, text, size = 2.6) => faceText(P, [x, y, z], text, { size, tone: "mid" });
 
 function plate() {

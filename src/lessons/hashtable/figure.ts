@@ -10,7 +10,7 @@
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, digitCounter, faceText, meter, card } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
-import { shorthand } from "../../lib/draw";
+import { shorthand, hiddenUnless } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -64,9 +64,8 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 60 },
 );
 
-const { S, L } = shorthand(P);
-const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
-const hidden = (on) => (on ? "" : ' style="display:none"');
+const { S, L, text } = shorthand(P);
+const hidden = hiddenUnless;
 
 export const COUNTERS = {
   bucket: { x: PRESS.x + 15, y: PRESS.y + PRESS.d, z: 2, w: 5, h: 6, gap: 0.7, count: 2, size: "s" },

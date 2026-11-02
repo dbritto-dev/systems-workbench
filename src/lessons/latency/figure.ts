@@ -42,8 +42,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 52 },
 );
 
-const { S, L } = shorthand(P);
-const seg = (a, b) => k.segment(a, b, P);
+const { S, L, seg } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })

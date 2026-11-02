@@ -11,7 +11,7 @@
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, digitCounter, faceText, person } from "../../../workbench/parts.mjs";
 import { t as bi } from "../../../workbench/i18n.mjs";   // bi: t is a common local name here
-import { shorthand } from "../../lib/draw";
+import { shorthand, hiddenUnless } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -68,9 +68,8 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 50 },
 );
 
-const { S, L, D, at } = shorthand(P);
-const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
-const hidden = (on) => (on ? "" : ' style="display:none"');
+const { S, L, D, at, text } = shorthand(P);
+const hidden = hiddenUnless;
 
 // Counters (digit wheels) on front faces.
 export const COUNTERS = {
