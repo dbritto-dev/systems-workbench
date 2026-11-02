@@ -1,10 +1,12 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A rail yard: each partition is a track of numbered cars (records). The producer's transfer table couples new
 // cars to the near end of a track; the cars it pushes along roll back into the archive shed. Consumers are reading
 // cabins at the front; a cable runs from each cabin to the bookmark post (committed offset) on every track it owns.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -40,10 +42,7 @@ export const P = k.fitProjection(
   { pad: 22, azimuth: 50 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at, seg } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -130,7 +129,7 @@ function dock() {
   out.push(S(k.slabOf(k.insetPlan(DOCK, -1.5), DOCK_H, 2.5, P, 3, 0.5), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(DOCK, 4), DOCK_H + 2.5, P), { tone: "faint" }));
   out.push(L(k.faceRectY(P, DOCK.x + 5, DOCK.x + 25, DOCK.y + DOCK.d, 6, 18), { tone: "lo" }));
-  out.push(L([10, 14].map((z) => k.segment([DOCK.x + 5, DOCK.y + DOCK.d, z], [DOCK.x + 25, DOCK.y + DOCK.d, z], P)).join(""), { tone: "faint" }));
+  out.push(L([10, 14].map((z) => seg([DOCK.x + 5, DOCK.y + DOCK.d, z], [DOCK.x + 25, DOCK.y + DOCK.d, z])).join(""), { tone: "faint" }));
   out.push(S(k.cylinder(DOCK.x + 22, DOCK.y + 10, 2.4, DOCK_H + 2.5, 2.5, P, 18), { tone: "mid" }));
   return out.join("");
 }

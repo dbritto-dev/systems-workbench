@@ -1,13 +1,17 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the rail-yard figure and the experiments. Times in seconds.
 // A topic has P partitions (tracks). Each partition is an append-only log: records get offsets 0, 1, 2 …
 // A consumer group of C consumers splits the partitions between them; the group remembers, per partition,
 // the committed offset (the bookmark): the next record the group still has to read.
+// The experiments run it at build time (page.ts); the live code runs it in the browser.
+import { rng } from "../../lib/random";
+import { mean } from "../../lib/stats";
+
 export const KEYS = ["A", "B", "C", "D", "E", "F"];
 export const BATCH = 5;        // records a consumer takes per poll
 export const PROCESS = 0.5;    // seconds to process one record (±20%)
 export const RESTART = 2;      // seconds a crashed consumer is down
 export const HOT_SHARE = 0.7;  // share of records with the hot key "A"
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // Which track a key goes to: a fixed hash, so the same key always lands on the same track.
 export const partitionOfKey = (key, partitions) => (key * 5 + 1) % partitions;
@@ -148,7 +152,6 @@ export function makeSim(cfg, seed = 7) {
 // ---------- headless experiments (averaged over seeds) ----------
 export const SEEDS = [3, 5, 7, 11, 13, 17];
 export const BASE = { partitions: 3, consumers: 3, keying: "key", commit: "after", rate: 4, retention: 0 };
-const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 export function orderRun(keying) {
   const shares = SEEDS.map((seed) => { const s = makeSim({ ...BASE, keying }, seed); s.runTo(120); return s.firstReads ? s.outOfOrder / s.firstReads : 0; });
