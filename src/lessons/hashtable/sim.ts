@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a hash table.
 //   A hash function turns a key into a big number; the number modulo the bucket count picks a bucket.
 //   Two keys can land in the same bucket (a collision). Two ways to cope:
@@ -5,10 +6,11 @@
 //     linear probing (open addressing): one key per slot; a key whose slot is taken tries the next one.
 //   The load factor (keys ÷ buckets) sets how long chains and probe runs get, so the table grows (doubles
 //   and rehashes every key) when it passes a limit.
-// Plain functions, no imports: the page inlines this file and the experiments run it in the browser.
+// Shared by the experiments (at build time) and the live figure (in the browser).
 
-// xorshift32; the seed is scrambled first so neighbouring seeds don't start with similar numbers.
-export function rng(seed) { let s = Math.imul((seed >>> 0) ^ 0x9e3779b9, 0x85ebca6b) >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// The seed is scrambled first (rngMixed) so neighbouring seeds don't start with similar numbers.
+import { rngMixed as rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
 
 // ---------- hash functions ----------
 // FNV-1a over the key's characters, then a finaliser (murmur3 fmix32) so every bit of the key moves the low bits.
@@ -137,4 +139,45 @@ export function fill(options, keys) {
     if (r.resized) biggest = Math.max(biggest, r.resized.moved);
   });
   return { ...t.stats(), peak, peakAt, biggest, perInsert: t.work / keys.length, table: t };
+}
+
+// ---------- experiments: the numbers the cards show, averaged over six seeds where the keys are random ----------
+const SEEDS = [1, 2, 3, 4, 5, 6];
+// fill() also returns the table itself; only the numbers are averaged.
+const numbers = ({ table, ...r }) => r;
+const avg = (fn) => averageOver(SEEDS, (s) => numbers(fn(s)));
+
+// 1. Chaining, 64 buckets, no resizing: 64 keys, then 1,024; and 1,024 in a table that doubles.
+export function nogrowRun() {
+  return {
+    a: avg((s) => fill({ m: 64, grow: false, seed: s }, userKeys(64, s))),
+    b: avg((s) => fill({ m: 64, grow: false, seed: s }, userKeys(1024, s))),
+    c: avg((s) => fill({ m: 64, grow: true, seed: s }, userKeys(1024, s))),
+  };
+}
+
+// 2. 1,000 user ids: a good hash vs one that reads only the first 4 characters.
+export function weakRun() {
+  return { g: avg((s) => fill({ seed: s }, userKeys(1000, s))), w: avg((s) => fill({ hash: "weak", seed: s }, userKeys(1000, s))) };
+}
+
+// 3. 1,000 inserts from 8 buckets: doubling vs adding 8 buckets.
+export function resizeRun() {
+  return { d: avg((s) => fill({ seed: s }, userKeys(1000, s))), a: avg((s) => fill({ seed: s, growBy: 8 }, userKeys(1000, s))) };
+}
+
+// 4. 1,024 buckets, no resizing, 50% and 90% full: chaining vs linear probing.
+export function probeRun() {
+  const run = (mode, f) => avg((s) => fill({ m: 1024, grow: false, mode, seed: s }, userKeys(Math.round(1024 * f), s)));
+  return { c5: run("chain", 0.5), p5: run("probe", 0.5), c9: run("chain", 0.9), p9: run("probe", 0.9) };
+}
+
+// 5. 1,000 keys crafted against the fixed hash, vs ordinary ids, vs the same keys against the seeded hash.
+export function floodRun() {
+  const keys = attackKeys(1000, 1);
+  return {
+    fx: numbers(fill({ hash: "fixed" }, keys)),
+    sd: avg((s) => fill({ hash: "seeded", seed: s }, keys)),
+    nm: avg((s) => fill({ hash: "fixed" }, userKeys(1000, s))),
+  };
 }

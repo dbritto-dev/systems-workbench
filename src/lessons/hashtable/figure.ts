@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A pigeonhole rack on one base plate.
 //   Back: 16 numbered trays (buckets) in two rows of eight, the back row on a step. Only the first m are open; the
 //         rest wait under lids until the table doubles. In chaining a tray holds a pile of cards (its chain); in linear probing, one card.
@@ -6,9 +7,10 @@
 //   Front: a load-factor meter (the shaded band is past 75%), and counters for keys,
 //         probes on the last operation, the longest chain or run, and keys moved by resizing.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, digitCounter, faceText, meter, card } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, digitCounter, faceText, meter, card } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -62,8 +64,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 60 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
+const { S, L } = shorthand(P);
 const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
 const hidden = (on) => (on ? "" : ' style="display:none"');
 
