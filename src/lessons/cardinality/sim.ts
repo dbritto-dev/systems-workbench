@@ -1,6 +1,10 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: one web service emits a request counter metric
 // (one time series per distinct combination of label values) and a trace per request, which a sampler
 // keeps or drops. The live machine runs a few requests a second; the experiments use 100 a second.
+// Shared by the page (experiment results at build time) and the live code.
+import { rng } from "../../lib/random";
+
 export const METHODS = [["GET", 0.7], ["POST", 0.3]];
 // [template, share of traffic, has an id in the path]
 export const ROUTES = [["/products/{id}", 0.3, true], ["/search", 0.18, false], ["/cart", 0.12, false], ["/orders/{id}", 0.1, true],
@@ -14,7 +18,6 @@ export const LIVE_SLOW = 0.03;          // share of slow requests in the live ma
 export const TAIL_BASE = 0.01;          // tail sampler: share of ordinary traces it keeps
 export const HEAD = { all: 1, head10: 0.1, head1: 0.01, tail: 1 };
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 const pick = (random, table) => { let u = random(); for (const row of table) { if ((u -= row[1]) < 0) return row; } return table[table.length - 1]; };
 
 export const labelNames = (labels) => ["method", "route", ...(labels === "base" ? [] : ["status"]), ...(labels === "user" ? ["user_id"] : [])];

@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A tally hall. On the left, the service cabinet sends two things out for every request:
 //   at the back, a tally card on the metric belt; each distinct combination of label values owns one
 //   pigeonhole in the tally wall (a time series). The series counter and a memory dial stand beside the wall,
@@ -6,10 +7,11 @@
 //   sampling, traces wait in the buffer rack until they finish, then the tail gate keeps errors and slow ones.
 //   Kept traces stand as cards in the archive drawer, whose front counts what was kept.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
-import { digitPath, counterCells, digitsOf } from "./digits.js";
-import { t, isT } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
+import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
+import { t, isT } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 440;
@@ -63,9 +65,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 50 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
+const { S, L, at } = shorthand(P);
 
 // Counters: printed wheels on a front face (constant y), on a thin housing plate.
 const PROUD = 1.2;
@@ -89,6 +89,8 @@ function counter(c, name, value = 0) {
   return out.join("");
 }
 // Text printed on a front face (constant y), reading left to right. text may be t(en, es): one <text> per language.
+// Not draw's text(): the extra attribute goes after the class and the text isn't escaped, and the figure must stay
+// byte for byte.
 const printed1 = (x, y, z, text, size, tone, extra) =>
   `<text class="iso-face-text" ${extra} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}">${text}</text>`;
 const printed = (x, y, z, text, size = 2.5, tone = "mid", extra = "") => (isT(text)
