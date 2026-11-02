@@ -1,3 +1,7 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
+import { rng } from "../../lib/random";
+import { mean, meanBy } from "../../lib/stats";
+
 // Shared pub/sub model for the figure and the experiments. Times are in seconds of figure time.
 // One press publishes a message every T.interval into the hub. The hub sends one copy down every
 // subscribed tube at the same moment; all copies arrive T.tube later, whatever the number of tubes.
@@ -7,8 +11,6 @@ export const STATIONS = 5;
 export const STATION_X = [-80, -30, 20, 70, 120];
 export const OFFLINE_STATION = 2;
 export const SLOW_STATION = 2;
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
-const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 export function createModel(options = {}, seed = 7) {
   const cfg = { subs: 3, slow: false, offline: false, durable: true, crash: 0, idempotent: false, shared: false, ...options };
   return {
@@ -120,9 +122,45 @@ export function runHeadless(options = {}, { seconds = 120, seed = 7, events = []
 export function averageOf(options, settings, measure, seeds = [3, 5, 7, 11, 13, 17]) {
   const values = seeds.map((seed) => measure(runHeadless(options, { ...settings, seed })));
   return values[0] && typeof values[0] === "object"
-    ? Object.fromEntries(Object.keys(values[0]).map((k) => [k, values.reduce((s, v) => s + v[k], 0) / values.length]))
-    : values.reduce((s, v) => s + v, 0) / values.length;
+    ? Object.fromEntries(Object.keys(values[0]).map((k) => [k, meanBy(values, (v) => v[k])]))
+    : mean(values);
 }
-export const meanOf = (list) => (list.length ? list.reduce((s, v) => s + v, 0) / list.length : 0);
 // What a publisher would spend per message if it called every subscriber itself and waited.
 export const directCallTime = (subs) => T.press + subs * (T.take + T.work + T.ack);
+
+// ---------- the experiments (computed at build time; the page used to run them in the browser on click) ----------
+const RUN = { seconds: 120 };
+const offlineWindow = [{ at: 30, run: (mm) => setOffline(mm, true) }, { at: 50, run: (mm) => setOffline(mm, false) }];
+// Seconds C takes to work through its backlog after 20 s offline with a durable subscription (3 seeds).
+function catchUp() {
+  let total = 0;
+  for (const seed of [3, 5, 7]) {
+    const mm = createModel({ subs: 3, durable: true }, seed);
+    while (mm.t < 30) step(mm, 0.02);
+    setOffline(mm, true); while (mm.t < 50) step(mm, 0.02);
+    setOffline(mm, false); while (mm.queues[2].length > 1 && mm.t < 300) step(mm, 0.02);
+    total += mm.t - 50;
+  }
+  return total / 3;
+}
+export function experimentResults() {
+  const delayAndBacklog = (mm) => ({ a: mean(mm.stations[0].delays), c: mm.queues[2].length });
+  const lostAndPeak = (mm) => ({ lost: mm.stations[2].lost, peak: mm.stations[2].maxBacklog });
+  return {
+    fanout: { two: averageOf({ subs: 2 }, RUN, (mm) => mm.t / mm.published), five: averageOf({ subs: 5 }, RUN, (mm) => mm.t / mm.published), direct: directCallTime(5) },
+    slow: { fast: averageOf({ subs: 3 }, RUN, delayAndBacklog), slow: averageOf({ subs: 3, slow: true }, RUN, delayAndBacklog) },
+    offline: {
+      nd: averageOf({ subs: 3, durable: false }, { ...RUN, events: offlineWindow }, lostAndPeak),
+      du: averageOf({ subs: 3, durable: true }, { ...RUN, events: offlineWindow }, lostAndPeak),
+      back: catchUp(),
+    },
+    crash: {
+      plain: averageOf({ subs: 3, crash: 0.1 }, RUN, (mm) => ({ pub: mm.stations[0].seen.size, runs: mm.stations[0].handled, effects: mm.stations[0].effects })),
+      idem: averageOf({ subs: 3, crash: 0.1, idempotent: true }, RUN, (mm) => ({ effects: mm.stations[0].effects })),
+    },
+    shared: {
+      own: averageOf({ subs: 3 }, RUN, (mm) => ({ a: mm.stations[0].done.size, b: mm.stations[1].done.size, pub: mm.published })),
+      sh: averageOf({ subs: 3, shared: true }, RUN, (mm) => ({ a: mm.stations[0].done.size, b: mm.stations[1].done.size })),
+    },
+  };
+}

@@ -1,13 +1,15 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // The pneumatic dispatch office: a screw press (publisher) sends each message down one tube into a
 // distribution hub (broker), which fires a copy down every subscribed tube at the same moment to up
 // to five stamping stations (subscribers), each with its own tray (queue).
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import * as G from "../../workbench/vendor-anatomy/kit/lathe.mjs";
-import { tubePieces, tubeSvg } from "../../workbench/vendor-anatomy/kit/tube.mjs";
-import { STATION_X } from "./sim.js";
+import * as k from "../../../workbench/kit.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import * as G from "../../../workbench/vendor-anatomy/kit/lathe.mjs";
+import { tubePieces, tubeSvg } from "../../../workbench/vendor-anatomy/kit/tube.mjs";
+import { shorthand } from "../../lib/draw";
+import { STATION_X } from "./sim";
 
 export const WIDTH = 700;
 export const HEIGHT = 430;
@@ -52,10 +54,7 @@ export const P = k.fitProjection(
   { pad: 26, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const byDepth = (points) => [...points].sort((a, b) => k.depthOf([a[0], a[1], 0], P) - k.depthOf([b[0], b[1], 0], P));
 
 export function cardSvg({ lit = false } = {}) {
