@@ -1,9 +1,11 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // Two identical press lines (blue = current, green = new) fed by one infeed through a gate that sends
 // all traffic to one side at once, with a shared records cabinet (the database) behind both.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 720;
 export const HEIGHT = 440;
@@ -31,10 +33,7 @@ export const P = k.fitProjection(
   WIDTH, HEIGHT, { pad: 22, azimuth: 52 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (pts, style) => k.dotsSvg(pts, style);
+const { S, L, D, at } = shorthand(P);
 const faceRectY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
 const faceRectX = (x, y0, y1, z0, z1) => k.faceRectX(P, x, y0, y1, z0, z1);
 
@@ -122,6 +121,7 @@ function infeed() {
   return out.join("");
 }
 
+// The gate's arm at an angle. live.ts redraws it with the same code as the arm swings.
 export function gateArm(angle, lit) {
   const [cx, cy] = GATE;
   const u = [Math.cos(angle), Math.sin(angle)], n = [-u[1], u[0]];

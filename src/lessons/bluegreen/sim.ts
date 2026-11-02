@@ -1,7 +1,12 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Blue-green deploy model, shared by the live figure and the headless experiments.
 // Times are in seconds of figure time. Requests enter on the infeed, are routed at the gate to
 // whichever side is live at that moment, ride a lane to that side's queue, and are served by one
 // of its workers. Each side has its own cache (a hit share that grows with every miss).
+// Shared by the experiments (at build time) and the live figure (in the browser).
+import { rng } from "../../lib/random";
+import { meanBy } from "../../lib/stats";
+
 export const BASE = {
   rate: 5,          // requests per second
   workers: 3,       // workers per side
@@ -17,11 +22,6 @@ export const BASE = {
   detect: 15,       // seconds from a bad flip until the alarm makes someone roll back
   redeploy: 60,     // seconds to redeploy one server in a rolling rollback
 };
-
-export function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
 
 function makeSide(name, version, fill, workers) {
   return { name, version, fill, queue: [], workers: Array.from({ length: workers }, () => ({ job: null, version })), busyTime: 0 };
@@ -138,14 +138,15 @@ export function runScenario({ until = 120, flipAt = 30, rollback = null, dt = 0.
   return w;
 }
 
+// The 95th percentile as this lesson has always taken it: sorted[floor(0.95 × n)] (not the shared percentile(),
+// which takes sorted[floor(q × (n − 1))]).
 export const p95 = (values) => {
   if (!values.length) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.min(sorted.length - 1, Math.floor(0.95 * sorted.length))];
 };
 const SEEDS = [3, 5, 7, 11, 13, 17];
-export const mean = (list) => list.reduce((s, x) => s + x, 0) / list.length;
-export const overSeeds = (f) => mean(SEEDS.map(f));
+export const overSeeds = (f) => meanBy(SEEDS, f);
 
 // Experiment measurements, each averaged over the seeds.
 export const EXP = {
