@@ -2,11 +2,12 @@
 // A lesson page: header, the machine (figure + panel), predict-then-run cards, explain-back questions.
 // The figure's still frame is plain HTML/SVG, so the page reads and prints without JavaScript; the lesson's live
 // code (the model and the animation) is a separate module, loaded as the machine comes into view.
+import { getRelativeLocaleUrl } from "astro:i18n";
 import Base from "./Base.astro";
 import Switches from "../components/Switches.astro";
 import Experiments from "../components/lesson/Experiments.astro";
 import Questions from "../components/lesson/Questions.astro";
-import { pick, href, type Locale } from "../i18n";
+import { pick, type Locale } from "../i18n";
 import { localize } from "../i18n/localize";
 import { useUi } from "../i18n/ui";
 import { plain, type Lesson } from "../lib/lessons";
@@ -24,7 +25,7 @@ const path = `lessons/${lesson.slug}/`;
   <Fragment slot="head">{p.css && <Fragment set:html={`<style>${p.css}</style>`} />}</Fragment>
   <main class="page">
     <div class="topbar">
-      <a class="back" href={href(locale)}>← {ui("lesson.back")}</a>
+      <a class="back" href={getRelativeLocaleUrl(locale)}>← {ui("lesson.back")}</a>
       <Switches locale={locale} path={path} class="theme-switch" />
     </div>
     <header>

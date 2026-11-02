@@ -79,7 +79,7 @@ that description instead of writing HTML, into `src/generated/` (not committed).
 ```
 src/
   content.config.ts         the "lessons" collection: lessons.json + each lesson's exported page data, validated
-  i18n/                     locales and URL helpers, interface strings (ui.ts), localize() for one-language HTML
+  i18n/                     locales, interface strings (ui.ts), localize() for one-language HTML
   layouts/Base.astro        document head, language alternates, theme before first paint, old ?lang= links
   layouts/Lesson.astro      a lesson page: header, machine, experiments, questions
   components/               Switches (EN/ES links, theme), lesson/ (Experiments, Questions), collection/ (cards,
@@ -100,6 +100,11 @@ What loads, and when:
   the experiments come near the screen, or on the first interaction. The still frame is plain HTML/SVG.
 - **Collection, on demand:** the search engine and index load on the first search, a `?q=` link or a preview.
   Card images are resized by `astro:assets` and lazy-loaded.
+
+Built on Astro's own features rather than custom code wherever Astro has one: content collections (lesson data),
+i18n routing and `astro:i18n` URL helpers, `astro:assets` (images), bundled `<script>` modules and
+`import.meta.glob` (shared and per-lesson chunks), `prefetch` (lesson pages load on hover), `redirects` (old URLs)
+and `@astrojs/sitemap` (both languages).
 
 ## Layout
 

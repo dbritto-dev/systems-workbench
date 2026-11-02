@@ -5,14 +5,14 @@ import Switches from "../../components/Switches.astro";
 import Toolbar from "../../components/collection/Toolbar.astro";
 import LessonCard from "../../components/collection/LessonCard.astro";
 import PreviewDialog from "../../components/collection/PreviewDialog.astro";
-import { langParams, localeOf, href } from "../../i18n";
+import { langParams, type Locale } from "../../i18n";
 import { useUi } from "../../i18n/ui";
 import { allLessons } from "../../lib/lessons";
 import "../../generated/tokens.css";
 import "../../styles/collection.css";
 
 export const getStaticPaths = () => langParams().map((params) => ({ params }));
-const locale = localeOf(Astro.params.lang);
+const locale = (Astro.currentLocale ?? "en") as Locale;
 const ui = useUi(locale);
 const lessons = await allLessons();
 const experiments = lessons.reduce((s, l) => s + l.page.predict.experiments.length, 0);
@@ -39,7 +39,7 @@ const REPO = "https://github.com/dbritto-dev/systems-workbench";
       </div>
     </header>
     <Toolbar locale={locale} lessons={lessons} />
-    <main class="grid" id="lessons" data-index={href("en", "search-index.json")} data-locale={locale} data-lesson-base={href(locale, "lessons/")}>
+    <main class="grid" id="lessons" data-index={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json`} data-locale={locale}>
       {lessons.map((lesson) => <LessonCard lesson={lesson} locale={locale} />)}
       <div class="empty" data-empty hidden><p></p><span class="card-actions"><button type="button" class="btn" data-all>{ui("search.showAll")}</button><button type="button" class="btn" data-clear>{ui("search.clear")}</button></span></div>
     </main>

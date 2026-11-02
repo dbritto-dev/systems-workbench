@@ -1,7 +1,8 @@
 ---
 // Every page: document head (title, description, language alternates), the theme set before first paint,
 // and old ?lang= links sent to the right language's URL.
-import { LOCALES, href, type Locale } from "../i18n";
+import { getRelativeLocaleUrl } from "astro:i18n";
+import { LOCALES, type Locale } from "../i18n";
 
 interface Props {
   locale: Locale;
@@ -12,7 +13,7 @@ interface Props {
   bodyClass?: string;
 }
 const { locale, title, description, path, bodyClass } = Astro.props;
-const canonical = new URL(href(locale, path), Astro.site);
+const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
 ---
 <!doctype html>
 <html lang={locale} data-lang={locale}>
@@ -22,8 +23,8 @@ const canonical = new URL(href(locale, path), Astro.site);
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    {LOCALES.map((l) => <link rel="alternate" hreflang={l} href={new URL(href(l, path), Astro.site)} />)}
-    <link rel="alternate" hreflang="x-default" href={new URL(href("en", path), Astro.site)} />
+    {LOCALES.map((l) => <link rel="alternate" hreflang={l} href={new URL(getRelativeLocaleUrl(l, path), Astro.site)} />)}
+    <link rel="alternate" hreflang="x-default" href={new URL(getRelativeLocaleUrl("en", path), Astro.site)} />
     <script is:inline>
       (function () {
         try { var t = localStorage.getItem("workbench-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}

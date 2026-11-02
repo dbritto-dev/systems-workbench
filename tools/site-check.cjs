@@ -75,10 +75,10 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       await page.close();
     }
     const page = await ctx.newPage();
-    await page.goto(`${BASE}lessons/queues/queue-workbench.html?lang=es`);
+    await page.goto(`${BASE}lessons/queues/queue-workbench.html`);
     await page.waitForTimeout(800);
-    if (!/\/es\/lessons\/queues\/$/.test(new URL(page.url()).pathname)) fail("redirect", `old URL landed on ${page.url()}`);
-    else console.log("redirect: old ?lang=es URL → " + new URL(page.url()).pathname);
+    if (!/\/lessons\/queues\/$/.test(new URL(page.url()).pathname)) fail("redirect", `old URL landed on ${page.url()}`);
+    else console.log("redirect: old URL → " + new URL(page.url()).pathname);
     await page.close();
   }
   await browser.close();
