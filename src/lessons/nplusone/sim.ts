@@ -1,6 +1,10 @@
+// @ts-nocheck: model ported as-is
 // Shared model for the figure and the experiments: one page of an orders list, loaded four ways.
 // Times are milliseconds of model time. Every query is a round trip: half the network trip out,
 // the database's work, half the trip back plus the time to ship the bytes, plus a little app overhead.
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
+
 export const RTT = { host: 0.2, zone: 1, region: 10 };          // round-trip time to the database, ms
 export const DIST_NAMES = { host: "same host", zone: "same zone", region: "other zone" };
 export const BYTES = { order: 800, item: 120, product: 300 };    // bytes per row of each table
@@ -9,7 +13,8 @@ export const BANDWIDTH = 60000;                                  // bytes per ms
 export const APP = 0.03;                                         // app overhead per query (driver, ORM), ms
 export const POOL = 5;                                           // connections used by "N+1, 5 at once"
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// The data crate's fill level for the bytes fetched: 1 KB → 0, 10 MB → 1 (the figure's marks and the live crate).
+export const crateLevel = (bytes) => Math.max(0, Math.min(1, Math.log10(Math.max(1, bytes) / 1000) / 4));
 
 // cfg: { mode: "n1" | "par" | "batch" | "join", rows, items (per order), nested (also each item's product), dist: "host" | "zone" | "region" }
 // Returns the page as a list of trips (queries) with their timings, when each row on the page is complete,
@@ -79,7 +84,5 @@ export function planPage(cfg, seed = 7) {
 
 // Averages over seeded pages, for the experiments.
 export function average(cfg, seeds = 8) {
-  let time = 0, queries = 0, bytes = 0;
-  for (let s = 1; s <= seeds; s++) { const p = planPage(cfg, s * 7919); time += p.end; queries += p.queries; bytes += p.bytes; }
-  return { time: time / seeds, queries: queries / seeds, bytes: bytes / seeds };
+  return averageOver(Array.from({ length: seeds }, (_, i) => (i + 1) * 7919), (seed) => { const p = planPage(cfg, seed); return { time: p.end, queries: p.queries, bytes: p.bytes }; });
 }

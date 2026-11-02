@@ -1,12 +1,15 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A warehouse picker filling an orders page. The packing table on the right is the app: one ticket per order
 // on the page, and a box on each ticket once that order's items have arrived. The warehouse at the end of the
 // aisle is the database; it slides along the aisle to the distance chosen. Every query is one trip down the
 // aisle and back. A trip counter, a stopwatch and a data crate on the table read out the cost of the page.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
-import { digitPath, counterCells, digitsOf } from "./digits.js";
-import { t, isT } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
+import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
+import { t, isT } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { crateLevel } from "./sim";
 
 export const WIDTH = 700;
 export const HEIGHT = 420;
@@ -31,7 +34,6 @@ export const WATCH = { x: 87, y: 23, r: 8, z: TOP + 3 };
 export const WATCH_MS = 250;                    // one turn of the hand
 export const CRATE = { x: 101, y: 12, w: 28, d: 22, wall: 1.4, h: 18 };
 export const CRATE_LEVELS = [[1e4, "10 KB"], [1e5, "100 KB"], [1e6, "1 MB"]];
-export const crateLevel = (bytes) => Math.max(0, Math.min(1, Math.log10(Math.max(1, bytes) / 1000) / 4));   // 1 KB → 0, 10 MB → 1
 
 // Counters on the table's front face.
 const PROUD = 1.2;
@@ -54,17 +56,13 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
-// Words on the machine: a bilingual value draws one <text> per language (static words only).
+const { S, L, D, at, text } = shorthand(P);
+// Words on the front faces: a bilingual value draws one <text> per language (static words only). Kept rather than
+// the shared text(): its markup (attribute order, spacing) is what the published figure has.
 const faceTextY = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) => isT(value)
   ? `<g data-l="en">${faceTextY(x, y, z, value.en, { size, tone, anchor, attr })}</g><g data-l="es">${faceTextY(x, y, z, value.es, { size, tone, anchor, attr })}</g>`
   : `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
-const topText = (x, y, z, value, { size = 3, tone = "lo", anchor = "middle" } = {}) => isT(value)
-  ? `<g data-l="en">${topText(x, y, z, value.en, { size, tone, anchor })}</g><g data-l="es">${topText(x, y, z, value.es, { size, tone, anchor })}</g>`
-  : k.faceTextSvg(k.topMatrix([x, y], z, P, "x"), value, { size, tone, anchor });
+const topText = (x, y, z, value, { size = 3, tone = "lo", anchor = "middle" } = {}) => text(x, y, z, value, { face: "top", size, tone, anchor });
 
 // A counter: one window per wheel with its printed digit.
 function counter(c, name, value = 0) {
