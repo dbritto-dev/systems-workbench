@@ -2,6 +2,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) through the shared workbench layer.
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 760;
 export const HEIGHT = 420;
@@ -132,7 +133,8 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label: "A filing machine. Folders stand on a long rail, newest at the left, where a feed hopper adds new ones and pushes the rest along; old folders slide into a bin at the right. A reader carriage on a front rail fetches one page of folders at a time. In offset mode it starts from the newest folder every time and steps past every folder it skips, counted on its dial. In cursor mode a clip marks where the last page ended and the carriage goes straight there.",
+    label: t("A filing machine. Folders stand on a long rail, newest at the left, where a feed hopper adds new ones and pushes the rest along; old folders slide into a bin at the right. A reader carriage on a front rail fetches one page of folders at a time. In offset mode it starts from the newest folder every time and steps past every folder it skips, counted on its dial. In cursor mode a clip marks where the last page ended and the carriage goes straight there.",
+      "Un archivador. Las carpetas están paradas sobre un riel largo, la más nueva a la izquierda, donde una tolva de entrada agrega carpetas nuevas y empuja al resto; las carpetas viejas se deslizan a un cajón a la derecha. Un carro lector sobre un riel delantero trae una página de carpetas a la vez. En modo offset empieza cada vez desde la carpeta más nueva y pasa por cada carpeta que se salta, contadas en su dial. En modo cursor un clip marca dónde terminó la última página y el carro va directo ahí."),
     body: [
       plate(),
       folderRail(),

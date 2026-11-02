@@ -4,6 +4,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t, isT } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -33,9 +34,9 @@ const BOARD = { x: 36, y: -92, w: 82, d: 4, r: 0.8 };
 const BOARD_Z = [6, 46];
 const BOARD_FRONT = BOARD.y + BOARD.d;
 export const BOARD_ROWS = [
-  { name: "wait", label: "WAITING", z: 34 },
-  { name: "dup", label: "DUPLICATES", z: 22 },
-  { name: "stale", label: "STALE", z: 10 },
+  { name: "wait", label: t("WAITING", "ESPERANDO"), z: 34 },
+  { name: "dup", label: t("DUPLICATES", "DUPLICADOS"), z: 22 },
+  { name: "stale", label: t("STALE", "VIEJOS"), z: 10 },
 ];
 const WHEELS = 3;
 const WIN = 7.6;
@@ -63,8 +64,10 @@ const at = (point) => k.iso(point, P);
 const S = (paths, style) => k.solidSvg(paths, style);
 const L = (d, style) => k.lineSvg(d, style);
 const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-export const text = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
-  `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
+export const text = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) => {
+  if (isT(value)) return `<g data-l="en">${text(x, y, z, value.en, { size, tone, anchor, attr })}</g><g data-l="es">${text(x, y, z, value.es, { size, tone, anchor, attr })}</g>`;
+  return `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
+};
 
 // A needle on a vertical face (constant y): frac 0 points left, 1 points right, sweeping over the top.
 export function needle(c, frac, len = 0.82) {
@@ -190,8 +193,11 @@ function displayCase() {
       + L(k.lineOnTop([x - 5, TRAY_Y - 3], [x - 2, TRAY_Y + 3], CASE_H + 7, P) + k.lineOnTop([x, TRAY_Y - 3], [x + 3, TRAY_Y + 3], CASE_H + 7, P) + k.lineOnTop([x + 5, TRAY_Y - 3], [x + 8, TRAY_Y + 3], CASE_H + 7, P), { tone: "lo", free: true })
       + `<g data-old class="wb-lit-group" style="display:none">`
       + S(k.cylinder(x + 6, TRAY_Y + 1, 0.4, CASE_H + 7, 8, P, 8), { tone: "mid", crease: "none" })
-      + S(k.slabOf({ x: x + 6.4, y: TRAY_Y + 0.6, w: 9, d: 0.8, r: 0.2 }, CASE_H + 10.5, 4.5, P, 2), { tone: "hi", crease: "none", lit: true })
-      + text(x + 10.9, TRAY_Y + 1.4, CASE_H + 11.6, "OLD", { size: 2.8, tone: "hi", anchor: "middle" })
+      // the Spanish word is longer, so its flag is wider; the English flag is unchanged
+      + `<g data-l="en">` + S(k.slabOf({ x: x + 6.4, y: TRAY_Y + 0.6, w: 9, d: 0.8, r: 0.2 }, CASE_H + 10.5, 4.5, P, 2), { tone: "hi", crease: "none", lit: true })
+      + text(x + 10.9, TRAY_Y + 1.4, CASE_H + 11.6, "OLD", { size: 2.8, tone: "hi", anchor: "middle" }) + `</g>`
+      + `<g data-l="es">` + S(k.slabOf({ x: x + 6.4, y: TRAY_Y + 0.6, w: 11.5, d: 0.8, r: 0.2 }, CASE_H + 10.5, 4.5, P, 2), { tone: "hi", crease: "none", lit: true })
+      + text(x + 12.15, TRAY_Y + 1.4, CASE_H + 11.6, "VIEJO", { size: 2.8, tone: "hi", anchor: "middle" }) + `</g>`
       + `</g></g>`);
   });
   return out.join("");
@@ -215,8 +221,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A bakery on a base plate. At the back stand an oven with four shelves and a load gauge, a ticket rail where numbered order tickets wait for a shelf, and a scoreboard counting waiting customers, duplicate orders and stale loaves served. In front is a display case of six numbered trays, each with an expiry dial. When a tray's loaf expires, customers who wanted it stand in front of the case and orders go to the oven; without coalescing every customer sends an order, so the oven and ticket rail fill with duplicates of the same tray.",
+      "Una panadería sobre una placa base. Al fondo hay un horno con cuatro repisas y un indicador de carga, un riel donde los tickets de pedido numerados esperan una repisa, y un marcador que cuenta clientes esperando, pedidos duplicados y panes viejos servidos. Al frente hay una vitrina con seis bandejas numeradas, cada una con un dial de vencimiento. Cuando el pan de una bandeja vence, los clientes que lo querían se paran frente a la vitrina y los pedidos van al horno; sin agrupar pedidos, cada cliente manda el suyo, así que el horno y el riel se llenan de duplicados de la misma bandeja."),
     body: [plate(), board(), oven(), rail(), displayCase(), `<g data-customers>${customers()}</g>`],
   });
 }

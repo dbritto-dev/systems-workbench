@@ -6,6 +6,7 @@
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
 import { digitPath, counterCells, digitsOf } from "./digits.js";
+import { t, isT } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 420;
@@ -57,9 +58,13 @@ const at = (point) => k.iso(point, P);
 const S = (paths, style) => k.solidSvg(paths, style);
 const L = (d, style) => k.lineSvg(d, style);
 const D = (points, style) => k.dotsSvg(points, style);
-const faceTextY = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
-  `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
-const topText = (x, y, z, value, { size = 3, tone = "lo", anchor = "middle" } = {}) => k.faceTextSvg(k.topMatrix([x, y], z, P, "x"), value, { size, tone, anchor });
+// Words on the machine: a bilingual value draws one <text> per language (static words only).
+const faceTextY = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) => isT(value)
+  ? `<g data-l="en">${faceTextY(x, y, z, value.en, { size, tone, anchor, attr })}</g><g data-l="es">${faceTextY(x, y, z, value.es, { size, tone, anchor, attr })}</g>`
+  : `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
+const topText = (x, y, z, value, { size = 3, tone = "lo", anchor = "middle" } = {}) => isT(value)
+  ? `<g data-l="en">${topText(x, y, z, value.en, { size, tone, anchor })}</g><g data-l="es">${topText(x, y, z, value.es, { size, tone, anchor })}</g>`
+  : k.faceTextSvg(k.topMatrix([x, y], z, P, "x"), value, { size, tone, anchor });
 
 // A counter: one window per wheel with its printed digit.
 function counter(c, name, value = 0) {
@@ -89,7 +94,7 @@ function aisle() {
 
 function plaques() {
   const out = [];
-  const names = { host: ["SAME", "HOST"], zone: ["SAME", "ZONE"], region: ["OTHER", "ZONE"] };
+  const names = { host: [t("SAME", "MISMO"), "HOST"], zone: [t("SAME", "MISMA"), t("ZONE", "ZONA")], region: [t("OTHER", "OTRA"), t("ZONE", "ZONA")] };
   for (const [key, x] of Object.entries(STOPS)) {
     const plan = { x: x - 20, y: 22, w: 20, d: 12, r: 1.2 };
     out.push(`<g data-plaque="${key}">`);
@@ -137,13 +142,14 @@ function warehouse() {
 }
 
 // The table: legs, top, the order tickets, the stopwatch, the crate, the counters.
+const QUERIES_LABEL = t("QUERIES", "CONSULTAS");   // table() shadows t with the table
 function table() {
   const out = [];
   const t = TABLE;
   out.push(S(k.slabOf(k.insetPlan(t, 2), 0, 2, P, 3), { tone: "lo" }));
   out.push(S(k.slabOf(t, 2, TABLE_H - 2, P, 3, 0.5), {
     tone: "mid",
-    inner: faceTextY(t.x + 4, FRONT, 14.4, "QUERIES", { size: 3.4, tone: "mid" }) + faceTextY(t.x + 4, FRONT, 4.8, "MS", { size: 3.4, tone: "mid" }),
+    inner: faceTextY(t.x + 4, FRONT, 14.4, QUERIES_LABEL, { size: 3.4, tone: "mid" }) + faceTextY(t.x + 4, FRONT, 4.8, "MS", { size: 3.4, tone: "mid" }),
   }));
   out.push(L(k.planOutline(k.insetPlan(t, 1.6), TOP, P), { tone: "faint" }));
   // Ticket slots, back row first.
@@ -226,7 +232,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label:
-      "A warehouse picker filling one page of orders. On the right, a packing table holds a ticket for each order on the page and a box on each ticket whose items have arrived, with a stopwatch, a crate that fills with the data fetched, and counters for queries and milliseconds on its front. A long aisle runs to a warehouse that stands at one of three distances: same host, same zone or other zone. Each query is one trip down the aisle and back: out with a slip, back with a box.",
+      t("A warehouse picker filling one page of orders. On the right, a packing table holds a ticket for each order on the page and a box on each ticket whose items have arrived, with a stopwatch, a crate that fills with the data fetched, and counters for queries and milliseconds on its front. A long aisle runs to a warehouse that stands at one of three distances: same host, same zone or other zone. Each query is one trip down the aisle and back: out with a slip, back with a box.",
+        "Un preparador de pedidos llenando una página de pedidos. A la derecha, una mesa de empaque tiene un ticket por cada pedido de la página y una caja sobre cada ticket cuyos artículos ya llegaron, con un cronómetro, un cajón que se llena con los datos traídos y contadores de consultas y milisegundos en su frente. Un pasillo largo lleva a un almacén que está a una de tres distancias: mismo host, misma zona u otra zona. Cada consulta es un viaje por el pasillo, de ida y vuelta: de ida con una nota, de vuelta con una caja."),
     body: [
       plate(),
       aisle(),
