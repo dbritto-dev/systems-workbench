@@ -1,7 +1,10 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // BM25 over a small knowledge base: the exact formula, with the per-term breakdown the figure draws.
 //   score(D, Q) = Σ_t∈Q  IDF(t) · tf·(k1+1) / (tf + k1·(1 − b + b·|D|/avgdl))
 //   IDF(t)      = ln(1 + (N − n_t + 0.5) / (n_t + 0.5))
 // Tokens are lowercased runs of letters, digits, _ and -; no stemming, no stop-word list.
+
+import { mean, sum } from "../../lib/stats";
 
 export const DOCS = [
   ["D01", "Kernel panic on boot after the update: the system halts with \"not syncing\" before the login screen."],
@@ -59,7 +62,7 @@ export function makeIndex(docs = DOCS) {
   const df = new Map();
   for (const m of tf) for (const w of m.keys()) df.set(w, (df.get(w) || 0) + 1);
   const len = toks.map((t) => t.length);
-  const avg = len.reduce((a, b) => a + b, 0) / len.length;
+  const avg = mean(len);
   return { docs, toks, tf, df, len, avg, N: docs.length };
 }
 
@@ -78,7 +81,7 @@ export function rank(ix, q, k1 = 1.2, b = 0.75) {
   const terms = queryTerms(q).map((t) => ({ term: t, idf: idfOf(ix, t), df: ix.df.get(t) || 0 }));
   const rows = ix.docs.map(([id, text], d) => {
     const parts = terms.map((t) => { const f = ix.tf[d].get(t.term) || 0; return { term: t.term, tf: f, score: part(t.idf, f, ix.len[d], ix.avg, k1, b) }; });
-    return { d, id, text, len: ix.len[d], parts, score: parts.reduce((a, p) => a + p.score, 0) };
+    return { d, id, text, len: ix.len[d], parts, score: sum(parts.map((p) => p.score)) };
   });
   rows.sort((a, b2) => b2.score - a.score || a.d - b2.d);
   return { terms, rows };

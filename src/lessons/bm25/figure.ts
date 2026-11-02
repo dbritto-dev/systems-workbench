@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // An assay bench for BM25.
 //   At the back, the query's terms stand on a rack as brass weights: the rarer the term, the bigger the weight
 //   (its IDF). An assayer behind the rack picks them up in turn.
@@ -6,9 +7,10 @@
 //   score: more occurrences make it thicker, but less and less (saturation), and a long document gets a thinner
 //   disc (length normalisation). Each scale shows its rank, its document, its score on wheels, and a length gauge.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, faceText } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, faceText } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -47,8 +49,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 48 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
+const { S, L } = shorthand(P);
 const label = (x, y, z, text, size = 2.4, extra = {}) => faceText(P, [x, y, z], text, { size, tone: "mid", ...extra });
 
 function plate() {
