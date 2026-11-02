@@ -3,6 +3,7 @@
 // to five stamping stations (subscribers), each with its own tray (queue).
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
 import * as G from "../../workbench/vendor-anatomy/kit/lathe.mjs";
 import { tubePieces, tubeSvg } from "../../workbench/vendor-anatomy/kit/tube.mjs";
@@ -212,8 +213,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A pneumatic dispatch office on a base plate. A screw press at the back prints one message at a time and sends it down a single tube into a round distribution hub. The hub fires one copy down every connected tube at the same moment, to up to five stamping stations. Each copy lands in its station's own tray, and each station takes cards from its tray at its own pace and stamps them to acknowledge them; cards it has not reached yet pile up in its tray. While a station without a durable subscription is away, its tray is gone and its copies fall into a discard bin.",
+      "Una oficina de despacho neumático sobre una placa base. Una prensa de tornillo al fondo imprime un mensaje a la vez y lo manda por un solo tubo a un distribuidor redondo. El distribuidor dispara una copia por cada tubo conectado al mismo tiempo, hacia hasta cinco estaciones de sellado. Cada copia cae en la bandeja de su estación, y cada estación toma tarjetas de su bandeja a su propio ritmo y las sella para confirmarlas; las que todavía no alcanza se apilan en su bandeja. Mientras una estación sin suscripción duradera está desconectada, su bandeja desaparece y sus copias caen a un cesto de descarte."),
     body: [
       plate(),
       pressBack(),

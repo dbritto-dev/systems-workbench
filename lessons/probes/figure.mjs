@@ -3,6 +3,7 @@
 // service's endpoint list. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 720;
 export const HEIGHT = 460;
@@ -242,8 +243,9 @@ export function buildFigure(state = TABLEAU) {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A shopping street on a base plate. Five shops stand in a row in front of a large shared warehouse, each fed by a supply pipe from it. Each shop has crates of stock on its front step, an open sign on a track on its front wall that is raised and lit when the shop is ready, and an inspector standing by a board with three slots for failed checks and five pips for restarts. A traffic warden in a hat stands by a kiosk at the front left with a queue of customers; the kiosk roof has one peg per shop, raised and lit for shops on the warden's list. In this frame shops 1 and 5 are open, shop 2 is being rebuilt under scaffolding, shop 3 is jammed with a bar across its door and two failed checks, and shop 4 is restocking with its sign down.",
+      "Una calle comercial sobre una base. Cinco tiendas en fila frente a un gran almacén compartido, cada una abastecida por un tubo que sale de él. Cada tienda tiene cajas de mercadería en la entrada, un letrero de abierto en un riel de su fachada que sube y se enciende cuando la tienda está lista, y un inspector junto a un tablero con tres ranuras para chequeos fallidos y cinco puntos para reinicios. Un agente de tránsito con sombrero está junto a una caseta al frente a la izquierda, con una fila de clientes; el techo de la caseta tiene una clavija por tienda, levantada y encendida para las tiendas que están en la lista del agente. En este cuadro las tiendas 1 y 5 están abiertas, la 2 se reconstruye bajo andamios, la 3 está atascada con una barra cruzada en la puerta y dos chequeos fallidos, y la 4 se reabastece con el letrero abajo."),
     body: [plate(), warehouse(), shutter(false), ...SHOP_X.map((cx, i) => shop(cx, i, state[i])), street(), `<g data-customers>${walkers()}</g>`, kiosk(state), queue()],
   });
 }

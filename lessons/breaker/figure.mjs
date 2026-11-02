@@ -3,7 +3,8 @@
 // (a call to the supplier). The trunk runs through a knife-switch circuit breaker to the supplier's
 // exchange cabinet. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, faceText } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 440;
@@ -171,7 +172,7 @@ function panel() {
   out.push(L(jacks.join(""), { tone: "mid" }));
   out.push(`<path class="jack-hole" d="${OPS.map((o) => faceCircle(o.cx, FACE, ROWS.local, 1.1, 12) + faceCircle(o.cx, FACE, ROWS.trunk, 1.1, 12)).join("")}"/>`);
   // Panel name plate: the one engraved label.
-  out.push(k.faceTextSvg(k.sideMatrix([-26, FACE], 66, P, "left"), "TRUNK", { size: 3, tone: "lo", anchor: "middle" }));
+  out.push(faceText(P, [-26, FACE, 66], t("TRUNK", "TRONCAL"), { size: 3, tone: "lo", anchor: "middle" }));
   return out.join("");
 }
 
@@ -273,8 +274,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A telephone switchboard on a base plate. Six operator positions at the keyshelf each have a cord: plugged into the lower row for work done in-house, or into the upper trunk row to call a supplier's exchange at the back. Lamps at the top show calls waiting. The trunk runs through a knife-switch circuit breaker with a failure dial and a cooldown dial; when it opens, a shutter drops over the trunk jacks. A knob on the shelf sets the timeout.",
+      "Un conmutador telefónico sobre una placa base. Seis puestos de operador en la repisa de llaves tienen cada uno un cordón: conectado a la fila de abajo para el trabajo que se hace en casa, o a la fila troncal de arriba para llamar a la central de un proveedor al fondo. Las lámparas de arriba muestran las llamadas en espera. La troncal pasa por un interruptor de cuchilla con un reloj de fallas y uno de enfriamiento; cuando se abre, una cortina baja sobre los conectores de la troncal. Una perilla en la repisa fija el tiempo límite."),
     body: [
       plate(),
       supplier(),

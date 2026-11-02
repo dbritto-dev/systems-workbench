@@ -1,6 +1,7 @@
 // The records office: a card rack (the cache) in front of an archive chest (the database),
 // joined by a carriage on rails. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
 
 export const WIDTH = 700;
@@ -228,8 +229,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A records office on a base plate. On the left, an archive chest with eight drawers holds every record but is slow to reach. On the right, a card rack with twelve slots holds copies of recently used records. A carriage on rails carries a copy from the archive to the rack. A push button at the front asks for a record; if its card is in the rack it is answered at once, otherwise the carriage fetches it.",
+      "Una oficina de registros sobre una placa base. A la izquierda, un archivador de ocho cajones guarda todos los registros, pero llegar a ellos es lento. A la derecha, un estante de fichas con doce lugares guarda copias de los registros usados hace poco. Un carro sobre rieles lleva una copia del archivo al estante. Un botón al frente pide un registro; si su ficha está en el estante se responde de inmediato, si no, el carro va a buscarla."),
     body: [
       plate(),
       clock(),

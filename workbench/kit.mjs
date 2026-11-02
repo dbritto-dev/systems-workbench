@@ -26,3 +26,10 @@ export function figureSvg(opts) {
   if (!isBi(opts.label)) return kitFigureSvg(opts);
   return kitFigureSvg({ ...opts, label: opts.label.en }).replace(/aria-label="[^"]*"/, (m) => `${m} data-aria-en="${escAttr(opts.label.en)}" data-aria-es="${escAttr(opts.label.es)}"`);
 }
+
+// faceTextSvg with bilingual text: text may be t(en, es); both are drawn and CSS shows the current language.
+import { faceTextSvg as kitFaceTextSvg } from "./vendor-anatomy/kit/iso-kit.mjs";
+export function faceTextSvg(matrix, text, opts) {
+  if (!isBi(text)) return kitFaceTextSvg(matrix, text, opts);
+  return `<g data-l="en">${kitFaceTextSvg(matrix, text.en, opts)}</g><g data-l="es">${kitFaceTextSvg(matrix, text.es, opts)}</g>`;
+}
