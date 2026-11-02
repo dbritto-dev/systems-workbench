@@ -2,6 +2,7 @@
 // and a gantry crane that swaps one module at a time. Built with the Anatomy kit (MIT).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { RD } from "./sim.js";
 
 export const WIDTH = 720;
@@ -227,8 +228,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A module yard on a base plate. Six service bays stand in a row, with two spare positions at the end. A distributor at the left sends requests along a feed rail to any bay whose readiness flag is up. A gantry crane runs on rails over the row; during a rollout it pulls one old module out at a time, drops it in a bin, and lowers a new module from the supply stand into a free bay. A new module warms up before its flag rises.",
+      "Un patio de módulos sobre una base. Seis bahías de servicio en fila, con dos posiciones de repuesto al final. Un distribuidor a la izquierda manda las solicitudes por un riel de alimentación a cualquier bahía con la bandera de disponibilidad levantada. Una grúa pórtico corre sobre rieles encima de la fila; durante un despliegue saca un módulo viejo a la vez, lo tira en un contenedor y baja un módulo nuevo desde el soporte de suministro a una bahía libre. Un módulo nuevo se calienta antes de que suba su bandera."),
     body: [
       plate(),
       intake(),

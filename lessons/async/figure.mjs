@@ -3,6 +3,7 @@
 // and the waiters who carry orders between them.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) on the workbench layer.
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
 
 export const WIDTH = 720;
@@ -210,7 +211,8 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label: "A restaurant pass on a base plate. On the left, a permit board whose slots limit how many orders may be out at once, and an order desk with a spike of orders still to take. In the middle, the pass counter with a ticket rail and a service bell. On the right, a kitchen range with 32 burners and a tray of tickets waiting for a burner. In front, a tray of delivered plates and a bin of orders that timed out. Waiters move between the desk, the window at the pass and the bell.",
+    label: t("A restaurant pass on a base plate. On the left, a permit board whose slots limit how many orders may be out at once, and an order desk with a spike of orders still to take. In the middle, the pass counter with a ticket rail and a service bell. On the right, a kitchen range with 32 burners and a tray of tickets waiting for a burner. In front, a tray of delivered plates and a bin of orders that timed out. Waiters move between the desk, the window at the pass and the bell.",
+      "El pase de un restaurante sobre una placa base. A la izquierda, un tablero de permisos cuyas ranuras limitan cuántos pedidos pueden estar en curso a la vez, y un mostrador de pedidos con un pincho de pedidos aún por tomar. Al centro, el mostrador del pase con un riel de comandas y una campana de servicio. A la derecha, una cocina con 32 hornillas y una bandeja de comandas que esperan hornilla. Al frente, una bandeja de platos entregados y un cesto de pedidos que expiraron. Los meseros se mueven entre el mostrador, la ventanilla del pase y la campana."),
     body: [
       plate(), pass(), railFrame(), `<g data-rail-tickets>${railTickets()}</g>`, bell(), board(),
       `<g data-waiters>${waiters}</g>`,

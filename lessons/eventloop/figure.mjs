@@ -6,6 +6,7 @@
 // helper can take CPU jobs, and a big lamp should blink every 16 ms.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
 import { sphereOf } from "../../workbench/vendor-anatomy/kit/lathe.mjs";
 
@@ -281,7 +282,8 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label: "An event loop as a workshop. One operator stands behind one desk, the call stack: frames stack on a spindle at the left hand, the task being run sits in front, and the microtask tray (promise callbacks) is at the right hand. A conveyor of macrotasks (timer pucks, I/O tiles, CPU blocks) runs into the desk through a gate that stays down while the tray holds anything. Timers wait in a cabinet in front and slide onto the conveyor when due; a dial shows when. Behind a partition, four small helpers do I/O and send finished reads down a channel into the conveyor's hopper. A worker bench with its own helper can take CPU jobs, and a big lamp should blink every 16 ms when the loop gets a chance to draw a frame.",
+    label: t("An event loop as a workshop. One operator stands behind one desk, the call stack: frames stack on a spindle at the left hand, the task being run sits in front, and the microtask tray (promise callbacks) is at the right hand. A conveyor of macrotasks (timer pucks, I/O tiles, CPU blocks) runs into the desk through a gate that stays down while the tray holds anything. Timers wait in a cabinet in front and slide onto the conveyor when due; a dial shows when. Behind a partition, four small helpers do I/O and send finished reads down a channel into the conveyor's hopper. A worker bench with its own helper can take CPU jobs, and a big lamp should blink every 16 ms when the loop gets a chance to draw a frame.",
+      "Un bucle de eventos como taller. Un operador está detrás de un escritorio, la pila de llamadas: los marcos se apilan en un eje a su mano izquierda, la tarea en ejecución está al frente y la bandeja de microtareas (callbacks de promesas) está a su mano derecha. Una cinta de macrotareas (fichas de temporizador, placas de E/S, bloques de CPU) llega al escritorio pasando por una barrera que queda baja mientras la bandeja tenga algo. Los temporizadores esperan en un gabinete al frente y pasan a la cinta cuando vencen; un dial muestra cuándo. Detrás de una mampara, cuatro ayudantes pequeños hacen la E/S y mandan las lecturas terminadas por un canal hasta la tolva de la cinta. Un banco de worker con su propio ayudante puede tomar trabajos de CPU, y una lámpara grande debería parpadear cada 16 ms cuando el bucle tiene oportunidad de dibujar un cuadro."),
     body: [
       plate(),
       helpers(),

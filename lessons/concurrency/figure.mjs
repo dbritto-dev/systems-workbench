@@ -1,6 +1,7 @@
 // One cook, one stove: a range with eight burners, a simmer-timer knob per burner, and a single
 // stirring head on a gantry behind it. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
 
 export const WIDTH = 700;
@@ -172,8 +173,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A range with eight burners and a single stirring head on a gantry behind it. Pans sit on the burners; a pan with its lid on is simmering and needs nobody, a pan with an order ticket up is waiting for the cook. The head travels from pan to pan and stirs one at a time; plates pile up on the pass as dishes are served.",
+      "Una cocina con ocho hornillas y un solo cabezal mezclador en un pórtico detrás. Las sartenes están sobre las hornillas; una sartén con tapa está a fuego lento y no necesita a nadie, una sartén con comanda espera al cocinero. El cabezal viaja de sartén en sartén y revuelve una a la vez; los platos se apilan en el pase a medida que se sirven."),
     body: [plate(), gantryBack(), stove(), knobs(), back, front, pass(), `<g data-plates>${plateStack(0)}</g>`, `<g data-rig>${rigSvg(PARK[0], PARK[1], PAN_TOP + 24, false)}</g>`],
   });
 }

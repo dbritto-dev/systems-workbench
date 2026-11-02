@@ -3,6 +3,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 720;
 export const HEIGHT = 440;
@@ -172,7 +173,7 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label: "Two identical press lines on one base plate, fed by a single infeed belt through a turntable gate. The gate's arm points at the live line; every request goes to that line. The back line is blue, the version in production; the front line is green, the new version. A records cabinet at the back right is the shared database, with a schema plate on its face. Each line has a cache tray, three presses, an outfeed tray and a reject bin.",
+    label: t("Two identical press lines on one base plate, fed by a single infeed belt through a turntable gate. The gate's arm points at the live line; every request goes to that line. The back line is blue, the version in production; the front line is green, the new version. A records cabinet at the back right is the shared database, with a schema plate on its face. Each line has a cache tray, three presses, an outfeed tray and a reject bin.", "Dos líneas de prensas idénticas sobre una misma base, alimentadas por una sola banda de entrada a través de una compuerta giratoria. El brazo de la compuerta apunta a la línea en vivo; cada solicitud va a esa línea. La línea del fondo es azul, la versión en producción; la del frente es verde, la versión nueva. Un archivero de registros al fondo a la derecha es la base de datos compartida, con una placa de esquema en su frente. Cada línea tiene una bandeja de caché, tres prensas, una bandeja de salida y un cesto de rechazos."),
     body: [
       plate(),
       duct("blue"), lane("blue"), lineBase("blue"),

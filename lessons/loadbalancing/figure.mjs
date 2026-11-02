@@ -1,6 +1,7 @@
 // A parcel sorting station: an infeed conveyor, a turntable dispatcher (the load balancer) and up to
 // five counters (servers), each with its own queue lane. Built with the Anatomy kit (MIT).
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
 
 export const WIDTH = 700;
@@ -163,8 +164,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A parcel sorting station on a base plate. Parcels ride an infeed conveyor onto a turntable whose arm turns to send each one down one of five lanes. Every lane ends at a counter with a press that works through its queue one parcel at a time. A gate at the start of each lane shows whether the turntable still sends parcels there, and a shutter closes a counter that has gone down.",
+      "Una estación de clasificación de paquetes sobre una placa base. Los paquetes llegan por una cinta de entrada a un plato giratorio cuyo brazo gira para mandar cada uno por uno de cinco carriles. Cada carril termina en un mostrador con una prensa que despacha su cola un paquete a la vez. Una barrera al inicio de cada carril muestra si el plato todavía manda paquetes ahí, y una cortina cierra el mostrador que se cayó."),
     body: [
       plate(),
       infeed(),

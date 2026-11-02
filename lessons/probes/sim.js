@@ -40,6 +40,7 @@ export function makeSim(options = {}, seed = 7) {
   }));
   const sim = { cfg, shops, t: 0, warehouseUp: true, warehouseUntil: 0, random,
     totals: { arrived: 0, served: 0, errors: 0, restarts: 0 }, events: [], series: [], lastDisruption: null, recovered: null };
+  // Event text in both languages ({ en, es }); the page picks one when it shows it.
   const say = (text, shop) => { sim.events.push({ t: sim.t, text, shop }); if (sim.events.length > 50) sim.events.shift(); };
   const running = (s) => s.phase === "boot" || s.phase === "warm" || s.phase === "run" || s.phase === "dead";
   const responds = (s) => s.phase === "warm" || s.phase === "run";
@@ -51,11 +52,11 @@ export function makeSim(options = {}, seed = 7) {
     s.restarts++; sim.totals.restarts++; s.inRow++;
     const backoff = s.inRow > 1 ? Math.min(cfg.backoffBase * 2 ** (s.inRow - 2), cfg.backoffMax) : 0;
     s.phase = "down"; s.phaseT = 0; s.downFor = cfg.restartDelay + backoff; s.ready = false; s.fails = 0;
-    say("shop " + (s.i + 1) + " · " + why + (backoff ? " · back-off " + backoff + " s" : ""), s.i);
+    say({ en: "shop " + (s.i + 1) + " · " + why.en + (backoff ? " · back-off " + backoff + " s" : ""), es: "tienda " + (s.i + 1) + " · " + why.es + (backoff ? " · back-off " + backoff + " s" : "") }, s.i);
   }
-  sim.restartShop = (i, why = "restarted by a deploy") => { const s = shops[i]; s.inRow = 0; restart(s, why); s.inRow = 0; s.restarts--; sim.totals.restarts--; sim.disrupt(); };
-  sim.deadlock = (i) => { const s = shops[i]; if (s.phase === "run" || s.phase === "warm") { s.phase = "dead"; s.phaseT = 0; say("shop " + (i + 1) + " · stuck: answers nothing", i); sim.disrupt(); } };
-  sim.blip = (seconds = 30) => { sim.warehouseUp = false; sim.warehouseUntil = sim.t + seconds; say("warehouse down for " + seconds + " s"); sim.disrupt(); };
+  sim.restartShop = (i, why = { en: "restarted by a deploy", es: "reiniciada por un despliegue" }) => { const s = shops[i]; s.inRow = 0; restart(s, why); s.inRow = 0; s.restarts--; sim.totals.restarts--; sim.disrupt(); };
+  sim.deadlock = (i) => { const s = shops[i]; if (s.phase === "run" || s.phase === "warm") { s.phase = "dead"; s.phaseT = 0; say({ en: "shop " + (i + 1) + " · stuck: answers nothing", es: "tienda " + (i + 1) + " · atascada: no responde" }, i); sim.disrupt(); } };
+  sim.blip = (seconds = 30) => { sim.warehouseUp = false; sim.warehouseUntil = sim.t + seconds; say({ en: "warehouse down for " + seconds + " s", es: "almacén caído por " + seconds + " s" }); sim.disrupt(); };
   sim.disrupt = () => { sim.lastDisruption = sim.t; sim.recovered = null; };
 
   function probe(s) {
@@ -64,8 +65,8 @@ export function makeSim(options = {}, seed = 7) {
     s.lastWait = wait(s);
     // Startup probe: liveness and readiness wait until the process answers once.
     if (!s.started) {
-      if (answered) { s.started = true; say("shop " + (s.i + 1) + " · startup probe passed", s.i); }
-      else if (s.phaseT > cfg.startupBudget && s.phase === "boot") restart(s, "startup probe gave up");
+      if (answered) { s.started = true; say({ en: "shop " + (s.i + 1) + " · startup probe passed", es: "tienda " + (s.i + 1) + " · pasó la sonda de arranque" }, s.i); }
+      else if (s.phaseT > cfg.startupBudget && s.phase === "boot") restart(s, { en: "startup probe gave up", es: "la sonda de arranque se rindió" });
       return;
     }
     // Liveness.
@@ -74,7 +75,7 @@ export function makeSim(options = {}, seed = 7) {
       const alive = answered && (cfg.liveness !== "deps" || sim.warehouseUp);
       s.checkFailed = !alive;
       if (alive) s.fails = 0;
-      else if (++s.fails >= cfg.threshold) { restart(s, "liveness failed " + s.fails + "× · restarting"); return; }
+      else if (++s.fails >= cfg.threshold) { restart(s, { en: "liveness failed " + s.fails + "× · restarting", es: "liveness falló " + s.fails + "× · reiniciando" }); return; }
     } else s.checkFailed = false;
   }
 
@@ -89,13 +90,13 @@ export function makeSim(options = {}, seed = 7) {
   sim.step = () => {
     const dt = DT;
     sim.t += dt;
-    if (!sim.warehouseUp && sim.t >= sim.warehouseUntil) { sim.warehouseUp = true; say("warehouse back"); }
+    if (!sim.warehouseUp && sim.t >= sim.warehouseUntil) { sim.warehouseUp = true; say({ en: "warehouse back", es: "volvió el almacén" }); }
     for (const s of shops) {
       s.phaseT += dt;
       if (running(s)) s.containerAge = (s.containerAge || 0) + dt; else s.containerAge = 0;
       if (s.phase === "down" && s.phaseT >= s.downFor) { startContainer(s); s.containerAge = 0; }
       if (s.phase === "boot" && s.phaseT >= cfg.boot) { s.phase = "warm"; s.phaseT = 0; }
-      if (s.phase === "warm" && s.phaseT >= cfg.warm) { s.phase = "run"; s.phaseT = 0; say("shop " + (s.i + 1) + " · stocked and running", s.i); }
+      if (s.phase === "warm" && s.phaseT >= cfg.warm) { s.phase = "run"; s.phaseT = 0; say({ en: "shop " + (s.i + 1) + " · stocked and running", es: "tienda " + (s.i + 1) + " · abastecida y funcionando" }, s.i); }
       if (s.phase === "run") { s.runFor = (s.runFor || 0) + dt; if (s.runFor > 60) s.inRow = 0; } else s.runFor = 0;
       if (running(s) && sim.t >= s.nextProbe) { s.nextProbe += cfg.period; probe(s); }
       // Readiness is probed on the same period; between probes the endpoint list keeps its last answer.

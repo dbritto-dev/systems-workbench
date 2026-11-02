@@ -2,6 +2,7 @@
 // the console's faders decide who sees it. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -159,7 +160,7 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label: "A theatre lighting console on a base plate. At the back, four stages stand for four app servers; each already holds the new show, dark until the console says otherwise. Requests ride a rail from a turnstile to the stages. Each stage keeps a cue card, its cached copy of the console's settings, and a dial that shows when it next fetches them along its cable. At the front, a rollout fader, a random or sticky toggle, a targeting knob, a refresh knob, a guarded kill switch and a bank of ten flag faders.",
+    label: t("A theatre lighting console on a base plate. At the back, four stages stand for four app servers; each already holds the new show, dark until the console says otherwise. Requests ride a rail from a turnstile to the stages. Each stage keeps a cue card, its cached copy of the console's settings, and a dial that shows when it next fetches them along its cable. At the front, a rollout fader, a random or sticky toggle, a targeting knob, a refresh knob, a guarded kill switch and a bank of ten flag faders.", "Una consola de iluminación de teatro sobre una base. Al fondo, cuatro escenarios representan cuatro servidores de la app; cada uno ya tiene el nuevo espectáculo, apagado hasta que la consola diga lo contrario. Las solicitudes viajan por un riel desde un torniquete hasta los escenarios. Cada escenario tiene una tarjeta de señales, su copia en caché de la configuración de la consola, y un dial que muestra cuándo vuelve a traerla por su cable. Al frente, un deslizador de lanzamiento, un selector aleatorio o fijo, una perilla de segmentación, una perilla de actualización, un kill switch con protección y un banco de diez deslizadores de flags."),
     body: [
       plate(),
       cables(),

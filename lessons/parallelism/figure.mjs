@@ -2,6 +2,7 @@
 // waiting to be picked up, one shared tool on a rack, and one packing station everything passes through.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) through the workbench layer.
 import * as k from "../../workbench/kit.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
 
 export const WIDTH = 700;
@@ -173,8 +174,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A workshop on a base plate. A foreman at a desk splits each job into chunks and sets them on a pallet. Workers at up to eight workbenches pick chunks up and work on them at the same time. One shared T-handled tool sits on a rack in the aisle and can only be used at one bench at a time; workers waiting for it drop tokens on a queue rail beside the rack. Every finished chunk goes to a single packing station, which merges them and presses the finished job alone.",
+      "Un taller sobre una placa base. Un capataz en un escritorio divide cada trabajo en bloques y los pone en un palé. Los trabajadores de hasta ocho bancos toman bloques y los trabajan al mismo tiempo. Una única herramienta compartida con mango en T está en un soporte del pasillo y solo se puede usar en un banco a la vez; los que la esperan dejan fichas en un riel de fila junto al soporte. Cada bloque terminado va a una sola estación de empaque, que los une y prensa el trabajo terminado sola."),
     body: [
       plate(),
       foreman(),
