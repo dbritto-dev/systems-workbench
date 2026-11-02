@@ -1,3 +1,7 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
+import { rng, exponential } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
+
 // Shared model for the figure and the experiments: a sorting station with a dispatcher in front of
 // up to five counters. Times are in seconds of figure time.
 export const SERVICE = 3;          // mean seconds a normal counter spends on an average parcel
@@ -5,8 +9,7 @@ export const TRANSFER = 0.6;       // seconds from the dispatcher to the counter
 export const SLOW = 3;             // a slow counter takes this many times longer
 export const MAX = 5;
 export const USERS = 20;
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
-const expo = (random, mean) => -Math.log(1 - random()) * mean;
+const expo = exponential;
 
 // opts: { servers, algorithm: "rr"|"lc"|"random", rate, slow (index or -1), check (s), sticky, sizes: "even"|"uneven", heavy (bool) }
 export function createStation(opts, seed = 1) {
@@ -120,6 +123,7 @@ export function createStation(opts, seed = 1) {
   return { st, step, kill, restart, set };
 }
 
+// The p-quantile as sorted[floor(p * n)] (not the shared percentile's floor(p * (n - 1))): the published numbers use it.
 export function percentile(values, p) {
   if (!values.length) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -144,10 +148,33 @@ export function runHeadless(opts, { seconds = 1200, warm = 120, seed = 1, events
 }
 
 export function average(opts, run = {}, seeds = [3, 5, 7, 11, 13, 17]) {
-  const runs = seeds.map((seed) => runHeadless(opts, { ...run, seed }));
-  const mean = (f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
+  return averageOver(seeds, (seed) => {
+    const r = runHeadless(opts, { ...run, seed });
+    return { p50: r.p50, p95: r.p95, errors: r.errors, served: r.served, busiest: Math.max(...r.util), quietest: Math.min(...r.util) };
+  });
+}
+
+// ---------- the experiments (computed at build time; the page used to run them in the browser on click) ----------
+const RUN = { seconds: 600 };
+const avg = (o) => average(o, RUN);
+// Failed parcels when counter 2 crashes at a random moment, averaged over 40 seeds.
+function crashErrors(check) {
+  let sum = 0, n = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const t = 20 + ((seed * 7.31) % 30);
+    sum += runHeadless({ servers: 4, rate: 0.9, check }, { seconds: 120, seed, events: [{ t, do: "kill", index: 1 }] }).errors; n++;
+  }
+  return sum / n;
+}
+export function experimentResults() {
+  const pick = ({ p50, p95, busiest, quietest }) => ({ p50, p95, busiest, quietest });
+  const uneven = { servers: 4, rate: 0.9, sizes: "uneven" }, heavy = { servers: 4, rate: 0.9, heavy: true };
+  const base = pick(avg({ servers: 4, rate: 0.9 }));
   return {
-    p50: mean((r) => r.p50), p95: mean((r) => r.p95), errors: mean((r) => r.errors), served: mean((r) => r.served),
-    busiest: mean((r) => Math.max(...r.util)), quietest: mean((r) => Math.min(...r.util)), runs,
+    add: { a: pick(avg({ servers: 3, rate: 0.9 })), b: base },
+    slow: { a: base, b: pick(avg({ servers: 4, rate: 0.9, slow: 0 })), c: pick(avg({ servers: 4, rate: 0.9, slow: 0, algorithm: "lc" })) },
+    uneven: { r: pick(avg({ ...uneven, algorithm: "random" })), a: pick(avg(uneven)), b: pick(avg({ ...uneven, algorithm: "lc" })) },
+    crash: { e30: crashErrors(30), e10: crashErrors(10), e2: crashErrors(2) },
+    sticky: { a: pick(avg(heavy)), b: pick(avg({ ...heavy, sticky: true })) },
   };
 }
