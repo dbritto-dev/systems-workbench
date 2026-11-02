@@ -9,6 +9,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, digitCounter, faceText, person } from "../../workbench/parts.mjs";
+import { t as bi } from "../../workbench/i18n.mjs";   // bi: t is a common local name here
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -98,8 +99,8 @@ function callStack(initial) {
   const out = [];
   // Pedestal with the two counters on its front.
   out.push(S(k.slabOf(PED, 0, PED_H, P, 4, 0.6), { tone: "mid" }));
-  out.push(text(-93, PED.y + PED.d, 3.2, "DEPTH", { size: 2.1, tone: "mid" }));
-  out.push(text(-72, PED.y + PED.d, 3.2, "DEEPEST", { size: 2.1, tone: "mid" }));
+  out.push(text(-93, PED.y + PED.d, 3.2, bi("DEPTH", "PROF."), { size: 2.1, tone: "mid" }));
+  out.push(text(-72, PED.y + PED.d, 3.2, bi("DEEPEST", "MÁXIMA"), { size: 2.1, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.depth, housing: false, name: "depth", value: initial.length }));
   out.push(digitCounter(P, { ...COUNTERS.deepest, housing: false, name: "deepest", value: initial.length }));
   // Backboard with a ruler of frame levels beside the stack, the limit marked.
@@ -123,7 +124,7 @@ function callStack(initial) {
   const shelf = { x: CS.x - 1.6, y: BACK.y + BACK.d, w: CS.w + 3.2, d: CS.front + 1.6 - (BACK.y + BACK.d), r: 1.2 };
   out.push(S(k.slabOf(shelf, CEIL_Z, 1.6, P, 3, 0.3), { tone: "mid" }));
   out.push(L(k.faceRectY(P, shelf.x + 2, shelf.x + shelf.w - 2, shelf.y + shelf.d, CEIL_Z + 0.4, CEIL_Z + 1.2), { tone: "faint" }));
-  out.push(text(shelf.x + shelf.w / 2, shelf.y + shelf.d, CEIL_Z + 0.35, "LIMIT", { size: 1.3, tone: "lo", anchor: "middle" }));
+  out.push(text(shelf.x + shelf.w / 2, shelf.y + shelf.d, CEIL_Z + 0.35, bi("LIMIT", "LÍMITE"), { size: 1.3, tone: "lo", anchor: "middle" }));
   out.push(`<g data-cs-posts>${[shelf.x + 0.9, shelf.x + shelf.w - 0.9].map((x) => S(k.cylinder(x, shelf.y + shelf.d - 0.9, 0.75, PED_H, CEIL_Z - PED_H, P, 12), { tone: "mid", crease: "none" })).join("")}</g>`);
   // The top-of-stack marker: a lit collar riding the front-right post, level with the top plate.
   const postX = shelf.x + shelf.w - 0.9, postY = shelf.y + shelf.d - 0.9;
@@ -148,7 +149,7 @@ function undoRedo(state) {
   out.push(S(k.slabOf(DOC, 2, DOC_H - 2, P, 3, 0.4), { tone: "mid" }));
   const fy = DOC.y + DOC.d;
   out.push(L(k.faceRectY(P, DOC.x + 3, DOC.x + DOC.w - 3, fy, 9, DOC_H - 3), { tone: "lo" }));
-  out.push(text(DOC.x + 4.5, fy, DOC_H - 6.4, "DOCUMENT", { size: 1.9, tone: "lo" }));
+  out.push(text(DOC.x + 4.5, fy, DOC_H - 6.4, bi("DOCUMENT", "DOCUMENTO"), { size: 1.9, tone: "lo" }));
   for (let s = 0; s < DOC_SLOTS; s++) {
     const x0 = DOC.x + 5 + s * 7.1;
     out.push(`<g data-doc="${s}"${hidden(s < state.doc.length)}>`
@@ -161,7 +162,7 @@ function undoRedo(state) {
   UR.forEach((p, i) => {
     const base = { x: p.x - 2, y: p.y - 2, w: p.w + 4, d: p.d + 5, r: 1.6 };
     out.push(S(k.slabOf(base, 0, UR_BASE_H, P, 3, 0.4), { tone: "mid" }));
-    out.push(text(p.cx, base.y + base.d, 0.9, i ? "REDO" : "UNDO", { size: 2.7, tone: "mid", anchor: "middle" }));
+    out.push(text(p.cx, base.y + base.d, 0.9, i ? bi("REDO", "REHACER") : bi("UNDO", "DESHACER"), { size: 2.7, tone: "mid", anchor: "middle" }));
     out.push(S(k.cylinder(p.x - 0.4, p.y - 0.4, 0.8, UR_BASE_H, urZ(UR_LIMIT) + 1 - UR_BASE_H, P, 12), { tone: "mid", crease: "none" }));
     out.push(S(k.cylinder(p.x + p.w + 0.4, p.y - 0.4, 0.8, UR_BASE_H, urZ(UR_LIMIT) + 1 - UR_BASE_H, P, 12), { tone: "mid", crease: "none" }));
     const pile = i ? state.redo : state.undo;
@@ -188,7 +189,7 @@ function server(state) {
   // Column: base with WAITING and OLDEST counters, three corner posts (front corner open).
   const base = { x: COL.x - 3, y: COL.y - 3, w: COL.w + 6, d: COL.d + 5, r: 1.4 };
   out.push(S(k.slabOf(base, 0, COL_BASE_H, P, 3, 0.4), { tone: "mid" }));
-  out.push(text(COUNTERS.waiting.x, base.y + base.d, 7.1, "WAITING", { size: 1.9, tone: "mid" }));
+  out.push(text(COUNTERS.waiting.x, base.y + base.d, 7.1, bi("WAITING", "EN ESPERA"), { size: 1.9, tone: "mid" }));
   const top = tkZ(TK_SHOW) + 2;
   for (const [x, y] of [[COL.x - 0.6, COL.y - 0.6], [COL.x + COL.w + 0.6, COL.y - 0.6], [COL.x - 0.6, COL.y + COL.d + 0.6]]) {
     out.push(S(k.cylinder(x, y, 0.7, COL_BASE_H, top - COL_BASE_H, P, 10), { tone: "mid", crease: "none" }));
@@ -200,7 +201,7 @@ function server(state) {
   out.push(digitCounter(P, { ...COUNTERS.waiting, housing: false, name: "waiting", value: state.tickets.length }));
   // Desk, the request in hand, and the grabber arm reaching from the desk to the column.
   out.push(S(k.slabOf(DESK, 0, DESK_H, P, 4, 0.6), { tone: "mid" }));
-  out.push(text(COUNTERS.oldest.x + 11, DESK.y + DESK.d, 4.2, "OLDEST WAIT, s", { size: 1.9, tone: "mid" }));
+  out.push(text(COUNTERS.oldest.x + 11, DESK.y + DESK.d, 4.2, bi("OLDEST WAIT, s", "ESPERA MÁX., s"), { size: 1.9, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.oldest, housing: false, name: "oldest", value: 3 }));
   out.push(`<g data-work${hidden(state.working)}>${S(k.slabOf(WORK, DESK_H, TK_TH, P, 2, 0.2), { tone: "hi", crease: "lo", lit: true })}</g>`);
   out.push(`<g data-work-stale style="display:none">${S(k.slabOf(WORK, DESK_H, TK_TH, P, 2, 0.2), { tone: "hi", crease: "lo" })}</g>`);
@@ -215,7 +216,7 @@ function server(state) {
     out.push(L(k.planOutline(k.insetPlan(t, 1.4), TRAY_H, P), { tone: "lo" }));
     for (let s = 0; s < TRAY_SHOW; s++) out.push(`<g data-tray="${i}-${s}"${hidden(s < state.trays[i])}${i ? " data-stale" : ""}>${S(k.slabOf({ x: t.x + 4.5, y: t.y + 2.4, w: 13, d: 10, r: 0.6 }, TRAY_H + s * 1.3, 1.1, P, 2), { tone: "hi", crease: "lo" })}</g>`);
     out.push(digitCounter(P, { ...(i ? COUNTERS.late : COUNTERS.onTime), housing: false, name: (i ? "late" : "onTime"), value: state.trays[i] * 7 }));
-    out.push(text(t.x + 3, t.y + t.d, 6.5, i ? "TOO LATE" : "IN TIME", { size: 1.9, tone: "mid" }));
+    out.push(text(t.x + 3, t.y + t.d, 6.5, i ? bi("TOO LATE", "TARDE") : bi("IN TIME", "A TIEMPO"), { size: 1.9, tone: "mid" }));
   });
   return out.join("");
 }
@@ -236,8 +237,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: bi(
       "Three stacks on one base plate. Left: a tall tower of labelled plates, the call stack, with a collar on a corner post that marks the top plate, a ruler of levels on the backboard and a shelf at the limit, with a warning lamp on top. Middle: a document board with letter tiles, and two short towers of letter plates for undo and redo, with a bin for thrown-away redo plates. Right: a column of waiting requests, newest on top, a clerk at a desk whose grabber takes either the top or the bottom request, and two trays for requests finished in time and too late.",
+      "Tres pilas sobre una placa base. A la izquierda, una torre alta de platos con etiqueta, la pila de llamadas, con un collar en un poste de la esquina que marca el plato de arriba, una regla de niveles en el respaldo y un estante en el límite, con una lámpara de aviso encima. En el medio, un tablero de documento con fichas de letras y dos torres cortas de platos con letras para deshacer y rehacer, con un cesto para los platos de rehacer descartados. A la derecha, una columna de solicitudes en espera, la más nueva arriba, un empleado en un escritorio cuya pinza toma la solicitud de arriba o la de abajo, y dos bandejas para las solicitudes terminadas a tiempo y tarde.",
+    ),
     body: [plate(), undoRedo(FIRST.editor), callStack(FIRST.stack), server(FIRST.server)],
   });
 }
