@@ -1,8 +1,12 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments. Times are in seconds of figure time.
 // A ticket office: one window with a few service slots. A fixed crowd of regular clients
 // comes back again and again; a trigger sends a rush of one-off visitors at once.
 // Every attempt is a ticket in the line. A client that times out walks away and leaves
 // its ticket behind: the window still serves it later (wasted work).
+import { rng } from "../../lib/random";
+import { meanBy } from "../../lib/stats";
+
 export const DEFAULTS = {
   regulars: 17,     // clients who keep coming back
   rush: 16,         // one-off visitors the trigger sends at once
@@ -20,8 +24,6 @@ export const DEFAULTS = {
   dt: 0.05,
 };
 export const BUDGET = { perRequest: 0.1, max: 4 };
-
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 export function backoffDelay(cfg, n, random) {
   if (cfg.backoff !== "exp") return 0;
@@ -160,7 +162,7 @@ export function runHeadless(options = {}, seed = 7, { warm = 40, after = 120, tr
   const delta = Object.fromEntries(Object.keys(o.counts).map((k) => [k, o.counts[k] - before[k]]));
   const bins = o.bins.slice(Math.floor(t0), Math.floor(t0 + after));
   const baseBins = o.bins.slice(10, Math.floor(warm));
-  const baseline = baseBins.reduce((s, b) => s + b.attempts, 0) / baseBins.length;
+  const baseline = meanBy(baseBins, (b) => b.attempts);
   let lastTimeout = -1;
   bins.forEach((b, i) => { if (b.timeouts) lastTimeout = i; });
   const recovered = lastTimeout < after - 20;
@@ -181,11 +183,26 @@ export function runHeadless(options = {}, seed = 7, { warm = 40, after = 120, tr
 
 export function average(options, seeds = [3, 5, 7, 11, 13, 17], run = {}) {
   const runs = seeds.map((seed) => runHeadless(options, seed, run));
-  const mean = (f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
+  const mean = (f) => meanBy(runs, f);
   return {
     runs,
     peak: mean((r) => r.peak), recovery: mean((r) => r.recovery), recoveredShare: mean((r) => (r.recovered ? 1 : 0)),
     attemptsPerRequest: mean((r) => r.attemptsPerRequest), goodputShare: mean((r) => r.goodputShare), goodputRate: mean((r) => r.goodputRate),
     load: mean((r) => r.load), baseline: mean((r) => r.baseline), failed: mean((r) => r.failed), wasted: mean((r) => r.wasted),
+  };
+}
+
+// ---------- experiments (run at build time; the page shows the results) ----------
+const SEEDS = Array.from({ length: 16 }, (_, i) => i * 7 + 3);
+const BASE = { retries: 3, backoff: "none", jitter: false, timeout: 3, layers: 1, budget: false };
+// The averages without the per-run detail, which the page doesn't show.
+const avg = (o, run) => { const { runs, ...rest } = average({ ...BASE, ...o }, SEEDS, run); return rest; };
+export function experimentResults() {
+  return {
+    retry: { a: avg({ retries: 0 }), b: avg({}) },
+    backoff: { a: avg({}), b: avg({ backoff: "exp" }) },
+    jitter: { a: avg({ backoff: "exp" }), b: avg({ backoff: "exp", jitter: true }) },
+    timeout: { a: avg({}, { trigger: false }), b: avg({ timeout: 0.8 }, { trigger: false }) },
+    layers: { a: avg({}), b: avg({ layers: 3 }), c: avg({ layers: 3, budget: true }) },
   };
 }
