@@ -7,6 +7,16 @@ const WB = (() => {
   /*@digits*/
   const geoOf = (el) => JSON.parse(el.getAttribute("data-geo"));
 
+  // Language. lang() is "en" or "es" (set before paint by the page head). L(v) picks the current language
+  // from a { en, es } value (plain strings pass through); L(en, es) does the same for a pair.
+  // onLang(fn) runs fn(lang) after the reader switches, so live text can be redrawn.
+  const lang = () => (document.documentElement.getAttribute("data-lang") === "es" ? "es" : "en");
+  const L = (v, es) => {
+    if (es !== undefined) return lang() === "es" ? es : v;
+    return v != null && typeof v === "object" && "en" in v ? v[lang()] : v;
+  };
+  const onLang = (fn) => document.addEventListener("wb-lang", (e) => fn(e.detail));
+
   // Live parts drawn by parts.mjs. Each finds its element by name inside root (the figure's svg).
   // counter: a digitCounter; set(v) redraws only the wheels whose digit changed.
   function counter(root, name, P) {
@@ -77,19 +87,27 @@ const WB = (() => {
         if (card.hasAttribute("data-done")) return;
         picked = Number(c.dataset.choice);
         choices.forEach((x) => x.setAttribute("aria-pressed", String(x === c)));
-        runBtn.disabled = false; runBtn.textContent = "Run the experiment";
+        runBtn.disabled = false; runBtn.textContent = L("Run the experiment", "Ejecutar el experimento");
       }));
       runBtn.addEventListener("click", () => {
         if (picked === null) return;
         const out = runs[exp.id]();
         const right = picked === exp.answer;
         choices.forEach((x, j) => { x.disabled = true; if (j === exp.answer) x.dataset.verdict = "right"; else if (j === picked) x.dataset.verdict = "wrong"; });
-        card.querySelector("[data-outcome]").textContent = (right ? "Your prediction held. " : "Not what you predicted. ") + out.verdict;
-        card.querySelector("[data-bars]").innerHTML = out.bars.map(([label, share, text, after]) => '<div class="bar"' + (after ? " data-after" : "") + "><span>" + label + '</span><span class="track"><span class="fill" style="width:0"></span></span><b>' + text + "</b></div>").join("");
+        card.querySelector("[data-bars]").innerHTML = out.bars.map(([label, share, text, after]) => '<div class="bar"' + (after ? " data-after" : "") + '><span data-bar-label></span><span class="track"><span class="fill" style="width:0"></span></span><b data-bar-text></b></div>').join("");
+        const words = () => {
+          card.querySelector("[data-outcome]").textContent = (right ? L("Your prediction held. ", "Tu predicción se cumplió. ") : L("Not what you predicted. ", "No es lo que predijiste. ")) + L(out.verdict);
+          card.querySelectorAll("[data-bar-label]").forEach((el, i) => { el.textContent = L(out.bars[i][0]); });
+          card.querySelectorAll("[data-bar-text]").forEach((el, i) => { el.textContent = L(out.bars[i][2]); });
+          runBtn.textContent = L("Done", "Listo");
+        };
+        words();
+        onLang(words);
         card.setAttribute("data-done", "");
-        runBtn.disabled = true; runBtn.textContent = "Done";
+        runBtn.disabled = true;
         requestAnimationFrame(() => requestAnimationFrame(() => card.querySelectorAll(".fill").forEach((f, i) => { f.style.width = Math.max(1, Math.round(100 * out.bars[i][1])) + "%"; })));
       });
+      onLang(() => { if (picked !== null && !card.hasAttribute("data-done")) runBtn.textContent = L("Run the experiment", "Ejecutar el experimento"); });
       const watchBtn = card.querySelector("[data-watch]");
       if (watchBtn && watch) watchBtn.addEventListener("click", () => {
         watch(exp);
@@ -99,5 +117,5 @@ const WB = (() => {
     });
   }
 
-  return { faceRectY, faceRectX, still, loop, pressSeg, onSegments, experiments, counter, dial, meter, pose, digitsOf };
+  return { faceRectY, faceRectX, still, loop, pressSeg, onSegments, experiments, counter, dial, meter, pose, digitsOf, lang, L, onLang };
 })();

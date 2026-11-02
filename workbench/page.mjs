@@ -3,6 +3,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as k from "./kit.mjs";
 import { PARTS_CSS, LIT_FILL_PAGE_CSS } from "./parts.mjs";
+import { t, isT, tx, ariaLabel, titleTag, LANG_CSS, LANG_HEAD, LANG_SCRIPT, langSwitchHtml } from "./i18n.mjs";
+export { t, tx } from "./i18n.mjs";
 
 export const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -93,6 +95,7 @@ footer{margin-top:72px;padding-top:16px;border-top:1px solid var(--anatomy-faint
 footer a{color:inherit}
 .theme-switch{display:flex;justify-content:flex-end;margin:-36px 0 18px}
 .theme-switch .seg{display:flex}
+.theme-switch .lang-seg{margin-right:10px}
 .theme-switch button{appearance:none;border:1px solid var(--anatomy-lo);background:transparent;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:11px;letter-spacing:.06em;padding:5px 10px;min-height:28px;cursor:pointer;line-height:1.2}
 .theme-switch button+button{margin-left:-1px}
 .theme-switch button:hover{color:var(--anatomy-strong);border-color:var(--anatomy-hi);position:relative;z-index:2}
@@ -112,7 +115,7 @@ footer a{color:inherit}
 
 // ---------- theme switch (Auto / Light / Dark, remembered per browser) ----------
 const THEME_HEAD = `<script>(function(){try{var t=localStorage.getItem("workbench-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>`;
-const THEME_SWITCH = `<div class="theme-switch" data-theme-switch><div class="seg" role="group" aria-label="Theme"><button type="button" data-theme-choice="auto">Auto</button><button type="button" data-theme-choice="light">Light</button><button type="button" data-theme-choice="dark">Dark</button></div></div>`;
+const THEME_SWITCH = `<div class="theme-switch" data-theme-switch>${langSwitchHtml()}<div class="seg" role="group" ${ariaLabel(t("Theme", "Tema"))}><button type="button" data-theme-choice="auto">Auto</button><button type="button" data-theme-choice="light">${tx(t("Light", "Claro"))}</button><button type="button" data-theme-choice="dark">${tx(t("Dark", "Oscuro"))}</button></div></div>`;
 const THEME_SCRIPT = `<script>(function(){
 var root=document.documentElement,buttons=document.querySelectorAll("[data-theme-choice]");
 function current(){var t=root.getAttribute("data-theme");return t==="light"||t==="dark"?t:"auto";}
@@ -125,20 +128,20 @@ mark();})();</script>`;
 
 // ---------- pieces ----------
 // A segmented control. options: [[value, label], ...]; current is the pressed value.
-export const seg = (name, label, options, current) => `<div class="control"><span>${label}</span><div class="seg" role="group" aria-label="${label}">${options.map(([value, text]) => `<button type="button" data-set="${name}" data-value="${value}" aria-pressed="${String(value) === String(current)}">${text}</button>`).join("")}</div></div>`;
+export const seg = (name, label, options, current) => `<div class="control"><span>${tx(label)}</span><div class="seg" role="group" ${ariaLabel(label)}>${options.map(([value, text]) => `<button type="button" data-set="${name}" data-value="${value}" aria-pressed="${String(value) === String(current)}">${tx(text)}</button>`).join("")}</div></div>`;
 
 // The speed control every lesson has.
-export const speedSeg = (options = [[0.5, "×0.5"], [1, "×1"], [3, "×3"], [8, "×8"]], current = 1) => seg("speed", "Speed", options, current);
+export const speedSeg = (options = [[0.5, "×0.5"], [1, "×1"], [3, "×3"], [8, "×8"]], current = 1) => seg("speed", t("Speed", "Velocidad"), options, current);
 
 // A row of action buttons. buttons: [[act, label], ...] → <button data-act="act">.
-export const actions = (label, buttons) => `<div class="control"><span>${label}</span><div class="actions">
-      ${buttons.map(([act, text]) => `<button class="btn" type="button" data-act="${act}">${text}</button>`).join("\n      ")}
+export const actions = (label, buttons) => `<div class="control"><span>${tx(label)}</span><div class="actions">
+      ${buttons.map(([act, text]) => `<button class="btn" type="button" data-act="${act}">${tx(text)}</button>`).join("\n      ")}
     </div></div>`;
 
 // The stats strip and controls panel under the figure. stats: [[key, label, initial], ...] → <b data-s="key">.
 export const panel = ({ stats, controls }) => `<div class="panel">
   <div class="stats" data-stats>
-${stats.map(([key, label, initial = "0"]) => `    <div class="stat"><b data-s="${key}">${initial}</b><span>${label}</span></div>`).join("\n")}
+${stats.map(([key, label, initial = "0"]) => `    <div class="stat"><b data-s="${key}">${tx(initial)}</b><span>${tx(label)}</span></div>`).join("\n")}
   </div>
   <div class="controls">
     ${controls.join("\n    ")}
@@ -146,23 +149,29 @@ ${stats.map(([key, label, initial = "0"]) => `    <div class="stat"><b data-s="$
 </div>`;
 
 // The figure card. stage: attributes for the focusable stage div (e.g. 'data-office aria-label="…"').
-export const figurePlate = ({ fig = "Fig 1", title, hint = "Space pauses", readout = "starting", keys, caption, stage, svg }) =>
-  k.plateHtml({ fig, title, hint, readout, keys, caption, body: `<div class="iso-stage" ${stage} tabindex="0">${svg}</div>` });
+// Any of fig, title, hint, readout, caption and key labels may be t(en, es). The kit escapes plate text, so
+// bilingual values go in as tokens and come back out as language spans.
+export const figurePlate = ({ fig = "Fig 1", title, hint = t("Space pauses", "Espacio pausa"), readout = t("starting", "iniciando"), keys, caption, stage, svg }) => {
+  const held = [];
+  const tok = (v) => (isT(v) ? (held.push(v), `@@WBT${held.length - 1}@@`) : v);
+  const html = k.plateHtml({ fig: tok(fig), title: tok(title), hint: tok(hint), readout: tok(readout), keys: keys && keys.map((key) => ({ ...key, label: tok(key.label) })), caption: tok(caption), body: `<div class="iso-stage" ${stage} tabindex="0">${svg}</div>` });
+  return html.replace(/@@WBT(\d+)@@/g, (_, i) => tx(held[i], true));
+};
 
 export const experimentsHtml = (list) => list.map((e, i) => `<article class="exp" data-exp="${e.id}">
-  <div class="exp-head"><h3>${i + 1}. ${esc(e.title)}</h3><span class="eyebrow">Experiment ${i + 1} of ${list.length}</span></div>
-  <div class="exp-change">${esc(e.change)}</div>
-  <div class="exp-q">${esc(e.question)}</div>
-  <div class="choices" role="group" aria-label="Your prediction">${e.options.map((o, j) => `<button type="button" class="choice" data-choice="${j}" aria-pressed="false"><span class="mark">${"ABCDE"[j]}</span><span>${esc(o)}</span></button>`).join("")}</div>
-  <div class="actions"><button class="btn primary" type="button" data-run disabled>Pick a prediction, then run</button><button class="btn" type="button" data-watch>Watch it in the figure</button></div>
+  <div class="exp-head"><h3>${i + 1}. ${tx(e.title, true)}</h3><span class="eyebrow">${tx(t(`Experiment ${i + 1} of ${list.length}`, `Experimento ${i + 1} de ${list.length}`))}</span></div>
+  <div class="exp-change">${tx(e.change, true)}</div>
+  <div class="exp-q">${tx(e.question, true)}</div>
+  <div class="choices" role="group" ${ariaLabel(t("Your prediction", "Tu predicción"))}>${e.options.map((o, j) => `<button type="button" class="choice" data-choice="${j}" aria-pressed="false"><span class="mark">${"ABCDE"[j]}</span><span>${tx(o, true)}</span></button>`).join("")}</div>
+  <div class="actions"><button class="btn primary" type="button" data-run disabled>${tx(t("Pick a prediction, then run", "Elige una predicción y ejecuta"))}</button><button class="btn" type="button" data-watch>${tx(t("Watch it in the figure", "Míralo en la figura"))}</button></div>
   <div class="result" aria-live="polite">
     <div class="verdict" data-outcome></div>
     <div class="bars" data-bars></div>
-    <p>${esc(e.why)}</p>
+    <p>${tx(e.why, true)}</p>
   </div>
 </article>`).join("");
 
-export const questionsHtml = (list) => list.map(([q, a], i) => `<details><summary><span class="n">Q${i + 1}</span><span>${esc(q)}</span></summary><div class="answer"><span class="eyebrow">A good answer covers</span>${esc(a)}</div></details>`).join("");
+export const questionsHtml = (list) => list.map(([q, a], i) => `<details><summary><span class="n">${tx(t(`Q${i + 1}`, `P${i + 1}`))}</span><span>${tx(q, true)}</span></summary><div class="answer"><span class="eyebrow">${tx(t("A good answer covers", "Una buena respuesta cubre"))}</span>${tx(a, true)}</div></details>`).join("");
 
 // What the browser needs before the lesson's own script: the kit, then the shared WB helpers.
 // The kit, then the WB helpers. digits.mjs is inlined inside WB's scope, so its names never clash with a lesson's.
@@ -180,40 +189,40 @@ export function renderPage({
   machine,          // { intro, figure, panel }
   predict,          // { intro, experiments }
   explain = {},     // { intro, questions }
-  footer = `Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson.`,
+  footer = t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson.`, `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección.`),
   css = "",         // figure-specific CSS
   script,           // the lesson's live code (runs after clientScript)
   litFill = true,   // lit solids fill (black in light, white in dark); opt a solid out with data-lit-outline
 }) {
-  const explainIntro = explain.intro ?? `Answer out loud or in writing before opening each one. These work well as a pairing exercise: one person explains, the other asks "why?" twice.`;
+  const explainIntro = explain.intro ?? t(`Answer out loud or in writing before opening each one. These work well as a pairing exercise: one person explains, the other asks "why?" twice.`, `Responde en voz alta o por escrito antes de abrir cada una. Funcionan bien en pareja: una persona explica y la otra pregunta "¿por qué?" dos veces.`);
   const body = `<main class="page">${THEME_SWITCH}
   <header>
-    <div class="eyebrow">${eyebrow}</div>
-    <h1>${title}</h1>
-    <p class="lede">${lede}</p>
-    <ul class="parts"><li><a href="#machine">1 · The machine</a></li><li><a href="#predict">2 · Predict, then run</a></li><li><a href="#explain">3 · Explain it back</a></li></ul>
+    <div class="eyebrow">${tx(eyebrow)}</div>
+    <h1>${tx(title)}</h1>
+    <p class="lede">${tx(lede)}</p>
+    <ul class="parts"><li><a href="#machine">${tx(t("1 · The machine", "1 · La máquina"))}</a></li><li><a href="#predict">${tx(t("2 · Predict, then run", "2 · Predice y ejecuta"))}</a></li><li><a href="#explain">${tx(t("3 · Explain it back", "3 · Explícalo"))}</a></li></ul>
   </header>
 
   <section id="machine">
-    <div class="section-head"><span class="eyebrow">01</span><h2>The machine</h2><p>${machine.intro}</p></div>
+    <div class="section-head"><span class="eyebrow">01</span><h2>${tx(t("The machine", "La máquina"))}</h2><p>${tx(machine.intro)}</p></div>
     ${machine.figure}
     ${machine.panel}
   </section>
 
   <section id="predict">
-    <div class="section-head"><span class="eyebrow">02</span><h2>Predict, then run</h2><p>${predict.intro}</p></div>
+    <div class="section-head"><span class="eyebrow">02</span><h2>${tx(t("Predict, then run", "Predice y ejecuta"))}</h2><p>${tx(predict.intro)}</p></div>
     ${experimentsHtml(predict.experiments)}
   </section>
 
   <section id="explain">
-    <div class="section-head"><span class="eyebrow">03</span><h2>Explain it back</h2><p>${explainIntro}</p></div>
+    <div class="section-head"><span class="eyebrow">03</span><h2>${tx(t("Explain it back", "Explícalo"))}</h2><p>${tx(explainIntro)}</p></div>
     ${questionsHtml(explain.questions)}
   </section>
 
-  <footer>${footer}</footer>
+  <footer>${tx(footer)}</footer>
 </main>`;
   const code = (clientScript() + script).replace(/<\/(script)/gi, "<\\/$1");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>${esc(title)}</title>${THEME_HEAD}<style>${k.ISO_CSS}${THEME_CSS}${PAGE_CSS}${PARTS_CSS}${LIT_FILL_PAGE_CSS}${css}</style></head><body class="iso${litFill ? " lit-fill" : ""}">${body}<script type="module">${code}</script>${THEME_SCRIPT}</body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">${titleTag(title)}${THEME_HEAD}${LANG_HEAD}<style>${k.ISO_CSS}${THEME_CSS}${PAGE_CSS}${PARTS_CSS}${LIT_FILL_PAGE_CSS}${LANG_CSS}${css}</style></head><body class="iso${litFill ? " lit-fill" : ""}">${body}<script type="module">${code}</script>${THEME_SCRIPT}${LANG_SCRIPT}</body></html>`;
 }
 
 export function writePage(url, options) {
