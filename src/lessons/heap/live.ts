@@ -1,12 +1,11 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The triage room in the browser: runs the clinic, replays each heap operation on the figure one move at a time,
 // wires the controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, results).
-import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls } from "../../runtime/dom";
+import { readout, stats, show, act, pauseControls, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
-import { pct } from "../../lib/format";
+import { pct, int } from "../../lib/format";
 import { makeClinic } from "./sim";
 
 export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOTS, FIRST, RAIL_Y, R, EXPERIMENTS }) {
@@ -15,12 +14,8 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
   const q = (s) => svg.querySelector(s);
   const say = readout();
   const ease = smoothstep;
-  const setText = (el, s) => { s = String(s); if (el.textContent !== s) el.textContent = s; };
-  const setLit = (g, on) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", on));
-  const place = (el, p) => el.setAttribute("transform", translateAlong(P, p));
 
   const dials = Object.fromEntries(Object.keys(COUNTERS).map((n) => [n, WB.counter(svg, n, P)]));
-  const wheel = (name, v) => dials[name].set(Math.max(0, Math.min(Math.floor(v), 10 ** COUNTERS[name].count - 1)));
   const stat = stats();
 
   const nodes = Array.from({ length: SLOTS }, (_, i) => ({ g: q('[data-node="' + i + '"]'), label: q('[data-node-label="' + i + '"]') }));
@@ -114,12 +109,12 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
     cur.t += dt;
     const p = Math.min(1, cur.d ? cur.t / cur.d : 1);
     if (cur.kind === "swap") {
-      if (cur.d) { place(fly.a.g, arc(at(cur.i), at(cur.j), p, 4)); place(fly.b.g, arc(at(cur.j), at(cur.i), p, -2)); }
-    } else place(fly.a.g, arc(cur.from, cur.dest, p, cur.kind === "lift" ? 10 : 8));
+      if (cur.d) { WB.place(fly.a.g, P, arc(at(cur.i), at(cur.j), p, 4)); WB.place(fly.b.g, P, arc(at(cur.j), at(cur.i), p, -2)); }
+    } else WB.place(fly.a.g, P, arc(cur.from, cur.dest, p, cur.kind === "lift" ? 10 : 8));
     if (p >= 1) { finish(cur); cur = null; }
   }
   function numbers() {
-    wheel("waiting", c.heap.size()); wheel("swaps", lastSwaps); wheel("oldest", c.oldest(2));
+    dials.waiting.setClamped(c.heap.size()); dials.swaps.setClamped(lastSwaps); dials.oldest.setClamped(c.oldest(2));
     stat("swaps", lastSwaps);
     stat("avgSwaps", c.ops ? (c.swapSum / c.ops).toFixed(2) : "–");
     stat("waiting", c.heap.size());
@@ -166,7 +161,6 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
 
   // ---------- experiments ----------
   const s1 = (x) => x.toFixed(1) + " s";
-  const n0 = (x) => Math.round(x).toLocaleString("en");   // thousands separators, unlike the shared n0
   const RUNS = {
     order: () => {
       const f = R.order.fifo, p = R.order.prio, top = Math.max(f.routine, p.routine);
@@ -178,24 +172,24 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
     },
     starve: () => {
       const p = R.starve.prio, a = R.starve.aging;
-      return { verdict: T("Strict priority: the oldest routine job waited " + n0(p.oldestRoutine) + " s of the 600, and only " + pct(p.routineServed) + " of routine jobs were served. Aging: oldest " + n0(a.oldestRoutine) + " s, " + pct(a.routineServed) + " served; urgent jobs' average wait went from " + s1(p.urgent) + " to " + s1(a.urgent) + ".",
-          "Prioridad estricta: el trabajo de rutina más antiguo esperó " + n0(p.oldestRoutine) + " s de los 600, y solo se atendió el " + pct(p.routineServed) + " de los de rutina. Aging: el más antiguo, " + n0(a.oldestRoutine) + " s, y se atendió el " + pct(a.routineServed) + "; la espera promedio de los urgentes pasó de " + s1(p.urgent) + " a " + s1(a.urgent) + "."),
-        bars: [[T("Oldest routine wait, strict", "Rutina más antigua, estricta"), p.oldestRoutine / 600, n0(p.oldestRoutine) + " s"], [T("Oldest routine wait, aging", "Rutina más antigua, aging"), a.oldestRoutine / 600, n0(a.oldestRoutine) + " s", true],
+      return { verdict: T("Strict priority: the oldest routine job waited " + int(p.oldestRoutine) + " s of the 600, and only " + pct(p.routineServed) + " of routine jobs were served. Aging: oldest " + int(a.oldestRoutine) + " s, " + pct(a.routineServed) + " served; urgent jobs' average wait went from " + s1(p.urgent) + " to " + s1(a.urgent) + ".",
+          "Prioridad estricta: el trabajo de rutina más antiguo esperó " + int(p.oldestRoutine) + " s de los 600, y solo se atendió el " + pct(p.routineServed) + " de los de rutina. Aging: el más antiguo, " + int(a.oldestRoutine) + " s, y se atendió el " + pct(a.routineServed) + "; la espera promedio de los urgentes pasó de " + s1(p.urgent) + " a " + s1(a.urgent) + "."),
+        bars: [[T("Oldest routine wait, strict", "Rutina más antigua, estricta"), p.oldestRoutine / 600, int(p.oldestRoutine) + " s"], [T("Oldest routine wait, aging", "Rutina más antigua, aging"), a.oldestRoutine / 600, int(a.oldestRoutine) + " s", true],
           [T("Urgent average wait, strict", "Urgentes en promedio, estricta"), p.urgent / 600, s1(p.urgent)], [T("Urgent average wait, aging", "Urgentes en promedio, aging"), a.urgent / 600, s1(a.urgent), true]] };
     },
     grow: () => {
       const a = R.grow.small, b = R.grow.big;
-      return { verdict: T("Serving the top: " + a.pop.toFixed(1) + " swaps at 1,000 jobs (" + a.levels + " levels), " + b.pop.toFixed(1) + " at 1,000,000 (" + b.levels + " levels). A new job climbed " + a.push.toFixed(1) + " and " + b.push.toFixed(1) + " levels on average. A sorted list shifts " + n0(a.shifts) + " and " + n0(b.shifts) + " items per insert.",
-          "Atender el de arriba: " + a.pop.toFixed(1) + " intercambios con 1,000 trabajos (" + a.levels + " niveles), " + b.pop.toFixed(1) + " con 1,000,000 (" + b.levels + " niveles). Un trabajo nuevo subió " + a.push.toFixed(1) + " y " + b.push.toFixed(1) + " niveles en promedio. Una lista ordenada desplaza " + n0(a.shifts) + " y " + n0(b.shifts) + " elementos por inserción."),
+      return { verdict: T("Serving the top: " + a.pop.toFixed(1) + " swaps at 1,000 jobs (" + a.levels + " levels), " + b.pop.toFixed(1) + " at 1,000,000 (" + b.levels + " levels). A new job climbed " + a.push.toFixed(1) + " and " + b.push.toFixed(1) + " levels on average. A sorted list shifts " + int(a.shifts) + " and " + int(b.shifts) + " items per insert.",
+          "Atender el de arriba: " + a.pop.toFixed(1) + " intercambios con 1,000 trabajos (" + a.levels + " niveles), " + b.pop.toFixed(1) + " con 1,000,000 (" + b.levels + " niveles). Un trabajo nuevo subió " + a.push.toFixed(1) + " y " + b.push.toFixed(1) + " niveles en promedio. Una lista ordenada desplaza " + int(a.shifts) + " y " + int(b.shifts) + " elementos por inserción."),
         bars: [[T("Heap, serve, 1,000", "Heap, atender, 1,000"), a.pop / b.levels, a.pop.toFixed(1)], [T("Heap, serve, 1,000,000", "Heap, atender, 1,000,000"), b.pop / b.levels, b.pop.toFixed(1), true],
-          [T("Sorted list, insert, 1,000", "Lista ordenada, insertar, 1,000"), a.shifts / b.shifts, n0(a.shifts)], [T("Sorted list, insert, 1,000,000", "Lista ordenada, insertar, 1,000,000"), 1, n0(b.shifts), true]] };
+          [T("Sorted list, insert, 1,000", "Lista ordenada, insertar, 1,000"), a.shifts / b.shifts, int(a.shifts)], [T("Sorted list, insert, 1,000,000", "Lista ordenada, insertar, 1,000,000"), 1, int(b.shifts), true]] };
     },
     topk: () => {
       const r = R.topk;
-      return { verdict: T("A min-heap of " + r.k + " kept the ten best of " + n0(r.n) + " scores: the root was replaced " + r.replaced + " times, about " + n0(r.comparisons) + " comparisons in all, same top ten as sorting everything (about " + n0(r.sortComparisons) + " comparisons, and all " + n0(r.n) + " scores in memory).",
-          "Un min-heap de " + r.k + " guardó los diez mejores de " + n0(r.n) + " puntajes: la raíz se reemplazó " + r.replaced + " veces, unas " + n0(r.comparisons) + " comparaciones en total, los mismos diez que ordenando todo (unas " + n0(r.sortComparisons) + " comparaciones, y los " + n0(r.n) + " puntajes en memoria)."),
-        bars: [[T("Comparisons, min-heap of 10", "Comparaciones, min-heap de 10"), r.comparisons / r.sortComparisons, n0(r.comparisons), true], [T("Comparisons, sort all", "Comparaciones, ordenar todo"), 1, n0(r.sortComparisons)],
-          [T("Items kept, min-heap", "Elementos guardados, min-heap"), r.k / r.n, String(r.k), true], [T("Items kept, sort all", "Elementos guardados, ordenar todo"), 1, n0(r.n)]] };
+      return { verdict: T("A min-heap of " + r.k + " kept the ten best of " + int(r.n) + " scores: the root was replaced " + r.replaced + " times, about " + int(r.comparisons) + " comparisons in all, same top ten as sorting everything (about " + int(r.sortComparisons) + " comparisons, and all " + int(r.n) + " scores in memory).",
+          "Un min-heap de " + r.k + " guardó los diez mejores de " + int(r.n) + " puntajes: la raíz se reemplazó " + r.replaced + " veces, unas " + int(r.comparisons) + " comparaciones en total, los mismos diez que ordenando todo (unas " + int(r.sortComparisons) + " comparaciones, y los " + int(r.n) + " puntajes en memoria)."),
+        bars: [[T("Comparisons, min-heap of 10", "Comparaciones, min-heap de 10"), r.comparisons / r.sortComparisons, int(r.comparisons), true], [T("Comparisons, sort all", "Comparaciones, ordenar todo"), 1, int(r.sortComparisons)],
+          [T("Items kept, min-heap", "Elementos guardados, min-heap"), r.k / r.n, String(r.k), true], [T("Items kept, sort all", "Elementos guardados, ordenar todo"), 1, int(r.n)]] };
     },
     ties: () => {
       const a = R.ties.plain.join(", "), b = R.ties.seq.join(", ");

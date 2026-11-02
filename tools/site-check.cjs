@@ -28,7 +28,7 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       const before = await page.$eval(".iso-stage svg", (s) => s.innerHTML.length);
       await page.waitForTimeout(1500);
       // The live code writes the readout as soon as it runs; the static page says "starting" / "iniciando".
-      const loaded = await page.$eval("[data-readout]", (el) => !/^(starting|iniciando)$/.test(el.textContent.trim()));
+      const loaded = await page.waitForFunction(() => !/^(starting|iniciando)$/.test(document.querySelector("[data-readout]").textContent.trim()), null, { timeout: 6000 }).then(() => true, () => false);
       if (!loaded) fail(where, "live code never ran (readout still at its initial text)");
       // Run every experiment with the first prediction.
       const cards = await page.$$("[data-exp]");

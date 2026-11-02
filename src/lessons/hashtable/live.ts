@@ -2,12 +2,11 @@
 // The pigeonhole rack in the browser: inserts keys and looks some up on the same table model the experiments use,
 // animating each trace (stamp, shuttle, compares or probes, the card dropping in, the rack doubling), and wires the
 // controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, results).
-import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats as statsStrip, show, act, pauseControls } from "../../runtime/dom";
+import { readout, stats as statsStrip, show, act, pauseControls, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
-import { n0 } from "../../lib/format";
+import { n0, int } from "../../lib/format";
 import { rngMixed as rng } from "../../lib/random";
 import { makeTable, hashOf, userKeys, attackKeys } from "./sim";
 
@@ -18,11 +17,7 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
   const q = (s) => svg.querySelector(s);
   const say = readout();
   const ease = smoothstep;
-  const lift = (el, by) => el.setAttribute("transform", translateAlong(P, by));
-  const setText = (el, s) => { if (el.textContent !== s) el.textContent = s; };
-  const setLit = (g, on) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", on));
   const dials = Object.fromEntries(Object.keys(COUNTERS).map((n) => [n, WB.counter(svg, n, P)]));
-  const wheel = (name, v) => dials[name].set(Math.max(0, Math.min(v, 10 ** COUNTERS[name].count - 1)));
   const gauge = WB.meter(svg, "load", P);
   const stat = statsStrip();
 
@@ -67,7 +62,7 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
     pool = cfg.keys === "attack" ? ATTACK.slice((cycle * 7) % 30) : userKeys(40, 11 + cycle);
     poolAt = 0; ops = 0; op = null; holding = 0; lastProbes = null; probesShown = 0; tailLookups = 0;
     paint([], 8);
-    sx = G.HOME_X; lift(shuttle, [sx, 0, 0]); show(fly, false);
+    sx = G.HOME_X; WB.place(shuttle, P, [sx, 0, 0]); show(fly, false);
     setText(keyLabel, ""); setText(keySub, "");
   }
   let tailLookups = 0;
@@ -93,7 +88,7 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
     op = { ...o, tr, before, mBefore, phase: "back", t: 0, step: 0, probes: 0 };
     setText(keyLabel, short(o.key)); setText(keySub, o.kind === "insert" ? "+" : "?"); show(keyCard, true);
     probesShown = 0;
-    wheel("probes", 0);
+    dials.probes.setClamped(0);
   }
   // "1 probe" / "3 probes", "1 sondeo" / "3 sondeos"
   const pr = (n) => T(n + (n === 1 ? " probe" : " probes"), n + (n === 1 ? " sondeo" : " sondeos"));
@@ -116,7 +111,7 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
 
   // ---------- animation ----------
   const DUR = { back: 0.35, stamp: 0.5, resize: 1.6, travel: 0.5, look: 0.2, hop: 0.16, drop: 0.35, rest: 0.35 };
-  function moveShuttle(x) { sx = x; lift(shuttle, [x, 0, 0]); }
+  function moveShuttle(x) { sx = x; WB.place(shuttle, P, [x, 0, 0]); }
   function step(dt) {
     if (holding > 0) { holding -= dt; if (holding <= 0) reset(); return; }
     if (!op) { begin(); if (!op) return; }
@@ -130,8 +125,8 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
     }
     if (o.phase === "stamp") {
       const p = o.t / DUR.stamp, down = p < 0.5 ? ease(p * 2) : ease((1 - p) * 2);
-      lift(head, [0, 0, G.HEAD_Z - 3.2 * down]); setLit(head, p > 0.2 && p < 0.8);
-      if (p >= 0.5 && !o.stamped) { o.stamped = true; wheel("bucket", tr.resized ? hashOf(o.key, tb.hash, tb.seed) % tr.resized.from : tr.home); setText(keySub, "→ " + (tr.resized ? hashOf(o.key, tb.hash, tb.seed) % tr.resized.from : tr.home)); }
+      WB.place(head, P, [0, 0, G.HEAD_Z - 3.2 * down]); setLit(head, p > 0.2 && p < 0.8);
+      if (p >= 0.5 && !o.stamped) { o.stamped = true; dials.bucket.setClamped(tr.resized ? hashOf(o.key, tb.hash, tb.seed) % tr.resized.from : tr.home); setText(keySub, "→ " + (tr.resized ? hashOf(o.key, tb.hash, tb.seed) % tr.resized.from : tr.home)); }
       if (o.t >= DUR.stamp) { setLit(head, false); o.phase = tr.resized ? "resize" : "travel"; o.t = 0; if (tr.resized) msg = T("load would pass 75% · double to " + tr.resized.to + " buckets, place all " + tr.resized.moved + " keys again", "la carga pasaría del 75% · duplicar a " + tr.resized.to + " cubetas y reubicar las " + tr.resized.moved + " claves"); }
       return;
     }
@@ -139,8 +134,8 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
       const p = o.t / DUR.resize, moved = tr.resized.moved;
       if (!o.opened) { o.opened = true; paint([], tr.resized.to); }
       const k = Math.min(moved, Math.floor(Math.max(0, (p - 0.15) / 0.75) * moved + 0.0001));
-      if (k !== o.placed) { o.placed = k; paint(o.before.slice(0, k), tr.resized.to); wheel("moved", tb.moved - moved + k); }
-      if (o.t >= DUR.resize) { o.phase = "travel"; o.t = 0; wheel("bucket", tr.home); setText(keySub, "→ " + tr.home); }
+      if (k !== o.placed) { o.placed = k; paint(o.before.slice(0, k), tr.resized.to); dials.moved.setClamped(tb.moved - moved + k); }
+      if (o.t >= DUR.resize) { o.phase = "travel"; o.t = 0; dials.bucket.setClamped(tr.home); setText(keySub, "→ " + tr.home); }
       return;
     }
     if (o.phase === "travel") {
@@ -157,12 +152,12 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
       const idx = Math.floor(o.t / d);
       if (chain) {
         const n = Math.min(idx, total);
-        if (n !== probesShown) { for (let s = 0; s < G.PILE; s++) lightCard(tr.home, s, false); if (n > 0) lightCard(tr.home, n - 1, true); probesShown = n; wheel("probes", n); }
+        if (n !== probesShown) { for (let s = 0; s < G.PILE; s++) lightCard(tr.home, s, false); if (n > 0) lightCard(tr.home, n - 1, true); probesShown = n; dials.probes.setClamped(n); }
         if (idx > total || (total === 0 && o.t > 0.1)) { o.phase = o.kind === "insert" ? "drop" : "rest"; o.t = 0; msg = describe(); }
       } else {
         const j = Math.min(idx, tr.path.length - 1), slot = tr.path[j];
         const local = o.t - idx * d;
-        if (j !== o.step || !o.began) { o.began = true; o.step = j; probesShown = j + 1; wheel("probes", probesShown); for (let i = 0; i < G.SLOTS; i++) lightCard(i, 0, false); }
+        if (j !== o.step || !o.began) { o.began = true; o.step = j; probesShown = j + 1; dials.probes.setClamped(probesShown); for (let i = 0; i < G.SLOTS; i++) lightCard(i, 0, false); }
         const occupied = o.kind === "insert" ? j < tr.path.length - 1 : (tr.found ? j < tr.path.length - 1 : j < tr.path.length - 1);
         if (local < DUR.look) { if (occupied || (o.kind === "lookup" && tr.found && j === tr.path.length - 1)) lightCard(slot, 0, true); }
         else if (j < tr.path.length - 1) { lightCard(slot, 0, false); const nx = tr.path[j + 1]; const from = TRAY_CX[slot], to = TRAY_CX[nx]; moveShuttle(from + (to - from) * ease((local - DUR.look) / DUR.hop)); }
@@ -179,7 +174,7 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
         show(fly, true); show(keyCard, false);
       }
       const p = ease(o.t / DUR.drop);
-      lift(fly, [G.CX[o.slot] - G.CX[0], G.Y[o.slot] - G.Y[0], G.Z[o.slot] - G.Z[0] + Math.min(o.level, G.PILE - 1) * G.CARD_PITCH + 9 * (1 - p)]);
+      WB.place(fly, P, [G.CX[o.slot] - G.CX[0], G.Y[o.slot] - G.Y[0], G.Z[o.slot] - G.Z[0] + Math.min(o.level, G.PILE - 1) * G.CARD_PITCH + 9 * (1 - p)]);
       if (o.t >= DUR.drop) { show(fly, false); paint(tb.keys, tb.m); o.phase = "rest"; o.t = 0; }
       return;
     }
@@ -191,8 +186,8 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
 
   function stats() {
     const s = tb.stats();
-    wheel("keys", s.n); wheel("longest", s.longest);
-    if (!op || op.phase !== "resize") wheel("moved", s.moved);
+    dials.keys.setClamped(s.n); dials.longest.setClamped(s.longest);
+    if (!op || op.phase !== "resize") dials.moved.setClamped(s.moved);
     gauge.set(Math.min(1, s.load / G.METER_MAX));
     stat("keys", s.n); stat("buckets", s.m); stat("load", s.load.toFixed(2));
     stat("last", lastProbes === null ? "–" : lastProbes); stat("avg", s.n ? s.avg.toFixed(2) : "–");
@@ -218,7 +213,6 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
 
   // ---------- experiments (numbers computed from the same model at build time, six seeds where keys are random) ----------
   const n2 = (x) => x.toFixed(x < 10 ? 1 : 0);
-  const big = (x) => Math.round(x).toLocaleString("en");
   const RUNS = {
     nogrow: () => {
       const { a, b, c } = RESULTS.nogrow;
@@ -229,29 +223,29 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
     },
     weak: () => {
       const { g, w } = RESULTS.weak;
-      return { verdict: T("Good hash: " + big(g.used) + " of " + big(g.m) + " buckets in use, longest chain " + n0(g.longest) + ", " + n2(g.avg) + " compares per lookup. First 4 characters: " + big(w.used) + " bucket in use, one chain of " + big(w.longest) + " keys, " + n2(w.avg) + " compares per lookup, in a table that still doubled to " + big(w.m) + " buckets.",
-          "Buen hash: " + big(g.used) + " de " + big(g.m) + " cubetas en uso, cadena más larga de " + n0(g.longest) + ", " + n2(g.avg) + " comparaciones por búsqueda. Primeros 4 caracteres: " + big(w.used) + " cubeta en uso, una cadena de " + big(w.longest) + " claves, " + n2(w.avg) + " comparaciones por búsqueda, en una tabla que igual se duplicó a " + big(w.m) + " cubetas."),
-        bars: [[T("Compares per lookup, good hash", "Comparaciones por búsqueda, buen hash"), g.avg / w.avg, n2(g.avg)], [T("Compares per lookup, weak hash", "Comparaciones por búsqueda, hash débil"), 1, n2(w.avg), true], [T("Buckets in use, good hash", "Cubetas en uso, buen hash"), g.used / g.m, big(g.used)], [T("Buckets in use, weak hash", "Cubetas en uso, hash débil"), w.used / w.m, big(w.used), true]] };
+      return { verdict: T("Good hash: " + int(g.used) + " of " + int(g.m) + " buckets in use, longest chain " + n0(g.longest) + ", " + n2(g.avg) + " compares per lookup. First 4 characters: " + int(w.used) + " bucket in use, one chain of " + int(w.longest) + " keys, " + n2(w.avg) + " compares per lookup, in a table that still doubled to " + int(w.m) + " buckets.",
+          "Buen hash: " + int(g.used) + " de " + int(g.m) + " cubetas en uso, cadena más larga de " + n0(g.longest) + ", " + n2(g.avg) + " comparaciones por búsqueda. Primeros 4 caracteres: " + int(w.used) + " cubeta en uso, una cadena de " + int(w.longest) + " claves, " + n2(w.avg) + " comparaciones por búsqueda, en una tabla que igual se duplicó a " + int(w.m) + " cubetas."),
+        bars: [[T("Compares per lookup, good hash", "Comparaciones por búsqueda, buen hash"), g.avg / w.avg, n2(g.avg)], [T("Compares per lookup, weak hash", "Comparaciones por búsqueda, hash débil"), 1, n2(w.avg), true], [T("Buckets in use, good hash", "Cubetas en uso, buen hash"), g.used / g.m, int(g.used)], [T("Buckets in use, weak hash", "Cubetas en uso, hash débil"), w.used / w.m, int(w.used), true]] };
     },
     resize: () => {
       const { d, a } = RESULTS.resize;
       const per = d.moved / 1000, perA = a.moved / 1000;
-      return { verdict: T("Doubling: " + d.resizes + " resizes, " + big(d.moved) + " keys moved in all, " + per.toFixed(2) + " moves per insert; the biggest single insert moved " + big(d.biggest) + " keys. Adding 8 buckets: " + big(a.resizes) + " resizes, " + big(a.moved) + " moves, " + perA.toFixed(0) + " per insert.",
-          "Duplicando: " + d.resizes + " redimensionamientos, " + big(d.moved) + " claves movidas en total, " + per.toFixed(2) + " movimientos por inserción; la inserción individual más cara movió " + big(d.biggest) + " claves. Sumando 8 cubetas: " + big(a.resizes) + " redimensionamientos, " + big(a.moved) + " movimientos, " + perA.toFixed(0) + " por inserción."),
-        bars: [[T("Moves per insert, doubling", "Movimientos por inserción, duplicando"), per / perA, per.toFixed(2), true], [T("Moves per insert, +8 buckets", "Movimientos por inserción, +8 cubetas"), 1, perA.toFixed(0)], [T("Biggest single insert, doubling", "Inserción más cara, duplicando"), d.biggest / 1000, big(d.biggest)]] };
+      return { verdict: T("Doubling: " + d.resizes + " resizes, " + int(d.moved) + " keys moved in all, " + per.toFixed(2) + " moves per insert; the biggest single insert moved " + int(d.biggest) + " keys. Adding 8 buckets: " + int(a.resizes) + " resizes, " + int(a.moved) + " moves, " + perA.toFixed(0) + " per insert.",
+          "Duplicando: " + d.resizes + " redimensionamientos, " + int(d.moved) + " claves movidas en total, " + per.toFixed(2) + " movimientos por inserción; la inserción individual más cara movió " + int(d.biggest) + " claves. Sumando 8 cubetas: " + int(a.resizes) + " redimensionamientos, " + int(a.moved) + " movimientos, " + perA.toFixed(0) + " por inserción."),
+        bars: [[T("Moves per insert, doubling", "Movimientos por inserción, duplicando"), per / perA, per.toFixed(2), true], [T("Moves per insert, +8 buckets", "Movimientos por inserción, +8 cubetas"), 1, perA.toFixed(0)], [T("Biggest single insert, doubling", "Inserción más cara, duplicando"), d.biggest / 1000, int(d.biggest)]] };
     },
     probe: () => {
       const { c5, p5, c9, p9 } = RESULTS.probe;
       const top = p9.miss;
-      return { verdict: T("50% full: finding a key takes " + n2(c5.avg) + " checks with chaining, " + n2(p5.avg) + " with linear probing. 90% full: chaining " + n2(c9.avg) + ", probing " + n2(p9.avg) + "; a missing key costs " + n2(c9.miss) + " vs " + n2(p9.miss) + ", and the longest run of full slots is " + big(p9.longest) + " (longest chain: " + n0(c9.longest) + ").",
-          "Al 50%: encontrar una clave cuesta " + n2(c5.avg) + " revisiones con encadenamiento y " + n2(p5.avg) + " con sondeo lineal. Al 90%: encadenamiento " + n2(c9.avg) + ", sondeo " + n2(p9.avg) + "; una clave que no está cuesta " + n2(c9.miss) + " contra " + n2(p9.miss) + ", y el tramo más largo de casillas llenas es de " + big(p9.longest) + " (cadena más larga: " + n0(c9.longest) + ")."),
+      return { verdict: T("50% full: finding a key takes " + n2(c5.avg) + " checks with chaining, " + n2(p5.avg) + " with linear probing. 90% full: chaining " + n2(c9.avg) + ", probing " + n2(p9.avg) + "; a missing key costs " + n2(c9.miss) + " vs " + n2(p9.miss) + ", and the longest run of full slots is " + int(p9.longest) + " (longest chain: " + n0(c9.longest) + ").",
+          "Al 50%: encontrar una clave cuesta " + n2(c5.avg) + " revisiones con encadenamiento y " + n2(p5.avg) + " con sondeo lineal. Al 90%: encadenamiento " + n2(c9.avg) + ", sondeo " + n2(p9.avg) + "; una clave que no está cuesta " + n2(c9.miss) + " contra " + n2(p9.miss) + ", y el tramo más largo de casillas llenas es de " + int(p9.longest) + " (cadena más larga: " + n0(c9.longest) + ")."),
         bars: [[T("Find a key, chaining, 90%", "Encontrar, encadenamiento, 90%"), c9.avg / top, n2(c9.avg)], [T("Find a key, probing, 90%", "Encontrar, sondeo, 90%"), p9.avg / top, n2(p9.avg), true], [T("Missing key, chaining, 90%", "No está, encadenamiento, 90%"), c9.miss / top, n2(c9.miss)], [T("Missing key, probing, 90%", "No está, sondeo, 90%"), 1, n2(p9.miss), true]] };
     },
     flood: () => {
       const { fx, sd, nm } = RESULTS.flood;
-      return { verdict: T("Crafted keys, fixed hash: " + big(fx.work) + " compares and moves to insert 1,000 keys, all in one bucket. Ordinary ids, same hash: " + big(nm.work) + " (" + Math.round(fx.work / nm.work) + "× less). The crafted keys against the seeded hash: " + big(sd.work) + ", longest chain " + n0(sd.longest) + ".",
-          "Claves fabricadas, hash fijo: " + big(fx.work) + " comparaciones y movimientos para insertar 1,000 claves, todas en una cubeta. IDs normales, mismo hash: " + big(nm.work) + " (" + Math.round(fx.work / nm.work) + " veces menos). Las claves fabricadas contra el hash con semilla: " + big(sd.work) + ", cadena más larga de " + n0(sd.longest) + "."),
-        bars: [[T("Ordinary ids, fixed hash", "IDs normales, hash fijo"), nm.work / fx.work, big(nm.work)], [T("Crafted keys, fixed hash", "Claves fabricadas, hash fijo"), 1, big(fx.work), true], [T("Crafted keys, seeded hash", "Claves fabricadas, hash con semilla"), sd.work / fx.work, big(sd.work)]] };
+      return { verdict: T("Crafted keys, fixed hash: " + int(fx.work) + " compares and moves to insert 1,000 keys, all in one bucket. Ordinary ids, same hash: " + int(nm.work) + " (" + Math.round(fx.work / nm.work) + "× less). The crafted keys against the seeded hash: " + int(sd.work) + ", longest chain " + n0(sd.longest) + ".",
+          "Claves fabricadas, hash fijo: " + int(fx.work) + " comparaciones y movimientos para insertar 1,000 claves, todas en una cubeta. IDs normales, mismo hash: " + int(nm.work) + " (" + Math.round(fx.work / nm.work) + " veces menos). Las claves fabricadas contra el hash con semilla: " + int(sd.work) + ", cadena más larga de " + n0(sd.longest) + "."),
+        bars: [[T("Ordinary ids, fixed hash", "IDs normales, hash fijo"), nm.work / fx.work, int(nm.work)], [T("Crafted keys, fixed hash", "Claves fabricadas, hash fijo"), 1, int(fx.work), true], [T("Crafted keys, seeded hash", "Claves fabricadas, hash con semilla"), sd.work / fx.work, int(sd.work)]] };
     },
   };
   WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {

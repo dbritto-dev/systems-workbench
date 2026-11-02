@@ -6,7 +6,7 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, show, act, pauseControls } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
-import { one } from "../../lib/format";
+import { one, int } from "../../lib/format";
 import { makeRing } from "./sim";
 
 export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
@@ -179,37 +179,36 @@ export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
 
   // ---------- experiments (numbers computed from the same model) ----------
   // Whole numbers with thousands separators (3,600), as the original page printed them; src/lib/format's n0 has none.
-  const n0 = (x) => Math.round(x).toLocaleString("en");
   const RUNS = {
     burst: () => {
       const { overwrite: o, drop: d, block: b } = RESULTS.burst;
-      return { verdict: T("Overwrite: " + n0(o.lost) + " lost, items " + o.lostFrom + " to " + o.lostTo + " of the burst; the reader got the newest 16. Drop: " + n0(d.lost) + " lost, items " + d.lostFrom + " to " + d.lostTo + ". Block: " + n0(b.lost) + " lost; the producer held up to " + n0(b.held) + " items and stood still for " + one(b.stall) + " s, and the ring took " + one(b.empty) + " s to empty instead of " + one(o.empty) + " s.",
-          "Sobrescribir: " + n0(o.lost) + " perdidos, los elementos " + o.lostFrom + " a " + o.lostTo + " de la ráfaga; el lector recibió los 16 más nuevos. Descartar: " + n0(d.lost) + " perdidos, los elementos " + d.lostFrom + " a " + d.lostTo + ". Frenar: " + n0(b.lost) + " perdidos; el productor llegó a sostener " + n0(b.held) + " elementos y estuvo quieto " + one(b.stall) + " s, y el anillo tardó " + one(b.empty) + " s en vaciarse en lugar de " + one(o.empty) + " s."),
+      return { verdict: T("Overwrite: " + int(o.lost) + " lost, items " + o.lostFrom + " to " + o.lostTo + " of the burst; the reader got the newest 16. Drop: " + int(d.lost) + " lost, items " + d.lostFrom + " to " + d.lostTo + ". Block: " + int(b.lost) + " lost; the producer held up to " + int(b.held) + " items and stood still for " + one(b.stall) + " s, and the ring took " + one(b.empty) + " s to empty instead of " + one(o.empty) + " s.",
+          "Sobrescribir: " + int(o.lost) + " perdidos, los elementos " + o.lostFrom + " a " + o.lostTo + " de la ráfaga; el lector recibió los 16 más nuevos. Descartar: " + int(d.lost) + " perdidos, los elementos " + d.lostFrom + " a " + d.lostTo + ". Frenar: " + int(b.lost) + " perdidos; el productor llegó a sostener " + int(b.held) + " elementos y estuvo quieto " + one(b.stall) + " s, y el anillo tardó " + one(b.empty) + " s en vaciarse en lugar de " + one(o.empty) + " s."),
         bars: [[T("Lost, overwrite", "Perdidos, sobrescribir"), o.lost / 40, T("#" + o.lostFrom + "–" + o.lostTo, "n.º " + o.lostFrom + "–" + o.lostTo), true], [T("Lost, drop", "Perdidos, descartar"), d.lost / 40, T("#" + d.lostFrom + "–" + d.lostTo, "n.º " + d.lostFrom + "–" + d.lostTo), true], [T("Lost, block", "Perdidos, frenar"), b.lost / 40, "0"], [T("Producer stalled, block (of 20 s)", "Productor quieto, frenar (de 20 s)"), Math.min(1, b.stall / 20), one(b.stall) + " s"]] };
     },
     lap: () => {
       const { naive: a, checked: c } = RESULTS.lap, top = Math.max(a.written, 1);
-      return { verdict: T("In both runs about " + n0(a.written) + " were written and " + n0(a.read) + " read. Overwritten before being read: " + n0(a.lost) + " without checks, " + n0(c.lost) + " with them. The checking reader counted " + n0(c.seen) + " skipped; the other counted 0, and " + n0(a.silent) + " of its " + n0(a.read) + " reads were not the item it thought it was reading.",
-          "En las dos ejecuciones se escribieron cerca de " + n0(a.written) + " y se leyeron " + n0(a.read) + ". Sobrescritos antes de leerse: " + n0(a.lost) + " sin revisar, " + n0(c.lost) + " revisando. El lector que revisa contó " + n0(c.seen) + " saltados; el otro contó 0, y " + n0(a.silent) + " de sus " + n0(a.read) + " lecturas no eran el elemento que creía estar leyendo."),
-        bars: [[T("Lost, no checks", "Perdidos, sin revisar"), a.lost / top, n0(a.lost), true], [T("Noticed, no checks", "Notados, sin revisar"), 0, "0", true], [T("Lost, with checks", "Perdidos, revisando"), c.lost / top, n0(c.lost)], [T("Noticed, with checks", "Notados, revisando"), c.seen / top, n0(c.seen)]] };
+      return { verdict: T("In both runs about " + int(a.written) + " were written and " + int(a.read) + " read. Overwritten before being read: " + int(a.lost) + " without checks, " + int(c.lost) + " with them. The checking reader counted " + int(c.seen) + " skipped; the other counted 0, and " + int(a.silent) + " of its " + int(a.read) + " reads were not the item it thought it was reading.",
+          "En las dos ejecuciones se escribieron cerca de " + int(a.written) + " y se leyeron " + int(a.read) + ". Sobrescritos antes de leerse: " + int(a.lost) + " sin revisar, " + int(c.lost) + " revisando. El lector que revisa contó " + int(c.seen) + " saltados; el otro contó 0, y " + int(a.silent) + " de sus " + int(a.read) + " lecturas no eran el elemento que creía estar leyendo."),
+        bars: [[T("Lost, no checks", "Perdidos, sin revisar"), a.lost / top, int(a.lost), true], [T("Noticed, no checks", "Notados, sin revisar"), 0, "0", true], [T("Lost, with checks", "Perdidos, revisando"), c.lost / top, int(c.lost)], [T("Noticed, with checks", "Notados, revisando"), c.seen / top, int(c.seen)]] };
     },
     size: () => {
       const { c64, c128, c256 } = RESULTS.size;
-      return { verdict: T("64 slots: filled up, " + n0(c64.lost) + " dropped. 128 slots: peaked at " + n0(c128.peak) + ", nothing dropped. 256 slots: peaked at " + n0(c256.peak) + ", nothing dropped, " + n0(256 - c256.peak) + " slots never used.",
-          "64 huecos: se llenó y se descartaron " + n0(c64.lost) + ". 128 huecos: llegó a " + n0(c128.peak) + ", no se descartó nada. 256 huecos: llegó a " + n0(c256.peak) + ", no se descartó nada y " + n0(256 - c256.peak) + " huecos nunca se usaron."),
-        bars: [[T("Peak fill, 64 slots", "Máximo ocupado, 64 huecos"), c64.peak / 256, n0(c64.peak)], [T("Dropped, 64 slots", "Descartados, 64 huecos"), c64.lost / 200, n0(c64.lost), true], [T("Peak fill, 128 slots", "Máximo ocupado, 128 huecos"), c128.peak / 256, n0(c128.peak)], [T("Peak fill, 256 slots", "Máximo ocupado, 256 huecos"), c256.peak / 256, n0(c256.peak)]] };
+      return { verdict: T("64 slots: filled up, " + int(c64.lost) + " dropped. 128 slots: peaked at " + int(c128.peak) + ", nothing dropped. 256 slots: peaked at " + int(c256.peak) + ", nothing dropped, " + int(256 - c256.peak) + " slots never used.",
+          "64 huecos: se llenó y se descartaron " + int(c64.lost) + ". 128 huecos: llegó a " + int(c128.peak) + ", no se descartó nada. 256 huecos: llegó a " + int(c256.peak) + ", no se descartó nada y " + int(256 - c256.peak) + " huecos nunca se usaron."),
+        bars: [[T("Peak fill, 64 slots", "Máximo ocupado, 64 huecos"), c64.peak / 256, int(c64.peak)], [T("Dropped, 64 slots", "Descartados, 64 huecos"), c64.lost / 200, int(c64.lost), true], [T("Peak fill, 128 slots", "Máximo ocupado, 128 huecos"), c128.peak / 256, int(c128.peak)], [T("Peak fill, 256 slots", "Máximo ocupado, 256 huecos"), c256.peak / 256, int(c256.peak)]] };
     },
     block: () => {
       const { block: b, overwrite: o } = RESULTS.block;
-      return { verdict: T("Block: " + n0(b.lost) + " lost, " + n0(b.read) + " read; the producer was stalled " + n0(b.stall) + " of the 60 s and " + n0(b.backlog) + " items were waiting in front of it at the end, the oldest for " + n0(b.wait) + " s. Overwrite: the same " + n0(o.read) + " read, nothing waiting, " + n0(o.lost) + " lost.",
-          "Frenar: " + n0(b.lost) + " perdidos, " + n0(b.read) + " leídos; el productor estuvo frenado " + n0(b.stall) + " de los 60 s y al final había " + n0(b.backlog) + " elementos esperando delante de él, el más viejo desde hacía " + n0(b.wait) + " s. Sobrescribir: los mismos " + n0(o.read) + " leídos, nada esperando, " + n0(o.lost) + " perdidos."),
-        bars: [[T("Producer stalled, block", "Productor frenado, frenar"), b.stall / 60, n0(b.stall) + " s", true], [T("Waiting upstream, block", "Esperando antes, frenar"), b.backlog / 200, n0(b.backlog), true], [T("Lost, overwrite", "Perdidos, sobrescribir"), o.lost / 200, n0(o.lost)], [T("Read, either way", "Leídos, en ambos casos"), b.read / 480, n0(b.read)]] };
+      return { verdict: T("Block: " + int(b.lost) + " lost, " + int(b.read) + " read; the producer was stalled " + int(b.stall) + " of the 60 s and " + int(b.backlog) + " items were waiting in front of it at the end, the oldest for " + int(b.wait) + " s. Overwrite: the same " + int(o.read) + " read, nothing waiting, " + int(o.lost) + " lost.",
+          "Frenar: " + int(b.lost) + " perdidos, " + int(b.read) + " leídos; el productor estuvo frenado " + int(b.stall) + " de los 60 s y al final había " + int(b.backlog) + " elementos esperando delante de él, el más viejo desde hacía " + int(b.wait) + " s. Sobrescribir: los mismos " + int(o.read) + " leídos, nada esperando, " + int(o.lost) + " perdidos."),
+        bars: [[T("Producer stalled, block", "Productor frenado, frenar"), b.stall / 60, int(b.stall) + " s", true], [T("Waiting upstream, block", "Esperando antes, frenar"), b.backlog / 200, int(b.backlog), true], [T("Lost, overwrite", "Perdidos, sobrescribir"), o.lost / 200, int(o.lost)], [T("Read, either way", "Leídos, en ambos casos"), b.read / 480, int(b.read)]] };
     },
     batch: () => {
       const { one: a, batch: b } = RESULTS.batch;
-      return { verdict: T("One at a time: " + n0(a.read) + " of " + n0(a.arrived) + " read, " + n0(a.lost) + " dropped, average wait " + one(a.wait) + " s. Batches: " + n0(b.read) + " read, " + n0(b.lost) + " dropped, " + one(b.perOp) + " items per read on average, average wait " + n0(b.wait * 1000) + " ms, reader busy " + Math.round(b.busy * 100) + "% of the time.",
-          "De a uno: " + n0(a.read) + " de " + n0(a.arrived) + " leídos, " + n0(a.lost) + " descartados, espera media " + one(a.wait) + " s. Por lotes: " + n0(b.read) + " leídos, " + n0(b.lost) + " descartados, " + one(b.perOp) + " elementos por lectura en promedio, espera media " + n0(b.wait * 1000) + " ms, lector ocupado el " + Math.round(b.busy * 100) + "% del tiempo."),
-        bars: [[T("Dropped, one at a time", "Descartados, de a uno"), a.lost / a.arrived, n0(a.lost), true], [T("Dropped, batches", "Descartados, por lotes"), b.lost / b.arrived, n0(b.lost)], [T("Items per read, batches (of 4)", "Elementos por lectura, lotes (de 4)"), b.perOp / 4, one(b.perOp)], [T("Average wait, one at a time (of 2 s)", "Espera media, de a uno (de 2 s)"), Math.min(1, a.wait / 2), one(a.wait) + " s", true]] };
+      return { verdict: T("One at a time: " + int(a.read) + " of " + int(a.arrived) + " read, " + int(a.lost) + " dropped, average wait " + one(a.wait) + " s. Batches: " + int(b.read) + " read, " + int(b.lost) + " dropped, " + one(b.perOp) + " items per read on average, average wait " + int(b.wait * 1000) + " ms, reader busy " + Math.round(b.busy * 100) + "% of the time.",
+          "De a uno: " + int(a.read) + " de " + int(a.arrived) + " leídos, " + int(a.lost) + " descartados, espera media " + one(a.wait) + " s. Por lotes: " + int(b.read) + " leídos, " + int(b.lost) + " descartados, " + one(b.perOp) + " elementos por lectura en promedio, espera media " + int(b.wait * 1000) + " ms, lector ocupado el " + Math.round(b.busy * 100) + "% del tiempo."),
+        bars: [[T("Dropped, one at a time", "Descartados, de a uno"), a.lost / a.arrived, int(a.lost), true], [T("Dropped, batches", "Descartados, por lotes"), b.lost / b.arrived, int(b.lost)], [T("Items per read, batches (of 4)", "Elementos por lectura, lotes (de 4)"), b.perOp / 4, one(b.perOp)], [T("Average wait, one at a time (of 2 s)", "Espera media, de a uno (de 2 s)"), Math.min(1, a.wait / 2), one(a.wait) + " s", true]] };
     },
   };
   WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {

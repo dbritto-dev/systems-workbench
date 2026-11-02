@@ -1,6 +1,6 @@
 // Browser helpers every lesson shares, as a real module (the standalone pages inline workbench/client.js instead).
 // Lessons import what they use; the bundler keeps one copy for the whole site.
-import { iso, pathOf } from "../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+import { iso, pathOf, translateAlong } from "../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, digitsOf, facePoint } from "../../workbench/digits.mjs";
 
 export type Projection = { origin: [number, number]; scale: number; azimuth?: number; elevation?: number };
@@ -28,18 +28,21 @@ export const faceRectX = (P: Projection, x: number, y0: number, y1: number, z0: 
 // ---------- live parts drawn by workbench/parts.mjs; each is found by name inside the figure's svg ----------
 const geoOf = (el: Element) => JSON.parse(el.getAttribute("data-geo")!);
 
-/** A digit counter: set(v) redraws only the wheels whose digit changed. */
+/** Move an SVG group to a point in the figure's space. */
+export const place = (el: Element, P: Projection, p: Point3) => el.setAttribute("transform", translateAlong(P, p));
+
+/** A digit counter: set(v) redraws only the wheels whose digit changed; setClamped(v) keeps v within what the
+ *  wheels can show (0 to 99…9) instead of wrapping. */
 export function counter(root: ParentNode, name: string, P: Projection) {
   const el = root.querySelector(`[data-counter="${name}"]`)!;
   const g = geoOf(el), wheels = [...el.querySelectorAll("[data-wheel]")], shown: number[] = [];
-  return {
-    el,
-    set(v: number) {
-      digitsOf(v, g.cells.length).forEach((d: number, j: number) => {
-        if (shown[j] !== d) { shown[j] = d; wheels[j].setAttribute("d", digitPath(iso, P, g.cells[j], d, g.face)); }
-      });
-    },
+  const set = (v: number) => {
+    digitsOf(v, g.cells.length).forEach((d: number, j: number) => {
+      if (shown[j] !== d) { shown[j] = d; wheels[j].setAttribute("d", digitPath(iso, P, g.cells[j], d, g.face)); }
+    });
   };
+  const max = 10 ** g.cells.length - 1;
+  return { el, set, setClamped: (v: number) => set(Math.max(0, Math.min(Math.floor(v), max))) };
 }
 /** The needle of a dial: set(frac) turns it to that share of its sweep. */
 export function dial(root: ParentNode, name: string, P: Projection) {

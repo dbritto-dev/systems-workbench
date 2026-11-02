@@ -23,6 +23,7 @@ const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}favicon.svg`} />
     {LOCALES.map((l) => <link rel="alternate" hreflang={l} href={new URL(getRelativeLocaleUrl(l, path), Astro.site)} />)}
     <link rel="alternate" hreflang="x-default" href={new URL(getRelativeLocaleUrl("en", path), Astro.site)} />
     <script is:inline>

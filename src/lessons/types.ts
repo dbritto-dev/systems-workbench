@@ -11,10 +11,13 @@ import type { Bi } from "../i18n";
 
 export type { Bi };
 
-export type Control =
+/** A control under the figure. `for` tags it (data-for) so the live code can show one group at a time;
+ *  `hidden` starts it hidden. */
+export type Control = (
   | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number }
   | { speed: true; options?: [value: number, label: string][]; value?: number }
-  | { actions: [act: string, label: Bi][]; label: Bi };
+  | { actions: [act: string, label: Bi][]; label: Bi }
+) & { for?: string; hidden?: boolean };
 
 export interface Plate {
   fig?: Bi;

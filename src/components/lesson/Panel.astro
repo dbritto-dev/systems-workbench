@@ -22,14 +22,14 @@ const segs = controls.map((c) =>
     {controls.map((c, i) => {
       const s = segs[i];
       if (s) return (
-        <div class="control"><span>{s.label}</span>
+        <div class="control" data-for={c.for} hidden={c.hidden}><span>{s.label}</span>
           <div class="seg" role="group" aria-label={s.label}>
             {s.options.map(([value, text]) => <button type="button" data-set={s.name} data-value={String(value)} aria-pressed={String(String(value) === String(s.value))}>{L(text)}</button>)}
           </div>
         </div>
       );
       if ("actions" in c) return (
-        <div class="control"><span>{L(c.label)}</span>
+        <div class="control" data-for={c.for} hidden={c.hidden}><span>{L(c.label)}</span>
           <div class="actions">{c.actions.map(([act, text]) => <button class="btn" type="button" data-act={act}>{L(text)}</button>)}</div>
         </div>
       );
@@ -39,4 +39,5 @@ const segs = controls.map((c) =>
 </div>
 <style is:global>
   .panel-note { padding: 0 12px 12px; margin: 0; }
+  .controls > .control[hidden] { display: none; }
 </style>

@@ -1,10 +1,10 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The three stacks in the browser: steps the call stack, the undo/redo editor and the busy server, wires the
 // controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, first frame).
-import { iso, pathOf, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+import { iso, pathOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls } from "../../runtime/dom";
+import { readout, stats, show, act, pauseControls, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
 import { averageOver } from "../../lib/stats";
 import { pct } from "../../lib/format";
@@ -17,9 +17,6 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
   const qa = (s) => [...svg.querySelectorAll(s)];
   const say = readout();
   const ease = smoothstep;
-  const lift = (el, by) => el.setAttribute("transform", translateAlong(P, by));
-  const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
-  const setLit = (g, on) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", on));
 
   // Counters: digit wheels from the shared parts (WB.counter redraws only the wheels that changed).
   const dials = Object.fromEntries(Object.keys(COUNTERS).map((n) => [n, WB.counter(svg, n, P)]));
@@ -76,8 +73,8 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
     }
     cs.t += dt;
     const p = Math.min(1, cs.t / d);
-    if (op.op === "push") lift(csFly.g, [0, 0, csZ(cs.frames.length) + 9 * (1 - ease(p / 0.8))]);
-    if (op.op === "pop") lift(csFly.g, [0, 0, csZ(cs.frames.length - 1) + 9 * ease(p)]);
+    if (op.op === "push") WB.place(csFly.g, P, [0, 0, csZ(cs.frames.length) + 9 * (1 - ease(p / 0.8))]);
+    if (op.op === "pop") WB.place(csFly.g, P, [0, 0, csZ(cs.frames.length - 1) + 9 * ease(p)]);
     if (cs.t >= d) {
       if (op.op === "push" || op.op === "pop") show(csFly.g, false);
       if (op.op === "step") setLit(csSlots[cs.frames.length - 1].g, false);
@@ -94,7 +91,7 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
     if (op && cs.began && op.op === "pop") depth -= 1;
     const target = csZ(Math.max(0, depth)) - 0.6;
     cs.cursorZ += (target - cs.cursorZ) * Math.min(1, dt * 12);
-    lift(csCursor, [0, 0, cs.cursorZ]);
+    WB.place(csCursor, P, [0, 0, cs.cursorZ]);
   }
 
   // ======== 2. undo and redo ========
@@ -167,7 +164,7 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
         else if (p < 0.7) { x = fx + (toX - fx) * ease((p - 0.3) / 0.4); z = top; }
         else { x = toX; z = top + (toZ - top) * ease((p - 0.7) / 0.3); }
       }
-      lift(urFly.g, [x, 0, z]);
+      WB.place(urFly.g, P, [x, 0, z]);
       if (p >= 1) { ur.anim = null; show(urFly.g, false); docTiles.forEach((d) => d.tile.removeAttribute("data-lit")); urPaint(); }
       return;
     }
@@ -206,12 +203,12 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
       el.toggleAttribute("data-stale", now - r.t > TIMEOUT);
       const fresh = (now - r.t) / TS;   // figure seconds since it arrived
       const arriving = dt > 0 && fresh < 0.3;
-      lift(el, [0, 0, tkZ(s) + (arriving ? 6 * (1 - ease(fresh / 0.3)) : 0)]);
+      WB.place(el, P, [0, 0, tkZ(s) + (arriving ? 6 * (1 - ease(fresh / 0.3)) : 0)]);
       setLit(el, arriving);
     }
     const target = sv.order === "lifo" ? (n ? tkZ(n - 1) + 0.2 : tkZ(0)) : COLG.BOTTOM_GRAB;
     grabZ = dt > 0 ? grabZ + (target - grabZ) * Math.min(1, dt * 10) : target;
-    lift(grab, [0, 0, grabZ]);
+    WB.place(grab, P, [0, 0, grabZ]);
     const b = sv.busy;
     show(work.lit, !!b && now - b.t <= TIMEOUT);
     show(work.stale, !!b && now - b.t > TIMEOUT);

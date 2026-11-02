@@ -5,6 +5,7 @@ import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mj
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { int } from "../../lib/format";
 import { STATIONS, runJob, human } from "./sim";
 
 export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT_HOW }) {
@@ -18,16 +19,9 @@ export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT
   const meters = Object.fromEntries(STATIONS.map((s) => [s.id, WB.meter(svg, "share-" + s.id, P)]));
   const stat = stats();
 
-  // The panel lists one "where" control per job; tag each with its job so only the current job's shows.
-  for (const job of Object.keys(DEFAULT_HOW)) {
-    const el = document.querySelector('[data-set="how-' + job + '"]')?.closest(".control");
-    if (el) { el.dataset.for = job; el.hidden = job !== "lookups"; }
-  }
-
   const NAME = { l1: T("L1 cache", "caché L1"), l2: T("L2 cache", "caché L2"), ram: T("memory", "memoria"), ssd: T("SSD", "SSD"), dc: T("same datacenter", "mismo centro de datos"), disk: T("disk", "disco"), wan: T("other continent", "otro continente") };
   const SHORT = { l1: "L1", l2: "L2", ram: "RAM", ssd: "SSD", dc: T("same DC", "mismo DC"), disk: T("disk", "disco"), wan: T("overseas", "lejos") };
   const UNITS = { s: T("S", "S"), min: T("MIN", "MIN"), h: T("H", "H"), d: T("DAYS", "DÍAS"), mo: T("MONTHS", "MESES"), y: T("YEARS", "AÑOS") };
-  const big = (n) => Math.round(n).toLocaleString("en-US");
   const sig = (v) => (v === 0 ? "0" : v >= 100 ? String(Math.round(v)) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
   function fmt(ns) {
     if (ns < 999.5) return sig(ns) + " ns";
@@ -92,12 +86,12 @@ export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT
     humanSign.textContent = humanText(trip.each);
     let top = null;
     for (const s of STATIONS) if (!top || trips.by[s.id] > trips.by[top]) top = s.id;
-    stat("total", fmt(total)); stat("trips", big(trips.count)); stat("per", fmt(trip.each)); stat("human", humanText(trip.each).toLowerCase());
+    stat("total", fmt(total)); stat("trips", int(trips.count)); stat("per", fmt(trip.each)); stat("human", humanText(trip.each).toLowerCase());
     stat("where", total > 0 ? L(SHORT[top]) : "–"); stat("share", total > 0 ? Math.round((100 * trips.by[top]) / total) + "%" : "–");
-    if (done) { say(L("done · " + big(run.r.trips) + " trips · " + fmt(run.r.total) + " · " + Math.round((100 * run.r.by[top]) / run.r.total) + "% at " + NAME[top].en,
-      "listo · " + big(run.r.trips) + " viajes · " + fmt(run.r.total) + " · " + Math.round((100 * run.r.by[top]) / run.r.total) + "% en " + NAME[top].es)); return; }
+    if (done) { say(L("done · " + int(run.r.trips) + " trips · " + fmt(run.r.total) + " · " + Math.round((100 * run.r.by[top]) / run.r.total) + "% at " + NAME[top].en,
+      "listo · " + int(run.r.trips) + " viajes · " + fmt(run.r.total) + " · " + Math.round((100 * run.r.by[top]) / run.r.total) + "% en " + NAME[top].es)); return; }
     const n = run.list.length, wide = trip.wide > 1 ? L(" · " + trip.wide + " calls in flight", " · " + trip.wide + " llamadas en curso") : "";
-    const rep = trip.rep > 1 ? L(" · each trip shown stands for " + big(trip.rep), " · cada viaje que ves representa " + big(trip.rep)) : "";
+    const rep = trip.rep > 1 ? L(" · each trip shown stands for " + int(trip.rep), " · cada viaje que ves representa " + int(trip.rep)) : "";
     say(L("trip " + (idx + 1) + " of " + n + " · " + NAME[trip.station].en, "viaje " + (idx + 1) + " de " + n + " · " + NAME[trip.station].es) + wide + rep + " · " + fmt(total));
   }
 
@@ -117,7 +111,7 @@ export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT
   act("reset").addEventListener("click", () => { restart(); if (loop.paused) loop.setPaused(false); });
 
   // ---------- experiments (numbers computed from the same model, 8 seeds each) ----------
-  const x = (a, b) => big(a / b) + "×";
+  const x = (a, b) => int(a / b) + "×";
   const RUNS = {
     chatty: () => {
       const { ram, dc } = RESULTS.chatty;

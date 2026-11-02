@@ -22,6 +22,15 @@ export function show(el: HTMLElement | SVGElement, on: boolean) {
   if (el.style.display !== v) el.style.display = v;
 }
 
+/** Set an element's text, touching the DOM only when it changes. */
+export function setText(el: Element, value: unknown) {
+  const text = String(value);
+  if (el.textContent !== text) el.textContent = text;
+}
+
+/** Light (or unlight) every solid in a group: the one lit accent of the figure. */
+export const setLit = (g: Element, on: boolean) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", on));
+
 /** An action button by name: <button data-act="name">. */
 export const act = (name: string) => document.querySelector<HTMLButtonElement>(`[data-act="${name}"]`)!;
 

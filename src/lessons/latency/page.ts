@@ -160,7 +160,7 @@ export default defineLesson({
     controls: [
       { seg: "job", label: t("Job", "Trabajo"), options: [["lookups", t("100 lookups", "100 consultas")], ["read", t("Read 100 MB", "Leer 100 MB")], ["sum", t("Sum 1M numbers", "Sumar 1M números")], ["batch", t("100 calls overseas", "100 llamadas lejanas")], ["page", t("A page: 20 reads", "Una página: 20 lecturas")]], value: "lookups" },
       // One "where" control per job; the live code shows the current job's (the Panel has no wrapper for them).
-      ...Object.entries(HOWS).map(([job, [label, options]]) => ({ seg: "how-" + job, label, options, value: DEFAULT_HOW[job] })),
+      ...Object.entries(HOWS).map(([job, [label, options]]) => ({ seg: "how-" + job, label, options, value: DEFAULT_HOW[job], for: job, hidden: job !== "lookups" })),
       { speed: true, options: [[1, "×1"], [4, "×4"], [16, "×16"]], value: 1 },
       { actions: [["reset", t("Run again", "Ejecutar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
@@ -170,8 +170,6 @@ export default defineLesson({
   footer: t(`Latencies from “Latency numbers every programmer should know” by Jeff Dean and Peter Norvig, as collected by Jonas Bonér (<a href="${SOURCE}" target="_blank" rel="noopener">gist</a>, ~2012 values): orders of magnitude, not measurements of your hardware. Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson.`,
     `Latencias de “Latency numbers every programmer should know” de Jeff Dean y Peter Norvig, recopiladas por Jonas Bonér (<a href="${SOURCE}" target="_blank" rel="noopener">gist</a>, valores de ~2012): órdenes de magnitud, no mediciones de tu hardware. Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección.`),
   css: `
-[data-for][hidden]{display:none}
-.controls > .control:not([data-for]):has([data-set^="how-"]):not(:has([data-set="how-lookups"])){display:none}
 .iso-stage [data-layer] text{pointer-events:none}
 `,
   data: {
