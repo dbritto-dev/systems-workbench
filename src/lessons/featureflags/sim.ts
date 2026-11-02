@@ -1,15 +1,14 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Feature flags: one model for the figure and the experiments. Time is in seconds.
+import { rng } from "../../lib/random";
+import { mean } from "../../lib/stats";
+
 export const USERS = 200;          // user ids 0..199
 export const STAFF = 10;           // ids 0..9 are internal staff
 export const SERVERS = 4;
 export const RATE = 8;             // requests per second, spread over servers round-robin
 export const BUG_RATE = 0.25;      // share of new-version requests that fail when the feature is buggy
 export const ROLLBACK = { pipeline: 90, perServer: 30 }; // redeploying the old build: pipeline, then one server at a time
-
-export function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
 
 // Stable 0..99 bucket for a user and a flag (salt), like hashing "flag:user" in a real flag SDK.
 export function bucket(user, salt) {
@@ -107,7 +106,6 @@ export const repeatUsers = (sim) => sim.seen.size;
 
 // ---------- headless experiments ----------
 const SEEDS = [3, 5, 7, 11, 13, 17, 19, 23];
-const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 // 1. A buggy feature at 50%: at t = 30 someone notices. Kill switch vs redeploying the old build.
 export function killVsRollback() {
