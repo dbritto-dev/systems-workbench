@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A triage room built around a binary heap.
 //   Middle: the heap as a tournament tree of pedestals, root at the back and highest, each level a step lower and
 //           closer. Every pedestal holds one job token printed with its priority (1 most urgent). Rods on the plate
@@ -7,9 +8,10 @@
 //   Right:  the service desk, where the root goes when it is served; the last leaf then jumps to the top and
 //           sifts down. Counters: swaps in the last operation, jobs waiting, oldest routine job's wait.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, digitCounter, faceText, person } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, digitCounter, faceText, person } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 430;
@@ -53,8 +55,7 @@ export const P = k.fitProjection(
   { pad: 14, azimuth: AZ },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const Ln = (d, style) => k.lineSvg(d, style);
+const { S, L: Ln } = shorthand(P);
 const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
 const hidden = (on) => (on ? "" : ' style="display:none"');
 

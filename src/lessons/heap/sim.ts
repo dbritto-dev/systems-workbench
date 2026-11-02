@@ -1,11 +1,13 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a priority queue kept as a binary heap.
 //   A heap is an array read as a tree: the item at i has children at 2i+1 and 2i+2, and no child beats its parent.
 //   So the best item is always at index 0. Push: append at the end and swap up while it beats its parent (sift up).
 //   Pop: take index 0, move the last item to the top and swap it down with its better child (sift down).
 //   A clinic uses it: jobs (patients) arrive with a priority 1–9 (1 most urgent); one desk serves the best waiting job.
-// Plain functions, no imports: the page inlines this file and the experiments run it in the browser.
+// Shared by the page (experiment results at build time) and the live code.
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+import { rng } from "../../lib/random";
+import { sum, averageOver } from "../../lib/stats";
 
 // ---------- the heap ----------
 // Items carry a key (lower is served first). With stable: true, equal keys are ordered by a sequence number taken on
@@ -137,7 +139,7 @@ export function makeClinic({ policy = "priority", load = 0.9, mix = MIX, stable 
 export function clinicRun(opts, seconds, seed) {
   const c = makeClinic(opts, seed);
   c.runTo(seconds);
-  const all = c.waitSum.reduce((s, x) => s + x, 0) / Math.max(1, c.served.reduce((s, x) => s + x, 0));
+  const all = sum(c.waitSum) / Math.max(1, sum(c.served));
   return {
     urgent: c.avgWait(0), soon: c.avgWait(1), routine: c.avgWait(2), all,
     oldestRoutine: Math.max(c.oldest(2), c.waitMax[2]),
@@ -145,10 +147,8 @@ export function clinicRun(opts, seconds, seed) {
     waiting: c.heap.size(),
   };
 }
-export function averageOf(runs) {
-  const keys = Object.keys(runs[0]);
-  return Object.fromEntries(keys.map((key) => [key, runs.reduce((s, r) => s + r[key], 0) / runs.length]));
-}
+// The clinic runs averaged over seeds (every field of clinicRun's summary).
+export const clinicAverage = (opts, seconds, seeds) => averageOver(seeds, (s) => clinicRun(opts, seconds, s));
 
 // ---------- growth: a heap against a sorted list ----------
 // Fill a heap with n random keys, then push and pop `trials` more, counting swaps per operation.
