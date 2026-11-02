@@ -1,10 +1,12 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A bakery: a display case of trays (cached keys), each with an expiry dial; an oven with a few shelves
 // (the database) and a ticket rail where orders wait for a shelf; customers who missed wait in front of their tray.
 // A scoreboard on the back wall counts waiting customers, duplicate orders and stale loaves served.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t, isT } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t, isT } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -60,10 +62,9 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
+const { S, L, at } = shorthand(P);
 const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
+// Not draw's text(): the attribute goes after the class and the text isn't escaped, and the figure must stay byte for byte.
 export const text = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) => {
   if (isT(value)) return `<g data-l="en">${text(x, y, z, value.en, { size, tone, anchor, attr })}</g><g data-l="es">${text(x, y, z, value.es, { size, tone, anchor, attr })}</g>`;
   return `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;

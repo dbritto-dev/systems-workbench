@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a cache in front of a slow store, and what happens
 // when hot entries expire. Times in seconds. Event-driven and seeded, so every run can be repeated.
 //
@@ -9,7 +10,9 @@
 //       "single" one order per key; other misses wait for it (request coalescing / single-flight)
 //       "stale"  serve the expired loaf at once and refresh it with one background order (stale-while-revalidate)
 // jitter: 0 for equal expiry; 0.2 for ±20 % on every TTL.
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// Shared by the page (experiment results at build time) and the live code.
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
 
 export const LIVE = { weights: [0.36, 0.2, 0.15, 0.12, 0.1, 0.07], shelves: 4 };
 
@@ -99,33 +102,30 @@ export function makeSim(cfg, seed = 7) {
   return sim;
 }
 
-// ---------- experiments (headless, same model) ----------
-const avg = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+// ---------- experiments (computed once at build time from the same model) ----------
+// Not the shared percentile(): this one takes sorted[floor(p * n)], the rule the published numbers used.
 const pctile = (xs, p) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 const SEEDS = [3, 7, 11, 19, 23, 31];
-function over(cfg, until, measure) {
-  return SEEDS.map((seed) => { const s = makeSim(cfg, seed); s.runTo(until); return measure(s); });
-}
-const mean = (rows, key) => avg(rows.map((r) => r[key]));
-function summary(rows) { const out = {}; for (const key of Object.keys(rows[0])) out[key] = mean(rows, key); return out; }
+// Run the model to `until` once per seed and average every measured field.
+const over = (cfg, until, measure) => averageOver(SEEDS, (seed) => { const s = makeSim(cfg, seed); s.runTo(until); return measure(s); });
 
 // A deploy fills 50 keys at once with a 30 s TTL; 500 requests a second spread evenly; 8 shelves, 0.2 s bake.
 const DEPLOY = { weights: Array(50).fill(1), rate: 500, ttl: 30, bake: 0.2, shelves: 8, mode: "all", jitter: 0 };
 export function deployRun(jitter) {
-  return summary(over({ ...DEPLOY, jitter }, 70, (s) => ({
+  return over({ ...DEPLOY, jitter }, 70, (s) => ({
     peak: Math.max(...s.perSecond.filter(Boolean)),
     orders: s.stats.orders,
     dups: s.stats.dups,
     maxWait: s.stats.maxWait,
     p99: pctile(s.waits.concat(Array(s.stats.hits).fill(0)), 0.99),
     capacity: DEPLOY.shelves / DEPLOY.bake,
-  })));
+  }));
 }
 
 // One hot key at 500 requests a second, 10 s TTL, 8 shelves.
 const HOT = { weights: [1], rate: 500, ttl: 10, bake: 0.2, shelves: 8, mode: "all", jitter: 0 };
 export function hotRun(mode, bake = HOT.bake, rate = HOT.rate) {
-  return summary(over({ ...HOT, mode, bake, rate }, 61, (s) => {
+  return over({ ...HOT, mode, bake, rate }, 61, (s) => {
     const cycles = Math.max(1, s.stats.expiries);
     return {
       perExpiry: s.stats.orders / cycles,
@@ -135,5 +135,5 @@ export function hotRun(mode, bake = HOT.bake, rate = HOT.rate) {
       meanWait: s.stats.waited ? s.stats.waitSum / s.stats.waited : 0,
       peakLoad: s.stats.peakLoad,
     };
-  }));
+  });
 }
