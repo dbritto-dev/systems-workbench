@@ -7,7 +7,7 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const block = (selector) => ISO_CSS.match(new RegExp(selector.replace(/[[\]"]/g, "\\$&") + "\\{([^}]*)\\}"))[1];
 const light = block('.iso[data-theme="light"]');
 const dark = block(".iso");
-const AREAS = ["Fundamentals", "Data", "Concurrency", "Messaging", "Distributed", "Traffic", "Resilience", "Delivery", "Observability", "Frontend"];
+const AREAS = ["Fundamentals", "Data", "Concurrency", "Messaging", "Distributed", "Traffic", "Resilience", "Delivery", "Observability", "Frontend", "Search"];
 const two = (n) => String(n).padStart(2, "0");
 const concept = (l) => l.eyebrow.split("·").pop().trim();
 

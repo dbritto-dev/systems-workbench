@@ -1358,5 +1358,205 @@
    }
   ],
   "questions": 6
+ },
+ {
+  "n": 35,
+  "slug": "bm25",
+  "area": "Search",
+  "html": "lessons/bm25/bm25-workbench.html",
+  "url": "https://claude.ai/artifact/QSMgpBPW5yiFGYQuiUXejB",
+  "blurb": "Rare words weigh more, repeats help less and less, long documents are discounted: why codes match and paraphrases don't.",
+  "title": "BM25 Workbench",
+  "eyebrow": "Systems lesson 35 · BM25",
+  "lede": "BM25 is the ranking behind most keyword search: it adds up, for every query word a document contains, how rare the word is, how often the document uses it (with diminishing returns) and how long the document is. It's fast, needs no training and is unbeatable on exact codes and names, but it only matches words, not meaning.",
+  "machine": "Assay bench",
+  "exps": [
+   {
+    "title": "A common word against a rare one",
+    "change": "Query “the printer” · D35, the office guide, says “the” 17 times and never “printer” · D06, a printer checklist, says “printer” once",
+    "question": "Which of the two ranks higher?"
+   },
+   {
+    "title": "Keyword stuffing",
+    "change": "D16 (“Cheap flights to Lisbon …”) repeats “cheap” 20 times instead of once · query “cheap flights” · k1 = 1.2, b = 0.75",
+    "question": "How much bigger does the “cheap” part of D16's score get?"
+   },
+   {
+    "title": "A short and a long document",
+    "change": "Query “kernel panic” · D03 (14 words) and D36 (63 words) each say “kernel” once and “panic” once · the average document is 20.3 words · b = 0.75",
+    "question": "How do their scores compare?"
+   },
+   {
+    "title": "An error code, and the same problem in other words",
+    "change": "D08 is the article about ERR_CONNECTION_RESET · query 1: “ERR_CONNECTION_RESET” · query 2: “browser keeps dropping the link to the website”",
+    "question": "Where does D08 rank for each query?"
+   },
+   {
+    "title": "Adding “the” to the query",
+    "change": "Query “kernel panic” → “the kernel panic” · no stop-word list",
+    "question": "What happens to the top five?"
+   }
+  ],
+  "questions": 6
+ },
+ {
+  "n": 36,
+  "slug": "semantic",
+  "area": "Search",
+  "html": "lessons/semantic/semantic-search-workbench.html",
+  "url": "https://claude.ai/artifact/37j9rZnbTNH8nbNZgFsKcU",
+  "blurb": "Embeddings place text by meaning, so paraphrases match with no shared words, while exact codes and names slip away.",
+  "title": "Semantic Search Workbench",
+  "eyebrow": "Systems lesson 36 · Semantic search",
+  "lede": "Semantic search finds text by meaning instead of by matching words. An embedding model turns every chunk of your documents into a vector, the query into another, and the chunks pointing the same way as the query come back first.",
+  "machine": "Star-map table",
+  "exps": [
+   {
+    "title": "Same meaning, no shared words",
+    "change": "Query \"my card was charged twice\" · the help centre says \"Seeing the same transaction two times on your statement is usually a pending authorisation.\"",
+    "question": "The two sentences share no words. Where does that chunk rank?"
+   },
+   {
+    "title": "An exact error code",
+    "change": "Query \"ERR-4012\" · one sentence in the help centre explains exactly that code",
+    "question": "Is the sentence about ERR-4012 the top result?"
+   },
+   {
+    "title": "How big is a chunk?",
+    "change": "14 help-centre questions · top 3 chunks each · chunks of one sentence vs one section (heading and its sentences) vs a whole document",
+    "question": "Which size hands the model a usable answer most cheaply?"
+   },
+   {
+    "title": "Search the graph instead of everything",
+    "change": "3,000 chunks · 200 queries · top 10 · compare against every chunk vs a graph index searched with a beam of 10, 40 or 160",
+    "question": "With a beam of 10, how many of the true 10 nearest does the graph find?"
+   },
+   {
+    "title": "Keep only results above 0.80",
+    "change": "A fixed cutoff · five queries: one word, a vague one, one the help centre can't answer, two specific questions",
+    "question": "What does one fixed cutoff do across these queries?"
+   }
+  ],
+  "questions": 6
+ },
+ {
+  "n": 37,
+  "slug": "rrf",
+  "area": "Search",
+  "html": "lessons/rrf/rrf-workbench.html",
+  "url": "https://claude.ai/artifact/7ouTjcV7Lr2Cqrr6sgx1Qh",
+  "blurb": "Merge rankings by 1/(k + rank), not raw scores: no normalising, and two judges agreeing beats one judge's favourite.",
+  "title": "Rank Fusion Workbench",
+  "eyebrow": "Systems lesson 37 · Reciprocal rank fusion",
+  "lede": "Hybrid search asks several rankers the same question and has to merge their answers, but their scores can't be compared: a keyword score of 20 and a cosine similarity of 0.8 mean nothing side by side. Reciprocal rank fusion ignores the scores and adds up 1 / (k + rank) from every list.",
+  "machine": "Count room",
+  "exps": [
+   {
+    "title": "Add the raw scores, or fuse the ranks",
+    "change": "Keyword scores run from about 4 to 30, meaning scores (cosine similarity) from 0.2 to 0.9 · top 20 from each · raw sum vs RRF with k = 60 · 40 queries, 10 relevant documents each",
+    "question": "How many relevant documents does each put in the top 10?"
+   },
+   {
+    "title": "Two good ranks or one first place",
+    "change": "The figure's query, top 8 from each ballot, k = 60 · D1 is 3rd for keyword and 4th for meaning · D2 is 1st for keyword and not on the meaning ballot at all",
+    "question": "Which document finishes higher?"
+   },
+   {
+    "title": "Turning k",
+    "change": "The same two ballots · k = 1, 60, 1000 · and the average over 40 queries",
+    "question": "What happens to the top five at k = 1?"
+   },
+   {
+    "title": "A third judge who knows nothing about the query",
+    "change": "Add a clicks ranker (overall popularity, unrelated to this query) · equal weight, then weight 0.3 · 40 queries, top 20 from each",
+    "question": "With the clicks judge at full weight, what happens?"
+   },
+   {
+    "title": "How deep each list goes",
+    "change": "Each ranker returns its top 10 vs its top 100 before fusing · k = 60 · 40 queries, 10 relevant documents each",
+    "question": "How many relevant documents reach the fused top 10?"
+   }
+  ],
+  "questions": 6
+ },
+ {
+  "n": 38,
+  "slug": "hybrid",
+  "area": "Search",
+  "html": "lessons/hybrid/hybrid-search-workbench.html",
+  "url": "https://claude.ai/artifact/8NwBZVxQ7jB23fNLqeZkrZ",
+  "blurb": "Run keyword and meaning search together and merge: each covers the other's misses, if you fuse and size them right.",
+  "title": "Hybrid Search Workbench",
+  "eyebrow": "Systems lesson 38 · Hybrid search",
+  "lede": "Hybrid search runs a keyword retriever and a meaning retriever on the same query and merges what they find. Each one misses a different kind of query, so the merged list catches both, if the merge is done right.",
+  "machine": "Sorting plant",
+  "exps": [
+   {
+    "title": "One lane or both",
+    "change": "Keyword lane only (BM25) vs meaning lane only (embeddings) vs both, merged with reciprocal rank fusion · 30 queries of each kind · is the wanted article in the top 10?",
+    "question": "Which setup finds the right article for all three kinds of query?"
+   },
+   {
+    "title": "Adding the scores as they are",
+    "change": "Merge by a weighted sum, α = 0.5, of the raw scores (BM25 runs from 0 to about 20, cosine from 0 to 1) vs the same sum after min-max scaling each list to 0..1 vs reciprocal rank fusion",
+    "question": "With raw scores, what happens to paraphrase queries?"
+   },
+   {
+    "title": "Turning the balance",
+    "change": "Min-max weighted sum with α = 0, 0.3, 0.5, 0.7 and 1 (0 = keywords only, 1 = meaning only) · recall@10 for each kind of query",
+    "question": "Which α is best?"
+   },
+   {
+    "title": "How deep each lane looks",
+    "change": "Each lane hands over its top 5, 20 or 100 candidates · merged with RRF · a reranker re-reads up to 100 of them · is a wanted article in the top 10?",
+    "question": "What does looking deeper buy?"
+   },
+   {
+    "title": "A reranker over the top 100",
+    "change": "RRF over each lane's top 100 · then a cross-encoder reads the query and each of the top 100 together and rescores them (2.2 ms a candidate) · is the wanted article in the top 5?",
+    "question": "What does the reranker change?"
+   }
+  ],
+  "questions": 6
+ },
+ {
+  "n": 39,
+  "slug": "contextual",
+  "area": "Search",
+  "html": "lessons/contextual/contextual-retrieval-workbench.html",
+  "url": "https://claude.ai/artifact/JkbwDkACHQKiX8RF915sbG",
+  "blurb": "Chunks lose their context when cut. Stamp each with a short summary before indexing, then rerank: far fewer misses.",
+  "title": "Contextual Retrieval Workbench",
+  "eyebrow": "Systems lesson 39 · Contextual retrieval",
+  "lede": "Cut a document into chunks and most chunks forget whose document they came from: \"the company's revenue grew by 3%\" could be any company, any quarter. Contextual Retrieval has an LLM read the whole document and write a short context for each chunk, prepended before the chunk is embedded and indexed for keywords.",
+  "machine": "Print shop",
+  "exps": [
+   {
+    "title": "Stamp the context on every card",
+    "change": "Search by meaning only (embeddings) · plain chunk cards → cards with the context header stamped on before they are embedded · top 20 passed on",
+    "question": "What happens to the share of questions whose answer chunk isn't among the 20 passed on?"
+   },
+   {
+    "title": "Search the words as well",
+    "change": "Cards with context · meaning only → meaning plus a BM25 keyword index of the same stamped cards, the two rankings merged by reciprocal rank fusion",
+    "question": "Adding a keyword index to the meaning search: what happens to the failures?"
+   },
+   {
+    "title": "Rerank 150, keep 20",
+    "change": "Context, meaning and BM25 · pass the top 20 straight on → fetch the top 150, let a reranker that reads question and chunk together reorder them, pass its top 20 on",
+    "question": "What does the reranker change?"
+   },
+   {
+    "title": "How many chunks to pass on",
+    "change": "The full pipeline (context, meaning + BM25, reranked) · pass on the top 5 / 10 / 20 chunks",
+    "question": "Which passes the answer to the model most often?"
+   },
+   {
+    "title": "What the context costs, and when to skip all this",
+    "change": "Writing a 100-token context for every 800-token chunk of 8k-token documents, with Claude 3 Haiku at list prices · without vs with prompt caching of the document",
+    "question": "Roughly what does contextualising a million tokens of documents cost with prompt caching, and when don't you need retrieval at all?"
+   }
+  ],
+  "questions": 6
  }
 ]
