@@ -1,13 +1,15 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A courier depot for latency: the CPU at the left end of a road, and every place data can live set along the
 // road at a distance proportional to the logarithm of its latency (one ruler step = 10 times longer).
 // A courier runs each trip; a meter on each station shows its share of the job's time; the signs show the total
 // and one trip stretched to human scale (an L1 hit = one second).
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { sphereOf } from "../../workbench/kit.mjs";
-import { basePlate, labelPlate, meter, figurine, sign, faceText } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { STATIONS } from "./sim.js";
+import * as k from "../../../workbench/kit.mjs";
+import { sphereOf } from "../../../workbench/kit.mjs";
+import { basePlate, labelPlate, meter, figurine, sign, faceText } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { STATIONS } from "./sim";
 
 export const WIDTH = 700;
 export const HEIGHT = 430;
@@ -40,10 +42,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 52 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L } = shorthand(P);
 const seg = (a, b) => k.segment(a, b, P);
 
 function plate() {

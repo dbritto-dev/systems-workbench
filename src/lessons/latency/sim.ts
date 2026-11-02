@@ -1,11 +1,11 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: how long work takes depending on where its data lives.
 // Every operation is a trip from the CPU to a "station" (a cache, memory, a drive, another machine) and back.
 // The latencies are the classic orders of magnitude from "Latency numbers every programmer should know"
 // (Jeff Dean and Peter Norvig, as collected by Jonas Bonér, ~2012 values). Real hardware varies, often by a lot;
 // what holds is the gap between levels: each step out costs one to three orders of magnitude.
-// Plain functions, no imports: the page inlines this file and the experiments run it in the browser.
-
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// Shared by the page (experiment results at build time) and the live code.
+import { rng, normal } from "../../lib/random";
 
 // The stations, nearest first. ns: one trip there and back. jitter: spread of one trip (lognormal sigma).
 export const STATIONS = [
@@ -24,9 +24,9 @@ export const MB_SSD_SEQ = 1e6;       // read 1 MB sequentially from an SSD
 export const MB_DISK_SEQ = 20e6;     // read 1 MB sequentially from a spinning disk
 export const KB_NET = 10e3;          // send 1 KB over a 1 Gbps network
 
-// A gaussian from the generator (Box–Muller), and a mean-preserving lognormal factor.
-function gauss(r) { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
-const spread = (r, sigma) => (sigma ? Math.exp(sigma * gauss(r) - (sigma * sigma) / 2) : 1);
+// A mean-preserving lognormal factor from a gaussian draw (Box–Muller; rng never returns 0, so normal() draws the
+// same numbers the original redraw-on-zero gaussian did).
+const spread = (r, sigma) => (sigma ? Math.exp(sigma * normal(r) - (sigma * sigma) / 2) : 1);
 
 // A job is a list of legs: `count` trips to `station`, each taking `each` ns on average (more than the station's own
 // latency when the trip also carries data), `wide` of them in flight at once (a leg in waves of `wide` waits for
