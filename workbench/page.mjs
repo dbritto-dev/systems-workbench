@@ -151,7 +151,8 @@ ${stats.map(([key, label, initial = "0"]) => `    <div class="stat"><b data-s="$
 // The figure card. stage: attributes for the focusable stage div (e.g. 'data-office aria-label="…"').
 // Any of fig, title, hint, readout, caption and key labels may be t(en, es). The kit escapes plate text, so
 // bilingual values go in as tokens and come back out as language spans.
-export const figurePlate = ({ fig = "Fig 1", title, hint = t("Space pauses", "Espacio pausa"), readout = t("starting", "iniciando"), keys, caption, stage, svg }) => {
+export const figurePlate = ({ fig = "Fig 1", title, hint = t("Space pauses", "Espacio: pausa"), readout = t("starting", "iniciando"), keys, caption, stage = "", stageLabel, svg }) => {
+  if (stageLabel) stage = `${stage} role="img" ${ariaLabel(stageLabel)}`;
   const held = [];
   const tok = (v) => (isT(v) ? (held.push(v), `@@WBT${held.length - 1}@@`) : v);
   const html = k.plateHtml({ fig: tok(fig), title: tok(title), hint: tok(hint), readout: tok(readout), keys: keys && keys.map((key) => ({ ...key, label: tok(key.label) })), caption: tok(caption), body: `<div class="iso-stage" ${stage} tabindex="0">${svg}</div>` });

@@ -16,6 +16,7 @@ const WB = (() => {
     return v != null && typeof v === "object" && "en" in v ? v[lang()] : v;
   };
   const onLang = (fn) => document.addEventListener("wb-lang", (e) => fn(e.detail));
+  const T = (en, es) => ({ en, es });
 
   // Live parts drawn by parts.mjs. Each finds its element by name inside root (the figure's svg).
   // counter: a digitCounter; set(v) redraws only the wheels whose digit changed.
@@ -117,5 +118,5 @@ const WB = (() => {
     });
   }
 
-  return { faceRectY, faceRectX, still, loop, pressSeg, onSegments, experiments, counter, dial, meter, pose, digitsOf, lang, L, onLang };
+  return { faceRectY, faceRectX, still, loop, pressSeg, onSegments, experiments, counter, dial, meter, pose, digitsOf, lang, L, T, onLang };
 })();

@@ -1285,36 +1285,97 @@
   "area": "Fundamentals",
   "html": "lessons/queues/queue-workbench.html",
   "url": "https://claude.ai/artifact/8mmcbZKfZKoGmWNXoa7a8E",
-  "blurb": "First in, first out. Between producers and workers a queue soaks up bursts and survives crashes, if you ack right.",
-  "title": "Queue Workbench",
-  "eyebrow": "Systems lesson 33 · Queues",
-  "lede": "A queue is a line: the first one in is the first one out. Put one between the code that creates work and the code that does it, and it soaks up bursts, survives crashed workers and keeps arrival order, as long as the work keeps up on average.",
-  "machine": "Parcel office",
+  "blurb": {
+   "en": "First in, first out. Between producers and workers a queue soaks up bursts and survives crashes, if you ack right.",
+   "es": "Primero en entrar, primero en salir. Entre productores y empleados, una cola absorbe ráfagas y sobrevive a caídas, si confirmas bien."
+  },
+  "blurb_es": "Primero en entrar, primero en salir. Entre productores y empleados, una cola absorbe ráfagas y sobrevive a caídas, si confirmas bien.",
+  "title": {
+   "en": "Queue Workbench",
+   "es": "Banco de trabajo: colas"
+  },
+  "eyebrow": {
+   "en": "Systems lesson 33 · Queues",
+   "es": "Lección de sistemas 33 · Colas"
+  },
+  "lede": {
+   "en": "A queue is a line: the first one in is the first one out. Put one between the code that creates work and the code that does it, and it soaks up bursts, survives crashed workers and keeps arrival order, as long as the work keeps up on average.",
+   "es": "Una cola es una fila: el primero que entra es el primero que sale. Ponla entre el código que crea trabajo y el código que lo hace, y absorbe ráfagas, sobrevive a consumidores que se caen y mantiene el orden de llegada, siempre que el trabajo alcance en promedio."
+  },
+  "machine": {
+   "en": "Parcel office",
+   "es": "Oficina de paquetes"
+  },
   "exps": [
    {
-    "title": "Slightly more than the clerks can do",
-    "change": "Arrivals 8/s → 10/s · three clerks can do 9 a second between them · run for 5 minutes",
-    "question": "After 5 minutes at 10 a second, what does the queue look like?"
+    "title": {
+     "en": "Slightly more than the clerks can do",
+     "es": "Un poco más de lo que los empleados alcanzan"
+    },
+    "change": {
+     "en": "Arrivals 8/s → 10/s · three clerks can do 9 a second between them · run for 5 minutes",
+     "es": "Llegadas 8/s → 10/s · entre los tres empleados procesan 9 por segundo · 5 minutos de ejecución"
+    },
+    "question": {
+     "en": "After 5 minutes at 10 a second, what does the queue look like?",
+     "es": "Después de 5 minutos a 10 por segundo, ¿cómo se ve la cola?"
+    }
    },
    {
-    "title": "200 parcels at once",
-    "change": "A quiet 5/s stream that the clerks (9/s) easily keep up with · 200 parcels dropped in at once · a queue vs nowhere to wait (turned away if every clerk is busy)",
-    "question": "What happens to the 200 parcels?"
+    "title": {
+     "en": "200 parcels at once",
+     "es": "200 paquetes de golpe"
+    },
+    "change": {
+     "en": "A quiet 5/s stream that the clerks (9/s) easily keep up with · 200 parcels dropped in at once · a queue vs nowhere to wait (turned away if every clerk is busy)",
+     "es": "Un flujo tranquilo de 5/s que los empleados (9/s) atienden sin problema · llegan 200 paquetes de golpe · con cola vs sin lugar para esperar (se rechazan si todos los empleados están ocupados)"
+    },
+    "question": {
+     "en": "What happens to the 200 parcels?",
+     "es": "¿Qué pasa con los 200 paquetes?"
+    }
    },
    {
-    "title": "A clerk collapses before stamping",
-    "change": "1 try in 10 ends with the clerk collapsing: half during the work, half after it but before the stamp · stamp after the work vs stamp on pickup vs an idempotent handler",
-    "question": "With the stamp after the work, what happens to the parcels whose clerk collapsed?"
+    "title": {
+     "en": "A clerk collapses before stamping",
+     "es": "Un empleado se desploma antes de sellar"
+    },
+    "change": {
+     "en": "1 try in 10 ends with the clerk collapsing: half during the work, half after it but before the stamp · stamp after the work vs stamp on pickup vs an idempotent handler",
+     "es": "1 de cada 10 intentos termina con el empleado desplomado: la mitad durante el trabajo, la otra mitad después pero antes del sello · sellar después del trabajo vs sellar al recoger vs un handler idempotente"
+    },
+    "question": {
+     "en": "With the stamp after the work, what happens to the parcels whose clerk collapsed?",
+     "es": "Con el sello después del trabajo, ¿qué pasa con los paquetes cuyo empleado se desplomó?"
+    }
    },
    {
-    "title": "One parcel in 50 can never be processed",
-    "change": "4 clerks, 1.5 s per parcel, 2 arriving a second · a bad parcel fails every time · retried forever vs moved to the dead-letter cage after 3 tries · 5 minutes",
-    "question": "With retry forever, what happens by the 5-minute mark?"
+    "title": {
+     "en": "One parcel in 50 can never be processed",
+     "es": "Uno de cada 50 paquetes nunca se puede procesar"
+    },
+    "change": {
+     "en": "4 clerks, 1.5 s per parcel, 2 arriving a second · a bad parcel fails every time · retried forever vs moved to the dead-letter cage after 3 tries · 5 minutes",
+     "es": "4 empleados, 1.5 s por paquete, llegan 2 por segundo · un paquete malo falla siempre · reintentar para siempre vs mandarlo a la jaula de mensajes muertos después de 3 intentos · 5 minutos"
+    },
+    "question": {
+     "en": "With retry forever, what happens by the 5-minute mark?",
+     "es": "Si se reintenta para siempre, ¿qué pasa a los 5 minutos?"
+    }
    },
    {
-    "title": "One slow parcel at the front",
-    "change": "Parcels must be handled in order · one parcel for customer A takes 30 s instead of 0.4 s · one order for everything vs one order per customer (4 customers)",
-    "question": "How long do customers B, C and D wait?"
+    "title": {
+     "en": "One slow parcel at the front",
+     "es": "Un paquete lento al frente"
+    },
+    "change": {
+     "en": "Parcels must be handled in order · one parcel for customer A takes 30 s instead of 0.4 s · one order for everything vs one order per customer (4 customers)",
+     "es": "Los paquetes se deben procesar en orden · un paquete del cliente A tarda 30 s en lugar de 0.4 s · un solo orden para todo vs un orden por cliente (4 clientes)"
+    },
+    "question": {
+     "en": "How long do customers B, C and D wait?",
+     "es": "¿Cuánto esperan los clientes B, C y D?"
+    }
    }
   ],
   "questions": 6
