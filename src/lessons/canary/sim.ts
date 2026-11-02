@@ -1,5 +1,10 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments. Time is in seconds of figure time.
 // Each train is one request (a customer order) from one of 100 users.
+// Shared by the experiments (at build time) and the live figure (in the browser).
+import { rng } from "../../lib/random";
+import { mean, meanBy } from "../../lib/stats";
+
 export const RATE = 1.2;          // trains per second on the main line
 export const NOISE = 0.001;       // background failure rate of both versions (timeouts, flaky networks)
 export const USERS = 100;
@@ -15,7 +20,6 @@ export const RULES = {
   normal: { threshold: 0.004, minFailures: 3 },
   loose: { threshold: 0.02, minFailures: 5 },
 };
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 // Sticky routing: every user has a fixed bucket 0..99; buckets below the canary % go to the new track.
 export const bucketOf = (user) => (user * 37 + 11) % 100;
 
@@ -97,4 +101,39 @@ export function runDeploy({ seed = 1, duration = 3600, promoteAt = null, stopAtD
     if (stopAtDecision && d.decision !== "watching") break;
   }
   return d;
+}
+
+// ---------- track geometry: the figure draws the tracks with these, the live code runs the trains along them ----------
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+export function lengthOf(points) { let s = 0; for (let i = 1; i < points.length; i++) s += Math.hypot(...sub(points[i], points[i - 1])); return s; }
+export function pointAt(points, s) {
+  for (let i = 1; i < points.length; i++) {
+    const seg = Math.hypot(...sub(points[i], points[i - 1]));
+    if (s <= seg || i === points.length - 1) { const t = Math.max(0, Math.min(1, s / seg)); return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * t, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * t]; }
+    s -= seg;
+  }
+  return points[points.length - 1];
+}
+
+// ---------- experiments: computed once at build time from the same model ----------
+const seedsOf = (n) => Array.from({ length: n }, (_, i) => i + 1);
+export function blastRun() {
+  const at = (pct) => { const runs = seedsOf(60).map((seed) => runDeploy({ seed, pct, build: "bad", duration: 4 * 3600, stopAtDecision: true })); return { hit: meanBy(runs, (x) => x.hitAtDecision ?? hitCount(x)), time: meanBy(runs, (x) => x.decidedAt ?? 14400) }; };
+  return { a: at(25), b: at(1) };
+}
+export function rareRun() {
+  const at = (pct) => mean(seedsOf(30).map((seed) => { const x = runDeploy({ seed, pct, build: "rare", duration: 48 * 3600, stopAtDecision: true }); return x.decidedAt ?? 48 * 3600; }));
+  return { a: at(10), b: at(1) };
+}
+export function tightRun() {
+  const share = (rule) => seedsOf(200).filter((seed) => runDeploy({ seed, pct: 10, build: "good", rule, duration: 7200 }).decision === "rolled back").length / 200;
+  return { a: share("normal"), b: share("tight") };
+}
+export function stickyRun() {
+  const share = (routing) => mean(seedsOf(30).map((seed) => { const x = runDeploy({ seed, pct: 25, build: "good", routing, duration: 600 }); return x.mixed / Math.max(1, x.active); }));
+  return { a: share("random"), b: share("sticky") };
+}
+export function silentRun() {
+  const wrong = (check) => { const runs = seedsOf(30).map((seed) => runDeploy({ seed, pct: 10, build: "silent", check, duration: 3600, promoteAt: 1800 })); return { n: meanBy(runs, (x) => x.nw.wrong), promoted: runs.filter((x) => x.decision === "promoted").length / runs.length }; };
+  return { a: wrong("errors"), b: wrong("price") };
 }

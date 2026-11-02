@@ -1,8 +1,11 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A model railway junction: a main line splits at a points lever into the old track and a short
 // canary track. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { lengthOf, pointAt } from "./sim";
 
 export const WIDTH = 700;
 export const HEIGHT = 420;
@@ -48,10 +51,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 63 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 
 // ---------- track geometry ----------
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
@@ -70,15 +70,6 @@ function offset(points, by) {
     }
     return [p[0] + n[0] * by, p[1] + n[1] * by];
   });
-}
-export function lengthOf(points) { let s = 0; for (let i = 1; i < points.length; i++) s += Math.hypot(...sub(points[i], points[i - 1])); return s; }
-export function pointAt(points, s) {
-  for (let i = 1; i < points.length; i++) {
-    const seg = Math.hypot(...sub(points[i], points[i - 1]));
-    if (s <= seg || i === points.length - 1) { const t = Math.max(0, Math.min(1, s / seg)); return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * t, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * t]; }
-    s -= seg;
-  }
-  return points[points.length - 1];
 }
 
 function bed(points, skip = 0) {
