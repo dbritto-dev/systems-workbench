@@ -1,0 +1,64 @@
+---
+// A lesson page: header, the machine (figure + panel), predict-then-run cards, explain-back questions.
+// The figure's still frame is plain HTML/SVG, so the page reads and prints without JavaScript; the lesson's live
+// code (the model and the animation) is a separate module, loaded as the machine comes into view.
+import Base from "./Base.astro";
+import Switches from "../components/Switches.astro";
+import Experiments from "../components/lesson/Experiments.astro";
+import Questions from "../components/lesson/Questions.astro";
+import { pick, href, type Locale } from "../i18n";
+import { localize } from "../i18n/localize";
+import { useUi } from "../i18n/ui";
+import { plain, type Lesson } from "../lib/lessons";
+import "../generated/workbench.css";
+import "../styles/lesson.css";
+
+interface Props { lesson: Lesson; locale: Locale }
+const { lesson, locale } = Astro.props;
+const p = lesson.page;
+const ui = useUi(locale);
+const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
+const path = `lessons/${lesson.slug}/`;
+---
+<Base locale={locale} title={plain(p.title, locale)} description={plain(p.lede, locale).slice(0, 300)} path={path} bodyClass={p.litFill ? "iso lit-fill" : "iso"}>
+  <Fragment slot="head">{p.css && <Fragment set:html={`<style>${p.css}</style>`} />}</Fragment>
+  <main class="page">
+    <div class="topbar">
+      <a class="back" href={href(locale)}>← {ui("lesson.back")}</a>
+      <Switches locale={locale} path={path} class="theme-switch" />
+    </div>
+    <header>
+      <div class="eyebrow" set:html={L(p.eyebrow)} />
+      <h1 set:html={L(p.title)} />
+      <p class="lede" set:html={L(p.lede)} />
+      <ul class="parts">
+        <li><a href="#machine">{ui("lesson.parts.machine")}</a></li>
+        <li><a href="#predict">{ui("lesson.parts.predict")}</a></li>
+        <li><a href="#explain">{ui("lesson.parts.explain")}</a></li>
+      </ul>
+    </header>
+
+    <section id="machine">
+      <div class="section-head"><span class="eyebrow">01</span><h2>{ui("lesson.machine")}</h2><p set:html={L(p.machine.intro)} /></div>
+      <Fragment set:html={localize(p.machine.figure, locale)} />
+      <Fragment set:html={localize(p.machine.panel, locale)} />
+    </section>
+
+    <section id="predict">
+      <div class="section-head"><span class="eyebrow">02</span><h2>{ui("lesson.predict")}</h2><p set:html={L(p.predict.intro)} /></div>
+      <Experiments locale={locale} experiments={p.predict.experiments} />
+    </section>
+
+    <section id="explain">
+      <div class="section-head"><span class="eyebrow">03</span><h2>{ui("lesson.explain")}</h2><p set:html={p.explain.intro ? L(p.explain.intro) : ui("lesson.explainIntro")} /></div>
+      <Questions locale={locale} questions={p.explain.questions} />
+    </section>
+
+    <footer set:html={p.footer ? L(p.footer) : ui("lesson.footer")} />
+  </main>
+  <div hidden data-live={lesson.slug}></div>
+  <script>
+    import { loadLive } from "../scripts/live-loader";
+    loadLive();
+  </script>
+</Base>

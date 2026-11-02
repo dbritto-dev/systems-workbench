@@ -1,0 +1,44 @@
+---
+// Every page: document head (title, description, language alternates), the theme set before first paint,
+// and old ?lang= links sent to the right language's URL.
+import { LOCALES, href, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+  /** This page's path without the language prefix, e.g. "lessons/cache/" ("" for the home page). */
+  path: string;
+  bodyClass?: string;
+}
+const { locale, title, description, path, bodyClass } = Astro.props;
+const canonical = new URL(href(locale, path), Astro.site);
+---
+<!doctype html>
+<html lang={locale} data-lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {LOCALES.map((l) => <link rel="alternate" hreflang={l} href={new URL(href(l, path), Astro.site)} />)}
+    <link rel="alternate" hreflang="x-default" href={new URL(href("en", path), Astro.site)} />
+    <script is:inline>
+      (function () {
+        try { var t = localStorage.getItem("workbench-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+        try {
+          var u = new URL(location.href), want = u.searchParams.get("lang"), here = document.documentElement.lang;
+          if ((want === "es" || want === "en") && want !== here) {
+            var alt = document.querySelector('link[rel="alternate"][hreflang="' + want + '"]');
+            if (alt) { u.searchParams.delete("lang"); location.replace(alt.getAttribute("href") + u.search + u.hash); }
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <slot name="head" />
+  </head>
+  <body class={bodyClass}>
+    <slot />
+  </body>
+</html>

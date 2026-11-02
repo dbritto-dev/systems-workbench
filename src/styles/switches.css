@@ -1,0 +1,47 @@
+/* Language links and theme buttons share one look: small mono segments, the current one filled. */
+.switches,
+.theme-switch {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.lang-seg a,
+.theme-seg button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--edge, var(--anatomy-lo));
+  background: transparent;
+  color: var(--muted, var(--anatomy-muted));
+  font: 500 11px/1.2 var(--mono, var(--anatomy-mono));
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  min-height: 28px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.lang-seg a + a,
+.theme-seg button + button {
+  margin-left: -1px;
+}
+.lang-seg a:hover,
+.theme-seg button:hover {
+  color: var(--ink, var(--anatomy-strong));
+  border-color: var(--anatomy-hi);
+  position: relative;
+  z-index: 2;
+}
+.lang-seg a[aria-current="page"],
+.theme-seg button[aria-pressed="true"] {
+  background: var(--ink, var(--anatomy-strong));
+  border-color: var(--ink, var(--anatomy-strong));
+  color: var(--plate, var(--anatomy-card));
+  position: relative;
+  z-index: 1;
+}
+.lang-seg a:focus-visible,
+.theme-seg button:focus-visible {
+  outline: 2px solid var(--ink, var(--anatomy-strong));
+  outline-offset: 2px;
+}

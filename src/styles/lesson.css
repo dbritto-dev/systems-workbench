@@ -1,0 +1,23 @@
+/* Additions to the generated lesson stylesheet (workbench.css) for the site: the top bar with the way back. */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: -36px 0 18px;
+}
+.topbar .theme-switch {
+  margin: 0;
+}
+.back {
+  font-family: var(--anatomy-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  text-decoration: none;
+}
+.back:hover {
+  color: var(--anatomy-strong);
+}

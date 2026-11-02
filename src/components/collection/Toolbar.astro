@@ -1,0 +1,30 @@
+---
+// The search box and the area filters (a strip that scrolls sideways on narrow screens, with ‹ › buttons).
+import { useUi, AREAS, AREA_NAMES } from "../../i18n/ui";
+import type { Locale } from "../../i18n";
+import type { Lesson } from "../../lib/lessons";
+
+interface Props { locale: Locale; lessons: Lesson[] }
+const { locale, lessons } = Astro.props;
+const ui = useUi(locale);
+const counts = Object.fromEntries(AREAS.map((a) => [a, lessons.filter((l) => l.area === a).length]));
+const areas = AREAS.filter((a) => counts[a] > 0);
+---
+<div class="tools">
+  <div class="search" role="search">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3.5 3.5"></path></svg>
+    <input type="search" id="q" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label={ui("search.label")} aria-controls="lessons" aria-describedby="search-status" placeholder={ui("search.placeholder")} />
+    <kbd aria-hidden="true">/</kbd>
+  </div>
+  <div class="filters-wrap">
+    <button type="button" class="scroll-btn" data-scroll="-1" aria-label={ui("filters.left")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg></button>
+    <div class="filters-view">
+      <div class="filters" id="area-filters" role="group" aria-label={ui("filters.label")}>
+        <button type="button" data-filter="all" aria-pressed="true">{ui("filters.all")} <b>{lessons.length}</b></button>
+        {areas.map((a) => <button type="button" data-filter={a} aria-pressed="false">{AREA_NAMES[a][locale]} <b>{counts[a]}</b></button>)}
+      </div>
+    </div>
+    <button type="button" class="scroll-btn" data-scroll="1" aria-label={ui("filters.right")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg></button>
+  </div>
+</div>
+<p class="status" id="search-status" data-status role="status" aria-live="polite"></p>
