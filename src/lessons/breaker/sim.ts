@@ -1,12 +1,15 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a pool of workers calling a supplier,
 // optionally through a timeout, retries and a circuit breaker. Times are in seconds of figure time.
+import { rng } from "../../lib/random";
+import { mean, meanBy } from "../../lib/stats";
+
 export const STEP = 0.05;
 export const BASE = {
   workers: 6, queue: 4, rate: 3, supplierShare: 0.7, localTime: 0.4,
   healthyTime: 0.6, sickTime: 6, cap: 15, recoverHold: 2, fastTime: 0.05,
   cause: "healthy", timeout: 0, breaker: false, threshold: 5, cooldown: 5, retries: 0, backoff: false,
 };
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 const freshCounts = () => ({ arrived: 0, localArrived: 0, served: 0, servedLocal: 0, servedSupplier: 0, failedFast: 0, failedSlow: 0, dropped: 0, localDropped: 0, attempts: 0, loadArea: 0, time: 0, latencies: [], supplierLatencies: [] });
 
 export function createSim(options = {}, seed = 1) {
@@ -108,6 +111,7 @@ export function createSim(options = {}, seed = 1) {
   return { s, cfg, step, set, sick, load: () => s.calls.length, resetCounts: () => { s.counts = freshCounts(); } };
 }
 
+// The q-quantile by this lesson's rule, sorted[floor(q * n)] (not the shared percentile(), which uses n - 1).
 export function pct(list, q) { if (!list.length) return 0; const a = [...list].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(q * a.length))]; }
 export const p95 = (list) => pct(list, 0.95);
 
@@ -132,11 +136,25 @@ export function runScenario({ options = {}, seconds = 60, from = 10, events = []
 }
 export function averageScenario(spec, seeds = [3, 5, 7, 11, 13, 17, 19, 23]) {
   const runs = seeds.map((seed) => runScenario({ ...spec, seed }));
-  const mean = (k) => runs.reduce((a, r) => a + r[k], 0) / runs.length;
+  const avg = (k) => meanBy(runs, (r) => r[k]);
   const finite = runs.map((r) => r.recovery).filter((x) => x !== null && Number.isFinite(x));
   return {
-    served: mean("served"), localServed: mean("localServed"), dropped: mean("dropped"), failedFast: mean("failedFast"), failedSlow: mean("failedSlow"),
-    p95: mean("p95"), p95Supplier: mean("p95Supplier"), p50Supplier: mean("p50Supplier"), load: mean("load"), opens: mean("opens"),
-    recovery: finite.length ? finite.reduce((a, x) => a + x, 0) / finite.length : null, recovered: finite.length, runs: runs.length,
+    served: avg("served"), localServed: avg("localServed"), dropped: avg("dropped"), failedFast: avg("failedFast"), failedSlow: avg("failedSlow"),
+    p95: avg("p95"), p95Supplier: avg("p95Supplier"), p50Supplier: avg("p50Supplier"), load: avg("load"), opens: avg("opens"),
+    recovery: finite.length ? mean(finite) : null, recovered: finite.length, runs: runs.length,
+  };
+}
+
+// ---------- experiments (run at build time; the page shows the results) ----------
+export const INCIDENT = [{ at: 0, cause: "failing" }, { at: 20, cause: "healthy" }];
+export const WINDOW = 40;   // seconds after the fix that the recovery runs watch
+const incident = (o) => averageScenario({ options: { timeout: 1.5, ...o }, events: INCIDENT, seconds: 20 + WINDOW, from: 0 });
+export function experimentResults() {
+  return {
+    slow: { a: averageScenario({ options: { cause: "healthy" } }), b: averageScenario({ options: { cause: "slow" } }) },
+    timeout: { a: averageScenario({ options: { cause: "slow" } }), b: averageScenario({ options: { cause: "slow", timeout: 1.5 } }) },
+    breaker: { a: averageScenario({ options: { cause: "failing", timeout: 1.5 } }), b: averageScenario({ options: { cause: "failing", timeout: 1.5, breaker: true } }) },
+    retries: { a: incident({}), b: incident({ retries: 3 }), c: incident({ retries: 3, breaker: true }) },
+    cooldown: { a: incident({}), b: incident({ breaker: true, cooldown: 5 }), c: incident({ breaker: true, cooldown: 30 }) },
   };
 }
