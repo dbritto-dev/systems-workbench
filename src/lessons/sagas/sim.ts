@@ -1,6 +1,12 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: trips booked across five services with no shared transaction.
 // A trip folder visits the counters in order. If a step fails, a saga runs the undo (compensation) of every
 // earlier step, newest first. Times in seconds. Positions are slot numbers: -1 = the door, 0..4 = counters, 5 = exit.
+// The experiments run at build time.
+
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
+
 export const ORDERS = {
   standard: ["F", "H", "C", "P", "M"],
   mailFirst: ["M", "F", "H", "C", "P"],
@@ -9,7 +15,6 @@ export const ORDERS = {
 export const NAMES = { F: "flight", H: "hotel", C: "car", P: "payment", M: "confirmation email" };
 export const BOARDED = { F: true, H: true, C: true };
 export const T = { DOOR: 0.7, HOP: 0.6, DROP: 0.35, COURIER: 0.3, COMP: 0.7, BACKOFF: 0.9, STAY: 14 };
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // cfg: { style: "orch"|"choreo"|"none", order, undo: "none"|"retry"|"idem", decline, lost, rate, slots, stopAt }
 export function makeSim(cfg = {}, seed = 7) {
@@ -202,9 +207,7 @@ export function folderAt(trip, t) {
 // ---------- experiments (averaged over seeds) ----------
 const SEEDS = [11, 23, 37, 41, 59, 61, 73, 89];
 export function runScenario(cfg, duration = 180) {
-  const sum = {};
-  let n = 0;
-  for (const seed of SEEDS) {
+  return averageOver(SEEDS, (seed) => {
     const sim = makeSim({ ...cfg, stopAt: duration }, seed);
     sim.runTo(duration + 60);
     const r = sim.count(duration + 60);
@@ -215,11 +218,8 @@ export function runScenario(cfg, duration = 180) {
     for (const x of sim.turned) if (x.holders.some((id) => final.get(id) === "undone" || final.get(id) === "stuck")) r.wrongTurned++;
     r.tripTime = r.timeN ? r.times / r.timeN : 0;
     const f = findCost(sim, duration); r.findAsks = f.asks; r.findMissed = f.missed;
-    for (const [k, v] of Object.entries(r)) if (typeof v === "number") sum[k] = (sum[k] || 0) + v;
-    n++;
-  }
-  for (const k of Object.keys(sum)) sum[k] /= n;
-  return sum;
+    return r;
+  });
 }
 
 // A support agent looks for a trip in progress. With an orchestrator: one look at the checklist.
@@ -238,4 +238,17 @@ function findCost(sim, duration) {
     }
   }
   return { asks: samples ? asks / samples : 0, missed: samples ? missed / samples : 0 };
+}
+
+// Every experiment's numbers, run once at build time.
+export function experimentResults() {
+  const lostBase = { style: "orch", decline: 0.4, lost: 0.25 };
+  const isoBase = { style: "orch", decline: 0.4, slots: 5, rate: 0.4 };
+  return {
+    nosaga: { a: runScenario({ style: "none", decline: 0.2 }), b: runScenario({ style: "orch", decline: 0.2 }) },
+    lost: { g: runScenario({ ...lostBase, undo: "none" }), r: runScenario({ ...lostBase, undo: "retry" }), k: runScenario({ ...lostBase, undo: "idem" }) },
+    email: { last: runScenario({ style: "orch", decline: 0.2 }), first: runScenario({ style: "orch", decline: 0.2, order: "mailFirst" }) },
+    isolation: { a: runScenario(isoBase), b: runScenario({ ...isoBase, order: "payFirst" }) },
+    choreo: { o: runScenario({ style: "orch", decline: 0.2 }), c: runScenario({ style: "choreo", decline: 0.2 }) },
+  };
 }
