@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a stream of events (scroll positions, drag
 // positions or clicks) passing a gate that decides which ones reach the handler.
 // Times are seconds of real (page) time; the figure plays them in slow motion.
@@ -5,7 +6,10 @@ export const TRAVEL = 0.05;   // an event ball rolls this long from the hopper t
 export const ROLL = 0.035;    // from the gate down to the handler press
 export const FALL = 0.03;     // from the gate or the ledge into the discard bin
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+import { rng } from "../../lib/random";
+import { mean, averageOver } from "../../lib/stats";
+
+export { rng };
 
 // ---------- the gate ----------
 // cfg: { mode: "off" | "throttle" | "debounce" | "queue", wait (s), leading, trailing }
@@ -150,7 +154,7 @@ export function run({ kind = "scroll", rate = 60, mode = "throttle", wait = 0.1,
     n, calls, dropped: ev.filter((e) => e.call === false).length,
     callsPerSec: calls / moving, eventsPerSec: n / moving,
     workPerSec: (calls * cost) / moving,       // seconds of handler work per second of input
-    maxLag: finite.length ? Math.max(...finite) : 0, meanLag: finite.length ? finite.reduce((a, b) => a + b, 0) / finite.length : 0,
+    maxLag: finite.length ? Math.max(...finite) : 0, meanLag: mean(finite),
     finalHandled: bursts.length ? finalHandled / bursts.length : 1, bursts: bursts.length,
     during, duringPerBurst: during / Math.max(1, bursts.length),
     maxDelay: delays.length ? Math.max(...delays) : 0,
@@ -158,9 +162,4 @@ export function run({ kind = "scroll", rate = 60, mode = "throttle", wait = 0.1,
 }
 
 // Average a run over several seeds.
-export function avg(cfg, seeds = 8) {
-  const rs = Array.from({ length: seeds }, (_, s) => run(cfg, s + 1));
-  const out = {};
-  for (const key of Object.keys(rs[0])) out[key] = rs.reduce((a, r) => a + r[key], 0) / rs.length;
-  return out;
-}
+export const avg = (cfg, seeds = 8) => averageOver(Array.from({ length: seeds }, (_, s) => s + 1), (s) => run(cfg, s));

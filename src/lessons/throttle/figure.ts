@@ -1,14 +1,17 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A metronome gate on a ball track. Event balls leave the hopper and roll toward a gate; a metronome
 // beside the gate swings once per interval and holds the gate shut while it swings. A ball that reaches a
 // shut gate either waits on the flap in front of it (trailing: only the newest waits, the one it replaces
 // drops) or falls through the flap into the discard bin. Balls that pass reach the handler press.
 // In front, a position rail: the user (a figure) and what the screen shows (a frame) — the gap is staleness.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate } from "../../workbench/parts.mjs";
-import { sphereOf } from "../../workbench/vendor-anatomy/kit/lathe.mjs";
-import { digitPath, counterCells, digitsOf } from "./digits.js";
-import { t, isT } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate } from "../../../workbench/parts.mjs";
+import { sphereOf } from "../../../workbench/vendor-anatomy/kit/lathe.mjs";
+import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
+import { t, isT } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { livePaths } from "./paths";
 
 export const WIDTH = 700;
 export const HEIGHT = 380;
@@ -66,10 +69,10 @@ export const P = k.fitProjection(
   WIDTH, HEIGHT, { pad: 18, azimuth: 60 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
+// The swinging arm, the gauge needle and the gap on the rail are redrawn every frame by the live code too: one copy, in
+// ./paths, used here for the first frame and by live.ts.
+export const { armPaths, needlePath, gapPath } = livePaths(P, { PIVOT, ARM, GAUGE, RAIL, LANE_USER });
 const slab = (plan, z, h, steps = 3, bevel = 0) => k.slabOf(plan, z, h, P, steps, bevel);
 const flat = (d) => ({ fill: d, outline: d, crease: "", top: "", shades: [] });
 // value may be t(en, es): one text per language.
@@ -127,15 +130,6 @@ function metronome() {
   return out.join("");
 }
 
-// The swinging arm (live: rebuilt every frame from its angle).
-export function armPaths(a) {
-  const [px, py, pz] = PIVOT;
-  const u = [Math.sin(a), 0, Math.cos(a)], n = [Math.cos(a), 0, -Math.sin(a)];
-  const pt = (s, w) => at([px + u[0] * s + n[0] * w, py, pz + u[2] * s + n[2] * w]);
-  const rod = k.pathOf([pt(-1, -ARM.w / 2), pt(ARM.len, -ARM.w / 2), pt(ARM.len, ARM.w / 2), pt(-1, ARM.w / 2)], true);
-  const s0 = ARM.len * ARM.weight, wt = k.pathOf([pt(s0 - 3.4, -3.6), pt(s0 + 3.4, -3.6), pt(s0 + 3.4, 3.6), pt(s0 - 3.4, 3.6)], true);
-  return { rod, wt };
-}
 function arm() {
   const { rod, wt } = armPaths(0);
   const part = (name, d, tone) => `<g class="iso-solid"><path class="iso-fill" data-arm-${name}-fill d="${d}"/><path class="iso-line iso-edge" data-tone="${tone}" data-arm-${name} d="${d}"/></g>`;
@@ -233,11 +227,6 @@ function gauge() {
   out.push(D([at([g.cx, g.cy, g.top])], { size: 0.9, tone: "hi" }));
   return out.join("");
 }
-export function needlePath(rate) {
-  const g = GAUGE, f = Math.max(0, Math.min(1, rate / g.max)), a = g.from + (g.to - g.from) * f;
-  return k.segment([g.cx, g.cy, g.top], [g.cx + Math.sin(a) * (g.r - 1.2), g.cy - Math.cos(a) * (g.r - 1.2), g.top], P);
-}
-
 // The position rail: where the user is (a figure) and what the screen shows (a frame), and the gap between.
 function positionRail() {
   const r = RAIL, out = [];
@@ -247,10 +236,6 @@ function positionRail() {
   out.push(L(k.lineOnTop([r.x0 + 6, LANE_SCREEN], [r.x1 - 6, LANE_SCREEN], r.h, P), { tone: "faint" }));
   out.push(`<path class="iso-line" data-tone="lit" data-gap data-dashed d=""/>`);
   return out.join("");
-}
-export function gapPath(x0, x1) {
-  if (Math.abs(x1 - x0) < 0.5) return "";
-  return k.lineOnTop([x0, LANE_USER], [x1, LANE_USER], RAIL.h, P);
 }
 export function userSvg() {
   const y = LANE_USER, out = [];
