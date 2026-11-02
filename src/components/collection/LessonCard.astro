@@ -1,0 +1,40 @@
+---
+// One lesson on the collection page: the running machine's preview (light and dark), what it teaches, and links.
+// Previews go through astro:assets, so each is served at the width the layout needs and loaded lazily.
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import { pick, href, type Locale } from "../../i18n";
+import { useUi, AREA_NAMES } from "../../i18n/ui";
+import { two, conceptOf, machineOf, blurbOf, plain, type Lesson } from "../../lib/lessons";
+
+interface Props { lesson: Lesson; locale: Locale }
+const { lesson: l, locale } = Astro.props;
+const ui = useUi(locale);
+const previews = import.meta.glob<{ default: ImageMetadata }>("/workbench/collection/previews/*.webp", { eager: true });
+const img = (scheme: "light" | "dark") => previews[`/workbench/collection/previews/${l.slug}-${scheme}.webp`]?.default;
+const title = plain(l.page.title, locale);
+const machine = pick(machineOf(l), locale);
+const sizes = "(max-width: 760px) calc(100vw - 32px), 540px";
+const widths = [400, 560, 800, 1100];
+---
+<article class="card" data-area={l.area} data-slug={l.slug} id={`lesson-${two(l.n)}`}>
+  <button type="button" class="shot" data-preview={l.slug} aria-label={`${ui("card.previewOf")} ${title}`}>
+    {img("light") && <Image class="on-light" src={img("light")!} alt={ui("card.alt", { machine, title })} widths={widths} sizes={sizes} loading="lazy" />}
+    {img("dark") && <Image class="on-dark" src={img("dark")!} alt="" widths={widths} sizes={sizes} loading="lazy" />}
+    <span class="plate-corner tl">{ui("card.lesson")} {two(l.n)}</span>
+    <span class="plate-corner tr">{machine}</span>
+  </button>
+  <div class="card-body">
+    <div class="meta"><span>{AREA_NAMES[l.area][locale]}</span><span>{pick(conceptOf(l), locale)}</span></div>
+    <h2 title={title}>{title}</h2>
+    <p>{pick(blurbOf(l), locale)}</p>
+    <div class="hit" hidden></div>
+    <div class="card-foot">
+      <span class="counts">{ui("card.counts", { e: l.page.predict.experiments.length, q: l.page.explain.questions.length })}</span>
+      <span class="card-actions">
+        <button type="button" class="btn" data-preview={l.slug}>{ui("card.preview")}</button>
+        <a class="btn primary" href={href(locale, `lessons/${l.slug}/`)}>{ui("card.open")}</a>
+      </span>
+    </div>
+  </div>
+</article>

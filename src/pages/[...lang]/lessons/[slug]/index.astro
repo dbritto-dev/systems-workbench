@@ -1,0 +1,13 @@
+---
+import Lesson from "../../../../layouts/Lesson.astro";
+import { allLessons } from "../../../../lib/lessons";
+import { langParams, localeOf } from "../../../../i18n";
+
+export async function getStaticPaths() {
+  const lessons = await allLessons();
+  return langParams().flatMap(({ lang }) => lessons.map((lesson) => ({ params: { lang, slug: lesson.slug }, props: { lesson } })));
+}
+const { lesson } = Astro.props;
+const locale = localeOf(Astro.params.lang);
+---
+<Lesson lesson={lesson} locale={locale} />

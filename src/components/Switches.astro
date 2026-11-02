@@ -1,0 +1,28 @@
+---
+// Language links (EN / ES) and the theme switch (Auto / Light / Dark). The language is part of the URL, so
+// switching is a link to the same page in the other language; the theme is remembered in this browser.
+import { LOCALES, href, type Locale } from "../i18n";
+import { useUi } from "../i18n/ui";
+import "../styles/switches.css";
+
+interface Props { locale: Locale; path: string; class?: string }
+const { locale, path, class: className = "switches" } = Astro.props;
+const ui = useUi(locale);
+---
+<div class={className}>
+  <nav class="seg lang-seg" aria-label={ui("lang.label")}>
+    {LOCALES.map((l) => (
+      <a href={href(l, path)} hreflang={l} lang={l} aria-current={l === locale ? "page" : undefined} data-lang-link={l}>{l.toUpperCase()}</a>
+    ))}
+  </nav>
+  <div class="seg theme-seg" role="group" aria-label={ui("theme.label")}>
+    <button type="button" data-theme-choice="auto">Auto</button>
+    <button type="button" data-theme-choice="light">{ui("theme.light")}</button>
+    <button type="button" data-theme-choice="dark">{ui("theme.dark")}</button>
+  </div>
+</div>
+<script>
+  import { initTheme, rememberLanguage } from "../scripts/switches";
+  initTheme();
+  rememberLanguage();
+</script>

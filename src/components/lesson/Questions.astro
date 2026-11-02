@@ -1,0 +1,15 @@
+---
+// Explain-it-back questions, each with what a good answer covers behind a <details>.
+import { pick, type Bi, type Locale } from "../../i18n";
+import { useUi } from "../../i18n/ui";
+
+interface Props { locale: Locale; questions: [Bi, Bi][] }
+const { locale, questions } = Astro.props;
+const ui = useUi(locale);
+---
+{questions.map(([q, a], i) => (
+  <details>
+    <summary><span class="n">{ui("q.n", { i: i + 1 })}</span><span>{pick(q, locale)}</span></summary>
+    <div class="answer"><span class="eyebrow">{ui("q.covers")}</span>{pick(a, locale)}</div>
+  </details>
+))}

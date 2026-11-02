@@ -1,0 +1,30 @@
+---
+// The five predict-then-run cards. The lesson's live code (WB.experiments) finds them by their data- attributes
+// and fills in the verdict and bars when a reader runs one.
+import { pick, type Locale } from "../../i18n";
+import { useUi } from "../../i18n/ui";
+import type { Lesson } from "../../lib/lessons";
+
+interface Props { locale: Locale; experiments: Lesson["page"]["predict"]["experiments"] }
+const { locale, experiments } = Astro.props;
+const ui = useUi(locale);
+const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
+---
+{experiments.map((e, i) => (
+  <article class="exp" data-exp={e.id}>
+    <div class="exp-head"><h3>{i + 1}. {L(e.title)}</h3><span class="eyebrow">{ui("exp.count", { i: i + 1, n: experiments.length })}</span></div>
+    <div class="exp-change">{L(e.change)}</div>
+    <div class="exp-q">{L(e.question)}</div>
+    <div class="choices" role="group" aria-label={ui("exp.prediction")}>
+      {e.options.map((o, j) => (
+        <button type="button" class="choice" data-choice={j} aria-pressed="false"><span class="mark">{"ABCDE"[j]}</span><span>{L(o)}</span></button>
+      ))}
+    </div>
+    <div class="actions"><button class="btn primary" type="button" data-run disabled>{ui("exp.pick")}</button><button class="btn" type="button" data-watch>{ui("exp.watch")}</button></div>
+    <div class="result" aria-live="polite">
+      <div class="verdict" data-outcome></div>
+      <div class="bars" data-bars></div>
+      <p>{L(e.why)}</p>
+    </div>
+  </article>
+))}
