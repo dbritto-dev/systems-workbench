@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Semantic search over a small help centre, with a toy embedding model that really computes.
 // Shared by the live figure and the experiments; everything is seeded and deterministic.
 //
@@ -7,6 +8,8 @@
 // get a hashed bucket in 24 "surface" dimensions, which is why exact identifiers come out blurry.
 // A shared "generic" axis gives every text some similarity to every other, as real models do
 // (cosine between unrelated texts is around 0.2-0.3, not 0).
+
+import { meanBy } from "../../lib/stats";
 
 export const CONCEPTS = ["PAYMENTS", "DUPLICATES", "REFUNDS", "TIME", "SIGN-IN", "SECURITY", "SHIPPING", "ERRORS", "API", "EXPORTS", "PLANS", "INVOICES", "ACCOUNT", "MOBILE", "ALERTS", "SUPPORT"];
 const C = CONCEPTS.length, H = 24, DIM = C + H + 1, GENERIC = 0.62;
@@ -191,7 +194,7 @@ export function graphSearch(qv, vecs, links, { ef = 8, k = 5, entry = 0 } = {}) 
 export function layout(chunks, box, { gap = 7, seed = 3 } = {}) {
   const n = chunks.length, V = chunks.map((c) => c.vec);
   const D = V.map((a) => V.map((b) => Math.sqrt(Math.max(0, 2 - 2 * cosine(a, b)))));
-  const mean = V[0].map((_, d) => V.reduce((s, v) => s + v[d], 0) / n);
+  const mean = V[0].map((_, d) => meanBy(V, (v) => v[d]));
   const X0 = V.map((v) => v.map((x, d) => x - mean[d]));
   const pc = (avoid) => {
     let p = V[0].map((_, d) => Math.sin(d * 1.7 + seed + (avoid ? 2 : 0)));

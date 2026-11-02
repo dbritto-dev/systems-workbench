@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A star-map table for semantic search.
 //   every chunk of the help centre is a stud on a dark map, placed by a flat picture of its vector,
 //   so chunks that mean similar things sit together in constellations (named on the map);
@@ -6,10 +7,11 @@
 //   exact search sweeps an arm across every stud; the index (a graph) hops a probe along links instead;
 //   the rack in front holds the results with their similarity on counters, the console the query.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { sphereOf } from "../../workbench/kit.mjs";
-import { basePlate, digitCounter, card, faceText } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { sphereOf } from "../../../workbench/kit.mjs";
+import { basePlate, digitCounter, card, faceText } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 400;
@@ -42,8 +44,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 50 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
+const { S, L } = shorthand(P);
 const label = (x, y, z, text, size = 2.6, face = "y") => faceText(P, [x, y, z], text, { size, tone: "mid", face });
 
 // The table: a base plate carrying a dark map slab whose top is ruled like a star chart.
