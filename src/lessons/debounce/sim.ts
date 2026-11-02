@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Debounce model, shared by the live figure and the experiments. Seeded and deterministic.
 // Events arrive from an input script (typing, a held key or scroll, double clicks). A debouncer decides
 // which events become requests; the server answers each request after a latency; the screen shows
@@ -6,6 +7,9 @@
 //   mode "trailing": wait until no event for `wait` s, then send once (the latest text); maxWait caps the wait
 //   mode "leading":  send on the first event, ignore events until `wait` s of quiet
 
+import { mean as meanOf } from "../../lib/stats";
+
+// mulberry32: not one of the shared generators (src/lib/random), so it stays here.
 export function rng(seed) {
   let a = seed >>> 0 || 1;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -149,7 +153,8 @@ export function makeSim({ mode = "trailing", wait = 0.3, maxWait = 0, input = "t
 }
 
 // ---------- measurements for the experiments ----------
-const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
+// The shared mean, but NaN (not 0) for no values: averaged() drops NaN runs from the average.
+const mean = (xs) => (xs.length ? meanOf(xs) : NaN);
 
 // Run one configuration for `seconds` and summarise it; sessions still in progress at the end are left out.
 export function measure(cfg, seconds = 120, seed = 1) {

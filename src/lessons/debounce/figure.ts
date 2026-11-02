@@ -1,12 +1,14 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // An elevator lobby: every keystroke is a passenger. With debounce the elevator door stays open while
 // people keep arriving, its timer reset by each one; only after a quiet spell does the car take the whole
 // group up to the server floor as one request. Without debounce, every passenger takes the stairs alone.
 // Answers come back down a wire to the screen at the front. A tape along the front records keystrokes
 // (short pegs) and requests (flagged posts). Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate } from "../../workbench/parts.mjs";
-import { digitPath, counterCells, digitsOf } from "./digits.js";
-import { t, isT } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate } from "../../../workbench/parts.mjs";
+import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
+import { t, isT } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -86,10 +88,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const slab = (plan, z, h, steps = 3, bevel = 0) => k.slabOf({ r: 0.4, ...plan }, z, h, P, steps, bevel);
 // value may be t(en, es): one <text> per language (static words only; live text keeps a single <text>).
 const text1 = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
