@@ -1,6 +1,7 @@
 // Builds the Systems Workbench catalogue page from catalog.json (written by extract.mjs) and previews/.
 import { readFileSync, writeFileSync } from "node:fs";
 import { ISO_CSS } from "../kit.mjs";
+import { t, isT, tx, enOf, ariaLabel, titleTag, LANG_CSS, LANG_HEAD, LANG_SCRIPT, langSwitchHtml } from "../i18n.mjs";
 
 const lessons = JSON.parse(readFileSync(new URL("./catalog.json", import.meta.url), "utf8"));
 // --pages <file>: the GitHub Pages build. Cards link to the lesson pages in the site (same tab) instead of the
@@ -17,34 +18,38 @@ const light = block('.iso[data-theme="light"]');
 const dark = block(".iso");
 const AREAS = ["Fundamentals", "Data", "Concurrency", "Messaging", "Distributed", "Traffic", "Resilience", "Delivery", "Observability", "Frontend", "Search"];
 const two = (n) => String(n).padStart(2, "0");
-const concept = (l) => l.eyebrow.split("·").pop().trim();
+const lastPart = (s) => s.split("·").pop().trim();
+const concept = (l) => (isT(l.eyebrow) ? t(lastPart(l.eyebrow.en), lastPart(l.eyebrow.es)) : lastPart(l.eyebrow));
+const AREA_NAMES = { Fundamentals: t("Fundamentals", "Fundamentos"), Data: t("Data", "Datos"), Concurrency: t("Concurrency", "Concurrencia"), Messaging: t("Messaging", "Mensajería"), Distributed: t("Distributed", "Distribuidos"), Traffic: t("Traffic", "Tráfico"), Resilience: t("Resilience", "Resiliencia"), Delivery: t("Delivery", "Despliegue"), Observability: t("Observability", "Observabilidad"), Frontend: t("Frontend", "Frontend"), Search: t("Search", "Búsqueda") };
+const areaName = (a) => AREA_NAMES[a] ?? a;
+const both = (v, f) => (isT(v) ? t(f(v.en, "en"), f(v.es, "es")) : t(f(v, "en"), f(v, "es")));
 
 const card = (l) => `<article class="card" data-area="${l.area}" id="lesson-${two(l.n)}">
-  <button type="button" class="shot" data-preview="${l.slug}" aria-label="Preview ${esc(l.title)}">
-    <img class="on-light" src="previews/${l.slug}-light.webp" alt="${esc(l.machine)}, the machine in ${esc(l.title)}" loading="lazy" width="1200" height="800">
+  <button type="button" class="shot" data-preview="${l.slug}" ${ariaLabel(t(`Preview ${enOf(l.title)}`, `Vista previa de ${isT(l.title) ? l.title.es : l.title}`))}>
+    <img class="on-light" src="previews/${l.slug}-light.webp" alt="${esc(enOf(l.machine))}, the machine in ${esc(enOf(l.title))}" loading="lazy" width="1200" height="800">
     <img class="on-dark" src="previews/${l.slug}-dark.webp" alt="" loading="lazy" width="1200" height="800">
-    <span class="plate-corner tl">Lesson ${two(l.n)}</span>
-    <span class="plate-corner tr">${esc(l.machine)}</span>
+    <span class="plate-corner tl">${tx(t(`Lesson ${two(l.n)}`, `Lección ${two(l.n)}`))}</span>
+    <span class="plate-corner tr">${tx(l.machine, true)}</span>
   </button>
   <div class="card-body">
-    <div class="meta"><span>${esc(l.area)}</span><span>${esc(concept(l))}</span></div>
-    <h2 title="${esc(l.title)}">${esc(l.title)}</h2>
-    <p>${esc(l.blurb)}</p>
+    <div class="meta"><span>${tx(areaName(l.area))}</span><span>${tx(concept(l), true)}</span></div>
+    <h2 title="${esc(enOf(l.title))}">${tx(l.title, true)}</h2>
+    <p>${tx(l.blurb, true)}</p>
     <div class="card-foot">
-      <span class="counts">${l.exps.length} experiments · ${l.questions} questions</span>
+      <span class="counts">${tx(t(`${l.exps.length} experiments · ${l.questions} questions`, `${l.exps.length} experimentos · ${l.questions} preguntas`))}</span>
       <span class="card-actions">
-        <button type="button" class="btn" data-preview="${l.slug}">Preview</button>
-        <a class="btn primary" href="${linkOf(l)}"${linkAttrs}>Open lesson</a>
+        <button type="button" class="btn" data-preview="${l.slug}">${tx(t("Preview", "Vista previa"))}</button>
+        <a class="btn primary" href="${linkOf(l)}"${linkAttrs}>${tx(t("Open lesson", "Abrir lección"))}</a>
       </span>
     </div>
   </div>
 </article>`;
 
 const counts = Object.fromEntries(AREAS.map((a) => [a, lessons.filter((l) => l.area === a).length]));
-const filters = [`<button type="button" data-filter="all" aria-pressed="true">All <b>${lessons.length}</b></button>`, ...AREAS.map((a) => `<button type="button" data-filter="${a}" aria-pressed="false">${a} <b>${counts[a]}</b></button>`)].join("");
-const data = lessons.map(({ n, slug, area, url, html, title, eyebrow, lede, machine, exps, questions }) => ({ n, slug, area, url: PAGES ? html : url, title, concept: concept({ eyebrow }), lede, machine, exps, questions }));
+const filters = [`<button type="button" data-filter="all" aria-pressed="true">${tx(t("All", "Todas"))} <b>${lessons.length}</b></button>`, ...AREAS.map((a) => `<button type="button" data-filter="${a}" aria-pressed="false">${tx(areaName(a))} <b>${counts[a]}</b></button>`)].join("");
+const data = lessons.map(({ n, slug, area, url, html, title, eyebrow, lede, machine, exps, questions }) => ({ n, slug, area: areaName(area), url: PAGES ? html : url, title, concept: concept({ eyebrow }), lede, machine, exps, questions }));
 
-const html = `<title>Systems Workbench</title>
+const html = `${LANG_HEAD}${titleTag("Systems Workbench")}
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: an instrument catalogue. A header plate, a row of area filters, then a two-column grid of lesson plates whose previews are real screenshots of each running machine. */
@@ -57,6 +62,8 @@ const html = `<title>Systems Workbench</title>
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${dark};color-scheme:dark}}
 :root[data-theme="dark"]{${dark};color-scheme:dark}
 *{box-sizing:border-box}
+${LANG_CSS}
+.switches{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased}
 .wrap{max-width:1120px;margin:0 auto;padding-block:48px 88px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
@@ -138,25 +145,25 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap">
 <div class="wrap">
-  <div class="top"><span>Distributed systems, one machine at a time</span>
-    <div class="seg" role="group" aria-label="Theme"><button type="button" data-theme-choice="auto">Auto</button><button type="button" data-theme-choice="light">Light</button><button type="button" data-theme-choice="dark">Dark</button></div>
+  <div class="top"><span>${tx(t("Distributed systems, one machine at a time", "Sistemas distribuidos, una máquina a la vez"))}</span>
+    <div class="switches">${langSwitchHtml()}<div class="seg" role="group" ${ariaLabel(t("Theme", "Tema"))}><button type="button" data-theme-choice="auto">Auto</button><button type="button" data-theme-choice="light">${tx(t("Light", "Claro"))}</button><button type="button" data-theme-choice="dark">${tx(t("Dark", "Oscuro"))}</button></div></div>
   </div>
   <header class="head">
     <div>
       <h1>Systems Workbench</h1>
-      <p class="intro">Each lesson turns one idea into a small machine you can watch and adjust: a cache becomes a card rack, a circuit breaker a switchboard, a rolling deploy a crane swapping modules. Watch the machine, predict what an experiment will do, run it, then explain it back.</p>
+      <p class="intro">${tx(t("Each lesson turns one idea into a small machine you can watch and adjust: a cache becomes a card rack, a circuit breaker a switchboard, a rolling deploy a crane swapping modules. Watch the machine, predict what an experiment will do, run it, then explain it back.", "Cada lección convierte una idea en una pequeña máquina que puedes observar y ajustar: una caché se vuelve un estante de fichas, un circuit breaker un conmutador, un despliegue gradual una grúa que cambia módulos. Observa la máquina, predice qué hará un experimento, ejecútalo y luego explícalo."))}</p>
     </div>
-    <div class="stats" aria-label="Collection size">
-      <div><b>${lessons.length}</b><span>Lessons</span></div>
-      <div><b>${lessons.reduce((s, l) => s + l.exps.length, 0)}</b><span>Experiments</span></div>
-      <div><b>${lessons.reduce((s, l) => s + l.questions, 0)}</b><span>Questions</span></div>
+    <div class="stats" ${ariaLabel(t("Collection size", "Tamaño de la colección"))}>
+      <div><b>${lessons.length}</b><span>${tx(t("Lessons", "Lecciones"))}</span></div>
+      <div><b>${lessons.reduce((s, l) => s + l.exps.length, 0)}</b><span>${tx(t("Experiments", "Experimentos"))}</span></div>
+      <div><b>${lessons.reduce((s, l) => s + l.questions, 0)}</b><span>${tx(t("Questions", "Preguntas"))}</span></div>
     </div>
   </header>
-  <div class="filters-wrap"><button type="button" class="scroll-btn" data-scroll="-1" aria-label="Scroll filters left" aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button><div class="filters-view"><div class="filters" id="area-filters" role="group" aria-label="Filter by area">${filters}</div></div><button type="button" class="scroll-btn" data-scroll="1" aria-label="Scroll filters right" aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button></div>
+  <div class="filters-wrap"><button type="button" class="scroll-btn" data-scroll="-1" ${ariaLabel(t("Scroll filters left", "Desplazar filtros a la izquierda"))} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button><div class="filters-view"><div class="filters" id="area-filters" role="group" ${ariaLabel(t("Filter by area", "Filtrar por área"))}>${filters}</div></div><button type="button" class="scroll-btn" data-scroll="1" ${ariaLabel(t("Scroll filters right", "Desplazar filtros a la derecha"))} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button></div>
   <main class="grid">
 ${lessons.map(card).join("\n")}
   </main>
-  <footer>Machines drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Previews are screenshots of each machine running; the lessons are interactive.${PAGES ? ` · <a href="workbench/parts-gallery.html">Parts gallery</a> · <a href="${REPO}">Source on GitHub</a>` : ""}</footer>
+  <footer>${tx(t(`Machines drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Previews are screenshots of each machine running; the lessons are interactive.`, `Máquinas dibujadas con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Las vistas previas son capturas de cada máquina en marcha; las lecciones son interactivas.`))}${PAGES ? ` · <a href="workbench/parts-gallery.html">${tx(t("Parts gallery", "Galería de piezas"))}</a> · <a href="${REPO}">${tx(t("Source on GitHub", "Código en GitHub"))}</a>` : ""}</footer>
 </div>
 <dialog id="preview" aria-labelledby="dlg-title">
   <div class="dlg">
@@ -166,13 +173,15 @@ ${lessons.map(card).join("\n")}
       <h2 id="dlg-title" data-d="title"></h2>
       <p data-d="lede"></p>
       <ol data-d="exps"></ol>
-      <div class="dlg-actions"><span class="counts" data-d="counts"></span><span class="card-actions"><button type="button" class="btn" data-close>Close</button><a class="btn primary" data-d="url"${linkAttrs}>Open lesson</a></span></div>
+      <div class="dlg-actions"><span class="counts" data-d="counts"></span><span class="card-actions"><button type="button" class="btn" data-close>${tx(t("Close", "Cerrar"))}</button><a class="btn primary" data-d="url"${linkAttrs}>${tx(t("Open lesson", "Abrir lección"))}</a></span></div>
     </div>
   </div>
 </dialog>
 <script>
 (() => {
   const LESSONS = ${JSON.stringify(data).replace(/</g, "\\u003c")};
+  const lang = () => (document.documentElement.getAttribute("data-lang") === "es" ? "es" : "en");
+  const L = (v) => (v != null && typeof v === "object" && "en" in v ? v[lang()] : v);
   const root = document.documentElement;
   const choices = document.querySelectorAll("[data-theme-choice]");
   const read = () => { try { return localStorage.getItem("workbench-theme"); } catch (e) { return null; } };
@@ -217,25 +226,31 @@ ${lessons.map(card).join("\n")}
   const dlg = document.getElementById("preview");
   const d = (k) => dlg.querySelector('[data-d="' + k + '"]');
   const two = (n) => String(n).padStart(2, "0");
-  const open = (slug) => {
-    const l = LESSONS.find((x) => x.slug === slug);
-    d("no").textContent = "Lesson " + two(l.n);
-    d("machine").textContent = l.machine;
-    d("light").src = "previews/" + l.slug + "-light.webp"; d("light").alt = l.machine + ", the machine in " + l.title;
+  let shown = null;
+  const fill = (l) => {
+    shown = l;
+    const es = lang() === "es";
+    d("no").textContent = (es ? "Lección " : "Lesson ") + two(l.n);
+    d("machine").textContent = L(l.machine);
+    d("light").src = "previews/" + l.slug + "-light.webp"; d("light").alt = L(l.machine) + (es ? ", la máquina de " : ", the machine in ") + L(l.title);
     d("dark").src = "previews/" + l.slug + "-dark.webp";
-    d("area").textContent = l.area; d("concept").textContent = l.concept;
-    d("title").textContent = l.title; d("lede").textContent = l.lede;
-    d("exps").replaceChildren(...l.exps.map((e, i) => { const li = document.createElement("li"); const n = document.createElement("span"); n.textContent = two(i + 1); const t = document.createElement("div"); const b = document.createElement("b"); b.textContent = e.title; const em = document.createElement("em"); em.textContent = e.question; t.append(b, em); li.append(n, t); return li; }));
-    d("counts").textContent = l.exps.length + " experiments · " + l.questions + " questions";
+    d("area").textContent = L(l.area); d("concept").textContent = L(l.concept);
+    d("title").textContent = L(l.title); d("lede").textContent = L(l.lede);
+    d("exps").replaceChildren(...l.exps.map((e, i) => { const li = document.createElement("li"); const n = document.createElement("span"); n.textContent = two(i + 1); const t = document.createElement("div"); const b = document.createElement("b"); b.textContent = L(e.title); const em = document.createElement("em"); em.textContent = L(e.question); t.append(b, em); li.append(n, t); return li; }));
+    d("counts").textContent = l.exps.length + (es ? " experimentos · " : " experiments · ") + l.questions + (es ? " preguntas" : " questions");
     d("url").href = l.url;
+  };
+  const open = (slug) => {
+    fill(LESSONS.find((x) => x.slug === slug));
     if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
   };
+  document.addEventListener("wb-lang", () => { if (shown && dlg.open) fill(shown); edges(); });
   document.querySelectorAll("[data-preview]").forEach((b) => b.addEventListener("click", () => open(b.dataset.preview)));
   dlg.querySelector("[data-close]").addEventListener("click", () => dlg.close());
   dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
 })();
 </script>
-`;
+${LANG_SCRIPT}`;
 if (PAGES) writeFileSync(PAGES, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${html}</html>`);
 else writeFileSync(new URL("./index.html", import.meta.url), html);
 console.log("wrote index.html", (html.length / 1024).toFixed(0) + " KB");

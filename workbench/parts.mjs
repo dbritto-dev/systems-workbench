@@ -1,4 +1,5 @@
 // Parts every workbench machine stands on. Each returns SVG markup; draw them first (back of the painter's order).
+import { isT } from "./i18n.mjs";
 import * as k from "./kit.mjs";
 import { sphereOf } from "./kit.mjs";
 import { digitPath, counterCells, digitsOf, facePoint } from "./digits.mjs";
@@ -56,6 +57,7 @@ const at = (P) => (p) => k.iso(p, P);
 // Text printed on a face. face "y" (constant y, reads along +x), "x" (constant x, reads along -y),
 // or "top" (lying on a top face at height z, reads along x; along: "y" turns it to read along y).
 export function faceText(P, [x, y, z], text, { face = "y", size = 3, tone = "mid", anchor = "start", along = "x", attr = "" } = {}) {
+  if (isT(text)) return `<g data-l="en">${faceText(P, [x, y, z], text.en, { face, size, tone, anchor, along, attr })}</g><g data-l="es">${faceText(P, [x, y, z], text.es, { face, size, tone, anchor, along, attr })}</g>`;
   const m = face === "top" ? k.topMatrix([x, y], z, P, along) : k.sideMatrix([x, y], z, P, face === "x" ? "right" : "left");
   const svg = k.faceTextSvg(m, text, { size, tone, anchor });
   return attr ? svg.replace("<text ", `<text ${attr} `) : svg;
