@@ -1,12 +1,12 @@
+// @ts-nocheck: model ported as-is
 // Offset vs cursor pagination over a table ordered newest first (created_at DESC, id DESC).
 // One model for the figure and the experiments: a reader fetches pages while rows are inserted at the front
 // and deleted from the region being paged. Every query sees the table as it is when the query runs.
-export const SEEK = 14;         // rows of work for an index seek (about log2 of a 16k-row table)
+import { lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
 
-export function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
+export const SEEK = 14;         // rows of work for an index seek (about log2 of a 16k-row table)
 
 // cfg: { mode: "offset" | "cursor", pageSize, pages, rows0, batch, insertRate, deleteRate, keyUnique, think, stepTime, startAt, firstPage }
 // firstPage > 1 jumps there: offset asks for that page directly, cursor has to walk every page before it.
@@ -104,11 +104,7 @@ export function makeRun(cfg, seed = 1) {
 }
 
 // Experiments: averaged over several seeded readers.
-export function average(cfg, seeds = [3, 5, 7, 11, 13, 17, 19, 23]) {
-  const runs = seeds.map((seed) => makeRun(cfg, seed).runToEnd());
-  const mean = (k) => runs.reduce((s, r) => s + r[k], 0) / runs.length;
-  return { duplicates: mean("duplicates"), missing: mean("missing"), rowsRead: mean("rowsRead"), roundTrips: mean("roundTrips"), inserts: mean("inserts"), deletes: mean("deletes") };
-}
+export const average = (cfg, seeds = [3, 5, 7, 11, 13, 17, 19, 23]) => averageOver(seeds, (seed) => makeRun(cfg, seed).runToEnd());
 
 // Rows of work and round trips to fetch one page deep in a large table.
 export function pageCost(mode, pageNo, pageSize) {
@@ -119,4 +115,10 @@ export function jumpCost(mode, pageNo, pageSize) {
   let rows = 0;
   for (let p = 1; p <= pageNo; p++) rows += pageCost("cursor", p, pageSize);
   return { rows, trips: pageNo };
+}
+
+// The tally needle on the carriage at x = cx, at a share of a turn (one turn = 20 rows): the figure and the live code.
+export function needlePath(DIAL, P, cx, turn) {
+  const a = turn * Math.PI * 2, x = cx + DIAL.dx, y = DIAL.y, r = DIAL.r;
+  return lineOnTop([x - Math.sin(a) * 0.9, y + Math.cos(a) * 0.9], [x + Math.sin(a) * (r - 1.2), y - Math.cos(a) * (r - 1.2)], DIAL.z + 0.1, P);
 }

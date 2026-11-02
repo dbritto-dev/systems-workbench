@@ -1,8 +1,11 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A filing machine: folders on a long rail, newest at the left, and a reader carriage that fetches one page at a time.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) through the shared workbench layer.
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { needlePath } from "./sim";
 
 export const WIDTH = 760;
 export const HEIGHT = 420;
@@ -32,10 +35,7 @@ export const P = k.fitProjection(
   { pad: 20, azimuth: 56 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H, footInset: 24 })
@@ -111,10 +111,7 @@ export function carriageSvg() {
   return out.join("");
 }
 
-export const needleAt = (cx, turn) => {
-  const a = turn * Math.PI * 2, x = cx + DIAL.dx, y = DIAL.y;
-  return k.lineOnTop([x - Math.sin(a) * 0.9, y + Math.cos(a) * 0.9], [x + Math.sin(a) * (DIAL.r - 1.2), y - Math.cos(a) * (DIAL.r - 1.2)], DIAL.z + 0.1, P);
-};
+export const needleAt = (cx, turn) => needlePath(DIAL, P, cx, turn);
 
 // A folder at x = 0: the body, and a tab whose position along y follows its created_at second (folders filed in the same second share a tab position).
 export function folderSvg(tab) {
