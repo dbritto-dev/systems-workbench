@@ -1,12 +1,14 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // An order office: a clerk records each order in a ledger cabinet (the database) and a letter must reach the
 // warehouse (the event). In outbox mode the cabinet's lower drawer is the outbox: the card and the letter go in
 // with one drawer slam, and a relay runner in a cap later carries pending letters to the postbox.
 // Every number that matters is printed on counter wheels: orders in the ledger, shipments, duplicates.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t, isT } from "../../workbench/i18n.mjs";
-import { digitPath, counterCells, digitsOf } from "./digits.js";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 400;
@@ -62,14 +64,7 @@ export const P = k.fitProjection(
   { pad: 14, azimuth: 50 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-// A bilingual value (t()) draws one face text per language; CSS shows the current one.
-const text1 = (x, y, z, value, { size = 3.4, tone = "mid", anchor = "start" } = {}) => k.faceTextSvg(k.sideMatrix([x, y], z, P, "left"), value, { size, tone, anchor });
-const text = (x, y, z, value, opts) => (isT(value)
-  ? `<g data-l="en">${text1(x, y, z, value.en, opts)}</g><g data-l="es">${text1(x, y, z, value.es, opts)}</g>`
-  : text1(x, y, z, value, opts));
+const { S, L, text } = shorthand(P);
 
 function counter(c, name, value = 0) {
   const out = [];

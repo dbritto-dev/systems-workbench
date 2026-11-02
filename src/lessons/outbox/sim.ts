@@ -1,14 +1,16 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: an order service that must record each order in its
 // database (the ledger) AND tell the warehouse (a letter). Times are seconds of figure time.
 //   dual:     write the ledger, then walk the letter to the postbox. A failure in between loses the letter.
 //   pubfirst: post the letter, then write the ledger. A failed write leaves a phantom: shipped, never ordered.
 //   outbox:   write the ledger card and the letter into the outbox drawer in one transaction; a relay later
 //             carries pending letters to the postbox and only then marks them sent (at-least-once).
+
+import { rng } from "../../lib/random";
+import { meanBy } from "../../lib/stats";
 export const T = { WRITE: 0.5, WALK: 1.0, POST: 0.25, DOWN: 2.5, RAIL: 1.6, R_WALK: 1.0, R_POST: 0.2, R_EACH: 0.12, MARK: 0.3 };
 export const RATE = 0.25;      // orders per second arriving at the clerk
 export const BATCH = 6;        // letters the relay carries in one trip
-
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // cfg: { mode, rate, crash (chance the clerk fails between the two writes), relayCrash (chance the relay fails after posting,
 //        before marking), dedupe, poll (s between relay checks) }
@@ -137,13 +139,14 @@ export function makeSim(cfg, seed = 7) {
   return sim;
 }
 
-// ---------- experiments: each averaged over seeded runs ----------
+// ---------- experiments: each averaged over seeded runs (at build time) ----------
 const SEEDS = [3, 7, 11, 19, 23, 29, 31, 37];
+// The upper median and a rank of floor(p * n): not the shared percentile() rule (floor(p * (n - 1))), so they stay here.
 const median = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
 const pctl = (a, p) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 export function runFor(cfg, seconds = 600) {
   const out = SEEDS.map((seed) => { const s = makeSim({ ...cfg, stopAt: seconds }, seed); s.runTo(seconds + 60); return s; });
-  const avg = (f) => out.reduce((sum, s) => sum + f(s), 0) / out.length;
+  const avg = (f) => meanBy(out, f);
   const delays = out.flatMap((s) => s.delays);
   return {
     orders: avg((s) => s.stats.orders), shipped: avg((s) => s.stats.shipped), lost: avg((s) => s.stats.lost), phantom: avg((s) => s.stats.phantom),
@@ -152,3 +155,14 @@ export function runFor(cfg, seconds = 600) {
   };
 }
 // runFor stops taking orders at `seconds`, then runs a minute more so every letter in flight lands.
+
+// Every experiment's numbers, run once at build time.
+export function experimentResults() {
+  return {
+    lost: runFor({ mode: "dual", crash: 0.05 }),
+    phantom: runFor({ mode: "pubfirst", crash: 0.05 }),
+    outbox: runFor({ mode: "outbox", crash: 0.05, relayCrash: 0.1, dedupe: true, poll: 2 }),
+    dedupe: { off: runFor({ mode: "outbox", crash: 0, relayCrash: 0.1, dedupe: false, poll: 2 }), on: runFor({ mode: "outbox", crash: 0, relayCrash: 0.1, dedupe: true, poll: 2 }) },
+    poll: { rows: [0.5, 2, 5].map((p) => [p, runFor({ mode: "outbox", crash: 0, relayCrash: 0, dedupe: true, poll: p })]), dual: runFor({ mode: "dual", crash: 0 }) },
+  };
+}
