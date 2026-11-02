@@ -1,5 +1,7 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments. Time is counted in gossip rounds.
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// The experiments run it at build time (page.ts); the live code runs it in the browser.
+import { rng } from "../../lib/random";
 
 const randomPeer = (random, n, i) => { let j = Math.floor(random() * (n - 1)); if (j >= i) j++; return j; };
 const delayOf = (random, slow) => (slow > 0 && random() < slow ? 1 + Math.floor(random() * 3) : 0);

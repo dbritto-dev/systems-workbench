@@ -1,10 +1,12 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A gossip village: houses on a board pass a rumour to random neighbours each round; the town hall keeps a
 // membership board of who is alive, suspected or dead; a dial counts the rounds.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, faceText } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { rng } from "./sim.js";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { rng } from "../../lib/random";
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -40,10 +42,7 @@ export const P = k.fitProjection(
   { pad: 22, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at, text } = shorthand(P);
 const depth = ([x, y]) => k.depthOf([x, y, 0], P);
 
 function plate() {
@@ -127,7 +126,7 @@ function dial() {
   const ticks = k.radialTicks(x, y, r - 2.6, DIAL_ROUNDS, 5, z, [1.1, 2.4], P);
   out.push(L(ticks.minor, { tone: "lo" }), L(ticks.major, { tone: "mid" }));
   out.push(L(k.ring(x, y, 1.3, z, P, 16), { tone: "mid" }));
-  out.push(faceText(P, [x, y + 6.5, z], t("rounds", "rondas"), { face: "top", size: 2.2, tone: "lo", anchor: "middle" }));
+  out.push(text(x, y + 6.5, z, t("rounds", "rondas"), { face: "top", size: 2.2, tone: "lo", anchor: "middle" }));
   return out.join("");
 }
 
@@ -175,4 +174,4 @@ export function buildFigure() {
   });
 }
 
-export const GEOMETRY = { HOMES, HOME_Z, MEMBERS, DIAL_ROUNDS };
+export const GEOMETRY = { HOMES, HOME_Z, MEMBERS, DIAL_ROUNDS, DIAL };
