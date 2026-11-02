@@ -4,6 +4,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -161,8 +162,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A rail yard on a base plate. Up to four parallel tracks are the partitions of a topic. At the right, a loading dock and a transfer table couple each new numbered car (a record) to the near end of one track, pushing the older cars back towards an archive shed at the left, where they are kept. Along the front stand up to six reading cabins: the consumers of one group. An overhead wire runs from each cabin's mast to the bookmark gantry on every track it owns; the gantry's board shows the committed offset. Every car carries its offset on a number plate, and a counter above each shed door shows that track's lag; the car being read lights up.",
+      "Un patio de maniobras sobre una placa base. Hasta cuatro vías paralelas son las particiones de un topic. A la derecha, un muelle de carga y un carro transbordador enganchan cada vagón nuevo numerado (un registro) al extremo cercano de una vía, empujando los vagones más viejos hacia un cobertizo de archivo a la izquierda, donde se guardan. Al frente hay hasta seis cabinas de lectura: los consumidores de un grupo. Un cable aéreo va del mástil de cada cabina al pórtico del marcador en cada vía que le pertenece; el tablero del pórtico muestra el offset confirmado. Cada vagón lleva su offset en una placa numerada, y un contador sobre cada puerta del cobertizo muestra el lag de esa vía; el vagón que se está leyendo se ilumina."),
     body: [
       plate(),
       pads(),

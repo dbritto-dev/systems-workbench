@@ -2,6 +2,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { N, COLS, TOPOLOGIES, RING, cellOf, edgesOf } from "./sim.js";
 
 export const WIDTH = 700;
@@ -129,8 +130,9 @@ export function buildFigure(state = { origin: -1, lit: [], busy: {}, dots: [], m
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A board of 25 relay stations in a five by five grid. Wires on the board connect them in the chosen topology. A value enters one station, its lamp lights, and copies travel along the wires as pucks until every lamp is lit. Two gauges on the front edge show messages per value and the slowest value's latency against pins for the challenge targets. A fence can rise between the second and third columns to cut the network in two.",
+      "Un tablero de 25 estaciones de relevo en una cuadrícula de cinco por cinco. Los cables del tablero las conectan según la topología elegida. Un valor entra en una estación, su lámpara se enciende y las copias viajan por los cables como fichas hasta que se encienden todas las lámparas. Dos medidores en el borde frontal muestran los mensajes por valor y la latencia del valor más lento frente a pines con los objetivos del desafío. Una valla puede subir entre la segunda y la tercera columna para cortar la red en dos."),
     body: [plate, wires(state), `<g data-dots>${dots}</g>`, board(state)],
   });
 }

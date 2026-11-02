@@ -2,7 +2,8 @@
 // membership board of who is alive, suspected or dead; a dial counts the rounds.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, faceText } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 import { rng } from "./sim.js";
 
 export const WIDTH = 720;
@@ -123,10 +124,10 @@ function dial() {
   out.push(L(k.knurl(x, y, r, z - 2.6, z, 60, P, 0.3), { tone: "lo" }));
   out.push(L(k.sideArc(x, y, r, z - 2.6, P, 40), { tone: "faint" }));
   out.push(L(k.ring(x, y, r - 2, z, P, 64), { tone: "lo" }));
-  const t = k.radialTicks(x, y, r - 2.6, DIAL_ROUNDS, 5, z, [1.1, 2.4], P);
-  out.push(L(t.minor, { tone: "lo" }), L(t.major, { tone: "mid" }));
+  const ticks = k.radialTicks(x, y, r - 2.6, DIAL_ROUNDS, 5, z, [1.1, 2.4], P);
+  out.push(L(ticks.minor, { tone: "lo" }), L(ticks.major, { tone: "mid" }));
   out.push(L(k.ring(x, y, 1.3, z, P, 16), { tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([x, y + 6.5], z, P, "x"), "rounds", { size: 2.2, tone: "lo", anchor: "middle" }));
+  out.push(faceText(P, [x, y + 6.5, z], t("rounds", "rondas"), { face: "top", size: 2.2, tone: "lo", anchor: "middle" }));
   return out.join("");
 }
 
@@ -158,8 +159,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A village of houses on a board. Each round, every house that knows a rumour sends messengers to a few random houses, and a house's roof lamp lights when it hears. At the back right stands the town hall, with a membership board in front of it: one peg per house, tall while the house is alive, short when it is suspected, an empty hole when it is declared dead. A dial at the front counts the rounds.",
+      "Un pueblo de casas sobre un tablero. En cada ronda, cada casa que conoce un rumor manda mensajeros a unas pocas casas al azar, y la lámpara del techo de una casa se enciende cuando se entera. Atrás a la derecha está la alcaldía, con un tablero de membresía delante: una clavija por casa, alta mientras la casa está viva, baja cuando es sospechosa, un hoyo vacío cuando se declara muerta. Un dial al frente cuenta las rondas."),
     body: [
       plate(),
       items.map((i) => i.svg).join(""),
