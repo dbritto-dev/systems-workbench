@@ -9,10 +9,9 @@ HTML page with three parts:
 
 **Live site:** https://dbritto-dev.github.io/systems-workbench/ (deployed by `.github/workflows/pages.yml` on every push to `main`).
 
-**English and Spanish:** every page ships both languages, with an EN / ES switch beside the theme switch. Add
-`?lang=es` (or `?lang=en`) to any URL to link to one language; otherwise the page uses the reader's last choice, then
-the browser's language. The Spanish is neutral Latin American Spanish; [workbench/I18N.md](workbench/I18N.md) is the
-guide for translating a lesson, and `tools/i18n-check.cjs` checks one.
+**English and Spanish:** every page exists in both languages: English at the root, Spanish under `/es/`, with EN / ES
+links beside the theme switch. The Spanish is neutral Latin American Spanish; [workbench/I18N.md](workbench/I18N.md)
+is the guide for translating a lesson, and `tools/i18n-check.cjs` checks one.
 
 The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy) isometric kit (MIT), vendored in
 `workbench/vendor-anatomy/` with its licence.
@@ -67,39 +66,74 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 44 | [Tail Latency](lessons/percentiles/tail-latency-workbench.html) | Fundamentals | Timing hall | Most requests are fast; users remember the slow ones. Percentiles show the tail, and fan-out multiplies it. |
 | 45 | [Big-O](lessons/bigo/big-o-workbench.html) | Fundamentals | Race track | Big-O is how work grows with input size. Five real algorithms race on the same data: doubling, constants, worst case. |
 
-Open any `lessons/<slug>/*-workbench.html` file in a browser; it needs no server and no network. `workbench/collection/index.html`
-is the catalogue page (it links to the published copies).
+The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and deployed to
+GitHub Pages: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
+links forward to the new URLs. The standalone `*-workbench.html` files in `lessons/` still build and open offline.
+
+## How the site is put together
+
+Each lesson's `build.mjs` describes its page (text in English and Spanish, the figure, the panel, experiments,
+questions, live script) and hands it to `writePage()`. `tools/export-lessons.mjs` runs every `build.mjs` and collects
+that description instead of writing HTML, into `src/generated/` (not committed). Astro renders the pages from it:
+
+```
+src/
+  content.config.ts         the "lessons" collection: lessons.json + each lesson's exported page data, validated
+  i18n/                     locales and URL helpers, interface strings (ui.ts), localize() for one-language HTML
+  layouts/Base.astro        document head, language alternates, theme before first paint, old ?lang= links
+  layouts/Lesson.astro      a lesson page: header, machine, experiments, questions
+  components/               Switches (EN/ES links, theme), lesson/ (Experiments, Questions), collection/ (cards,
+                            toolbar, preview dialog)
+  pages/[...lang]/          the collection (index.astro) and lesson pages (lessons/[slug]/), once per language
+  pages/search-index.json.ts  every lesson's text in both languages, for search
+  lib/                      lesson data helpers, the search engine (BM25F), the search index
+  scripts/                  browser code: theme and language links, collection (filters, preview, search),
+                            live-loader (loads a lesson's live code when its machine comes into view)
+  styles/                   collection, lesson additions, switches
+  generated/                written by tools/export-lessons.mjs: lesson data, live modules, shared runtime, CSS
+```
+
+What loads, and when:
+
+- **Shared once, cached for every lesson:** the kit + `WB` runtime (about 5 KB gzipped) and the lesson stylesheet.
+- **Per lesson, on demand:** the lesson's live code (model + animation) is its own chunk, loaded as the machine or
+  the experiments come near the screen, or on the first interaction. The still frame is plain HTML/SVG.
+- **Collection, on demand:** the search engine and index load on the first search, a `?q=` link or a preview.
+  Card images are resized by `astro:assets` and lazy-loaded.
 
 ## Layout
 
 ```
+src/                  the Astro site (above)
 workbench/            the shared layer (see workbench/README.md)
   kit.mjs             Anatomy kit re-export + helpers
   parts.mjs           shared parts: base plate, digit counters, people, dials, meters, cards, signs, pennants, lamps
-  page.mjs            the page template: theme switch, panel, experiments, questions, lit highlight
+  page.mjs            the page template and helpers lessons build with (panel, segs, figure plate, experiments)
   client.js           browser helpers (WB.loop, WB.experiments, WB.counter, ...)
   parts-gallery.html  every shared part in light and dark
-  collection/         the catalogue page and its preview images
+  collection/         lessons.json (the registry), preview images, preview tooling
   vendor-anatomy/     the Anatomy kit (MIT)
 lessons/<slug>/
   sim.js              the seeded model, shared by the figure and the experiments
   figure.mjs          the machine's geometry
-  build.mjs           content + live script; writes <slug>-workbench.html
-tools/                build-all, screenshot and baseline-compare scripts
+  build.mjs           content + live script; writePage() (exported for the site, or a standalone page)
+tools/                export-lessons, site-check, build-all, screenshot and baseline-compare scripts
 ```
 
 ## Working on it
 
-Node 18+ builds every page; the screenshot tools need Playwright and sharp.
+The site needs Node 22.23+ (see `.nvmrc`); the screenshot tools need Playwright and sharp.
 
 ```sh
-npm install                      # only needed for the screenshot/compare tools
-npm run build                    # rebuild every lesson (or: node tools/build-all.mjs queues stacks)
-node lessons/queues/build.mjs    # rebuild one lesson
+npm install
+npm run dev                      # export lessons, then the Astro dev server
+npm run build                    # export lessons, then build the site into dist/ (what the Pages workflow runs)
+npm run preview                  # serve dist/ at http://localhost:4321/systems-workbench/
+npm run check:site               # with preview running: every lesson in both languages, experiments, 390 px, search
+npm run export -- queues         # re-export one lesson after editing it (the dev server picks it up)
+npm run lessons                  # rebuild the standalone lesson pages (or: node tools/build-all.mjs queues stacks)
 npm run gallery                  # rebuild the parts gallery
-npm run collection               # rebuild the catalogue from lessons.json
 npm run previews -- queues       # re-shoot a lesson's catalogue preview (light + dark)
-npm run site                     # assemble the GitHub Pages site in _site/ (what the Pages workflow deploys)
 npm run shot -- lessons/queues/queue-workbench.html shot.png 2000
 npm run compare -- baseline.html lessons/queues/queue-workbench.html
 ```
@@ -111,5 +145,5 @@ Set `CHROMIUM_PATH` if Playwright should use a browser other than its own.
 1. Create `lessons/<slug>/` with `sim.js`, `figure.mjs` and `build.mjs` (copy a recent lesson such as `queues`).
 2. Build it and check the machine reads from a still frame: with no labels, a viewer should be able to name every part
    that matters and its state. Use or add shared parts in `workbench/parts.mjs` rather than drawing one-offs.
-3. Add it to `workbench/collection/lessons.json` (with a `blurb` of at most ~120 characters), then
-   `npm run collection` and `npm run previews -- <slug>`.
+3. Add it to `workbench/collection/lessons.json` (with `blurb` and `blurb_es` of at most ~120 characters), then
+   `npm run previews -- <slug>` and `npm run build`. The collection, search and both language routes pick it up.

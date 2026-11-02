@@ -1,0 +1,55 @@
+---
+// The collection: every lesson as a card, with search and area filters.
+import Base from "../../layouts/Base.astro";
+import Switches from "../../components/Switches.astro";
+import Toolbar from "../../components/collection/Toolbar.astro";
+import LessonCard from "../../components/collection/LessonCard.astro";
+import PreviewDialog from "../../components/collection/PreviewDialog.astro";
+import { langParams, localeOf, href } from "../../i18n";
+import { useUi } from "../../i18n/ui";
+import { allLessons } from "../../lib/lessons";
+import "../../generated/tokens.css";
+import "../../styles/collection.css";
+
+export const getStaticPaths = () => langParams().map((params) => ({ params }));
+const locale = localeOf(Astro.params.lang);
+const ui = useUi(locale);
+const lessons = await allLessons();
+const experiments = lessons.reduce((s, l) => s + l.page.predict.experiments.length, 0);
+const questions = lessons.reduce((s, l) => s + l.page.explain.questions.length, 0);
+const REPO = "https://github.com/dbritto-dev/systems-workbench";
+---
+<Base locale={locale} title={ui("site.name")} description={ui("site.description")} path="">
+  <Fragment slot="head">
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;600&display=swap" />
+  </Fragment>
+  <div class="wrap">
+    <div class="top"><span>{ui("site.tagline")}</span><Switches locale={locale} path="" /></div>
+    <header class="head">
+      <div>
+        <h1>{ui("site.name")}</h1>
+        <p class="intro">{ui("site.intro")}</p>
+      </div>
+      <div class="stats" aria-label={ui("stats.label")}>
+        <div><b>{lessons.length}</b><span>{ui("stats.lessons")}</span></div>
+        <div><b>{experiments}</b><span>{ui("stats.experiments")}</span></div>
+        <div><b>{questions}</b><span>{ui("stats.questions")}</span></div>
+      </div>
+    </header>
+    <Toolbar locale={locale} lessons={lessons} />
+    <main class="grid" id="lessons" data-index={href("en", "search-index.json")} data-locale={locale} data-lesson-base={href(locale, "lessons/")}>
+      {lessons.map((lesson) => <LessonCard lesson={lesson} locale={locale} />)}
+      <div class="empty" data-empty hidden><p></p><span class="card-actions"><button type="button" class="btn" data-all>{ui("search.showAll")}</button><button type="button" class="btn" data-clear>{ui("search.clear")}</button></span></div>
+    </main>
+    <footer>
+      <Fragment set:html={ui("footer.collection")} /> · <a href={`${import.meta.env.BASE_URL}workbench/parts-gallery.html`}>{ui("footer.gallery")}</a> · <a href={REPO}>{ui("footer.source")}</a>
+    </footer>
+  </div>
+  <PreviewDialog locale={locale} />
+  <script>
+    import { initCollection } from "../../scripts/collection";
+    initCollection();
+  </script>
+</Base>

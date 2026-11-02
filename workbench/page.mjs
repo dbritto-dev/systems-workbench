@@ -226,7 +226,10 @@ export function renderPage({
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">${titleTag(title)}${THEME_HEAD}${LANG_HEAD}<style>${k.ISO_CSS}${THEME_CSS}${PAGE_CSS}${PARTS_CSS}${LIT_FILL_PAGE_CSS}${LANG_CSS}${css}</style></head><body class="iso${litFill ? " lit-fill" : ""}">${body}<script type="module">${code}</script>${THEME_SCRIPT}${LANG_SCRIPT}</body></html>`;
 }
 
+// tools/export-lessons.mjs sets globalThis.__WB_CAPTURE__ to collect each lesson's page data for the Astro site
+// instead of writing a standalone page.
 export function writePage(url, options) {
+  if (typeof globalThis.__WB_CAPTURE__ === "function") { globalThis.__WB_CAPTURE__(url, options); return 0; }
   const html = renderPage(options);
   writeFileSync(url, html);
   return html.length;
