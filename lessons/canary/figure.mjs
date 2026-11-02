@@ -2,6 +2,7 @@
 // canary track. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 420;
@@ -187,8 +188,10 @@ export function buildFigure(poolSize) {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A model railway junction on a base plate. Trains, each one a customer order, come down the main line to a points switch. A lever on the front frame sets how many go onto the new canary track; the rest stay on the old track. Both tracks run through a station to buffer stops. Trains on the canary track that hit the bug derail before the station. A console shows the old track's failure rate, the canary's failure rate against a threshold mark, and a timer for the rollback check; when the check fails, a pusher drives the lever back to zero.",
+      "Un empalme ferroviario a escala sobre una placa base. Los trenes, cada uno un pedido de un cliente, bajan por la vía principal hasta un cambio de vías. Una palanca en el bastidor del frente fija cuántos pasan a la nueva vía canario; el resto sigue por la vía vieja. Las dos vías pasan por una estación hasta los topes. Los trenes de la vía canario que se topan con el bug se descarrilan antes de la estación. Una consola muestra la tasa de fallos de la vía vieja, la tasa de fallos del canario contra una marca de umbral y un temporizador para la revisión de reversión; cuando la revisión falla, un empujador lleva la palanca de vuelta a cero.",
+    ),
     body: [
       plate(),
       tracks(),

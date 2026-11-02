@@ -2,6 +2,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -147,8 +148,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A ticket dispenser on a base plate. Three client senders on the left push tickets along lanes under a gate. On the gate stand coin tubes holding tokens, refilled one at a time by a dropper. A ticket that finds a token lifts the flap and rides on to the served tray; a ticket that finds the tube empty is sent back to its client. A second, identical gate at the front stands for a second app instance with its own tubes.",
+      "Un dispensador de boletos sobre una placa base. Tres emisores de clientes a la izquierda empujan boletos por carriles bajo una compuerta. Sobre la compuerta hay tubos de monedas con tokens, que un dosificador recarga de uno en uno. Un boleto que encuentra un token levanta la aleta y sigue hasta la bandeja de atendidos; un boleto que encuentra el tubo vacío vuelve a su cliente. Una segunda compuerta idéntica, adelante, representa una segunda instancia de la app con sus propios tubos.",
+    ),
     body: [plate(), group(0), group(1)],
   });
 }

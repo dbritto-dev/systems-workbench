@@ -3,6 +3,7 @@
 // regular clients spend their time between visits. Built with the Anatomy kit (MIT).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -205,8 +206,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A ticket office on a base plate. At the back, a booth with three service windows and a load gauge on its roof marked at the window's capacity of three per second. In front, a serpentine line. To the left, a waiting garden with benches at 2, 4 and 8 seconds along a ruler: a client who retries with backoff waits at the distance of its delay. At the front left, a plaza where regular clients spend time between visits, and at the front right, a gate where a rush of visitors comes in.",
+      "Una taquilla sobre una placa base. Al fondo, una caseta con tres ventanillas de atención y un indicador de carga en el techo, marcado en la capacidad de la ventanilla de tres por segundo. Al frente, una fila en zigzag. A la izquierda, un jardín de espera con bancas a 2, 4 y 8 segundos sobre una regla: un cliente que reintenta con espera exponencial espera a la distancia de su retraso. Adelante a la izquierda, una plaza donde los clientes habituales pasan el tiempo entre visitas, y adelante a la derecha, una entrada por donde llega una avalancha de visitantes.",
+    ),
     body: [
       plate(),
       garden(),

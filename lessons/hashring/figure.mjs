@@ -2,6 +2,7 @@
 // an intake hopper and a row of six bins (nodes A–F). Built with the Anatomy kit (MIT).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -171,8 +172,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A sorting carousel on a base plate. Cards (keys) come out of a hopper. In ring mode each card lands on a turntable at its hash angle, slides clockwise to the next marker peg and goes to the bin that owns that peg. In modulo mode a lever sends cards to a selector drum that picks bin number hash mod n instead. Six bins along the front stand for nodes A to F; the height of each stack is that node's share of the keys.",
+      "Un carrusel clasificador sobre una placa base. Las tarjetas (claves) salen de una tolva. En modo anillo, cada tarjeta cae sobre una plataforma giratoria en su ángulo de hash, se desliza en sentido horario hasta la siguiente clavija marcadora y va al cajón dueño de esa clavija. En modo módulo, una palanca manda las tarjetas a un tambor selector que elige en su lugar el cajón número hash mod n. Seis cajones al frente representan los nodos A a F; la altura de cada pila es la parte de las claves de ese nodo.",
+    ),
     body: [
       plate(),
       ring(),
