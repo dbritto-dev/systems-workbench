@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A five-lane race track for growth rates. Every lane runs a real algorithm on the same n items; all carriages
 // move at the same pace (one step per tick of the clock) along a log-scale track, so a lane's finish post sits at
 // the number of steps its algorithm needed. Posts that move twice as far when n doubles grow twice as fast.
@@ -5,9 +6,11 @@
 //   O(n²) compare every pair. The ruler along the front marks powers of ten.
 //   Back: a console showing n and the cost of one step, and a clock dial that sweeps the decades.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, faceText, sign, pennant, dial } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, faceText, sign, pennant, dial } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { compact } from "./sim";
 
 export const WIDTH = 700;
 export const HEIGHT = 370;
@@ -37,11 +40,9 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 64 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const Ln = (d, style) => k.lineSvg(d, style);
+const { S, L } = shorthand(P);
 const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
 const sup = ["", "", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
-export const compact = (v) => (v < 10000 ? v.toLocaleString("en") : v < 1e6 ? Math.round(v / 1000) + "K" : (v < 1e7 ? (v / 1e6).toFixed(1) : Math.round(v / 1e6)) + "M");
 
 // A carriage: a block riding the rail with its step count printed on the front.
 export function carriage(lane, lit, label, attr = "") {
@@ -60,7 +61,7 @@ function track(first) {
     major.push(k.segment([x, RULER.y + 0.8, RULER_H], [x, RULER.y + 4, RULER_H], P));
     if (d < DECADES) for (let m = 2; m <= 9; m++) { const xm = xOf(m * 10 ** d); minor.push(k.segment([xm, RULER.y + 0.8, RULER_H], [xm, RULER.y + 2.2, RULER_H], P)); }
   }
-  out.push(Ln(minor.join(""), { tone: "faint" }), Ln(major.join(""), { tone: "mid" }));
+  out.push(L(minor.join(""), { tone: "faint" }), L(major.join(""), { tone: "mid" }));
   for (let d = 0; d <= DECADES; d++) out.push(text(xOf(10 ** d), RULER.y + RULER.d, 1.2, d === 0 ? "1" : "10" + sup[d], { size: 3.2, tone: "hi", anchor: "middle" }));
   out.push(text(RULER.x + RULER.w, PLATE.y + PLATE.d, -8, t("STEPS, LOG SCALE · EACH MARK ×10", "PASOS, ESCALA LOG. · CADA MARCA ×10"), { size: 2.6, tone: "mid", anchor: "end" }));
 
@@ -69,7 +70,7 @@ function track(first) {
     const label = i === 3 && first.constant !== 1 ? LANE_LABEL[i] + " ×" + first.constant : LANE_LABEL[i];
     out.push(sign(P, { x: -139, y: c + 4.6, z: 1.2, w: 34, h: 7.4, text: label, size: 3.2, attr: i === 3 ? "data-nlog-sign" : "" }));
     out.push(S(k.slabOf({ x: RAIL.x, y: c - 1.4, w: RAIL.w, d: 2.8, r: 0.6 }, 0, RAIL_H, P, 3, 0.2), { tone: "mid", crease: "none" }));
-    out.push(Ln(k.segment([RAIL.x + 1, c, RAIL_H], [RAIL.x + RAIL.w - 1, c, RAIL_H], P), { tone: "faint" }));
+    out.push(L(k.segment([RAIL.x + 1, c, RAIL_H], [RAIL.x + RAIL.w - 1, c, RAIL_H], P), { tone: "faint" }));
     // Finish post behind the rail; the live script slides it to xOf(steps).
     out.push(`<g data-post="${i}" transform="${k.translateAlong(P, [xOf(first.steps[i]), 0, 0])}">`
       + S(k.cylinder(0, c - 4.6, 1.3, 0, 0.8, P, 14), { tone: "mid", crease: "none" })
@@ -89,8 +90,8 @@ function consoleBlock(first) {
   const out = [];
   out.push(S(k.slabOf(CONSOLE, 0, CONSOLE_H, P, 4, 0.6), { tone: "mid" }));
   const fy = CONSOLE.y + CONSOLE.d;
-  out.push(Ln(k.faceRectY(P, CONSOLE.x + 3, CONSOLE.x + 50, fy, 2, CONSOLE_H - 2), { tone: "lo" }));
-  out.push(Ln(k.faceRectY(P, CONSOLE.x + 54, CONSOLE.x + CONSOLE.w - 3, fy, 2, CONSOLE_H - 2), { tone: "lo" }));
+  out.push(L(k.faceRectY(P, CONSOLE.x + 3, CONSOLE.x + 50, fy, 2, CONSOLE_H - 2), { tone: "lo" }));
+  out.push(L(k.faceRectY(P, CONSOLE.x + 54, CONSOLE.x + CONSOLE.w - 3, fy, 2, CONSOLE_H - 2), { tone: "lo" }));
   out.push(text(CONSOLE.x + 5, fy, CONSOLE_H - 5, t("INPUT SIZE", "TAMAÑO"), { size: 2.3, tone: "lo" }));
   out.push(text(CONSOLE.x + 5, fy, 3.6, "n = " + first.n.toLocaleString("en"), { size: 4.6, tone: "hi", attr: "data-n-text" }));
   out.push(text(CONSOLE.x + 56, fy, CONSOLE_H - 5, t("ONE STEP", "UN PASO"), { size: 2.3, tone: "lo" }));
