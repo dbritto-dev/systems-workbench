@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // Connection pooling as a taxi rank. Each hotel is an app instance; its rank of cabs is its connection pool.
 // The airport terminal at the back is the database: every cab that exists holds one of its permits
 // (max_connections, the board on its front), and a cab parked at the kerb is a query running.
@@ -6,10 +7,11 @@
 //   fenced lot behind each hotel: cabs that were never given back (leaked connections)
 //   lamps on the terminal (pooler mode): the 20 server connections a shared pooler keeps
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate } from "../../workbench/parts.mjs";
-import { digitPath, counterCells, digitsOf } from "./digits.js";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate } from "../../../workbench/parts.mjs";
+import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -45,9 +47,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 50 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
+const { S, L } = shorthand(P);
 
 // Counters: a thin housing on a front face (constant y), one window per wheel with its printed digit.
 export const COUNTERS = {

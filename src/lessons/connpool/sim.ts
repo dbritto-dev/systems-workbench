@@ -1,5 +1,10 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: app instances borrowing database connections. Times in seconds.
 // One request = one transaction: get a connection, (maybe call an external API), run its queries, give the connection back.
+// Shared by the page (experiment results at build time) and the live code.
+import { rng } from "../../lib/random";
+import { mean } from "../../lib/stats";
+
 export const DB = {
   unit: 0.010,        // a typical request's queries take 10 ms on an otherwise quiet database
   knee: 8,            // up to 2 × 4 cores of queries run at full speed (they also wait on disk)
@@ -16,7 +21,6 @@ export const RETRY = 1.0;           // a pool that was refused tries again after
 export const MAX_POOL = 20;
 export const MAX_INSTANCES = 4;
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // Throughput of the database (in request-units per second) with k queries active at once.
 export function capacity(k) {
@@ -236,9 +240,9 @@ export function makeSim(cfg, seed = 7) {
   return sim;
 }
 
-// ---------- experiments: the same model, headless, averaged over seeds ----------
+// ---------- experiments: the same model, headless, averaged over seeds (computed once at build time) ----------
+// Not the shared percentile(): this one takes sorted[floor(p * n)], the rule the published numbers used.
 const pctile = (xs, p) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
-const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
 // Run one configuration; measure from `from` to `to` (seconds).
 export function measure(cfg, { from = 2, to = 12, seed = 1, until } = {}) {
