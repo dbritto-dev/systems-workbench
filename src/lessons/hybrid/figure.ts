@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A two-lane sorting plant for search queries.
 //   the query board at the back left shows the query; the splitter sends it down two lanes;
 //   lane A (raised, at the back) is a keyword sieve: a plate with holes cut to the query's exact words, and a rack
@@ -7,9 +8,10 @@
 //   then the rerank desk, where an inspector re-reads the top candidates, then the results shelf;
 //   the scoreboard in front shows recall@10 for each kind of query and the time the query took.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, digitCounter, person, dial, sign, plaque, faceText, variants } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, digitCounter, person, dial, sign, plaque, faceText, variants } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -45,11 +47,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 52 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
-const seg = (a, b) => k.segment(a, b, P);
+const { S, L, D, at, seg } = shorthand(P);
 const label = (x, y, z, text, size = 2.4, opts = {}) => faceText(P, [x, y, z], text, { size, tone: "mid", ...opts });
 
 function plate() {

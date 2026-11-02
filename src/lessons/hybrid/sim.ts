@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Hybrid search over a small help-centre corpus, shared by the live figure and the experiments.
 //
 // Corpus: 16 products × 15 articles = 240 documents. Every article is about two topics (a pair of concepts such as
@@ -25,10 +26,10 @@
 //   mixed       a product name plus the customer's words ("Kestrel money back cracked"): the one article for that
 //               product on those topics
 
-export function makeRng(seed) {
-  let s = (seed >>> 0) || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
+import { xorshift32 } from "../../lib/random";
+import { mean, meanBy } from "../../lib/stats";
+
+export const makeRng = xorshift32;
 
 export const CONCEPTS = [
   ["refund", ["refund", "reimbursement"], ["money", "repay"]],
@@ -95,7 +96,7 @@ export const tokens = (words) => words.map((w) => w.toLowerCase()).filter((w) =>
 export function makeBM25(docs, { k1 = 1.2, b = 0.75 } = {}) {
   const tf = docs.map((d) => { const m = new Map(); for (const t of tokens(d.words)) m.set(t, (m.get(t) || 0) + 1); return m; });
   const len = docs.map((d) => d.words.length);
-  const avg = len.reduce((s, x) => s + x, 0) / docs.length;
+  const avg = mean(len);
   const df = new Map();
   for (const m of tf) for (const t of m.keys()) df.set(t, (df.get(t) || 0) + 1);
   const N = docs.length;
@@ -260,7 +261,7 @@ export function makeEngine(seed = 11) {
       out[t] = { recall: rec / qs.length, pool: pool / qs.length, ms: ms / qs.length };
     }
     const all = types.map((t) => out[t]);
-    out.all = { recall: all.reduce((s, x) => s + x.recall, 0) / all.length, pool: all.reduce((s, x) => s + x.pool, 0) / all.length, ms: all.reduce((s, x) => s + x.ms, 0) / all.length };
+    out.all = { recall: meanBy(all, (x) => x.recall), pool: meanBy(all, (x) => x.pool), ms: meanBy(all, (x) => x.ms) };
     return out;
   }
   return { docs, queries, search, lists, evaluate, rankOf, recallAt, rerankScore };
@@ -274,7 +275,7 @@ export function experimentResults() {
   const engines = SEEDS.map((s) => makeEngine(s));
   const by = (cfg, k) => {
     const rs = engines.map((E) => E.evaluate(cfg, k));
-    const mean = (f) => rs.reduce((t, r) => t + f(r), 0) / rs.length;
+    const mean = (f) => meanBy(rs, f);
     return { exact: pct(mean((r) => r.exact.recall)), paraphrase: pct(mean((r) => r.paraphrase.recall)), mixed: pct(mean((r) => r.mixed.recall)), all: pct(mean((r) => r.all.recall)), pool: pct(mean((r) => r.all.pool)), ms: Math.round(mean((r) => r.all.ms) * 10) / 10 };
   };
   return {
