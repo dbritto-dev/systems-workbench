@@ -1,9 +1,12 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments. Times in seconds.
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
+
 export const CLIENTS = 3;
 export const TRAVEL = 0.6;          // a ticket's ride from the client to the gate (figure only)
 export const RETRY_NOW = 0.25;      // an impatient client tries again after this long
 export const MAX_ATTEMPTS = 40;
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // One limiter: token bucket (refills continuously) or fixed window (full again at every boundary).
 export function makeLimiter(kind, capacity, rate, window) {
@@ -77,8 +80,38 @@ export function summarize(log, from, to) {
 }
 
 export function average(cfg, { from = 0, to = 60, seeds = [3, 5, 7, 11, 13, 17] } = {}) {
-  const runs = seeds.map((seed) => { const s = makeSim(cfg, seed); s.runTo(to); return summarize(s.log, from, to); });
-  const out = {};
-  for (const key of Object.keys(runs[0])) out[key] = runs.reduce((a, r) => a + r[key], 0) / runs.length;
-  return out;
+  return averageOver(seeds, (seed) => { const s = makeSim(cfg, seed); s.runTo(to); return summarize(s.log, from, to); });
+}
+
+// ---------- experiments (run at build time; the page shows the results) ----------
+export const BASE = { rate: 4, capacity: 8, algorithm: "bucket", window: 2, mode: "global", noisy: false, noisyRate: 8, behaviour: "after", instances: 1, demand: [1, 1, 1] };
+function burstThrough(capacity) {
+  // A quiet bucket, then 20 requests at once: how many pass in that first instant?
+  const script = Array.from({ length: 20 }, (_, i) => [10 + i * 0.005, 0]);
+  const s = makeSim({ ...BASE, capacity, script, retry: false }, 1); s.runTo(10.2);
+  return s.log.filter((d) => d.ok && d.attempt === 1).length;
+}
+function boundary(algorithm) {
+  const script = [];
+  for (let i = 0; i < 16; i++) script.push([1.8 + i * 0.012, 0]);
+  for (let i = 0; i < 16; i++) script.push([2.02 + i * 0.012, 0]);
+  const s = makeSim({ ...BASE, algorithm, script, retry: false }, 1); s.runTo(2.25);
+  return s.log.filter((d) => d.ok && d.attempt === 1).length;
+}
+function retryRun(behaviour) {
+  const script = Array.from({ length: 30 }, (_, i) => [5 + i * 0.01, 0]);
+  let rejected = 0; const seeds = [3, 5, 7, 11, 13, 17];
+  for (const seed of seeds) { const s = makeSim({ ...BASE, script, background: true, behaviour }, seed); s.runTo(60); rejected += s.log.filter((d) => !d.ok).length; }
+  return rejected / seeds.length;
+}
+export function experimentResults() {
+  const heavy = { ...BASE, demand: [2.5, 2.5, 2.5] };
+  const noisy = { ...BASE, noisy: true, rate: 6, capacity: 12 };
+  return {
+    size: { a: average({ ...heavy, capacity: 8 }), b: average({ ...heavy, capacity: 16 }), b8: burstThrough(8), b16: burstThrough(16) },
+    window: { w: boundary("window"), b: boundary("bucket") },
+    noisy: { g: average({ ...noisy, mode: "global" }), p: average({ ...noisy, mode: "client" }) },
+    retry: { now: retryRun("now"), after: retryRun("after") },
+    instances: { one: average({ ...heavy, instances: 1 }), two: average({ ...heavy, instances: 2 }) },
+  };
 }

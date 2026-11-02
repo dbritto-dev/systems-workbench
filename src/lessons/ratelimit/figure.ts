@@ -1,8 +1,10 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A token-bucket ticket dispenser: client lanes run under a gate whose coin tubes hold the tokens.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -30,10 +32,7 @@ export const P = k.fitProjection(
   { pad: 22, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const byDepth = (points) => [...points].sort((a, b) => k.depthOf([a[0], a[1], 0], P) - k.depthOf([b[0], b[1], 0], P));
 
 function plate() {
