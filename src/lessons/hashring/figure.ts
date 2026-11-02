@@ -1,8 +1,12 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // The sorting carousel: a hash ring (turntable with a 0–360° scale and marker pegs), a modulo selector drum,
 // an intake hopper and a row of six bins (nodes A–F). Built with the Anatomy kit (MIT).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+// The parts that change with the cluster (pegs, drum face, lever, bins) are drawn in the browser by live.ts; the still
+// frame leaves their groups empty.
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -29,13 +33,7 @@ export const P = k.fitProjection(
   { pad: 24, azimuth: 48 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
-const byDepth = (points) => [...points].sort((a, b) => k.depthOf([a[0], a[1], 0], P) - k.depthOf([b[0], b[1], 0], P));
-const rad = (deg) => (deg * Math.PI) / 180;
-export const onRing = (deg, r) => [RING.cx + r * Math.sin(rad(deg)), RING.cy - r * Math.cos(rad(deg))];
+const { S, L, D, at } = shorthand(P);
 
 function plate() {
   const out = [
@@ -71,25 +69,6 @@ function hub() {
     + L(k.ring(cx, cy, 2, HUB.top + 3, P, 16), { tone: "lo" });
 }
 
-// Marker pegs for the current ring. Big pegs for 1 and 10 per node; at 100 per node, engraved ticks.
-export function pegsSvg(points, litAngle = null) {
-  const { cx, cy } = RING;
-  if (!points.length) return "";
-  if (points.length > 80) {
-    const d = points.map((p) => k.lineOnTop(onRing(p.angle, RING.groove[1]), onRing(p.angle, RING.scale - 3.2), RING.top, P)).join("");
-    let lit = "";
-    if (litAngle !== null) lit = L(k.lineOnTop(onRing(litAngle, RING.groove[1]), onRing(litAngle, RING.scale - 3.2), RING.top, P), { tone: "lit" });
-    return L(d, { tone: "mid" }) + lit;
-  }
-  const sorted = [...points].sort((a, b) => k.depthOf([...onRing(a.angle, RING.peg), 0], P) - k.depthOf([...onRing(b.angle, RING.peg), 0], P));
-  const r = points.length > 24 ? 1.2 : 1.8;
-  return sorted.map((p) => {
-    const [x, y] = onRing(p.angle, RING.peg);
-    const lit = litAngle !== null && Math.abs(p.angle - litAngle) < 1e-6;
-    return S(k.cylinder(x, y, r, RING.top, 4.5, P, 14), { tone: "hi", lit });
-  }).join("");
-}
-
 function hopper() {
   const out = [];
   out.push(S(k.slabOf(HOPPER, 0, HOPPER.h, P, 3, 0.6), { tone: "mid", inner: L(k.sideSeam(HOPPER, 6, P, 3), { tone: "faint" }) }));
@@ -113,57 +92,12 @@ function drum() {
   return out.join("");
 }
 
-// Sector lines and the pointer on the drum's face: n sectors, pointer at sector `slot`.
-export function drumFace(n, slot, active) {
-  const { cx, cy } = DRUM;
-  const lines = Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * 360;
-    return k.lineOnTop(onDrum(a, 4.5), onDrum(a, DRUM.r - 2), DRUM.top, P);
-  }).join("");
-  const mid = ((slot + 0.5) / n) * 360;
-  const needle = k.lineOnTop(onDrum(mid + 180, 2.5), onDrum(mid, DRUM.r - 4.5), DRUM.top + 0.2, P);
-  return L(lines, { tone: "mid" }) + L(k.ring(cx, cy, 4.5, DRUM.top, P, 24), { tone: "mid" })
-    + `<path class="iso-line" data-tone="${active ? "lit" : "hi"}" data-free="start" d="${needle}" style="stroke-width:1.1"/>`;
-}
-export const onDrum = (deg, r) => [DRUM.cx + r * Math.sin(rad(deg)), DRUM.cy - r * Math.cos(rad(deg))];
-
 function leverSlot() {
   const plan = { x: LEVER.x, y: LEVER.y, w: LEVER.w, d: LEVER.d, r: 1.5 };
   return S(k.slabOf(plan, 0, 3, P, 3, 0.4), { tone: "mid" })
     + L(k.planOutline({ x: LEVER.x + 3, y: LEVER.y + 3, w: LEVER.w - 6, d: 2, r: 1 }, 3, P, 2), { tone: "lo" })
     + D([at([LEVER.x + 1.6, LEVER.y + 4, 3]), at([LEVER.x + LEVER.w - 1.6, LEVER.y + 4, 3])], { size: 0.4 });
 }
-export function leverSvg(mode) {
-  const x = mode === "modulo" ? LEVER.modulo : LEVER.ring, y = LEVER.y + 4;
-  return S(k.cylinder(x, y, 1.2, 3, 11, P, 12), { tone: "mid", crease: "none" })
-    + S(k.cylinder(x, y, 3.2, 14, 4, P, 24, 0.4), { tone: "hi", crease: "lo" });
-}
-
-// One bin: a tray with a stack of cards whose height is the node's share. state: "up" | "down" | "absent".
-export function binSvg(index, share, state, lit = false) {
-  const b = BINS[index];
-  if (state === "absent") return "";
-  const tray = { x: b.cx - b.w / 2, y: b.y, w: b.w, d: b.d, r: 2 };
-  let out = `<path class="iso-halo" d="${k.haloOf(k.insetPlan(tray, 2), 0, 0.1, P)}" style="filter:blur(4px)"/>`;
-  out += S(k.slabOf(tray, 0, TRAY_H, P, 3, 0.5), { tone: "mid" });
-  out += L(k.planOutline(k.insetPlan(tray, 2.5), TRAY_H, P, 3), { tone: "lo" });
-  if (state === "down") {
-    out += S(k.slabOf(k.insetPlan(tray, 1), TRAY_H, 2.5, P, 3, 0.4), { tone: "lo" });
-    out += L(k.lineOnTop([tray.x + 5, tray.y + 5], [tray.x + tray.w - 5, tray.y + tray.d - 5], TRAY_H + 2.5, P) + k.lineOnTop([tray.x + tray.w - 5, tray.y + 5], [tray.x + 5, tray.y + tray.d - 5], TRAY_H + 2.5, P), { tone: "mid" });
-    return out;
-  }
-  const h = stackHeight(share);
-  if (h > 0.2) {
-    const stack = { x: b.cx - 12, y: b.y + 3, w: 24, d: 18, r: 1 };
-    const seams = [];
-    for (let z = TRAY_H + 6; z < TRAY_H + h - 1; z += 6) seams.push(k.sideSeam(stack, z, P, 2));
-    out += S(k.slabOf(stack, TRAY_H, h, P, 2, 0.4), { tone: "hi", crease: "lo", lit, inner: seams.length ? L(seams.join(""), { tone: "faint" }) : "" });
-  }
-  return out;
-}
-export const stackHeight = (share) => Math.min(48, STACK_SCALE * share);
-export const stackTop = (index, share) => [BINS[index].cx, BINS[index].y + BINS[index].d / 2, TRAY_H + stackHeight(share)];
-
 export function cardSvg() {
   return S(k.slabOf({ x: -CARD.w / 2, y: -CARD.d / 2, w: CARD.w, d: CARD.d, r: 0.4 }, 0, CARD.h, P, 2), { tone: "hi", crease: "lo", lit: true });
 }

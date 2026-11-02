@@ -1,4 +1,8 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: 1,000 keys, nodes A–F, a hash ring or hash % n.
+// Shared by the experiments (at build time) and the live figure (in the browser).
+import { meanBy } from "../../lib/stats";
+
 export const KEYS = 1000;
 export const NODE_IDS = ["A", "B", "C", "D", "E", "F"];
 export const HOT_KEY = 7;
@@ -48,7 +52,29 @@ export function moved(before, after) {
   for (let k = 0; k < KEYS; k++) if (before[k] !== after[k]) { count++; from[before[k]] = (from[before[k]] || 0) + 1; to[after[k]] = (to[after[k]] || 0) + 1; }
   return { count, share: count / KEYS, from, to };
 }
-// Averages over many clusters (salts): ring results depend on where the markers happened to land.
-export function overClusters(fn, count = 200) { let s = 0; for (let salt = 1; salt <= count; salt++) s += fn(salt); return s / count; }
-// Seeded random numbers for the figure's stream of cards.
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// Averages over many clusters (salts 1..count): ring results depend on where the markers happened to land.
+export const overClusters = (fn, count = 200) => meanBy(Array.from({ length: count }, (_, i) => i + 1), fn);
+
+// ---------- experiments: computed once at build time from the same model ----------
+const N = (n) => NODE_IDS.slice(0, n);
+const moduloShare = () => moved(assign({ mode: "modulo", nodes: N(4) }), assign({ mode: "modulo", nodes: N(5) })).share;
+export function moduloRun() { return { m: moduloShare() }; }
+export function ringRun() {
+  const m = moduloShare();
+  const r = overClusters((s) => moved(assign({ nodes: N(4), salt: s }), assign({ nodes: N(5), salt: s })).share);
+  const one = overClusters((s) => Object.keys(moved(assign({ nodes: N(4), salt: s }), assign({ nodes: N(5), salt: s })).from).length <= 1 ? 1 : 0);
+  return { m, r, one };
+}
+export function balanceRun() {
+  const ratio = (v) => overClusters((s) => spread(loads(assign({ nodes: N(5), vnodes: v, salt: s }), N(5))).ratio);
+  return { r1: ratio(1), r10: ratio(10), r100: ratio(100) };
+}
+export function failRun() {
+  const without = N(5).filter((n) => n !== "C");
+  const receivers = (v) => overClusters((s) => Object.keys(moved(assign({ nodes: N(5), vnodes: v, salt: s }), assign({ nodes: without, vnodes: v, salt: s })).to).length);
+  return { r1: receivers(1), r100: receivers(100) };
+}
+export function hotRun() {
+  const busiest = (n) => overClusters((s) => spread(loads(assign({ nodes: N(n), vnodes: 100, salt: s }), N(n), true)).max, 50);
+  return { b3: busiest(3), b6: busiest(6) };
+}
