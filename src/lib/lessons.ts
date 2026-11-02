@@ -1,11 +1,37 @@
 // Lesson data in the shape pages use: sorted, with the bits every page needs worked out once.
 import { getCollection, type CollectionEntry } from "astro:content";
 import { pick, isBi, type Bi, type Locale } from "../i18n";
+import type { LessonDef } from "../lessons/types";
 
-export type Lesson = CollectionEntry<"lessons">["data"];
+type Entry = CollectionEntry<"lessons">["data"];
+type LegacyPage = NonNullable<Entry["page"]>;
+/** A lesson's page: from src/lessons/<slug>/page.ts when ported (native), else exported from its build.mjs. */
+export type Page = Omit<LegacyPage, "predict"> & { predict: { intro: Bi; experiments: (LegacyPage["predict"]["experiments"][number] & { answer?: number })[] }; native?: LessonDef };
+export type Lesson = Omit<Entry, "page"> & { page: Page };
+
+const NATIVE = import.meta.glob<{ default: LessonDef }>("/src/lessons/*/page.ts", { eager: true });
+const nativeOf = (slug: string) => NATIVE[`/src/lessons/${slug}/page.ts`]?.default;
+
+function pageOf(def: LessonDef): Page {
+  return {
+    legacyFile: "",
+    title: def.title, eyebrow: def.eyebrow, lede: def.lede,
+    machine: { intro: def.machine.intro, figure: "", panel: "" },
+    predict: def.predict,
+    explain: { intro: def.explain.intro ?? null, questions: def.explain.questions },
+    footer: def.footer ?? null, css: def.css ?? "", litFill: def.litFill ?? true,
+    native: def,
+  };
+}
 
 export async function allLessons(): Promise<Lesson[]> {
-  return (await getCollection("lessons")).map((e) => e.data).sort((a, b) => a.n - b.n);
+  return (await getCollection("lessons"))
+    .map(({ data }) => {
+      const def = nativeOf(data.slug);
+      if (!def && !data.page) throw new Error(`No page for ${data.slug}`);
+      return { ...data, page: def ? pageOf(def) : (data.page as Page) };
+    })
+    .sort((a, b) => a.n - b.n);
 }
 
 export const two = (n: number) => String(n).padStart(2, "0");
@@ -17,6 +43,7 @@ export const conceptOf = (l: Lesson): Bi => (isBi(l.page.eyebrow) ? { en: lastPa
 
 /** The machine's name, from the figure plate's title corner. */
 export function machineOf(l: Lesson): Bi {
+  if (l.page.native) return l.page.native.machine.plate.title;
   const m = l.page.machine.figure.match(/data-corner="title">([\s\S]*?)<\/span>(?=<span class="iso-plate-corner")/);
   if (!m) return "";
   const one = (lang: "en" | "es") => stripTags(m[1].replace(new RegExp(`<span data-l="${lang === "en" ? "es" : "en"}"[^>]*>[\\s\\S]*?</span>`, "g"), "")).trim();

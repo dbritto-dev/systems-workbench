@@ -1,13 +1,15 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A parcel post office: a work queue you can watch.
 //   the producer's dock drops numbered parcels onto the back of a roller lane (the queue);
 //   clerks take the parcel at the front, work it at their desk and stamp it done;
 //   a parcel nobody stamped waits on the hold rack until its timer runs out, then rejoins the front;
 //   after too many tries it goes to the dead-letter cage. Every number is a counter on a real object.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { sphereOf } from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, pennant, faceText, litFill } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { sphereOf } from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, pennant, faceText, litFill } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 450;
@@ -68,10 +70,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 50 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const seg = (a, b) => k.segment(a, b, P);
 const label = (x, y, z, text, size = 2.6) => faceText(P, [x, y, z], text, { size, tone: "mid" });
 

@@ -7,6 +7,8 @@ import Base from "./Base.astro";
 import Switches from "../components/Switches.astro";
 import Experiments from "../components/lesson/Experiments.astro";
 import Questions from "../components/lesson/Questions.astro";
+import FigurePlate from "../components/lesson/FigurePlate.astro";
+import Panel from "../components/lesson/Panel.astro";
 import { pick, type Locale } from "../i18n";
 import { localize } from "../i18n/localize";
 import { useUi } from "../i18n/ui";
@@ -20,6 +22,7 @@ const p = lesson.page;
 const ui = useUi(locale);
 const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const path = `lessons/${lesson.slug}/`;
+const native = p.native;
 ---
 <Base locale={locale} title={plain(p.title, locale)} description={plain(p.lede, locale).slice(0, 300)} path={path} bodyClass={p.litFill ? "iso lit-fill" : "iso"}>
   <Fragment slot="head">{p.css && <Fragment set:html={`<style>${p.css}</style>`} />}</Fragment>
@@ -41,8 +44,17 @@ const path = `lessons/${lesson.slug}/`;
 
     <section id="machine">
       <div class="section-head"><span class="eyebrow">01</span><h2>{ui("lesson.machine")}</h2><p set:html={L(p.machine.intro)} /></div>
-      <Fragment set:html={localize(p.machine.figure, locale)} />
-      <Fragment set:html={localize(p.machine.panel, locale)} />
+      {native ? (
+        <>
+          <FigurePlate plate={native.machine.plate} svg={native.machine.svg} locale={locale} />
+          <Panel stats={native.machine.stats} controls={native.machine.controls} note={native.machine.note} locale={locale} />
+        </>
+      ) : (
+        <>
+          <Fragment set:html={localize(p.machine.figure, locale)} />
+          <Fragment set:html={localize(p.machine.panel, locale)} />
+        </>
+      )}
     </section>
 
     <section id="predict">
@@ -58,6 +70,7 @@ const path = `lessons/${lesson.slug}/`;
     <footer set:html={p.footer ? L(p.footer) : ui("lesson.footer")} />
   </main>
   <div hidden data-live={lesson.slug}></div>
+  {native && <script type="application/json" data-lesson-data set:html={JSON.stringify(native.data).replace(/</g, "\\u003c")} />}
   <script>
     import { loadLive } from "../scripts/live-loader";
     loadLive();

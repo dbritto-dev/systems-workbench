@@ -27,8 +27,9 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       if (!res || res.status() !== 200) { fail(where, `HTTP ${res && res.status()}`); await page.close(); continue; }
       const before = await page.$eval(".iso-stage svg", (s) => s.innerHTML.length);
       await page.waitForTimeout(1500);
-      const loaded = await page.evaluate(() => performance.getEntriesByType("resource").some((r) => /\/_astro\/runtime\./.test(r.name)));
-      if (!loaded) fail(where, "live code never loaded");
+      // The live code writes the readout as soon as it runs; the static page says "starting" / "iniciando".
+      const loaded = await page.$eval("[data-readout]", (el) => !/^(starting|iniciando)$/.test(el.textContent.trim()));
+      if (!loaded) fail(where, "live code never ran (readout still at its initial text)");
       // Run every experiment with the first prediction.
       const cards = await page.$$("[data-exp]");
       if (cards.length !== 5) fail(where, `${cards.length} experiment cards`);

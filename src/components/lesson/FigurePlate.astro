@@ -1,0 +1,35 @@
+---
+// The figure card: corners (figure number, machine name, hint, live readout), the stage holding the machine's SVG,
+// and the legend. Same markup as the Anatomy kit's plateHtml(), so the kit's CSS applies.
+import { plateHtml } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+import { pick, type Locale } from "../../i18n";
+import { localize } from "../../i18n/localize";
+import type { Plate } from "../../lessons/types";
+
+interface Props { plate: Plate; svg: string; locale: Locale }
+const { plate, svg, locale } = Astro.props;
+// The kit draws legend swatches inside plateHtml() but doesn't export the drawing; take it from there.
+const swatchSvg = (mark: string) => plateHtml({ fig: "", keys: [{ mark, label: "" }], body: "" }).match(/<span class="iso-key">([\s\S]*?)<\/span>/)?.[1] ?? "";
+const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
+const hint = plate.hint ?? { en: "Space pauses", es: "Espacio: pausa" };
+const readout = plate.readout ?? { en: "starting", es: "iniciando" };
+---
+<figure class="iso-figure">
+  <div class="iso-plate">
+    <div class="iso-plate-corners" aria-hidden="true">
+      <span class="iso-plate-corner" data-corner="fig">{L(plate.fig ?? "Fig 1")}</span>
+      <span class="iso-plate-corner" data-corner="title">{L(plate.title)}</span>
+      <span class="iso-plate-corner" data-corner="hint">{L(hint)}</span>
+      <span class="iso-plate-corner" data-corner="readout" data-readout>{L(readout)}</span>
+    </div>
+    <div class="iso-stage" {...plate.stage} role="img" aria-label={L(plate.label)} tabindex="0" set:html={localize(svg, locale)} />
+  </div>
+  {(plate.keys?.length || plate.caption) && (
+    <figcaption class="iso-legend">
+      {plate.keys?.length && (
+        <span class="iso-keys">{plate.keys.map((key) => <span class="iso-key"><Fragment set:html={swatchSvg(key.mark)} />{L(key.label)}</span>)}</span>
+      )}
+      {plate.caption && <span class="iso-caption">{L(plate.caption)}</span>}
+    </figcaption>
+  )}
+</figure>

@@ -82,9 +82,8 @@ in light and dark (pixel count), page text, experiment results, console errors, 
 
 ## The collection page
 
-`collection/` builds the Systems Workbench catalogue:
+The collection is an Astro page (`src/pages/[...lang]/index.astro`); it reads `collection/lessons.json`:
 
-1. Add the lesson to `collection/lessons.json` (number, slug, area, built page, published link, and an optional `blurb`: the card subtitle, at most about 120 characters so it fits three lines on a phone; without it the lesson's lede is used).
-2. `node collection/extract.mjs` reads every listed page into `catalog.json` (title, machine, summary, experiments).
-3. Screenshot the running machine into `collection/previews/<slug>-light.webp` and `-dark.webp` with `node collection/previews.cjs [slug]` (needs `playwright` and `sharp`). `normalize.cjs` fits every shot onto the same 1200×800 canvas, trimmed and centred, so all cards share one 3:2 image.
-4. `node collection/build.mjs` writes `collection/index.html`; publish it with the `previews/` files.
+1. Add the lesson to `collection/lessons.json` (number, slug, area, `blurb` and `blurb_es`: the card subtitles, at most about 120 characters so they fit three lines on a phone).
+2. Shoot the running machine into `collection/previews/<slug>-light.webp` and `-dark.webp`: build and serve the site (`pnpm build && pnpm preview`), then `pnpm previews <slug>`. `normalize.cjs` fits every shot onto the same 1200×800 canvas, trimmed and centred, so all cards share one 3:2 image.
+3. `pnpm build`: the card, search and both languages pick it up.

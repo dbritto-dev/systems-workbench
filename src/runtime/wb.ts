@@ -1,0 +1,145 @@
+// Browser helpers every lesson shares, as a real module (the standalone pages inline workbench/client.js instead).
+// Lessons import what they use; the bundler keeps one copy for the whole site.
+import { iso, pathOf } from "../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+import { digitPath, digitsOf, facePoint } from "../../workbench/digits.mjs";
+
+export type Projection = { origin: [number, number]; scale: number; azimuth?: number; elevation?: number };
+type Point3 = [number, number, number];
+export type Bi = string | { en: string; es: string };
+
+export const still = matchMedia("(prefers-reduced-motion: reduce)");
+export { digitsOf };
+
+// ---------- language ----------
+// A page carries one language (data-lang on <html>). L(v) picks it from a { en, es } value; L(en, es) from a pair.
+export const lang = (): "en" | "es" => (document.documentElement.getAttribute("data-lang") === "es" ? "es" : "en");
+export function L(v: Bi, es?: string): string {
+  if (es !== undefined) return lang() === "es" ? es : (v as string);
+  return v != null && typeof v === "object" ? v[lang()] : v;
+}
+export const T = (en: string, es: string) => ({ en, es });
+
+// ---------- faces ----------
+export const faceRectY = (P: Projection, x0: number, x1: number, y: number, z0: number, z1: number) =>
+  pathOf(([[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]] as Point3[]).map((p) => iso(p, P)), true);
+export const faceRectX = (P: Projection, x: number, y0: number, y1: number, z0: number, z1: number) =>
+  pathOf(([[x, y0, z0], [x, y1, z0], [x, y1, z1], [x, y0, z1]] as Point3[]).map((p) => iso(p, P)), true);
+
+// ---------- live parts drawn by workbench/parts.mjs; each is found by name inside the figure's svg ----------
+const geoOf = (el: Element) => JSON.parse(el.getAttribute("data-geo")!);
+
+/** A digit counter: set(v) redraws only the wheels whose digit changed. */
+export function counter(root: ParentNode, name: string, P: Projection) {
+  const el = root.querySelector(`[data-counter="${name}"]`)!;
+  const g = geoOf(el), wheels = [...el.querySelectorAll("[data-wheel]")], shown: number[] = [];
+  return {
+    el,
+    set(v: number) {
+      digitsOf(v, g.cells.length).forEach((d: number, j: number) => {
+        if (shown[j] !== d) { shown[j] = d; wheels[j].setAttribute("d", digitPath(iso, P, g.cells[j], d, g.face)); }
+      });
+    },
+  };
+}
+/** The needle of a dial: set(frac) turns it to that share of its sweep. */
+export function dial(root: ParentNode, name: string, P: Projection) {
+  const el = root.querySelector(`[data-dial="${name}"]`)!, g = geoOf(el);
+  return {
+    el,
+    set(frac: number) {
+      const a = g.from + Math.max(0, Math.min(1, frac)) * g.span, sx = Math.sin(a), sy = -Math.cos(a);
+      el.setAttribute("d", pathOf([iso([g.x - sx * g.r * 0.22, g.y - sy * g.r * 0.22, g.z], P), iso([g.x + sx * g.r, g.y + sy * g.r, g.z], P)]));
+    },
+  };
+}
+/** The needle of a half-round meter: set(frac) swings it from left (0) to right (1). */
+export function meter(root: ParentNode, name: string, P: Projection) {
+  const el = root.querySelector(`[data-meter="${name}"]`)!, g = geoOf(el);
+  return {
+    el,
+    set(frac: number) {
+      const a = Math.PI * (1 - Math.max(0, Math.min(1, frac)));
+      el.setAttribute("d", pathOf([iso(facePoint(g.face, g, 0, 0), P), iso(facePoint(g.face, g, Math.cos(a) * g.r, Math.sin(a) * g.r), P)]));
+    },
+  };
+}
+/** Show one drawing of a variants() group and hide the others. */
+export function pose(root: ParentNode, name: string, key: string) {
+  const el = root.querySelector(`[data-variants="${name}"]`)!;
+  el.querySelectorAll<HTMLElement>(":scope > [data-variant]").forEach((v) => { if (v.dataset.variant === key) v.removeAttribute("data-off"); else v.setAttribute("data-off", ""); });
+}
+
+// ---------- the frame loop: runs only while the figure is on screen and not paused ----------
+export interface Loop { readonly paused: boolean; setPaused(on: boolean): void; toggle(): void; run(): void }
+export function loop({ stage, step, paused = still.matches, maxDt = 1 / 20, onPause }: { stage: Element; step: (dt: number) => void; paused?: boolean; maxDt?: number; onPause?: (on: boolean) => void }): Loop {
+  let frame = 0, last = 0, visible = false, isPaused = paused;
+  const tick = (t: number) => {
+    const dt = last ? Math.min((t - last) / 1000, maxDt) : 1 / 60;
+    last = t;
+    if (!isPaused) step(dt);
+    frame = visible && !isPaused ? requestAnimationFrame(tick) : 0;
+  };
+  const run = () => { if (!frame && visible && !isPaused) { last = 0; frame = requestAnimationFrame(tick); } };
+  new IntersectionObserver((entries) => { visible = entries[entries.length - 1].isIntersecting; run(); }, { rootMargin: "80px 0px" }).observe(stage);
+  const api: Loop = {
+    get paused() { return isPaused; },
+    setPaused(on) { isPaused = on; onPause?.(on); run(); },
+    toggle() { api.setPaused(!isPaused); },
+    run,
+  };
+  return api;
+}
+
+// ---------- segmented controls: <button data-set="name" data-value="v"> ----------
+export function pressSeg(name: string, value: string | number) {
+  document.querySelectorAll<HTMLElement>(`[data-set="${name}"]`).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.value === String(value))));
+}
+export function onSegments(handler: (name: string, value: string, button: HTMLElement) => void) {
+  document.querySelectorAll<HTMLElement>("[data-set]").forEach((b) => b.addEventListener("click", () => handler(b.dataset.set!, b.dataset.value!, b)));
+}
+
+// ---------- experiment cards: pick a prediction, run, show the verdict and bars ----------
+export type Bar = [label: Bi, share: number, text: Bi, after?: boolean];
+export interface Outcome { verdict: Bi; bars: Bar[] }
+export interface ExperimentRef { id: string; answer: number; [k: string]: unknown }
+export function experiments<E extends ExperimentRef>({ list, runs, watch, scrollTo = "machine" }: { list: E[]; runs: Record<string, () => Outcome>; watch?: (exp: E) => void; scrollTo?: string }) {
+  document.querySelectorAll<HTMLElement>("[data-exp]").forEach((card) => {
+    const exp = list.find((e) => e.id === card.dataset.exp)!;
+    const runBtn = card.querySelector<HTMLButtonElement>("[data-run]")!;
+    const choices = [...card.querySelectorAll<HTMLButtonElement>("[data-choice]")];
+    let picked: number | null = null;
+    choices.forEach((c) => c.addEventListener("click", () => {
+      if (card.hasAttribute("data-done")) return;
+      picked = Number(c.dataset.choice);
+      choices.forEach((x) => x.setAttribute("aria-pressed", String(x === c)));
+      runBtn.disabled = false;
+      runBtn.textContent = L("Run the experiment", "Ejecutar el experimento");
+    }));
+    runBtn.addEventListener("click", () => {
+      if (picked === null) return;
+      const out = runs[exp.id]();
+      const right = picked === exp.answer;
+      choices.forEach((x, j) => { x.disabled = true; if (j === exp.answer) x.dataset.verdict = "right"; else if (j === picked) x.dataset.verdict = "wrong"; });
+      const bars = card.querySelector("[data-bars]")!;
+      bars.replaceChildren(...out.bars.map(([label, , text, after]) => {
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        if (after) bar.setAttribute("data-after", "");
+        const l = document.createElement("span"), track = document.createElement("span"), fill = document.createElement("span"), t = document.createElement("b");
+        l.textContent = L(label); track.className = "track"; fill.className = "fill"; fill.style.width = "0"; t.textContent = L(text);
+        track.append(fill); bar.append(l, track, t);
+        return bar;
+      }));
+      card.querySelector("[data-outcome]")!.textContent = (right ? L("Your prediction held. ", "Tu predicción se cumplió. ") : L("Not what you predicted. ", "No es lo que predijiste. ")) + L(out.verdict);
+      runBtn.textContent = L("Done", "Listo");
+      card.setAttribute("data-done", "");
+      runBtn.disabled = true;
+      requestAnimationFrame(() => requestAnimationFrame(() => card.querySelectorAll<HTMLElement>(".fill").forEach((f, i) => { f.style.width = Math.max(1, Math.round(100 * out.bars[i][1])) + "%"; })));
+    });
+    const watchBtn = card.querySelector("[data-watch]");
+    if (watchBtn && watch) watchBtn.addEventListener("click", () => {
+      watch(exp);
+      document.getElementById(scrollTo)?.scrollIntoView({ behavior: still.matches ? "auto" : "smooth" });
+    });
+  });
+}

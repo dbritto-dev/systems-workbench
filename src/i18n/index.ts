@@ -12,3 +12,6 @@ export const pick = <T>(v: Bi<T>, locale: Locale): T => (isBi(v) ? v[locale] : v
 /** getStaticPaths entries for a [...lang] route: one per locale (English has no prefix). Astro.currentLocale then
  *  tells the page which one it is, and getRelativeLocaleUrl() from astro:i18n builds links. */
 export const langParams = () => LOCALES.map((l) => ({ lang: l === DEFAULT_LOCALE ? undefined : l }));
+
+/** A bilingual value: t("The machine", "La máquina"). */
+export const t = (en: string, es: string) => ({ en, es });

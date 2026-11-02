@@ -1,0 +1,42 @@
+---
+// Under the figure: the stats strip (<b data-s="key">, written by the live code) and the controls (segmented
+// choices <button data-set data-value>, the speed control, action buttons <button data-act>).
+import { pick, type Locale } from "../../i18n";
+import type { Control } from "../../lessons/types";
+
+interface Props { stats: [string, Parameters<typeof pick<string>>[0], Parameters<typeof pick<string>>[0]?][]; controls: Control[]; note?: Parameters<typeof pick<string>>[0]; locale: Locale }
+const { stats, controls, note, locale } = Astro.props;
+const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
+const SPEEDS: [number, string][] = [[0.5, "×0.5"], [1, "×1"], [3, "×3"], [8, "×8"]];
+const segs = controls.map((c) =>
+  "seg" in c ? { name: c.seg, label: L(c.label), options: c.options, value: c.value }
+  : "speed" in c ? { name: "speed", label: L({ en: "Speed", es: "Velocidad" }), options: c.options ?? SPEEDS, value: c.value ?? 1 }
+  : null,
+);
+---
+<div class="panel">
+  <div class="stats" data-stats>
+    {stats.map(([key, label, initial = "0"]) => <div class="stat"><b data-s={key}>{L(initial)}</b><span>{L(label)}</span></div>)}
+  </div>
+  <div class="controls">
+    {controls.map((c, i) => {
+      const s = segs[i];
+      if (s) return (
+        <div class="control"><span>{s.label}</span>
+          <div class="seg" role="group" aria-label={s.label}>
+            {s.options.map(([value, text]) => <button type="button" data-set={s.name} data-value={String(value)} aria-pressed={String(String(value) === String(s.value))}>{L(text)}</button>)}
+          </div>
+        </div>
+      );
+      if ("actions" in c) return (
+        <div class="control"><span>{L(c.label)}</span>
+          <div class="actions">{c.actions.map(([act, text]) => <button class="btn" type="button" data-act={act}>{L(text)}</button>)}</div>
+        </div>
+      );
+    })}
+  </div>
+  {note && <p class="note panel-note">{L(note)}</p>}
+</div>
+<style is:global>
+  .panel-note { padding: 0 12px 12px; margin: 0; }
+</style>

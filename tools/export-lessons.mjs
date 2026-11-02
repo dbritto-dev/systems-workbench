@@ -8,7 +8,7 @@
 //   tokens.css            the kit's light/dark colour tokens on :root, for the collection page
 //
 // and copies the parts gallery to public/. Usage: node tools/export-lessons.mjs [slug ...]
-import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, copyFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, copyFileSync, rmSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { join, basename } from "node:path";
 import * as k from "../workbench/kit.mjs";
@@ -38,6 +38,10 @@ let captured = null;
 globalThis.__WB_CAPTURE__ = (url, options) => { captured = { url, options }; };
 for (const l of lessons) {
   if (only.size && !only.has(l.slug)) continue;
+  if (existsSync(join(ROOT, "src/lessons", l.slug, "page.ts"))) {   // ported: the site builds it from src/lessons/
+    for (const f of [join(GEN, "lessons", `${l.slug}.json`), join(GEN, "live", `${l.slug}.js`)]) rmSync(f, { force: true });
+    continue;
+  }
   const build = join(ROOT, "lessons", l.slug, "build.mjs");
   if (!existsSync(build)) throw new Error(`no build.mjs for ${l.slug}`);
   captured = null;

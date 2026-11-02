@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // A work queue: producers append parcels at the back, clerks take them from the front.
 // Event-driven and seeded, shared by the live figure and the experiments.
 //
@@ -17,16 +18,14 @@
 //   cap        lane capacity; a parcel that doesn't fit is turned away (Infinity = no limit)
 //   recover    seconds a collapsed clerk is down
 
-export function makeRng(seed) {
-  let s = (seed >>> 0) || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
+import { xorshift32 } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
 
 export const DEFAULTS = { rate: 0.8, clerks: 3, service: 3, crash: 0.1, ackFirst: false, dedupe: false, poison: 0.02, maxTries: 3, visibility: 6, order: "any", keys: 4, cap: Infinity, recover: 3 };
 
 export function makeQueue(cfgIn, seed = 1) {
   const cfg = { ...DEFAULTS, ...cfgIn };
-  const rnd = makeRng(seed);
+  const rnd = xorshift32(seed);
   const exp = (rate) => -Math.log(1 - rnd()) / rate;
   let t = 0, nextId = 1;
   let nextArrival = cfg.rate > 0 ? exp(cfg.rate) : Infinity;
@@ -174,12 +173,7 @@ export function makeQueue(cfgIn, seed = 1) {
 
 // ---------- experiments: headless runs averaged over seeds ----------
 const SEEDS = [11, 23, 37, 41, 59, 67, 73, 89];
-const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
-function avg(fn) {
-  const rs = SEEDS.map(fn);
-  const keys = Object.keys(rs[0]);
-  return Object.fromEntries(keys.map((key) => [key, mean(rs.map((r) => r[key]))]));
-}
+const avg = (fn) => averageOver(SEEDS, fn);
 
 // 1. Arrivals just above what the clerks can do: 10/s against 9/s, for 5 minutes (and 8/s for contrast).
 export function overload() {
