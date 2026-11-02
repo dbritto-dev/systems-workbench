@@ -1,6 +1,10 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Rolling deploy model shared by the live figure and the headless experiments.
 // Times are in seconds of figure time. Geometry along the row (x) lives here too,
 // so the crane in the figure moves exactly as the model says.
+import { rng, exponential } from "../../lib/random";
+import { meanBy } from "../../lib/stats";
+
 export const RD = {
   SLOTS: 8,          // 6 bays in normal use + 2 spare positions for surge
   R: 6,              // desired replicas
@@ -15,14 +19,9 @@ export const RD = {
   slotX: (i) => -60 + 28 * i,
 };
 
-export function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
-
 export function createSim({ seed = 1, load = "high", unavail = 1, surge = 0, probe = true, keep = Infinity } = {}) {
   const random = rng(seed);
-  const exp = (mean) => -mean * Math.log(1 - random());
+  const exp = (mean) => exponential(random, mean);
   const S = {
     t: 0,
     cfg: { load, unavail, surge, probe },
@@ -205,7 +204,7 @@ export function runRollout({ seed = 1, load = "high", unavail = 1, surge = 0, pr
 
 export function averageRollout(options, seeds = [3, 5, 7, 11, 13, 17, 19, 23]) {
   const runs = seeds.map((seed) => runRollout({ ...options, seed }));
-  const mean = (f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
+  const mean = (f) => meanBy(runs, f);
   const done = runs.filter((r) => r.rolloutTime !== null);
   return {
     runs,

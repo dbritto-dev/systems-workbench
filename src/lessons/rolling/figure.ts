@@ -1,9 +1,11 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // The module yard: six service bays (plus two spare positions) on a feed rail, a distributor,
 // and a gantry crane that swaps one module at a time. Built with the Anatomy kit (MIT).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { RD } from "./sim.js";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { RD } from "./sim";
 
 export const WIDTH = 720;
 export const HEIGHT = 440;
@@ -37,10 +39,7 @@ export const P = k.fitProjection(
   { pad: 24, azimuth: 50 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 export const faceRect = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
 
 // Warm-up strip on a module's front face, relative to the module's centre x.
