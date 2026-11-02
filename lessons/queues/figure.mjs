@@ -6,7 +6,8 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../workbench/kit.mjs";
 import { sphereOf } from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, pennant, faceText, variants, litFill } from "../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, pennant, faceText, litFill } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 450;
@@ -103,9 +104,9 @@ function lane() {
   // counters on the cabinet front: how many are waiting (at the tail) and how long the oldest has waited (at the head)
   const front = BED.y + BED.d;
   out.push(digitCounter(P, { x: -96, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "inq" }));
-  out.push(label(-79, front, 2.6, "IN QUEUE"));
+  out.push(label(-79, front, 2.6, t("IN QUEUE", "EN COLA")));
   out.push(digitCounter(P, { x: -24, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "oldest" }));
-  out.push(label(-5, front, 2.6, "OLDEST WAIT S"));
+  out.push(label(-5, front, 2.6, t("OLDEST WAIT S", "ESPERA MÁS LARGA S")));
   return out.join("");
 }
 
@@ -128,7 +129,7 @@ function tray() {
   const out = [S(k.slabOf(TRAY, 0, TRAY_H, P, 3, 0.4), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TRAY, 1.6), TRAY_H, P), { tone: "lo" }) })];
   const front = TRAY.y + TRAY.d;
   out.push(digitCounter(P, { x: TRAY.x + 2, y: front, z: 1.4, count: 3, w: 3.6, h: 4.6, gap: 0.6, pad: 1, name: "turned" }));
-  out.push(faceText(P, [TRAY.x + 16.4, front, 4.4], "TURNED", { size: 2.1, tone: "mid" }), faceText(P, [TRAY.x + 16.4, front, 1.8], "AWAY", { size: 2.1, tone: "mid" }));
+  out.push(faceText(P, [TRAY.x + 16.4, front, 4.4], t("TURNED", "SIN"), { size: 2.1, tone: "mid" }), faceText(P, [TRAY.x + 16.4, front, 1.8], t("AWAY", "LUGAR"), { size: 2.1, tone: "mid" }));
   return out.join("");
 }
 
@@ -141,7 +142,7 @@ function rack() {
   RACK_X.forEach((x, i) => out.push(meter(P, { x, y: front, z: 1.6, r: 3.6, ticks: 6, name: "vis" + i, value: 0 })));
   const end = RACK.x + RACK.w;
   out.push(digitCounter(P, { x: end, y: RACK.y + RACK.d - 1.6, z: 2.4, count: 3, w: 3.4, h: 4.6, gap: 0.5, pad: 0.8, face: "x", name: "redelivered" }));
-  out.push(faceText(P, [97.6, front, 3.4], "REDELIVERED", { size: 1.9, tone: "mid" }));
+  out.push(faceText(P, [97.6, front, 3.4], t("REDELIVERED", "REENTREGADOS"), { size: 1.8, tone: "mid" }));
   return out.join("");
 }
 
@@ -152,7 +153,7 @@ function cageBack() {
   const out = [S(k.slabOf(PLINTH, 0, PLINTH_H, P, 3, 0.5), { tone: "mid" })];
   const front = PLINTH.y + PLINTH.d;
   out.push(digitCounter(P, { x: PLINTH.x + 4, y: front, z: 2.4, count: 3, w: 4.2, h: 5.4, gap: 0.8, pad: 1.4, name: "dead" }));
-  out.push(label(PLINTH.x + 21, front, 4.8, "DEAD"), label(PLINTH.x + 21, front, 1.6, "LETTERS"));
+  out.push(label(PLINTH.x + 21, front, 4.8, t("DEAD", "MENSAJES")), label(PLINTH.x + 21, front, 1.6, t("LETTERS", "MUERTOS")));
   // back and left walls of bars, then the back posts
   const bars = [];
   for (let x = CAGE.x + 3.5; x < CAGE.x + CAGE.w; x += 3.5) bars.push(cageBar(x, CAGE.y));
@@ -174,14 +175,16 @@ function cageFront() {
   return out.join("");
 }
 
-// A clerk standing behind each desk, or lying on the floor after collapsing.
+// A clerk standing behind each desk. A collapsed clerk lies on the floor in front of the desk,
+// where nothing hides them, so it is drawn after the desks (its own group, shown by the script).
 function clerk(i) {
-  const cx = XS[i];
-  // collapsed: lying on the floor beside the desk's right end, feet toward the lane, head toward the viewer
-  const lx = cx + 17.5;
-  const down = litFill(S(k.slabOf({ x: lx - 3.2, y: CLERK_Y - 6, w: 6.4, d: 13, r: 3 }, 0, 4.6, P, 4, 1), { tone: "hi", crease: "lo", lit: true }))
-    + litFill(S(sphereOf([lx, CLERK_Y + 10.4, 3], 3, P), { tone: "hi", crease: "lo", lit: true }));
-  return `<g data-clerk="${i}">${variants("clerk-" + i, { up: person(P, [cx, CLERK_Y, 0], { scale: 0.75 }), down }, "up")}</g>`;
+  return `<g data-clerk="${i}"><g data-pose="up">${person(P, [XS[i], CLERK_Y, 0], { scale: 0.75 })}</g></g>`;
+}
+function fallen(i) {
+  const cx = XS[i], y = DESK_Y + DESK_D + 5;
+  const body = litFill(S(k.slabOf({ x: cx - 9, y: y - 3.2, w: 13, d: 6.4, r: 3 }, 0, 4.6, P, 4, 1), { tone: "hi", crease: "lo", lit: true }));
+  const head = litFill(S(sphereOf([cx + 7.4, y, 3], 3, P), { tone: "hi", crease: "lo", lit: true }));
+  return `<g data-fallen="${i}" style="display:none">${body}${head}</g>`;
 }
 
 function desk(i) {
@@ -203,9 +206,9 @@ function cart() {
   const out = [S(k.slabOf(CART, 0, CART_H, P, 3, 0.6), { tone: "mid", inner: L(k.planOutline(k.insetPlan(CART, 2.4), CART_H, P), { tone: "lo" }) })];
     // side by side, each with its label printed above its wheels
   out.push(digitCounter(P, { x: CART.x + 3, y: front, z: 2.2, count: 4, w: 4.2, h: 5.8, gap: 0.6, pad: 1, name: "done" }));
-  out.push(label(CART.x + 2, front, 10.2, "DONE", 2.6));
+  out.push(label(CART.x + 2, front, 10.2, t("DONE", "HECHOS"), 2.6));
   out.push(digitCounter(P, { x: CART.x + 28, y: front, z: 2.2, count: 3, w: 4.2, h: 5.8, gap: 0.6, pad: 1, name: "twice" }));
-  out.push(label(CART.x + 27, front, 10.2, "DONE TWICE", 2.6));
+  out.push(label(CART.x + 27, front, 10.2, t("DONE TWICE", "DOS VECES"), 2.6));
   for (const [x, y] of [[CART.x + 6, front - 3], [CART.x + CART.w - 6, front - 3], [CART.x + 6, CART.y + 3], [CART.x + CART.w - 6, CART.y + 3]]) out.push(D([at([x, y, 0])], { size: 0.5, tone: "lo" }));
   return out.join("");
 }
@@ -232,8 +235,11 @@ export function parcelSvg() {
   return one(BOX.h, "box") + one(BOX.tall, "tall");
 }
 
+const FIGURE_LABEL_ES =
+  "Una oficina de paquetes sobre una placa base. Atrás a la izquierda, un productor está en un muelle que deja paquetes numerados al final de un carril de rodillos largo; los paquetes ruedan hasta el frente, a la derecha. Delante del carril, empleados detrás de escritorios toman el paquete del frente, lo procesan y lo sellan, y los paquetes terminados caen en un carro con contadores de hechos y hechos dos veces. Detrás del carril, un estante de retención guarda los paquetes que nadie selló, cada uno sobre un temporizador, hasta que vuelven al frente del carril. Una tarima enjaulada atrás a la derecha junta los mensajes muertos. Los contadores del carril muestran cuántos esperan y cuánto lleva esperando el más antiguo; una barrera puede limitar el carril, y una bandeja junto al muelle junta los paquetes rechazados.";
+const escAttr = (v) => v.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 export function buildFigure() {
-  return k.figureSvg({
+  const svg = k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
     label:
@@ -251,10 +257,13 @@ export function buildFigure() {
       cageFront(),
       XS.map((_, i) => clerk(i)).join(""),
       XS.map((_, i) => desk(i)).join(""),
+      XS.map((_, i) => fallen(i)).join(""),
       cart(),
       `<g data-layer="front"></g>`,
     ],
   });
+  // the figure's aria-label follows the language switch (the page swaps it from data-aria-en / -es)
+  return svg.replace(/aria-label="([^"]*)"/, (m, en) => `${m} data-aria-en="${en}" data-aria-es="${escAttr(FIGURE_LABEL_ES)}"`);
 }
 
 export const GEOMETRY = { SLOT_X, LANE_Y, LANE_Z, SLOTS, CAP, PROD_SPOT, PILE, TRAY_SPOTS, RACK_X, RACK_Y, RACK_Z, CAGE_SPOTS, DESK_SPOT, CART_SPOT, XS, BOX };
