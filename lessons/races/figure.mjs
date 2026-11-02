@@ -2,6 +2,7 @@
 // or a seat-booking board. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import { t, isT } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -47,7 +48,10 @@ const S = (paths, style) => k.solidSvg(paths, style);
 const L = (d, style) => k.lineSvg(d, style);
 const D = (points, style) => k.dotsSvg(points, style);
 const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-const text = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
+const text = (x, y, z, value, opts = {}) => (isT(value)
+  ? `<g data-l="en">${text1(x, y, z, value.en, opts)}</g><g data-l="es">${text1(x, y, z, value.es, opts)}</g>`
+  : text1(x, y, z, value, opts));
+const text1 = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
   `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
 
 function plate() {
@@ -82,7 +86,7 @@ function ledger() {
   out.push(`<g data-card-lit style="display:none">${S(card, { tone: "hi", crease: "lo", lit: true }).replace('class="iso-solid"', 'class="iso-solid" data-lit-outline')}</g>`);
   const x0 = CARD.x + 3, x1 = CARD.x + CARD.w - 3;
   // Header: title, a rule, and the version stamp at the top right.
-  out.push(text(x0, FACE, 55.6, "LEDGER · ACCOUNT 7", { size: 2.8, tone: "lo" }));
+  out.push(text(x0, FACE, 55.6, t("LEDGER · ACCOUNT 7", "LIBRO · CUENTA 7"), { size: 2.8, tone: "lo" }));
   out.push(L(k.segment([x0, FACE, 52.6], [x1, FACE, 52.6], P), { tone: "faint", free: true }));
   out.push(S(k.slabOf({ x: -2, y: FACE, w: 11, d: 1, r: 0.3 }, 53.6, 6.6, P, 2, 0.2), { tone: "mid", crease: "none" }));
   out.push(L(faceY(-1.2, 8.2, FACE + 1, 54.4, 59.4), { tone: "lo" }));
@@ -179,8 +183,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A bank office on a base plate. In the middle stands a large ledger card with two digit counters: the balance, and what the balance should be. A key hangs on a hook beside it and a version stamp sits in the card's corner. At the right is a seat-booking board. Clerks walk from their desks at the front to the card, copy the balance onto a slip, walk back to work out the new balance, then walk back and write it. When two clerks hold the same old balance, one overwrites the other and the balance falls behind.",
+      "Una oficina bancaria sobre una placa. En el centro hay una gran tarjeta del libro contable con dos contadores de dígitos: el saldo y lo que el saldo debería ser. Al lado cuelga una llave de un gancho y en la esquina de la tarjeta hay un sello de versión. A la derecha hay un tablero de reserva de asientos. Los empleados caminan desde sus escritorios hasta la tarjeta, copian el saldo en una papeleta, vuelven a calcular el nuevo saldo y regresan a escribirlo. Cuando dos empleados tienen el mismo saldo viejo, uno sobrescribe al otro y el saldo se queda atrás.",
+    ),
     body: [
       plate(),
       hook(),

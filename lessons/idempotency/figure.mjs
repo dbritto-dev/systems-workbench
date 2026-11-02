@@ -4,6 +4,7 @@
 // (or a flag while the charge is still in progress). The till at the right counts orders vs charges.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
+import { t, isT } from "../../workbench/i18n.mjs";
 import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
 
 export const WIDTH = 700;
@@ -62,7 +63,11 @@ const S = (paths, style) => k.solidSvg(paths, style);
 const L = (d, style) => k.lineSvg(d, style);
 const D = (points, style) => k.dotsSvg(points, style);
 const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-export const textY = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
+// A bilingual value (t()) draws one <text> per language; live texts stay a single <text> set by the script.
+export const textY = (x, y, z, value, opts = {}) => (isT(value)
+  ? `<g data-l="en">${textY1(x, y, z, value.en, opts)}</g><g data-l="es">${textY1(x, y, z, value.es, opts)}</g>`
+  : textY1(x, y, z, value, opts));
+const textY1 = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
   `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
 
 function plate() {
@@ -76,13 +81,13 @@ function rack() {
   out.push(S(k.slabOf(RACK, 0, RACK_H, P, 4, 0.6), { tone: "mid" }));
   const f = RACK_FACE;
   // Header plaque and a cornice line.
-  out.push(textY(RACK.x + 5, f, RACK_H - 5.2, "KEY RACK · ONE STORED RECEIPT PER KEY", { size: 3.2, tone: "lo" }));
+  out.push(textY(RACK.x + 5, f, RACK_H - 5.2, t("KEY RACK · ONE STORED RECEIPT PER KEY", "CASILLERO · UN RECIBO GUARDADO POR CLAVE"), { size: 3.2, tone: "lo" }));
   out.push(L(k.segment([RACK.x + 4, f, RACK_H - 7.4], [RACK.x + RACK.w - 4, f, RACK_H - 7.4], P), { tone: "faint", free: true }));
   // Pigeonholes: an outer frame and an inset back wall, so each reads as a recess.
   out.push(L(HOLES.map((h) => faceY(h.x0, h.x1, f, h.z0, h.z1)).join(""), { tone: "lo" }));
   out.push(L(HOLES.map((h) => k.segment([h.x0 + 1.2, f, h.z0 + 1.2], [h.x1 - 1.2, f, h.z0 + 1.2], P) + k.segment([h.x0 + 1.2, f, h.z0 + 1.2], [h.x0 + 1.2, f, h.z1 - 1.2], P)).join(""), { tone: "faint", free: true }));
   // Replays counter on the plinth below the holes.
-  out.push(textY(RACK.x + 70, f, 8.6, "ANSWERED FROM THE RACK", { size: 3, tone: "mid" }));
+  out.push(textY(RACK.x + 70, f, 8.6, t("ANSWERED FROM THE RACK", "DESDE EL CASILLERO"), { size: 3, tone: "mid" }));
   out.push(counter(RACK.x + 118, f, 4.6, 4, "replays", 6));
   return out.join("");
 }
@@ -121,9 +126,9 @@ function till() {
   const out = [];
   out.push(S(k.slabOf(TILL, 0, TILL_H, P, 4, 0.6), { tone: "mid" }));
   const f = TILL_FACE, x0 = TILL.x + 4;
-  out.push(textY(x0, f, TILL_H - 5.2, "ORDERS PAID", { size: 3.2, tone: "mid" }));
+  out.push(textY(x0, f, TILL_H - 5.2, t("ORDERS PAID", "PEDIDOS PAGADOS"), { size: 3.2, tone: "mid" }));
   out.push(counter(x0, f, TILL_H - 19, 4, "orders", 7));
-  out.push(textY(x0, f, 18.6, "CARD CHARGES", { size: 3.2, tone: "mid" }));
+  out.push(textY(x0, f, 18.6, t("CARD CHARGES", "COBROS A TARJETA"), { size: 3.2, tone: "mid" }));
   out.push(counter(x0, f, 3.4, 4, "charges", 7));
   // A receipt printer slot on top.
   out.push(L(k.planOutline({ x: TILL.x + 6, y: TILL.y + 8, w: 30, d: 6, r: 1 }, TILL_H, P, 2), { tone: "lo" }));
@@ -158,7 +163,7 @@ function lanes() {
   // The trough first (lanes bridge over it).
   out.push(S(k.slabOf(TROUGH, 0, TROUGH_H, P, 3, 0.3), { tone: "lo" }));
   out.push(L(k.planOutline(k.insetPlan(TROUGH, 1.4), TROUGH_H, P, 3), { tone: "mid" }));
-  out.push(textY(TROUGH.x + 3, TROUGH.y + TROUGH.d, 0.7, "REPLIES LOST ON THE WAY BACK", { size: 2.8, tone: "mid" }));
+  out.push(textY(TROUGH.x + 3, TROUGH.y + TROUGH.d, 0.7, t("REPLIES LOST ON THE WAY BACK", "RESPUESTAS PERDIDAS AL VOLVER"), { size: 2.8, tone: "mid" }));
   XS.forEach((cx) => {
     for (const [y0, y1] of [[LANE_FAR, TROUGH.y], [TROUGH.y + TROUGH.d, LANE_NEAR]]) {
       out.push(S(k.slabOf({ x: cx - 7, y: y0, w: 14, d: y1 - y0, r: 0.6 }, 0, 0.6, P, 2), { tone: "lo", crease: "none" }));
@@ -209,8 +214,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A payment counter on a base plate. Four customers stand at the front, each holding a slip with their order's key and how many times they have tried. Lanes run from each customer to a card terminal on a long counter; payment slips go up one side, replies come back the other, and a trough across the lanes catches replies lost on the way. Behind the counter, a rack of pigeonholes holds one stored receipt per key, or a flag while that key's charge is still in progress. A till at the right counts orders paid and card charges; when charges run ahead of orders, someone was charged twice.",
+      "Un mostrador de pagos sobre una placa base. Cuatro clientes esperan adelante, cada uno con una boleta con la clave de su pedido y cuántas veces lo intentó. Hay carriles de cada cliente a una terminal de tarjetas sobre un mostrador largo; las boletas de pago suben por un lado, las respuestas bajan por el otro, y una canaleta que cruza los carriles atrapa las respuestas que se pierden en el camino. Detrás del mostrador, un casillero guarda un recibo por clave, o una bandera mientras el cobro de esa clave sigue en curso. Una caja a la derecha cuenta los pedidos pagados y los cobros a tarjeta; cuando los cobros superan a los pedidos, a alguien le cobraron dos veces.",
+    ),
     body: [
       plate(),
       rack(),
