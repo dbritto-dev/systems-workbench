@@ -48,6 +48,11 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 32 | [Throttle](lessons/throttle/throttle-workbench.html) | Frontend | Metronome gate | Run the handler at most once per interval while events keep coming: steady updates during a scroll, the rest dropped. |
 | 33 | [Queue](lessons/queues/queue-workbench.html) | Fundamentals | Parcel office | First in, first out. Between producers and workers a queue soaks up bursts and survives crashes, if you ack right. |
 | 34 | [Stack](lessons/stacks/stack-workbench.html) | Fundamentals | Plate stacks | Last in, first out: every function call, every undo, and under overload, which users still get an answer in time. |
+| 35 | [BM25](lessons/bm25/bm25-workbench.html) | Search | Assay bench | Rare words weigh more, repeats help less and less, long documents are discounted: why codes match and paraphrases don't. |
+| 36 | [Semantic Search](lessons/semantic/semantic-search-workbench.html) | Search | Star-map table | Embeddings place text by meaning, so paraphrases match with no shared words, while exact codes and names slip away. |
+| 37 | [Rank Fusion](lessons/rrf/rrf-workbench.html) | Search | Count room | Merge rankings by 1/(k + rank), not raw scores: no normalising, and two judges agreeing beats one judge's favourite. |
+| 38 | [Hybrid Search](lessons/hybrid/hybrid-search-workbench.html) | Search | Sorting plant | Run keyword and meaning search together and merge: each covers the other's misses, if you fuse and size them right. |
+| 39 | [Contextual Retrieval](lessons/contextual/contextual-retrieval-workbench.html) | Search | Print shop | Chunks lose their context when cut. Stamp each with a short summary before indexing, then rerank: far fewer misses. |
 
 Open any `lessons/<slug>/*-workbench.html` file in a browser; it needs no server and no network. `workbench/collection/index.html`
 is the catalogue page (it links to the published copies).
