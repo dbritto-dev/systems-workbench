@@ -1,6 +1,11 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Broadcast network model, shared by the figure and the experiments.
 // 25 nodes on a 5×5 board. Every value a client sends to one node must reach every node.
 // Messages between nodes take HOP seconds. Time is in seconds.
+// Shared by the figure, the page (the still frame and the experiments, at build time) and the live code.
+import { rng } from "../../lib/random";
+import { meanBy } from "../../lib/stats";
+
 export const COLS = 5;
 export const N = COLS * COLS;
 export const HOP = 0.1;
@@ -12,11 +17,6 @@ export const CENTER = 12;
 
 export const cellOf = (i) => [i % COLS, Math.floor(i / COLS)];
 export const sideOf = (i) => (cellOf(i)[0] < PARTITION_COL ? 0 : 1);
-
-export function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
 
 // The ring visits the board in a snake; the last node closes the loop back to the first.
 export const RING = Array.from({ length: N }, (_, k) => { const row = Math.floor(k / COLS), c = k % COLS; return row * COLS + (row % 2 ? COLS - 1 - c : c); });
@@ -203,7 +203,7 @@ export function runScenario({ topology = "grid", batch = 0, retries = false, for
 
 export function average(options, seeds = [3, 5, 7]) {
   const runs = seeds.map((seed) => runScenario({ ...options, seed }));
-  const mean = (f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
+  const mean = (f) => meanBy(runs, f);
   return { msgsPerOp: mean((r) => r.msgsPerOp), median: mean((r) => r.median), max: Math.max(...runs.map((r) => r.max)), delivered: mean((r) => r.delivered), reach: mean((r) => r.reach), values: mean((r) => r.values) };
 }
 

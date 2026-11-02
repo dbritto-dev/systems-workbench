@@ -1,9 +1,11 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A signal network: 25 relay stations on a board, wired by the chosen topology, with a fence that can cut it in two.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { N, COLS, TOPOLOGIES, RING, cellOf, edgesOf } from "./sim.js";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { N, COLS, TOPOLOGIES, RING, cellOf, edgesOf } from "./sim";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -28,10 +30,7 @@ export const P = k.fitProjection(
   { pad: 24, azimuth: 45 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const depth = (x, y, z = 0) => k.depthOf([x, y, z], P);
 
 // The route a wire takes on the board: straight between stations, except the ring's closing wire, which runs round the margin.
