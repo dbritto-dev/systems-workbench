@@ -1,12 +1,11 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A small library: bookcases along the back (the table), card catalogue cabinets at the front (the indexes),
 // a book trolley that does the reading, and a desk with a stopwatch. Built with the Anatomy kit (MIT).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
-import { INDEXES } from "./sim.js";
-import { t, isT } from "../../workbench/i18n.mjs";
-
-// A static word on the machine: one <text> per language when bilingual.
-const faceText = (m, value, opts) => (isT(value) ? `<g data-l="en">${k.faceTextSvg(m, value.en, opts)}</g><g data-l="es">${k.faceTextSvg(m, value.es, opts)}</g>` : k.faceTextSvg(m, value, opts));
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+import { INDEXES, needlePath } from "./sim";
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -44,10 +43,7 @@ export const P = k.fitProjection(
   { pad: 22, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at, text } = shorthand(P);
 const byDepth = (items) => [...items].sort((a, b) => k.depthOf(a.at, P) - k.depthOf(b.at, P));
 
 function plate() {
@@ -111,7 +107,7 @@ function cabinet(cab, i) {
   out.push(S(k.slabOf(cap, CAB.h, 1.6, P, 3, 0.4), { tone: "mid" }));
   // The index name, engraved on the lid.
   const names = CAB_NAMES[cab.id];
-  names.forEach((line, n) => out.push(faceText(k.topMatrix([cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2], CAB.h + 1.6, P, "x"), line, { size: 5.6, tone: "hi" })));
+  names.forEach((line, n) => out.push(text(cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2, CAB.h + 1.6, line, { face: "top", size: 5.6, tone: "hi" })));
   return `<g data-cab="${i}">${out.join("")}</g>`;
 }
 
@@ -141,7 +137,7 @@ function card(x, y, z, j, lit) {
 function footprints() {
   const out = [L(CABS.map((cab) => k.planOutline({ x: cab.x0 - 1, y: CAB.y0 - 1, w: CAB.w + 2, d: CAB.d + 2, r: 1.6 }, 0, P, 3)).join(""), { tone: "faint" })];
   // The empty slot keeps the index's name on the floor, so a catalogue you could add still has a place.
-  CABS.forEach((cab) => CAB_NAMES[cab.id].forEach((line, n) => out.push(faceText(k.topMatrix([cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2], 0, P, "x"), line, { size: 5.6, tone: "faint" }))));
+  CABS.forEach((cab) => CAB_NAMES[cab.id].forEach((line, n) => out.push(text(cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2, 0, line, { face: "top", size: 5.6, tone: "faint" }))));
   return out.join("");
 }
 
@@ -187,10 +183,7 @@ function desk() {
   return out.join("");
 }
 
-export const needleAt = (turn) => {
-  const a = turn * Math.PI * 2, { x, y, r, z } = DIAL;
-  return k.lineOnTop([x - Math.sin(a) * 1.8, y + Math.cos(a) * 1.8], [x + Math.sin(a) * (r - 2.6), y - Math.cos(a) * (r - 2.6)], z + 2.7, P);
-};
+export const needleAt = (turn) => needlePath(DIAL, P, turn);
 
 export function bookSvg({ lit = false } = {}) {
   return S(k.slabOf({ x: -BOOK.w / 2, y: -BOOK.d / 2, w: BOOK.w, d: BOOK.d, r: 0.3 }, 0, BOOK.h, P, 2, 0.2), { tone: "hi", crease: "lo", lit });

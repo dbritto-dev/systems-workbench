@@ -1,6 +1,9 @@
+// @ts-nocheck: model ported as-is
 // The cost model shared by the figure and the experiments. Times are model milliseconds.
 // Rows live 100 to a page. Reading the next page of a full scan is sequential (cheap);
 // every catalogue level, catalogue leaf page and trip to a shelf is a random page read.
+import { lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+
 export const SEQ = 0.1;
 export const RAND = 0.4;
 export const ROWS_PER_PAGE = 100;
@@ -78,4 +81,8 @@ export function choose(queryId, rows, on) {
 export const insertReads = (rows, indexCount) => 1 + indexCount * (levels(rows) + 1);
 export const insertCost = (rows, indexCount) => insertReads(rows, indexCount) * RAND;
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// The stopwatch needle at a share of a turn (one turn = 10 ms): drawn in the still frame and by the live code.
+export const needlePath = (DIAL, P, turn) => {
+  const a = turn * Math.PI * 2, { x, y, r, z } = DIAL;
+  return lineOnTop([x - Math.sin(a) * 1.8, y + Math.cos(a) * 1.8], [x + Math.sin(a) * (r - 2.6), y - Math.cos(a) * (r - 2.6)], z + 2.7, P);
+};
