@@ -7,6 +7,7 @@
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate, digitCounter, person, card, plaque, dial, pennant, faceText } from "../../workbench/parts.mjs";
 import { QUERY, JUDGES } from "./sim.js";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -23,7 +24,7 @@ export const CARD = { w: 15, h: 4.8, pitch: 5.6 };
 export const slotZ = (rank) => BOARD.z0 + BOARD.h - 9 - CARD.h - (rank - 1) * CARD.pitch;
 export const CARD_X = (cx) => cx - 8;
 const STAND_X = 112;
-export const JUDGE_NAME = { keyword: "KEYWORD", meaning: "MEANING", clicks: "CLICKS" };
+export const JUDGE_NAME = { keyword: t("KEYWORD", "PALABRAS"), meaning: t("MEANING", "SIGNIFICADO"), clicks: t("CLICKS", "CLICS") };
 export const JUDGE_TONE = { keyword: "hi", meaning: "mid", clicks: "lo" };
 
 // Tubes along the front: one per document, in document order.
@@ -94,7 +95,7 @@ function standings() {
   out.push(S(k.slabOf({ x: cx - 18, y: BOARD_Y - 8, w: 36, d: 11, r: 1 }, 0, BOARD.z0, P, 3, 0.4), { tone: "mid" }));
   out.push(S(k.slabOf({ x: cx - 17, y: BOARD_Y - BOARD.d, w: 34, d: BOARD.d, r: 0.6 }, BOARD.z0, BOARD.h, P, 2, 0.4), { tone: "mid", crease: "lo" }));
   const top = BOARD.z0 + BOARD.h;
-  out.push(faceText(P, [cx, BOARD_Y, top - 6.4], "STANDINGS", { size: 3.2, tone: "hi", anchor: "middle" }));
+  out.push(faceText(P, [cx, BOARD_Y, top - 6.4], t("STANDINGS", "POSICIONES"), { size: 3.2, tone: "hi", anchor: "middle" }));
   out.push(L(seg([cx - 15.5, BOARD_Y, top - 8.2], [cx + 15.5, BOARD_Y, top - 8.2]), { tone: "lo" }));
   for (let p = 1; p <= 5; p++) {
     const z = top - 9 - 7.4 - (p - 1) * 8.6;
@@ -165,8 +166,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A count room on a base plate. Along the back stand three ballot boards, one per judge (keyword, meaning, clicks), each a column of document cards in rank order with the judge's score beside each card, and a standings board showing the top five. A counting clerk walks along the ballots rank by rank; for each card a token flies into that document's tube in a row of fourteen tubes along the front. A token's height is that vote's share of the fused score, 1 / (k + rank), so later ranks give shorter tokens. Each tube has a points counter and a tick every 50 points; a pennant marks the documents that really answer the query. A dial on the front sets k, and a plaque shows whether ranks or raw scores are being added.",
+      "Una sala de conteo sobre una placa base. Al fondo hay tres tableros de boletas, uno por juez (palabras clave, significado, clics), cada uno con una columna de tarjetas de documentos en orden de puesto y el puntaje del juez al lado de cada tarjeta, y un tablero de posiciones con los cinco primeros. Un escrutador recorre las boletas puesto por puesto; por cada tarjeta, una ficha vuela al tubo de ese documento, en una fila de catorce tubos al frente. La altura de una ficha es la parte de ese voto en el puntaje fusionado, 1 / (k + puesto), así que los puestos más bajos dan fichas más cortas. Cada tubo tiene un contador de puntos y una marca cada 50 puntos; un banderín marca los documentos que de verdad responden la consulta. Un dial al frente fija k, y una placa muestra si se suman puestos o puntajes crudos.",
+    ),
     body: [plate(), back, `<g data-layer="clerk"></g>`, DOC_IDS.map((_, i) => tubeBack(i) + tubeFront(i)).join(""), frontStrip(), `<g data-layer="flight"></g>`],
   });
 }
