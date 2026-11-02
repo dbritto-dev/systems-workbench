@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { ISO_CSS } from "../kit.mjs";
 import { t, isT, tx, enOf, ariaLabel, titleTag, LANG_CSS, LANG_HEAD, LANG_SCRIPT, langSwitchHtml } from "../i18n.mjs";
 
+// search.js ranks lessons, search-ui.js wires the search box; both are inlined into the page's script.
+const SEARCH_JS = readFileSync(new URL("./search.js", import.meta.url), "utf8") + readFileSync(new URL("./search-ui.js", import.meta.url), "utf8");
 const lessons = JSON.parse(readFileSync(new URL("./catalog.json", import.meta.url), "utf8"));
 // --pages <file>: the GitHub Pages build. Cards link to the lesson pages in the site (same tab) instead of the
 // published artifacts, and the output is a full HTML document. Paths in lessons.json are relative to the repo
@@ -24,7 +26,7 @@ const AREA_NAMES = { Fundamentals: t("Fundamentals", "Fundamentos"), Data: t("Da
 const areaName = (a) => AREA_NAMES[a] ?? a;
 const both = (v, f) => (isT(v) ? t(f(v.en, "en"), f(v.es, "es")) : t(f(v, "en"), f(v, "es")));
 
-const card = (l) => `<article class="card" data-area="${l.area}" id="lesson-${two(l.n)}">
+const card = (l) => `<article class="card" data-area="${l.area}" data-slug="${l.slug}" id="lesson-${two(l.n)}">
   <button type="button" class="shot" data-preview="${l.slug}" ${ariaLabel(t(`Preview ${enOf(l.title)}`, `Vista previa de ${isT(l.title) ? l.title.es : l.title}`))}>
     <img class="on-light" src="previews/${l.slug}-light.webp" alt="${esc(enOf(l.machine))}, the machine in ${esc(enOf(l.title))}" loading="lazy" width="1200" height="800">
     <img class="on-dark" src="previews/${l.slug}-dark.webp" alt="" loading="lazy" width="1200" height="800">
@@ -35,6 +37,7 @@ const card = (l) => `<article class="card" data-area="${l.area}" id="lesson-${tw
     <div class="meta"><span>${tx(areaName(l.area))}</span><span>${tx(concept(l), true)}</span></div>
     <h2 title="${esc(enOf(l.title))}">${tx(l.title, true)}</h2>
     <p>${tx(l.blurb, true)}</p>
+    <div class="hit" hidden></div>
     <div class="card-foot">
       <span class="counts">${tx(t(`${l.exps.length} experiments · ${l.questions} questions`, `${l.exps.length} experimentos · ${l.questions} preguntas`))}</span>
       <span class="card-actions">
@@ -47,7 +50,7 @@ const card = (l) => `<article class="card" data-area="${l.area}" id="lesson-${tw
 
 const counts = Object.fromEntries(AREAS.map((a) => [a, lessons.filter((l) => l.area === a).length]));
 const filters = [`<button type="button" data-filter="all" aria-pressed="true">${tx(t("All", "Todas"))} <b>${lessons.length}</b></button>`, ...AREAS.map((a) => `<button type="button" data-filter="${a}" aria-pressed="false">${tx(areaName(a))} <b>${counts[a]}</b></button>`)].join("");
-const data = lessons.map(({ n, slug, area, url, html, title, eyebrow, lede, machine, exps, questions }) => ({ n, slug, area: areaName(area), url: PAGES ? html : url, title, concept: concept({ eyebrow }), lede, machine, exps, questions }));
+const data = lessons.map(({ n, slug, area, url, html, title, eyebrow, lede, blurb, machine, exps, questions, qs }) => ({ n, slug, area: areaName(area), url: PAGES ? html : url, title, concept: concept({ eyebrow }), lede, blurb, machine, exps, questions, qs }));
 
 const html = `${LANG_HEAD}${titleTag("Systems Workbench")}
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -82,7 +85,24 @@ h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:
 .stats div:last-child{border-right:0}
 .stats b{display:block;font:500 22px/1.15 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
 .stats span{font:500 10px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.filters-wrap{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:stretch;gap:6px;margin-bottom:22px}
+.tools{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:12px;align-items:center}
+.search{position:relative;display:flex;align-items:center;min-width:0}
+.search svg{position:absolute;left:11px;width:14px;height:14px;fill:none;stroke:var(--muted);stroke-width:1.6;stroke-linecap:round;pointer-events:none}
+.search input{width:100%;min-height:34px;margin:0;padding:7px 36px 7px 32px;font:400 14px/1.2 var(--body);color:var(--ink);background:var(--plate);border:1px solid var(--edge);border-radius:0;-webkit-appearance:none;appearance:none}
+.search input::placeholder{color:var(--muted);opacity:1}
+.search input:hover{border-color:var(--anatomy-hi)}
+.search input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.search kbd{position:absolute;right:8px;font:500 11px/1 var(--mono);color:var(--muted);border:1px solid var(--rule);padding:3px 6px;pointer-events:none}
+.search input:not(:placeholder-shown)~kbd{display:none}
+.status{min-height:18px;margin:8px 0 14px;font:500 11px/1.6 var(--mono);letter-spacing:.04em;color:var(--muted)}
+mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:inherit;padding:0 1px}
+.hit{font:500 11.5px/1.45 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hit b{font-weight:500;color:var(--text)}
+.empty{grid-column:1/-1;display:grid;justify-items:center;gap:12px;padding:36px 20px;border:1px dashed var(--edge);text-align:center}
+.empty p{margin:0;color:var(--muted)}
+.empty[hidden]{display:none}
+.filters button[data-zero]{color:var(--muted)}
+.filters-wrap{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:stretch;gap:6px;min-width:0}
 .filters-wrap[data-fits]{grid-template-columns:minmax(0,1fr)}
 .filters-wrap[data-fits] .scroll-btn{display:none}
 .filters-view{position:relative;min-width:0}
@@ -137,6 +157,8 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
 @media (max-width:760px){
   header.head{grid-template-columns:1fr}
   .grid{grid-template-columns:1fr}
+  .tools{grid-template-columns:1fr}
+  .search kbd{display:none}
   .dlg{grid-template-columns:1fr}
   .dlg-shot{border-right:0;border-bottom:1px solid var(--rule)}
 }
@@ -159,9 +181,14 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
       <div><b>${lessons.reduce((s, l) => s + l.questions, 0)}</b><span>${tx(t("Questions", "Preguntas"))}</span></div>
     </div>
   </header>
+  <div class="tools">
+  <div class="search" role="search"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg><input type="search" id="q" autocomplete="off" spellcheck="false" enterkeyhint="search" ${ariaLabel(t("Search lessons", "Buscar lecciones"))} aria-controls="lessons" aria-describedby="search-status" data-ph-en="Search lessons, experiments, questions" data-ph-es="Busca lecciones, experimentos, preguntas" placeholder="Search lessons, experiments, questions"><kbd aria-hidden="true">/</kbd></div>
   <div class="filters-wrap"><button type="button" class="scroll-btn" data-scroll="-1" ${ariaLabel(t("Scroll filters left", "Desplazar filtros a la izquierda"))} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button><div class="filters-view"><div class="filters" id="area-filters" role="group" ${ariaLabel(t("Filter by area", "Filtrar por área"))}>${filters}</div></div><button type="button" class="scroll-btn" data-scroll="1" ${ariaLabel(t("Scroll filters right", "Desplazar filtros a la derecha"))} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button></div>
-  <main class="grid">
+  </div>
+  <p class="status" id="search-status" data-status role="status" aria-live="polite"></p>
+  <main class="grid" id="lessons">
 ${lessons.map(card).join("\n")}
+  <div class="empty" data-empty hidden><p></p><span class="card-actions"><button type="button" class="btn" data-all>${tx(t("Show all areas", "Ver todas las áreas"))}</button><button type="button" class="btn" data-clear>${tx(t("Clear search", "Borrar búsqueda"))}</button></span></div>
   </main>
   <footer>${tx(t(`Machines drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Previews are screenshots of each machine running; the lessons are interactive.`, `Máquinas dibujadas con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Las vistas previas son capturas de cada máquina en marcha; las lecciones son interactivas.`))}${PAGES ? ` · <a href="workbench/parts-gallery.html">${tx(t("Parts gallery", "Galería de piezas"))}</a> · <a href="${REPO}">${tx(t("Source on GitHub", "Código en GitHub"))}</a>` : ""}</footer>
 </div>
@@ -178,6 +205,7 @@ ${lessons.map(card).join("\n")}
   </div>
 </dialog>
 <script>
+${SEARCH_JS}
 (() => {
   const LESSONS = ${JSON.stringify(data).replace(/</g, "\\u003c")};
   const lang = () => (document.documentElement.getAttribute("data-lang") === "es" ? "es" : "en");
@@ -191,10 +219,11 @@ ${lessons.map(card).join("\n")}
   choices.forEach((b) => b.addEventListener("click", () => { apply(b.dataset.themeChoice); write(b.dataset.themeChoice); }));
 
   const filters = document.querySelectorAll("[data-filter]");
-  const cards = document.querySelectorAll(".card");
+  const AREA_NAMES = ${JSON.stringify(AREA_NAMES)};
+  const ui = initCollectionSearch({ LESSONS, AREA_NAMES, lang, L });
   const setFilter = (area) => {
     filters.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === area)));
-    cards.forEach((c) => { c.hidden = area !== "all" && c.dataset.area !== area; });
+    ui.setArea(area);
   };
   filters.forEach((b) => b.addEventListener("click", () => { setFilter(b.dataset.filter); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" }); }));
   const strip = document.querySelector(".filters"), wrap = document.querySelector(".filters-wrap");

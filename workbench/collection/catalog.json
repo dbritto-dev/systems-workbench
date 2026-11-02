@@ -98,7 +98,29 @@
     }
    }
   ],
-  "questions": 5
+  "questions": 5,
+  "qs": [
+   {
+    "en": "In the figure a hit takes 0.7 s and a miss 2.75 s. Why does the average wait depend mostly on the hit rate?",
+    "es": "En la figura un acierto tarda 0.7 s y un fallo 2.75 s. ¿Por qué la espera media depende sobre todo de la tasa de aciertos?"
+   },
+   {
+    "en": "The rack holds 12 of 40 records but answers about two-thirds of requests. What about the traffic makes that possible, and what would break it?",
+    "es": "El estante guarda 12 de 40 registros pero responde cerca de dos tercios de las solicitudes. ¿Qué tiene el tráfico que lo hace posible, y qué lo rompería?"
+   },
+   {
+    "en": "A teammate wants TTL = 1 s \"so prices are always fresh\". What happens, and what would you suggest instead?",
+    "es": "Alguien del equipo quiere TTL = 1 s \"para que los precios estén siempre frescos\". ¿Qué pasa, y qué propondrías en su lugar?"
+   },
+   {
+    "en": "Invalidate on write fixed the stale reads here. Name one way a stale value can still be served.",
+    "es": "Invalidar al escribir resolvió aquí las lecturas obsoletas. Nombra una forma en que todavía se puede servir un valor obsoleto."
+   },
+   {
+    "en": "Redis restarts during peak traffic. What do you expect in the first seconds, and what would you do before the next deploy?",
+    "es": "Redis se reinicia en hora pico. ¿Qué esperas en los primeros segundos, y qué harías antes del próximo despliegue?"
+   }
+  ]
  },
  {
   "n": 2,
@@ -199,7 +221,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "The press never waits for the stations. What does it give up in exchange?",
+    "es": "La prensa nunca espera a las estaciones. ¿A qué renuncia a cambio?"
+   },
+   {
+    "en": "Station C's tray keeps growing. What would you look at, and what are three ways out?",
+    "es": "La bandeja de la estación C sigue creciendo. ¿Qué mirarías, y cuáles son tres salidas?"
+   },
+   {
+    "en": "When would you choose a non-durable subscription on purpose?",
+    "es": "¿Cuándo elegirías a propósito una suscripción no duradera?"
+   },
+   {
+    "en": "Your payment handler reads from an at-least-once queue. How do you make sure a customer is charged once?",
+    "es": "Tu handler de pagos lee de una cola al menos una vez (at-least-once). ¿Cómo te aseguras de cobrarle una sola vez al cliente?"
+   },
+   {
+    "en": "Why is exactly-once delivery so hard, and what do teams do instead?",
+    "es": "¿Por qué es tan difícil la entrega exactamente una vez (exactly-once), y qué hacen los equipos en su lugar?"
+   },
+   {
+    "en": "Give a real example of pub/sub and one of a work queue from a system you know.",
+    "es": "Da un ejemplo real de pub/sub y otro de cola de trabajo de un sistema que conozcas."
+   }
+  ]
  },
  {
   "n": 3,
@@ -300,7 +348,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "At 90% busy, adding a third more capacity cut p95 by more than half. Why isn't the gain proportional?",
+    "es": "Con 90% de ocupación, sumar un tercio más de capacidad bajó el p95 más de la mitad. ¿Por qué la mejora no es proporcional?"
+   },
+   {
+    "en": "Round robin is fine when servers are identical. When does it hurt, and why does least connections help?",
+    "es": "Round robin funciona bien cuando los servidores son idénticos. ¿Cuándo hace daño, y por qué ayuda menos conexiones?"
+   },
+   {
+    "en": "Least connections has a trap: a broken server that returns errors instantly has almost no outstanding requests. What happens?",
+    "es": "Menos conexiones tiene una trampa: un servidor roto que devuelve errores al instante casi no tiene solicitudes pendientes. ¿Qué pasa?"
+   },
+   {
+    "en": "Someone proposes health checks every 100 ms on a 200-server fleet. What are the trade-offs?",
+    "es": "Alguien propone chequeos de salud cada 100 ms en una flota de 200 servidores. ¿Qué se gana y qué se pierde?"
+   },
+   {
+    "en": "Why use sticky sessions at all, and how would you avoid the hot counter from experiment 5?",
+    "es": "¿Para qué usar sesiones persistentes, y cómo evitarías el mostrador saturado del experimento 5?"
+   },
+   {
+    "en": "Parcels inside a crashed counter fail no matter how fast the checks are. How do real systems protect those requests?",
+    "es": "Los paquetes dentro de un mostrador caído fallan sin importar qué tan frecuentes sean los chequeos. ¿Cómo protegen esas solicitudes los sistemas reales?"
+   }
+  ]
  },
  {
   "n": 4,
@@ -401,7 +475,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why can a slow dependency hurt you more than one that is down?",
+    "es": "¿Por qué una dependencia lenta te puede hacer más daño que una caída?"
+   },
+   {
+    "en": "How would you choose a timeout for a call to another service?",
+    "es": "¿Cómo elegirías el tiempo límite (timeout) de una llamada a otro servicio?"
+   },
+   {
+    "en": "A circuit breaker protects whom: your service, the supplier, or both?",
+    "es": "Un interruptor de circuito (circuit breaker), ¿a quién protege: a tu servicio, al proveedor o a ambos?"
+   },
+   {
+    "en": "Why can automatic retries make an outage longer, and how do you retry safely?",
+    "es": "¿Por qué los reintentos automáticos pueden alargar una caída, y cómo se reintenta de forma segura?"
+   },
+   {
+    "en": "What is the half-open state for, and what goes wrong if the cooldown is too long or too short?",
+    "es": "¿Para qué sirve el estado semiabierto (half-open), y qué sale mal si el enfriamiento es demasiado largo o demasiado corto?"
+   },
+   {
+    "en": "The breaker is open. What should the user see?",
+    "es": "El interruptor está abierto. ¿Qué debería ver el usuario?"
+   }
+  ]
  },
  {
   "n": 5,
@@ -502,7 +602,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "A limit is set as \"bucket 20, refill 5 per second\". What does each number control?",
+    "es": "Un límite se define como \"cubeta 20, recarga 5 por segundo\". ¿Qué controla cada número?"
+   },
+   {
+    "en": "Why is a fixed window easy to exploit, and what fixes it?",
+    "es": "¿Por qué es fácil aprovecharse de una ventana fija y qué lo soluciona?"
+   },
+   {
+    "en": "Your API has one global limit and one customer starts a batch job. What do other customers see, and how would you design the limit instead?",
+    "es": "Tu API tiene un solo límite global y un cliente arranca un proceso por lotes (batch job). ¿Qué ven los demás clientes y cómo diseñarías el límite en su lugar?"
+   },
+   {
+    "en": "What should a well-behaved client do when it gets a 429?",
+    "es": "¿Qué debe hacer un cliente que se porta bien cuando recibe un 429?"
+   },
+   {
+    "en": "You run 4 replicas, each with an in-memory limiter of 100 requests/s. What is the real limit, and how do you get a true 100/s?",
+    "es": "Tienes 4 réplicas, cada una con un limitador en memoria de 100 solicitudes/s. ¿Cuál es el límite real y cómo consigues 100/s de verdad?"
+   },
+   {
+    "en": "Where does rate limiting belong: the API gateway, each service, or the client?",
+    "es": "¿Dónde va la limitación de tasa (rate limiting): en el API gateway, en cada servicio o en el cliente?"
+   }
+  ]
  },
  {
   "n": 6,
@@ -603,7 +729,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why can a ten-second rush turn into an outage that lasts after the rush is gone?",
+    "es": "¿Por qué una avalancha de diez segundos puede convertirse en una caída que sigue después de que la avalancha pasó?"
+   },
+   {
+    "en": "Backoff ended the storm in the office. Why might it not in a system where new users keep arriving at a fixed rate?",
+    "es": "La espera exponencial terminó la tormenta en la taquilla. ¿Por qué podría no hacerlo en un sistema donde siguen llegando usuarios nuevos a un ritmo fijo?"
+   },
+   {
+    "en": "If jitter doesn't change the average wait, why does it matter?",
+    "es": "Si el jitter no cambia la espera promedio, ¿por qué importa?"
+   },
+   {
+    "en": "How would you choose a client timeout for a call that normally takes 50–200 ms?",
+    "es": "¿Cómo elegirías el tiempo límite del cliente para una llamada que normalmente tarda 50–200 ms?"
+   },
+   {
+    "en": "A request goes app → client library → proxy → service, and each retries 3 times. What would you change?",
+    "es": "Una solicitud va app → biblioteca cliente → proxy → servicio, y cada uno reintenta 3 veces. ¿Qué cambiarías?"
+   },
+   {
+    "en": "What does a retry budget do, and what should the client do when it's empty?",
+    "es": "¿Qué hace un presupuesto de reintentos (retry budget) y qué debe hacer el cliente cuando se agota?"
+   }
+  ]
  },
  {
   "n": 7,
@@ -704,7 +856,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why does hash mod n move almost every key when n changes by one?",
+    "es": "¿Por qué hash mod n mueve casi todas las claves cuando n cambia en uno?"
+   },
+   {
+    "en": "On a ring, exactly which keys move when a node is added, and where do they come from?",
+    "es": "En un anillo, ¿exactamente qué claves se mueven cuando se agrega un nodo y de dónde vienen?"
+   },
+   {
+    "en": "What problem do virtual nodes solve? Name two.",
+    "es": "¿Qué problemas resuelven los nodos virtuales (virtual nodes)? Nombra dos."
+   },
+   {
+    "en": "You run a cache cluster in front of a database and add a node. Compare modulo and a ring.",
+    "es": "Tienes un clúster de caché delante de una base de datos y agregas un nodo. Compara módulo y un anillo."
+   },
+   {
+    "en": "One key gets 30% of all requests and its node is overloaded. What would you do?",
+    "es": "Una clave recibe el 30% de todas las solicitudes y su nodo está sobrecargado. ¿Qué harías?"
+   },
+   {
+    "en": "Where have you met consistent hashing in real systems?",
+    "es": "¿Dónde te has encontrado con el hashing consistente en sistemas reales?"
+   }
+  ]
  },
  {
   "n": 8,
@@ -805,7 +983,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why ship to 1% first instead of everyone, if the 1% canary still lets some orders fail?",
+    "es": "¿Por qué enviar primero al 1% en vez de a todos, si el canario de 1% igual deja fallar algunos pedidos?"
+   },
+   {
+    "en": "A teammate says \"our canary ran for 30 minutes at 1% with zero errors, ship it\". What would you ask?",
+    "es": "Alguien de tu equipo dice \"nuestro canario corrió 30 minutos al 1% sin errores, a producción\". ¿Qué preguntarías?"
+   },
+   {
+    "en": "Your automatic rollback fires on every second deploy, but the builds turn out fine. What's going on, and what would you change?",
+    "es": "Tu reversión automática se dispara en uno de cada dos despliegues, pero las versiones resultan estar bien. ¿Qué está pasando y qué cambiarías?"
+   },
+   {
+    "en": "When would you route the canary by user instead of by request?",
+    "es": "¿Cuándo enrutarías el canario por usuario en vez de por solicitud?"
+   },
+   {
+    "en": "Name two things a canary analysis should watch besides HTTP 5xx errors.",
+    "es": "Nombra dos cosas que un análisis canario debería vigilar además de los errores HTTP 5xx."
+   },
+   {
+    "en": "The canary is rolled back automatically. What has happened to the users who already got an error, and what does that mean for database changes?",
+    "es": "El canario se revierte automáticamente. ¿Qué les pasó a los usuarios que ya recibieron un error y qué significa eso para los cambios en la base de datos?"
+   }
+  ]
  },
  {
   "n": 9,
@@ -906,7 +1110,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why is rolling back a blue-green deploy so much faster than rolling back a rolling deploy?",
+    "es": "¿Por qué revertir un despliegue azul-verde es mucho más rápido que revertir un despliegue gradual?"
+   },
+   {
+    "en": "Your manager asks why the deploy doubles the cloud bill for an hour. How do you explain it, and when is it worth it?",
+    "es": "Tu jefa pregunta por qué el despliegue duplica la factura de la nube durante una hora. ¿Cómo lo explicas, y cuándo vale la pena?"
+   },
+   {
+    "en": "What would you do before flipping to a freshly deployed green, and why?",
+    "es": "¿Qué harías antes de cambiar a un verde recién desplegado, y por qué?"
+   },
+   {
+    "en": "What is connection draining, and what goes wrong without it?",
+    "es": "¿Qué es el drenado de conexiones (connection draining), y qué sale mal sin él?"
+   },
+   {
+    "en": "Green needs to rename a column. How do you ship that with blue-green and still be able to roll back?",
+    "es": "Verde necesita renombrar una columna. ¿Cómo lo publicas con azul-verde y sigues pudiendo hacer rollback?"
+   },
+   {
+    "en": "Blue-green flips all traffic at once. What risk does that leave that a canary deploy reduces?",
+    "es": "Azul-verde cambia todo el tráfico de una vez. ¿Qué riesgo deja eso que un despliegue canario reduce?"
+   }
+  ]
  },
  {
   "n": 10,
@@ -1007,7 +1237,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "maxUnavailable and maxSurge both make a rollout faster. What does each one cost?",
+    "es": "maxUnavailable y maxSurge hacen más rápido un despliegue. ¿Qué cuesta cada uno?"
+   },
+   {
+    "en": "Why does a readiness probe make a broken rollout stop by itself, and what does it not do for you?",
+    "es": "¿Por qué una sonda de readiness hace que un despliegue roto se detenga solo, y qué no hace por ti?"
+   },
+   {
+    "en": "Without the probe, the rollout finished in half the time. Why is that number misleading?",
+    "es": "Sin la sonda, el despliegue terminó en la mitad del tiempo. ¿Por qué ese número engaña?"
+   },
+   {
+    "en": "A new version renames a field in the data it stores. How do you ship it with a rolling deploy?",
+    "es": "Una versión nueva renombra un campo en los datos que guarda. ¿Cómo la publicas con un despliegue gradual?"
+   },
+   {
+    "en": "A brand-new bay has an empty queue. Why can that hurt right after it becomes ready, and what helps?",
+    "es": "Una bahía recién instalada tiene la cola vacía. ¿Por qué eso puede doler justo cuando queda lista, y qué ayuda?"
+   },
+   {
+    "en": "When would you choose blue-green or canary instead of a rolling deploy?",
+    "es": "¿Cuándo elegirías azul-verde (blue-green) o canario (canary) en lugar de un despliegue gradual?"
+   }
+  ]
  },
  {
   "n": 11,
@@ -1108,7 +1364,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "A table grows from 1 million to 100 million rows. Why does a lookup by primary key barely slow down while a full scan gets 100 times slower?",
+    "es": "Una tabla crece de 1 millón a 100 millones de filas. ¿Por qué una búsqueda por clave primaria apenas se vuelve más lenta mientras que un escaneo completo se vuelve 100 veces más lento?"
+   },
+   {
+    "en": "A write-heavy table already has eight indexes. What do you check before adding a ninth?",
+    "es": "Una tabla con muchas escrituras ya tiene ocho índices. ¿Qué revisas antes de agregar un noveno?"
+   },
+   {
+    "en": "You have an index on (author, year). Which of these can use it: author = ?, author = ? AND year = ?, year = ?, author = ? ORDER BY year?",
+    "es": "Tienes un índice sobre (author, year). ¿Cuáles de estas consultas pueden usarlo: author = ?, author = ? AND year = ?, year = ?, author = ? ORDER BY year?"
+   },
+   {
+    "en": "The database ignores your index on status, which has four values. Why, and what would help?",
+    "es": "La base de datos ignora tu índice sobre status, que tiene cuatro valores. ¿Por qué, y qué ayudaría?"
+   },
+   {
+    "en": "What is a covering index, and what does it cost?",
+    "es": "¿Qué es un índice de cobertura (covering index) y cuánto cuesta?"
+   },
+   {
+    "en": "How do you check whether a query uses an index, and whether that is the right plan?",
+    "es": "¿Cómo revisas si una consulta usa un índice, y si ese es el plan correcto?"
+   }
+  ]
  },
  {
   "n": 12,
@@ -1209,7 +1491,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "What does OFFSET 10000 LIMIT 20 make the database do?",
+    "es": "¿Qué le hace hacer OFFSET 10000 LIMIT 20 a la base de datos?"
+   },
+   {
+    "en": "Write the WHERE clause for the next page of a feed ordered by created_at DESC, id DESC, and the index it needs.",
+    "es": "Escribe la cláusula WHERE para la página siguiente de un feed ordenado por created_at DESC, id DESC, y el índice que necesita."
+   },
+   {
+    "en": "A user reports seeing the same item twice while scrolling a busy feed, and support can't reproduce it. What's your first guess?",
+    "es": "Un usuario reporta que vio el mismo elemento dos veces al hacer scroll en un feed con mucho movimiento, y soporte no lo puede reproducir. ¿Cuál es tu primera sospecha?"
+   },
+   {
+    "en": "Why is a cursor on created_at alone a bug, and when does it show up?",
+    "es": "¿Por qué un cursor solo sobre created_at es un bug, y cuándo aparece?"
+   },
+   {
+    "en": "Product wants numbered pages with a page picker. When is offset pagination fine?",
+    "es": "Producto quiere páginas numeradas con un selector de página. ¿Cuándo está bien la paginación con offset?"
+   },
+   {
+    "en": "What should a cursor in an API response look like?",
+    "es": "¿Cómo debería verse un cursor en la respuesta de una API?"
+   }
+  ]
  },
  {
   "n": 13,
@@ -1310,7 +1618,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "What is the difference between concurrency and parallelism, in terms of the cook?",
+    "es": "¿Cuál es la diferencia entre concurrencia y paralelismo, en términos del cocinero?"
+   },
+   {
+    "en": "When does interleaving with one worker make things faster, and when does it make them slower?",
+    "es": "¿Cuándo intercalar con un solo trabajador acelera las cosas y cuándo las hace más lentas?"
+   },
+   {
+    "en": "A teammate halves the time slice \"to make the app more responsive\". What do you check first?",
+    "es": "Un compañero reduce el intervalo de tiempo a la mitad \"para que la app responda mejor\". ¿Qué revisas primero?"
+   },
+   {
+    "en": "Why can one long task make many short tasks slow, and what fixes it?",
+    "es": "¿Por qué una tarea larga puede volver lentas a muchas tareas cortas, y qué lo arregla?"
+   },
+   {
+    "en": "You raise concurrency from 4 to 8 and throughput doesn't move. What does that tell you?",
+    "es": "Subes la concurrencia de 4 a 8 y el rendimiento no se mueve. ¿Qué te dice eso?"
+   },
+   {
+    "en": "Where do you see this one-worker pattern in real systems?",
+    "es": "¿Dónde ves este patrón de un solo trabajador en sistemas reales?"
+   }
+  ]
  },
  {
   "n": 14,
@@ -1411,7 +1745,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Your batch job takes 60 minutes on one core and 20% of it can't be parallelised. What's the best it can do on 16 cores, and on infinitely many?",
+    "es": "Tu trabajo por lotes tarda 60 minutos en un núcleo y el 20% no se puede paralelizar. ¿Qué es lo mejor que puede lograr con 16 núcleos, y con infinitos?"
+   },
+   {
+    "en": "What's the difference between concurrency and parallelism?",
+    "es": "¿Cuál es la diferencia entre concurrencia y paralelismo?"
+   },
+   {
+    "en": "A teammate sets a thread pool to 200 threads on an 8-core server to make CPU-heavy image resizing faster. What do you expect?",
+    "es": "Un compañero configura un pool de hilos (thread pool) con 200 hilos en un servidor de 8 núcleos para acelerar el redimensionado de imágenes, que usa mucha CPU. ¿Qué esperas?"
+   },
+   {
+    "en": "Why can adding workers make a program slower?",
+    "es": "¿Por qué agregar trabajadores puede volver más lento un programa?"
+   },
+   {
+    "en": "Your parallel job's progress bar sits at 95% for a long time. What's the likely cause and the fix?",
+    "es": "La barra de progreso de tu trabajo paralelo se queda en 95% mucho tiempo. ¿Cuál es la causa probable y cómo se arregla?"
+   },
+   {
+    "en": "Where do you meet these ideas outside threads?",
+    "es": "¿Dónde encuentras estas ideas fuera de los hilos?"
+   }
+  ]
  },
  {
   "n": 15,
@@ -1512,7 +1872,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why does one async waiter deliver more than four blocking threads when the work is mostly waiting?",
+    "es": "¿Por qué un mesero async entrega más que cuatro hilos bloqueantes cuando el trabajo es casi todo espera?"
+   },
+   {
+    "en": "When does async not help, and what do you use instead?",
+    "es": "¿Cuándo no ayuda async, y qué usas en su lugar?"
+   },
+   {
+    "en": "`for (const id of ids) await fetchUser(id)` is slow. When is that loop still the right choice?",
+    "es": "`for (const id of ids) await fetchUser(id)` es lento. ¿Cuándo sigue siendo la opción correcta ese bucle?"
+   },
+   {
+    "en": "What can go wrong with `Promise.all` over 10,000 items, and how do you fix it?",
+    "es": "¿Qué puede salir mal con `Promise.all` sobre 10,000 elementos, y cómo lo arreglas?"
+   },
+   {
+    "en": "Someone adds `fs.readFileSync`, `time.sleep` or a synchronous HTTP client inside an async handler. What happens in production?",
+    "es": "Alguien agrega `fs.readFileSync`, `time.sleep` o un cliente HTTP síncrono dentro de un handler async. ¿Qué pasa en producción?"
+   },
+   {
+    "en": "How would you pick the concurrency limit for calls to a database that holds 32 connections?",
+    "es": "¿Cómo elegirías el límite de concurrencia para las llamadas a una base de datos que admite 32 conexiones?"
+   }
+  ]
  },
  {
   "n": 16,
@@ -1613,7 +1999,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "setTimeout(fn, 10) ran 180 ms late. Nothing was wrong with the timer. What was?",
+    "es": "setTimeout(fn, 10) se ejecutó 180 ms tarde. El temporizador no tenía nada malo. ¿Qué lo tenía?"
+   },
+   {
+    "en": "Why do promise callbacks run before a setTimeout(0) callback queued earlier?",
+    "es": "¿Por qué los callbacks de promesas se ejecutan antes que un callback de setTimeout(0) encolado antes?"
+   },
+   {
+    "en": "A page freezes but the profiler shows no single long function, only thousands of tiny async callbacks. How is that possible?",
+    "es": "Una página se congela, pero el profiler no muestra ninguna función larga, solo miles de callbacks async diminutos. ¿Cómo es posible?"
+   },
+   {
+    "en": "Your Node API has to parse a 50 MB JSON upload. What are the options, and what does each cost?",
+    "es": "Tu API en Node tiene que parsear un JSON subido de 50 MB. ¿Qué opciones hay y cuánto cuesta cada una?"
+   },
+   {
+    "en": "Node reads files on a pool of four helper threads. What happens if 20 slow file reads arrive at once?",
+    "es": "Node lee archivos en un pool de cuatro hilos ayudantes. ¿Qué pasa si llegan 20 lecturas lentas de archivos a la vez?"
+   },
+   {
+    "en": "What would you measure in production to catch these problems early?",
+    "es": "¿Qué medirías en producción para detectar estos problemas a tiempo?"
+   }
+  ]
  },
  {
   "n": 17,
@@ -1714,7 +2126,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Two requests run `balance = get(); set(balance + 10)` at the same time. Explain how money disappears.",
+    "es": "Dos solicitudes ejecutan `balance = get(); set(balance + 10)` al mismo tiempo. Explica cómo desaparece el dinero."
+   },
+   {
+    "en": "Name three ways to fix a lost update on a database row, and when you'd pick each.",
+    "es": "Nombra tres formas de arreglar una actualización perdida (lost update) en una fila de la base de datos, y cuándo elegirías cada una."
+   },
+   {
+    "en": "Why can a lock make a fast system slow, and how do you avoid that?",
+    "es": "¿Por qué un bloqueo puede volver lento un sistema rápido, y cómo lo evitas?"
+   },
+   {
+    "en": "What is check-then-act, and what is a real example in a web app?",
+    "es": "¿Qué es verificar-y-después-actuar (check-then-act), y cuál es un ejemplo real en una app web?"
+   },
+   {
+    "en": "Your tests pass but production has a lost-update bug. Why didn't the tests catch it, and how would you write a test that does?",
+    "es": "Tus pruebas pasan pero producción tiene un bug de actualización perdida. ¿Por qué las pruebas no lo detectaron, y cómo escribirías una que sí lo haga?"
+   },
+   {
+    "en": "Compare-and-swap never loses an update. Why might it still be the wrong choice?",
+    "es": "El compare-and-swap nunca pierde una actualización. ¿Por qué igual podría ser la elección equivocada?"
+   }
+  ]
  },
  {
   "n": 18,
@@ -1815,7 +2253,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "The grid Maelstrom gives you connects every node. Why does flooding it fail challenge 3d?",
+    "es": "La malla que te da Maelstrom conecta todos los nodos. ¿Por qué inundarla no pasa el desafío 3d?"
+   },
+   {
+    "en": "Sending straight from the first node to all 24 others gives 24 messages and 100 ms. Why not always do that?",
+    "es": "Enviar directo desde el primer nodo a los otros 24 da 24 mensajes y 100 ms. ¿Por qué no hacerlo siempre?"
+   },
+   {
+    "en": "What does batching trade, and where else have you seen the same trade?",
+    "es": "¿Qué intercambia agrupar (batching), y dónde más has visto el mismo intercambio?"
+   },
+   {
+    "en": "Retries delivered everything across a cut network but doubled messages per value. Why, and how do real systems keep that down?",
+    "es": "Los reintentos entregaron todo a través de una red cortada, pero duplicaron los mensajes por valor. ¿Por qué, y cómo lo reducen los sistemas reales?"
+   },
+   {
+    "en": "A hub dies and its branch goes dark. How would you design so one node can't cut off others?",
+    "es": "Un hub muere y su rama se apaga. ¿Cómo diseñarías para que un nodo no pueda aislar a otros?"
+   },
+   {
+    "en": "Why must a node forward only values it hasn't seen?",
+    "es": "¿Por qué un nodo debe reenviar solo los valores que no ha visto?"
+   }
+  ]
  },
  {
   "n": 19,
@@ -1916,7 +2380,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why does gossip reach a 10,000-node cluster in only a few more rounds than a 100-node cluster?",
+    "es": "¿Por qué gossip llega a un clúster de 10,000 nodos en solo unas rondas más que a uno de 100?"
+   },
+   {
+    "en": "Gossip never retries a lost message. Why does it still reach everyone?",
+    "es": "Gossip nunca reintenta un mensaje perdido. ¿Por qué igual llega a todos?"
+   },
+   {
+    "en": "What is the difference between push, pull and push-pull, and when does each shine?",
+    "es": "¿Cuál es la diferencia entre push, pull y push-pull, y cuándo brilla cada uno?"
+   },
+   {
+    "en": "What does a bigger fanout buy, and what does it cost?",
+    "es": "¿Qué te da un fanout más grande y qué cuesta?"
+   },
+   {
+    "en": "In gossip-based failure detection, why can't the timeout be just one or two rounds?",
+    "es": "En la detección de fallas basada en gossip, ¿por qué el timeout no puede ser de solo una o dos rondas?"
+   },
+   {
+    "en": "Where is gossip used in practice?",
+    "es": "¿Dónde se usa gossip en la práctica?"
+   }
+  ]
  },
  {
   "n": 20,
@@ -2017,7 +2507,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why does the producer pick a track by key, and what exactly does that guarantee?",
+    "es": "¿Por qué el productor elige una vía según la clave, y qué garantiza eso exactamente?"
+   },
+   {
+    "en": "Commit after processing or before? Which guarantee does each give, and what does the handler need?",
+    "es": "¿Commit después de procesar o antes? ¿Qué garantía da cada uno y qué necesita el handler?"
+   },
+   {
+    "en": "A topic has 3 partitions and you scale the consumer group to 10 to catch up. What happens, and what should you change?",
+    "es": "Un topic tiene 3 particiones y escalas el consumer group a 10 para ponerte al día. ¿Qué pasa y qué deberías cambiar?"
+   },
+   {
+    "en": "One customer produces most of the traffic. What do you see, and what can you do?",
+    "es": "Un cliente produce la mayor parte del tráfico. ¿Qué ves y qué puedes hacer?"
+   },
+   {
+    "en": "How is a log different from a queue where reading deletes the message?",
+    "es": "¿En qué se diferencia un log de una cola donde leer borra el mensaje?"
+   },
+   {
+    "en": "A consumer restarts. How does it know where to continue, and why do offsets have to keep increasing?",
+    "es": "Un consumidor se reinicia. ¿Cómo sabe dónde seguir, y por qué los offsets tienen que crecer siempre?"
+   }
+  ]
  },
  {
   "n": 21,
@@ -2118,7 +2634,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Two services each read a counter, add one and write it back. Both succeed, yet the counter only went up by one. Why, and why did nothing report an error?",
+    "es": "Dos servicios leen un contador, le suman uno y lo vuelven a escribir. Los dos tienen éxito, pero el contador subió solo uno. ¿Por qué, y por qué nada reportó un error?"
+   },
+   {
+    "en": "How does compare-and-swap prevent the lost update, and what does it cost?",
+    "es": "¿Cómo evita el compare-and-swap la actualización perdida, y qué cuesta?"
+   },
+   {
+    "en": "Explain a G-counter in one minute.",
+    "es": "Explica un G-counter en un minuto."
+   },
+   {
+    "en": "During a network partition, what does a G-counter give up, and what does it keep?",
+    "es": "Durante una partición de red, ¿a qué renuncia un G-counter y qué conserva?"
+   },
+   {
+    "en": "Your store is sequentially consistent. A user clicks \"like\", then reloads and sees the old count. What happened, and how would you fix it?",
+    "es": "Tu almacén es secuencialmente consistente. Un usuario hace clic en \"me gusta\", recarga y ve el conteo viejo. ¿Qué pasó, y cómo lo arreglarías?"
+   },
+   {
+    "en": "When would you choose a single atomic counter in a database over a CRDT counter?",
+    "es": "¿Cuándo elegirías un único contador atómico en una base de datos en lugar de un contador CRDT?"
+   }
+  ]
  },
  {
   "n": 22,
@@ -2219,7 +2761,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "What does \"separate deploy from release\" mean, and what does it buy you?",
+    "es": "¿Qué significa \"separar el despliegue del lanzamiento\" (deploy vs release), y qué te da?"
+   },
+   {
+    "en": "Why hash the user id for a percentage rollout instead of picking randomly per request?",
+    "es": "¿Por qué aplicar hash al id del usuario en un lanzamiento por porcentaje en vez de elegir al azar en cada solicitud?"
+   },
+   {
+    "en": "You flip a kill switch and some users still see the feature for a while. Why, and how would you shorten that?",
+    "es": "Activas un kill switch y algunos usuarios siguen viendo la funcionalidad por un rato. ¿Por qué, y cómo lo acortarías?"
+   },
+   {
+    "en": "Your team has 40 flags, many at 100% for months. What's the risk, and what would you do?",
+    "es": "Tu equipo tiene 40 flags, muchos en 100% desde hace meses. ¿Cuál es el riesgo, y qué harías?"
+   },
+   {
+    "en": "Is a feature flag a replacement for a canary deploy or a rollback?",
+    "es": "¿Un feature flag reemplaza a un despliegue canario (canary) o a un rollback?"
+   },
+   {
+    "en": "Where should flag evaluation happen, and what happens if the flag service is down?",
+    "es": "¿Dónde debería evaluarse un flag, y qué pasa si el servicio de flags está caído?"
+   }
+  ]
  },
  {
   "n": 23,
@@ -2320,7 +2888,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "In one sentence each: what does a readiness probe decide, and what does a liveness probe decide?",
+    "es": "En una oración cada una: ¿qué decide una sonda de readiness (readiness probe) y qué decide una sonda de liveness (liveness probe)?"
+   },
+   {
+    "en": "Your liveness probe calls the database. Why is that dangerous?",
+    "es": "Tu sonda de liveness llama a la base de datos. ¿Por qué es peligroso?"
+   },
+   {
+    "en": "What should a readiness probe check, and is it ever wrong to include a dependency?",
+    "es": "¿Qué debería revisar una sonda de readiness, y alguna vez está mal incluir una dependencia?"
+   },
+   {
+    "en": "An app takes 90 s to start. How would you configure its probes?",
+    "es": "Una app tarda 90 s en arrancar. ¿Cómo configurarías sus sondas?"
+   },
+   {
+    "en": "Under heavy load your pods keep restarting, and the liveness timeout is 1 s. What is going on, and what would you change?",
+    "es": "Con mucha carga tus pods se reinician una y otra vez, y el timeout de liveness es de 1 s. ¿Qué está pasando, y qué cambiarías?"
+   },
+   {
+    "en": "If readiness already removes broken pods from traffic, why have a liveness probe at all?",
+    "es": "Si readiness ya saca del tráfico a los pods rotos, ¿para qué tener una sonda de liveness?"
+   }
+  ]
  },
  {
   "n": 24,
@@ -2421,7 +3015,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "A handler saves an order and then publishes an \"order placed\" event. Both calls succeed in all your tests. What can still go wrong in production?",
+    "es": "Un handler guarda un pedido y después publica un evento \"pedido creado\". Las dos llamadas tienen éxito en todas tus pruebas. ¿Qué puede salir mal igual en producción?"
+   },
+   {
+    "en": "Why doesn't publishing first, then saving, fix it?",
+    "es": "¿Por qué publicar primero y guardar después no lo arregla?"
+   },
+   {
+    "en": "How does the outbox make the two writes atomic, and what does it rely on?",
+    "es": "¿Cómo hace el outbox que las dos escrituras sean atómicas, y en qué se apoya?"
+   },
+   {
+    "en": "Why does the relay deliver at least once instead of exactly once, and what does that ask of consumers?",
+    "es": "¿Por qué el relé entrega al menos una vez en lugar de exactamente una vez, y qué les pide eso a los consumidores?"
+   },
+   {
+    "en": "Polling the outbox table or change data capture (reading the database log, for example with Debezium): what is the trade-off?",
+    "es": "Sondear la tabla outbox (polling) o captura de cambios (change data capture: leer el log de la base de datos, por ejemplo con Debezium): ¿cuál es el compromiso?"
+   },
+   {
+    "en": "How do you keep events for one order in order, and what happens to the outbox table over time?",
+    "es": "¿Cómo mantienes en orden los eventos de un pedido, y qué pasa con la tabla outbox con el tiempo?"
+   }
+  ]
  },
  {
   "n": 25,
@@ -2522,7 +3142,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "The payment service charged the card once for every request it received, yet a customer was charged twice. How?",
+    "es": "El servicio de pagos cobró la tarjeta una vez por cada solicitud que recibió, pero a un cliente se le cobró dos veces. ¿Cómo?"
+   },
+   {
+    "en": "What should the server store for each idempotency key, and why the whole response rather than just \"seen\"?",
+    "es": "¿Qué debería guardar el servidor para cada clave de idempotencia (idempotency key), y por qué la respuesta completa en lugar de solo \"visto\"?"
+   },
+   {
+    "en": "Why is \"look up the key, charge, then save the key\" not enough?",
+    "es": "¿Por qué no alcanza con \"buscar la clave, cobrar y después guardar la clave\"?"
+   },
+   {
+    "en": "How long should keys be kept?",
+    "es": "¿Cuánto tiempo hay que guardar las claves?"
+   },
+   {
+    "en": "Who generates the key, and how should keys be scoped?",
+    "es": "¿Quién genera la clave, y cuál debería ser el alcance de las claves?"
+   },
+   {
+    "en": "Which operations need idempotency keys, and where else does the same idea show up?",
+    "es": "¿Qué operaciones necesitan claves de idempotencia, y dónde más aparece la misma idea?"
+   }
+  ]
  },
  {
   "n": 26,
@@ -2623,7 +3269,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why can't you wrap \"book flight, book hotel, charge card\" in one database transaction?",
+    "es": "¿Por qué no puedes envolver \"reservar vuelo, reservar hotel, cobrar la tarjeta\" en una sola transacción de base de datos?"
+   },
+   {
+    "en": "What makes a good compensation?",
+    "es": "¿Qué hace buena a una compensación?"
+   },
+   {
+    "en": "Where do you put a step that can't be undone, and a step that is likely to fail?",
+    "es": "¿Dónde pones un paso que no se puede deshacer, y uno que probablemente falle?"
+   },
+   {
+    "en": "A saga has no isolation. Describe an anomaly and a way to soften it.",
+    "es": "Una saga no tiene aislamiento. Describe una anomalía y una forma de suavizarla."
+   },
+   {
+    "en": "When would you choose orchestration, and when choreography?",
+    "es": "¿Cuándo elegirías orquestación y cuándo coreografía?"
+   },
+   {
+    "en": "An undo call to the hotel times out. What do you know, and what do you do?",
+    "es": "Una llamada de deshacer al hotel da timeout. ¿Qué sabes y qué haces?"
+   }
+  ]
  },
  {
   "n": 27,
@@ -2724,7 +3396,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Your list page is fast on your laptop and slow in staging. The query log shows the same SELECT many times with different ids. What is going on?",
+    "es": "Tu página de listado es rápida en tu laptop y lenta en staging. El log de consultas muestra el mismo SELECT muchas veces con ids distintos. ¿Qué está pasando?"
+   },
+   {
+    "en": "How would you catch N+1s before production?",
+    "es": "¿Cómo detectarías los N+1 antes de producción?"
+   },
+   {
+    "en": "Why does an ORM make N+1 so easy to write?",
+    "es": "¿Por qué un ORM hace tan fácil escribir un N+1?"
+   },
+   {
+    "en": "JOIN, or a second query with IN (...)? How do you choose?",
+    "es": "¿JOIN o una segunda consulta con IN (...)? ¿Cómo eliges?"
+   },
+   {
+    "en": "In a GraphQL API every field resolver loads its own data. How does DataLoader prevent N+1 there?",
+    "es": "En una API GraphQL cada resolver de campo carga sus propios datos. ¿Cómo evita DataLoader el N+1 ahí?"
+   },
+   {
+    "en": "Paging the list limits the damage. Why is it not a fix?",
+    "es": "Paginar la lista limita el daño. ¿Por qué no es una solución?"
+   }
+  ]
  },
  {
   "n": 28,
@@ -2825,7 +3523,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "What is a cache stampede, and why can it make the database slower than having no cache at all?",
+    "es": "¿Qué es una cache stampede (estampida de caché) y por qué puede dejar la base de datos más lenta que no tener caché?"
+   },
+   {
+    "en": "Why do deploys and cold starts cause synchronised expiry, and what does TTL jitter do about it?",
+    "es": "¿Por qué los despliegues y los arranques en frío causan vencimientos sincronizados, y qué hace el jitter en el TTL al respecto?"
+   },
+   {
+    "en": "How does request coalescing (single-flight) work, and what does it not solve across many app servers?",
+    "es": "¿Cómo funciona la agrupación de solicitudes (single-flight) y qué no resuelve cuando hay muchos servidores de aplicación?"
+   },
+   {
+    "en": "What does stale-while-revalidate trade, and where would you not use it?",
+    "es": "¿Qué sacrifica stale-while-revalidate y dónde no lo usarías?"
+   },
+   {
+    "en": "What is probabilistic early expiration (XFetch), and why does it avoid a stampede without any coordination?",
+    "es": "¿Qué es el vencimiento anticipado probabilístico (XFetch) y por qué evita una estampida sin ninguna coordinación?"
+   },
+   {
+    "en": "Every hour on the hour your database CPU spikes for 30 seconds and the slow-query log shows the same query hundreds of times. Diagnose it and list the fixes you would try, in order.",
+    "es": "Cada hora en punto el CPU de tu base de datos se dispara durante 30 segundos y el log de consultas lentas muestra la misma consulta cientos de veces. Diagnostícalo y enumera los arreglos que probarías, en orden."
+   }
+  ]
  },
  {
   "n": 29,
@@ -2926,7 +3650,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why is opening a database connection per request slow, and what exactly does a pool save?",
+    "es": "¿Por qué es lento abrir una conexión a la base de datos por solicitud, y qué ahorra exactamente un pool?"
+   },
+   {
+    "en": "Your service handles 300 requests a second and each holds a connection for 20 ms. How many connections does it need, and why not just configure 200?",
+    "es": "Tu servicio atiende 300 solicitudes por segundo y cada una tiene una conexión durante 20 ms. ¿Cuántas conexiones necesita, y por qué no configurar 200 y ya?"
+   },
+   {
+    "en": "Why can a bigger pool make a busy system slower?",
+    "es": "¿Por qué un pool más grande puede volver más lento un sistema con mucha carga?"
+   },
+   {
+    "en": "A service runs fine for an hour after each deploy, then every request fails with 'timed out waiting for a connection'. The database looks idle. What do you suspect, and how do you confirm it?",
+    "es": "Un servicio funciona bien durante una hora después de cada despliegue, y después todas las solicitudes fallan con 'timed out waiting for a connection'. La base de datos se ve ociosa. ¿Qué sospechas y cómo lo confirmas?"
+   },
+   {
+    "en": "Why shouldn't you call an external API inside a database transaction?",
+    "es": "¿Por qué no deberías llamar a una API externa dentro de una transacción de base de datos?"
+   },
+   {
+    "en": "You run 30 pods with a pool of 10 each against a database with max_connections = 200. What happens, and what are your options?",
+    "es": "Corres 30 pods con un pool de 10 cada uno contra una base de datos con max_connections = 200. ¿Qué pasa y qué opciones tienes?"
+   }
+  ]
  },
  {
   "n": 30,
@@ -3024,7 +3774,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "A teammate adds user_id as a label on http_requests_total \"so we can see who is affected\". What happens, and what would you do instead?",
+    "es": "Alguien del equipo agrega user_id como etiqueta en http_requests_total \"para ver a quién afecta\". ¿Qué pasa y qué harías en su lugar?"
+   },
+   {
+    "en": "How do you estimate how many series a metric will create before you ship it?",
+    "es": "¿Cómo estimas cuántas series va a crear una métrica antes de publicarla?"
+   },
+   {
+    "en": "The number of series grows every day although nothing was deployed. Where would you look?",
+    "es": "La cantidad de series crece todos los días aunque no se desplegó nada. ¿Dónde buscarías?"
+   },
+   {
+    "en": "Head sampling and tail sampling: what does each cost, and what does each miss?",
+    "es": "Head sampling y tail sampling: ¿cuánto cuesta cada uno y qué se pierde cada uno?"
+   },
+   {
+    "en": "With head sampling at 1%, can you still tell the error rate? Can you find the trace of one customer's failed checkout?",
+    "es": "Con head sampling al 1%, ¿todavía puedes saber la tasa de errores? ¿Puedes encontrar la traza del checkout fallido de un cliente?"
+   },
+   {
+    "en": "Metrics, logs and traces: where should high-cardinality data go, and why?",
+    "es": "Métricas, logs y trazas: ¿adónde deberían ir los datos de alta cardinalidad, y por qué?"
+   }
+  ]
  },
  {
   "n": 31,
@@ -3125,7 +3901,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "In one sentence, what does a debounce do, and how is it different from a throttle?",
+    "es": "En una oración, ¿qué hace un debounce y en qué se diferencia de un throttle?"
+   },
+   {
+    "en": "Why did a 100 ms debounce barely reduce the requests from typing?",
+    "es": "¿Por qué un debounce de 100 ms casi no redujo las solicitudes al teclear?"
+   },
+   {
+    "en": "Search box: trailing. Submit button: leading. Why the different edges?",
+    "es": "Buscador: al final (trailing). Botón de envío: al inicio (leading). ¿Por qué flancos distintos?"
+   },
+   {
+    "en": "A debounced scroll handler never runs while the user keeps scrolling. Why, and what are two fixes?",
+    "es": "Un handler de scroll con debounce nunca corre mientras el usuario sigue haciendo scroll. ¿Por qué, y cuáles son dos soluciones?"
+   },
+   {
+    "en": "Your debounced search still sometimes shows results for an earlier query. Why doesn't debounce prevent that, and what does?",
+    "es": "Tu búsqueda con debounce a veces todavía muestra resultados de una consulta anterior. ¿Por qué el debounce no lo evita, y qué sí lo evita?"
+   },
+   {
+    "en": "In React, a teammate writes const onChange = debounce(search, 300) inside the component body, and it doesn't debounce at all. What happened, and how do you fix it?",
+    "es": "En React, alguien del equipo escribe const onChange = debounce(search, 300) dentro del cuerpo del componente, y no hace ningún debounce. ¿Qué pasó y cómo lo arreglas?"
+   }
+  ]
  },
  {
   "n": 32,
@@ -3226,7 +4028,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "In one sentence each: what does a throttle do, and what does a debounce do? Give one use for each.",
+    "es": "En una oración cada uno: ¿qué hace un throttle y qué hace un debounce? Da un uso para cada uno."
+   },
+   {
+    "en": "Why do throttles usually fire on both the leading and the trailing edge?",
+    "es": "¿Por qué los throttles suelen disparar tanto en el flanco inicial como en el final?"
+   },
+   {
+    "en": "A teammate throttled the \"Pay\" button to stop double charges. What's wrong with that, and what would you do?",
+    "es": "Alguien del equipo aplicó throttle al botón \"Pagar\" para evitar cobros dobles. ¿Qué tiene de malo, y qué harías tú?"
+   },
+   {
+    "en": "Why is requestAnimationFrame a good throttle for anything that draws?",
+    "es": "¿Por qué requestAnimationFrame es un buen throttle para todo lo que dibuja?"
+   },
+   {
+    "en": "How is this throttle different from the rate limiter in lesson 05?",
+    "es": "¿En qué se diferencia este throttle del rate limiter de la lección 05?"
+   },
+   {
+    "en": "A dashboard receives 200 websocket messages a second and re-renders on each one; the tab freezes. How would you fix it without losing data?",
+    "es": "Un dashboard recibe 200 mensajes de websocket por segundo y vuelve a renderizar con cada uno; la pestaña se congela. ¿Cómo lo arreglarías sin perder datos?"
+   }
+  ]
  },
  {
   "n": 33,
@@ -3327,7 +4155,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "As a data structure, what does a queue promise, and how do you make adding and removing O(1)?",
+    "es": "Como estructura de datos, ¿qué promete una cola y cómo logras que agregar y quitar sean O(1)?"
+   },
+   {
+    "en": "Your queue gets longer every afternoon and drains overnight. What is happening, and what are your options?",
+    "es": "Tu cola se alarga todas las tardes y se vacía de noche. ¿Qué está pasando y qué opciones tienes?"
+   },
+   {
+    "en": "Why should a queue consumer be idempotent, and when should it acknowledge a message?",
+    "es": "¿Por qué un consumidor de una cola debería ser idempotente, y cuándo debería confirmar (ack) un mensaje?"
+   },
+   {
+    "en": "What is a visibility timeout, and what goes wrong if it is shorter than your processing time?",
+    "es": "¿Qué es un visibility timeout y qué sale mal si es más corto que tu tiempo de procesamiento?"
+   },
+   {
+    "en": "What is a dead-letter queue for, and what should you do with what lands in it?",
+    "es": "¿Para qué sirve una cola de mensajes muertos (dead-letter queue) y qué deberías hacer con lo que cae ahí?"
+   },
+   {
+    "en": "Strict first-in-first-out for everything, or order per key: what do you gain and lose?",
+    "es": "FIFO estricto para todo, u orden por clave: ¿qué ganas y qué pierdes?"
+   }
+  ]
  },
  {
   "n": 34,
@@ -3428,7 +4282,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "A function calls itself ten levels deep. What is on the call stack at the deepest point, and in what order do the calls finish?",
+    "es": "Una función se llama a sí misma diez niveles de profundidad. ¿Qué hay en la pila de llamadas en el punto más profundo, y en qué orden terminan las llamadas?"
+   },
+   {
+    "en": "Why does deep recursion crash with \"Maximum call stack size exceeded\" or StackOverflowError, and what are two ways to fix it?",
+    "es": "¿Por qué una recursión profunda falla con \"Maximum call stack size exceeded\" o StackOverflowError, y cuáles son dos formas de arreglarlo?"
+   },
+   {
+    "en": "Explain undo and redo as two stacks. Why does a new edit clear redo?",
+    "es": "Explica deshacer y rehacer como dos pilas. ¿Por qué una edición nueva vacía rehacer?"
+   },
+   {
+    "en": "Where is the stack in a browser's back and forward buttons, and in an iterative depth-first search?",
+    "es": "¿Dónde está la pila en los botones de atrás y adelante de un navegador, y en una búsqueda en profundidad iterativa?"
+   },
+   {
+    "en": "Under overload, why can serving the newest request first give more successful responses than first come, first served? What does it cost, and how do real systems limit the damage?",
+    "es": "Bajo sobrecarga, ¿por qué atender primero la solicitud más nueva puede dar más respuestas exitosas que atender por orden de llegada? ¿Cuánto cuesta, y cómo limitan el daño los sistemas reales?"
+   },
+   {
+    "en": "When do you want a queue instead of a stack?",
+    "es": "¿Cuándo quieres una cola en lugar de una pila?"
+   }
+  ]
  },
  {
   "n": 35,
@@ -3529,7 +4409,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why does a rare query term count for more than a common one?",
+    "es": "¿Por qué un término raro de la consulta cuenta más que uno común?"
+   },
+   {
+    "en": "What does k1 control, and why does BM25 stop rewarding repetition?",
+    "es": "¿Qué controla k1, y por qué BM25 deja de premiar la repetición?"
+   },
+   {
+    "en": "What does b do, and when would you lower it?",
+    "es": "¿Qué hace b, y cuándo conviene bajarlo?"
+   },
+   {
+    "en": "Why is BM25 so good at error codes, SKUs and names, and so bad at “my browser keeps dropping the connection”?",
+    "es": "¿Por qué BM25 es tan bueno con códigos de error, SKU y nombres, y tan malo con “mi navegador pierde la conexión a cada rato”?"
+   },
+   {
+    "en": "Do you need a stop-word list with BM25? What else in the text pipeline changes the scores?",
+    "es": "¿Necesitas una lista de palabras vacías (stop words) con BM25? ¿Qué más del procesamiento del texto cambia los puntajes?"
+   },
+   {
+    "en": "Your search engine says one result scored 12.4 and another query's best scored 3.1. Is the first one a better match?",
+    "es": "Tu buscador dice que un resultado sacó 12.4 y que el mejor de otra consulta sacó 3.1. ¿El primero es una mejor coincidencia?"
+   }
+  ]
  },
  {
   "n": 36,
@@ -3630,7 +4536,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "What does an embedding model turn a chunk into, and why does that make paraphrases match?",
+    "es": "¿En qué convierte un modelo de embeddings a un fragmento, y por qué eso hace que las paráfrasis coincidan?"
+   },
+   {
+    "en": "Your support search can't find the article for the order number a customer pasted. Why, and what do you add?",
+    "es": "La búsqueda de tu soporte no encuentra el artículo del número de pedido que pegó un cliente. ¿Por qué, y qué agregas?"
+   },
+   {
+    "en": "How do you pick a chunk size?",
+    "es": "¿Cómo eliges el tamaño de un fragmento?"
+   },
+   {
+    "en": "What does an approximate index like HNSW trade, and how would you know it's good enough?",
+    "es": "¿Qué sacrifica un índice aproximado como HNSW, y cómo sabrías si es suficientemente bueno?"
+   },
+   {
+    "en": "Why is a fixed similarity threshold like 0.8 a bad filter?",
+    "es": "¿Por qué un umbral de similitud fijo como 0.8 es un mal filtro?"
+   },
+   {
+    "en": "Why doesn't the map on the table show the real distances?",
+    "es": "¿Por qué el mapa de la mesa no muestra las distancias reales?"
+   }
+  ]
  },
  {
   "n": 37,
@@ -3731,7 +4663,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why can't you add a BM25 score and a cosine similarity and sort by the sum?",
+    "es": "¿Por qué no puedes sumar un puntaje BM25 y una similitud coseno y ordenar por la suma?"
+   },
+   {
+    "en": "Write the RRF formula and score a document ranked 2nd by one list and 5th by another, with k = 60.",
+    "es": "Escribe la fórmula de RRF y calcula el puntaje de un documento que una lista pone en el puesto 2 y otra en el 5, con k = 60."
+   },
+   {
+    "en": "What does k do, and why is 60 the usual value?",
+    "es": "¿Qué hace k, y por qué 60 es el valor habitual?"
+   },
+   {
+    "en": "When would you weight one ranker less, and how?",
+    "es": "¿Cuándo le darías menos peso a un ranker, y cómo?"
+   },
+   {
+    "en": "What does RRF throw away, and when might a score-based fusion be better?",
+    "es": "¿Qué descarta RRF, y cuándo podría ser mejor una fusión basada en puntajes?"
+   },
+   {
+    "en": "How deep should each list be before fusing, and what does depth cost?",
+    "es": "¿Qué tan profunda debe ser cada lista antes de fusionar, y cuánto cuesta la profundidad?"
+   }
+  ]
  },
  {
   "n": 38,
@@ -3832,7 +4790,33 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "A customer pastes \"E-4072\" into search, another types \"my money back for a cracked parcel\". Why does one retriever handle the first and miss the second, and the other the opposite?",
+    "es": "Un cliente pega \"E-4072\" en la búsqueda y otro escribe \"my money back for a cracked parcel\". ¿Por qué un recuperador (retriever) resuelve el primero y falla con el segundo, y el otro al revés?"
+   },
+   {
+    "en": "You merge BM25 and vector results with a weighted sum and α seems to do nothing. What is probably wrong?",
+    "es": "Fusionas los resultados de BM25 y de vectores con una suma ponderada y α parece no hacer nada. ¿Qué es lo más probable que esté mal?"
+   },
+   {
+    "en": "How would you choose α, or decide between RRF and a weighted sum?",
+    "es": "¿Cómo elegirías α, o cómo decidirías entre RRF y una suma ponderada?"
+   },
+   {
+    "en": "With plain RRF, hybrid scored a little below the meaning lane alone on paraphrase queries. Why can merging cost a few points on one kind of query, and what can you do?",
+    "es": "Con RRF simple, la búsqueda híbrida sacó un poco menos que el carril de significado solo en las consultas de paráfrasis. ¿Por qué fusionar puede costar algunos puntos en un tipo de consulta, y qué puedes hacer?"
+   },
+   {
+    "en": "Why rerank only the top 100 or so, and why can't a reranker fix a bad retrieval stage?",
+    "es": "¿Por qué hacer reranking solo de los primeros 100 o algo así, y por qué un reranker no puede arreglar una mala etapa de recuperación?"
+   },
+   {
+    "en": "Where does this show up in real systems?",
+    "es": "¿Dónde aparece esto en sistemas reales?"
+   }
+  ]
  },
  {
   "n": 39,
@@ -3933,6 +4917,32 @@
     }
    }
   ],
-  "questions": 6
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why does chunking lose information, and what exactly does Contextual Retrieval add?",
+    "es": "¿Por qué fragmentar hace perder información, y qué agrega exactamente Contextual Retrieval?"
+   },
+   {
+    "en": "Why do embeddings alone struggle with \"Acme's revenue in Q2 2023\", and why does BM25 help?",
+    "es": "¿Por qué a los embeddings solos les cuesta \"los ingresos de Acme en el Q2 2023\", y por qué ayuda BM25?"
+   },
+   {
+    "en": "What is reranking, and why retrieve 150 to keep 20?",
+    "es": "¿Qué es el reranking, y por qué recuperar 150 para quedarse con 20?"
+   },
+   {
+    "en": "How does prompt caching make contextualisation cheap?",
+    "es": "¿Cómo hace la caché de prompts que contextualizar sea barato?"
+   },
+   {
+    "en": "When would you not build any of this?",
+    "es": "¿Cuándo no construirías nada de esto?"
+   },
+   {
+    "en": "How would you measure whether Contextual Retrieval helps on your own data?",
+    "es": "¿Cómo medirías si Contextual Retrieval ayuda con tus propios datos?"
+   }
+  ]
  }
 ]

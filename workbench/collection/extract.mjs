@@ -19,6 +19,8 @@ for (const l of lessons) {
   l.exps = [...h.matchAll(/<article class="exp"[\s\S]*?<h3>([\s\S]*?)<\/h3>[\s\S]*?<div class="exp-change">([\s\S]*?)<\/div>\s*<div class="exp-q">([\s\S]*?)<\/div>/g)]
     .map((m) => ({ title: bi(m[1], (x) => x.replace(/^\d+\.\s*/, "")), change: bi(m[2]), question: bi(m[3]) }));
   l.questions = (h.match(/<details>/g) || []).length;
+  // question texts, for the collection's search index
+  l.qs = [...h.matchAll(/<details><summary><span class="n">[\s\S]*?<\/span><\/span>([\s\S]*?)<\/summary>/g)].map((m) => bi(m[1]));
 }
 writeFileSync(new URL("./catalog.json", import.meta.url), JSON.stringify(lessons, null, 1));
 console.log("catalog:", lessons.length, "lessons");
