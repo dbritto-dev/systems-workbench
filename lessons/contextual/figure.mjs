@@ -9,6 +9,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, sign, lamp, faceText, variants } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -167,7 +168,7 @@ function pressFront() {
 }
 // labels for the press and its meter, printed on the plate in front of it
 function pressLabels() {
-  return faceText(P, [PRESS_X - 22, BELT.y + BELT.d, 3.2], "CONTEXT PRESS · DIAL: $ PER M TOKENS", { size: 2.1, tone: "mid" });
+  return faceText(P, [PRESS_X - 22, BELT.y + BELT.d, 3.2], t("CONTEXT PRESS · DIAL: $ PER M TOKENS", "PRENSA DE CONTEXTO · DIAL: $ POR M TOKENS"), { size: 2.1, tone: "mid" });
 }
 
 // The two cabinets the cards are filed in. Each has a lamp on top that lights while it is searched,
@@ -180,7 +181,7 @@ function cabinets() {
   for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) drawers.push(faceRectY(WORDS.x + 2 + c * 9, WORDS.x + 10 + c * 9, wf, 2 + r * 5.6, 6.8 + r * 5.6));
   out.push(L(drawers.join(""), { tone: "lo" }));
   out.push(D([0, 1, 2, 3].flatMap((r) => [0, 1, 2].map((c) => at([WORDS.x + 6 + c * 9, wf, 4.4 + r * 5.6]))), { size: 0.5, tone: "mid" }));
-  out.push(faceText(P, [WORDS.x + WORDS.w / 2, wf, WORDS_H - 3.6], "WORDS", { size: 2.6, tone: "hi", anchor: "middle" }));
+  out.push(faceText(P, [WORDS.x + WORDS.w / 2, wf, WORDS_H - 3.6], t("WORDS", "PALABRAS"), { size: 2.6, tone: "hi", anchor: "middle" }));
   out.push(`<g data-off-band="words" style="display:none">${L(seg([WORDS.x + 1, wf, 1], [WORDS.x + WORDS.w - 1, wf, WORDS_H - 6]) + seg([WORDS.x + 1, wf, WORDS_H - 6], [WORDS.x + WORDS.w - 1, wf, 1]), { tone: "hi" })}</g>`);
   out.push(`<g data-lamp="words">${variants("lamp-words", { off: lamp(P, [WORDS.x + WORDS.w - 5, WORDS.y + 5, WORDS_H], { r: 2.2 }), on: lamp(P, [WORDS.x + WORDS.w - 5, WORDS.y + 5, WORDS_H], { r: 2.2, lit: true }) }, "off")}</g>`);
   // the meaning map: a table whose top is a map of clusters of pins
@@ -188,7 +189,7 @@ function cabinets() {
   const r = mulberry(5), pins = [];
   for (const [cx, cy] of [[MAP.x + 8, MAP.y + 7], [MAP.x + 19, MAP.y + 15], [MAP.x + 30, MAP.y + 7], [MAP.x + 35, MAP.y + 16], [MAP.x + 10, MAP.y + 16]]) for (let i = 0; i < 9; i++) pins.push(at([cx + (r() - 0.5) * 6, cy + (r() - 0.5) * 5, MAP_H]));
   out.push(D(pins, { size: 0.55, tone: "mid" }));
-  out.push(faceText(P, [MAP.x + MAP.w / 2, MAP.y + MAP.d, MAP_H - 4.4], "MEANING", { size: 2.6, tone: "hi", anchor: "middle" }));
+  out.push(faceText(P, [MAP.x + MAP.w / 2, MAP.y + MAP.d, MAP_H - 4.4], t("MEANING", "SIGNIFICADO"), { size: 2.6, tone: "hi", anchor: "middle" }));
   out.push(`<g data-lamp="map">${variants("lamp-map", { off: lamp(P, [MAP.x + MAP.w - 4, MAP.y + 4, MAP_H], { r: 2.2 }), on: lamp(P, [MAP.x + MAP.w - 4, MAP.y + 4, MAP_H], { r: 2.2, lit: true }) }, "off")}</g>`);
   return out.join("");
 }
@@ -201,7 +202,7 @@ function asker() {
 }
 function board() {
   const out = [sign(P, { x: BOARD.x, y: BOARD.y, z: BOARD.z, w: BOARD.w, h: BOARD.h, text: "ACME SALES Q2 2023", size: 2.8, attr: "data-question" })];
-  out.push(faceText(P, [BOARD.x + 1.4, BOARD.y, BOARD.z + BOARD.h + 1], "QUESTION", { size: 2, tone: "mid" }));
+  out.push(faceText(P, [BOARD.x + 1.4, BOARD.y, BOARD.z + BOARD.h + 1], t("QUESTION", "PREGUNTA"), { size: 2, tone: "mid" }));
   return out.join("");
 }
 
@@ -216,9 +217,9 @@ function rack() {
     out.push(`</g>`);
   });
   out.push(digitCounter(P, { x: RACK.x + 4, y: front, z: 1.6, count: 3, w: 4, h: 5.2, gap: 0.6, pad: 1.1, name: "pooled" }));
-  out.push(label(RACK.x + 20, front, 4.4, "CANDIDATES", 2.2), label(RACK.x + 20, front, 1.6, "FIRST 150, BEST ON THE LEFT", 1.8));
+  out.push(label(RACK.x + 20, front, 4.4, t("CANDIDATES", "CANDIDATOS"), 2.2), label(RACK.x + 20, front, 1.6, t("FIRST 150, BEST ON THE LEFT", "PRIMEROS 150, MEJOR A LA IZQ."), 1.8));
   out.push(digitCounter(P, { x: RACK.x + RACK.w - 36, y: front, z: 1.6, count: 4, w: 4, h: 5.2, gap: 0.6, pad: 1.1, name: "rank" }));
-  out.push(label(RACK.x + RACK.w - 16, front, 4.4, "ANSWER'S", 2.2), label(RACK.x + RACK.w - 16, front, 1.6, "RANK", 2.2));
+  out.push(label(RACK.x + RACK.w - 16, front, 4.4, t("ANSWER'S", "PUESTO DE"), 2.2), label(RACK.x + RACK.w - 16, front, 1.6, t("RANK", "RESPUESTA"), 2.2));
   return out.join("");
 }
 
@@ -229,7 +230,7 @@ function inspector() {
 function table() {
   const front = TABLE.y + TABLE.d;
   const out = [S(k.slabOf(TABLE, 0, TABLE_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TABLE, 1.6), TABLE_H, P), { tone: "faint" }) })];
-  out.push(faceText(P, [TABLE.x + TABLE.w / 2, front, 3.2], "RERANK", { size: 2.4, tone: "mid", anchor: "middle" }));
+  out.push(faceText(P, [TABLE.x + TABLE.w / 2, front, 3.2], t("RERANK", "RERANKING"), { size: 2.4, tone: "mid", anchor: "middle" }));
   out.push(`<g data-off-band="rerank" style="display:none">${L(seg([TABLE.x + 1, front, 0.8], [TABLE.x + TABLE.w - 1, front, TABLE_H - 0.8]) + seg([TABLE.x + 1, front, TABLE_H - 0.8], [TABLE.x + TABLE.w - 1, front, 0.8]), { tone: "hi" })}</g>`);
   return out.join("");
 }
@@ -240,7 +241,7 @@ function tray() {
   const out = [S(k.slabOf(TRAY, 0, TRAY_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TRAY, 1.6), TRAY_H, P), { tone: "lo" }) })];
   out.push(L(SLOT.map(([x, y, z]) => k.planOutline({ x: x - 2.6, y: y - 3.8, w: 5.2, d: 7.6, r: 0.4 }, TRAY_H, P)).join(""), { tone: "faint" }));
   out.push(digitCounter(P, { x: TRAY.x + 3, y: front, z: 1.2, count: 2, w: 3.6, h: 4.6, gap: 0.5, pad: 0.9, name: "k" }));
-  out.push(label(TRAY.x + 13, front, 1.8, "PASSED TO THE MODEL", 2.2));
+  out.push(label(TRAY.x + 13, front, 1.8, t("PASSED TO THE MODEL", "PASADOS AL MODELO"), 2.2));
   return out.join("");
 }
 
@@ -250,13 +251,13 @@ function scoreboard() {
   const front = SCORE.y + SCORE.d;
   const out = [S(k.slabOf(SCORE, 0, SCORE_H, P, 3, 0.6), { tone: "mid" })];
   out.push(digitCounter(P, { x: SCORE.x + 5, y: front, z: 3, count: 3, w: 5.2, h: 7, gap: 0.8, pad: 1.4, name: "asked" }));
-  out.push(label(SCORE.x + 5, front, 12, "ASKED", 2.6));
+  out.push(label(SCORE.x + 5, front, 12, t("ASKED", "PREGUNTAS"), 2.6));
   out.push(digitCounter(P, { x: SCORE.x + 30, y: front, z: 3, count: 3, w: 5.2, h: 7, gap: 0.8, pad: 1.4, name: "missed" }));
-  out.push(label(SCORE.x + 30, front, 12, "MISSED", 2.6));
+  out.push(label(SCORE.x + 30, front, 12, t("MISSED", "FALLADAS"), 2.6));
   out.push(meter(P, { x: SCORE.x + 70, y: front, z: 3.6, r: 7.4, ticks: 8, zone: 0.5, name: "failrate", value: 0.2 }));
-  out.push(label(SCORE.x + 61, front, 12, "FAILED  0-40%", 2.4));
+  out.push(label(SCORE.x + 61, front, 12, t("FAILED  0-40%", "FALLAS  0-40%"), 2.4));
   out.push(`<g data-miss-lamp>${variants("miss", { off: lamp(P, [SCORE.x + SCORE.w - 6, SCORE.y + 6, SCORE_H], { r: 2.6 }), on: lamp(P, [SCORE.x + SCORE.w - 6, SCORE.y + 6, SCORE_H], { r: 2.6, lit: true }) }, "off")}</g>`);
-  out.push(faceText(P, [SCORE.x + SCORE.w - 16, SCORE.y + 8, SCORE_H], "MISS", { face: "top", size: 2.4, tone: "mid", anchor: "middle" }));
+  out.push(faceText(P, [SCORE.x + SCORE.w - 16, SCORE.y + 8, SCORE_H], t("MISS", "FALLA"), { face: "top", size: 2.4, tone: "mid", anchor: "middle" }));
   return out.join("");
 }
 
@@ -264,8 +265,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A print shop on a base plate. At the back, bound reports wait in a stack; a guillotine cuts each one into small chunk cards and drops them on a belt. Halfway along, a context press reads the whole report lying open on its head and stamps a dark header strip onto each card; a dial on its front shows what that costs per million tokens. At the end of the belt the cards are filed in two cabinets, a drawer cabinet marked WORDS (the keyword index) and a map table marked MEANING (the embedding map), each with a lamp. In front, a person asks a question written on a board; the first 150 candidates come back into a rack of fifteen bins, best on the left; an inspector at a rerank table picks the best into a tray of up to twenty places passed to the model. The answer chunk is the lit card. A scoreboard counts questions asked and answers missed, with a failure-rate meter and a lamp that lights on a miss.",
+      "Una imprenta sobre una placa base. Al fondo, los informes encuadernados esperan en una pila; una guillotina corta cada uno en pequeñas tarjetas de fragmentos y las deja sobre una cinta. A mitad de camino, una prensa de contexto lee el informe completo abierto sobre su cabezal y estampa una franja oscura de encabezado en cada tarjeta; un dial en su frente muestra cuánto cuesta eso por millón de tokens. Al final de la cinta, las tarjetas se archivan en dos gabinetes, un gabinete de cajones marcado PALABRAS (el índice de palabras clave) y una mesa con un mapa marcada SIGNIFICADO (el mapa de embeddings), cada uno con una lámpara. Adelante, una persona hace una pregunta escrita en un tablero; los 150 primeros candidatos vuelven a un estante de quince casilleros, el mejor a la izquierda; un inspector en una mesa de reranking elige los mejores para una bandeja de hasta veinte lugares que se pasa al modelo. El fragmento con la respuesta es la tarjeta encendida. Un marcador cuenta las preguntas hechas y las respuestas falladas, con un medidor de la tasa de fallas y una lámpara que se enciende con cada falla.",
+    ),
     body: [
       plate(),
       stack(),

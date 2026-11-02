@@ -9,6 +9,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, digitCounter, person, dial, sign, plaque, faceText, variants } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -62,7 +63,7 @@ function entry() {
   // two chutes from the splitter: one climbing to lane A, one level with lane B
   out.push(S(k.slabOf({ x: SPLIT.x + SPLIT.w, y: LANE_A.y + 3, w: 6, d: 8, r: 0.4 }, SPLIT_H, A_H - SPLIT_H, P, 2), { tone: "lo", crease: "none" }));
   out.push(S(k.slabOf({ x: SPLIT.x + SPLIT.w, y: LANE_B.y + 3, w: 6, d: 8, r: 0.4 }, 0, B_H, P, 2), { tone: "lo", crease: "none" }));
-  out.push(label(SPLIT.x + 2, SPLIT.y + SPLIT.d, 4, "QUERY", 2.6));
+  out.push(label(SPLIT.x + 2, SPLIT.y + SPLIT.d, 4, t("QUERY", "CONSULTA"), 2.6));
   return out.join("");
 }
 
@@ -76,7 +77,7 @@ function rack(lane, H, name, title) {
   out.push(L(slots.join(""), { tone: "faint" }));
   for (let i = 0; i < SLOTS; i++) out.push(label(RACK_X0 + STEP * i + TILE.w / 2, front, H - 3.6, String(i + 1), 2.4, { anchor: "middle", tone: "lo" }));
   out.push(digitCounter(P, { x: 34, y: front, z: H - 7.6, count: 3, w: 3.6, h: 4.8, gap: 0.5, pad: 0.9, name }));
-  out.push(faceText(P, [34, lane.y + 4.6, H], "WANTED AT #", { face: "top", size: 2.3, tone: "mid" }));
+  out.push(faceText(P, [34, lane.y + 4.6, H], t("WANTED AT #", "BUSCADO #"), { face: "top", size: 2.3, tone: "mid" }));
   out.push(label(lane.x + 3, front, H - 3.6, title, 2.6));
   return out.join("");
 }
@@ -116,7 +117,7 @@ function hopper() {
   const out = [S(k.slabOf(HOPPER, 0, HOPPER_H, P, 3, 0.6), { tone: "mid", inner: L(k.planOutline(k.insetPlan(HOPPER, 3), HOPPER_H, P), { tone: "lo" }) })];
   const front = HOPPER.y + HOPPER.d;
   out.push(faceText(P, [HOPPER.x + HOPPER.w / 2, front, 4.6], "RRF", { size: 4.2, tone: "hi", anchor: "middle", attr: "data-fuse" }));
-  out.push(label(HOPPER.x + HOPPER.w / 2, front, 10.4, "MERGE", 2.2, { anchor: "middle" }));
+  out.push(label(HOPPER.x + HOPPER.w / 2, front, 10.4, t("MERGE", "FUSIÓN"), 2.2, { anchor: "middle" }));
   // tokens: one disc per list a candidate came from, 1/(60 + rank) each
   const tokens = [];
   for (const [i, dz] of [[0, 0], [1, 1.2], [2, 2.4]]) tokens.push(S(k.cylinder(HOPPER.x + 8 + i * 6, HOPPER.y + 12, 2.2, HOPPER_H + dz * 0, 1.1 + i * 0.6, P, 18, 0.2), { tone: "hi", crease: "lo" }));
@@ -151,8 +152,8 @@ function desk() {
   out.push(dial(P, { x: DESK.x + DESK.w - 7, y: DESK.y + 8, z: DESK_H, r: 5, h: 2.4, ticks: 30, every: 5, name: "lat", value: 0 }));
   const front = DESK.y + DESK.d;
   out.push(digitCounter(P, { x: DESK.x + 3, y: front, z: 1.6, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "reread" }));
-  out.push(label(DESK.x + 19, front, 4.6, "RE-READ", 2.1), label(DESK.x + 19, front, 1.8, "BY RERANK", 2.1));
-  out.push(`<g data-closed>${plaque(P, { x: DESK.x + 2.5, y: DESK.y + 4, z: DESK_H, w: 22, d: 8, text: "NO RERANK", size: 2.5 })}</g>`);
+  out.push(label(DESK.x + 19, front, 4.6, t("RE-READ", "RELEÍDOS"), 2.1), label(DESK.x + 19, front, 1.8, t("BY RERANK", "POR RERANK"), 2.1));
+  out.push(`<g data-closed>${plaque(P, { x: DESK.x + 2.5, y: DESK.y + 4, z: DESK_H, w: 22, d: 8, text: t("NO RERANK", "SIN RERANK"), size: 2.5 })}</g>`);
   return out.join("");
 }
 
@@ -162,7 +163,7 @@ function shelf() {
   const front = SHELF.y + SHELF.d;
   out.push(L(Array.from({ length: SLOTS }, (_, i) => k.planOutline({ x: SHELF_X0 + STEP * i - 0.3, y: SHELF.y + 3.6, w: TILE.w + 0.6, d: TILE.d + 0.6, r: 0.5 }, SHELF_H, P)).join(""), { tone: "faint" }));
   for (let i = 0; i < SLOTS; i++) out.push(label(SHELF_X0 + STEP * i + TILE.w / 2, front, SHELF_H - 3.6, String(i + 1), 2.4, { anchor: "middle", tone: "lo" }));
-  out.push(faceText(P, [SHELF.x + 2, SHELF.y + 2.6, SHELF_H], "RESULTS", { face: "top", size: 2.4, tone: "mid" }));
+  out.push(faceText(P, [SHELF.x + 2, SHELF.y + 2.6, SHELF_H], t("RESULTS", "RESULTADOS"), { face: "top", size: 2.4, tone: "mid" }));
   return out.join("");
 }
 
@@ -170,13 +171,13 @@ function shelf() {
 function board() {
   const out = [S(k.slabOf(BOARD, 0, BOARD_H, P, 3, 0.6), { tone: "mid", inner: L(k.planOutline(k.insetPlan(BOARD, 2), BOARD_H, P), { tone: "faint" }) })];
   const front = BOARD.y + BOARD.d;
-  const cells = [["EXACT ID", "rexact", 3], ["PARAPHRASE", "rparaphrase", 3], ["MIXED", "rmixed", 3], ["MS / QUERY", "ms", 3]];
+  const cells = [[t("EXACT ID", "ID EXACTO"), "rexact", 3], [t("PARAPHRASE", "PARÁFRASIS"), "rparaphrase", 3], [t("MIXED", "MIXTAS"), "rmixed", 3], [t("MS / QUERY", "MS / CONSULTA"), "ms", 3]];
   cells.forEach(([title, name, n], i) => {
     const x = BOARD.x + 4 + i * 24.6;
     out.push(digitCounter(P, { x, y: front, z: 2.6, count: n, w: 5.2, h: 7.6, gap: 0.7, pad: 1.1, name }));
     out.push(label(x - 0.6, front, 13, title, 2.1));
   });
-  out.push(faceText(P, [BOARD.x + 5, BOARD.y + 5, BOARD_H], "FOUND IN THE TOP 10, %", { face: "top", size: 2.6, tone: "mid" }));
+  out.push(faceText(P, [BOARD.x + 5, BOARD.y + 5, BOARD_H], t("FOUND IN THE TOP 10, %", "HALLADOS EN EL TOP 10, %"), { face: "top", size: 2.6, tone: "mid" }));
   return out.join("");
 }
 
@@ -195,16 +196,18 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A two-lane sorting plant on a base plate. At the back left a query board on posts shows the search query, and a splitter block feeds it down two lanes. The back lane is raised: a sieve plate with holes cut to the query's exact words, then a rack of ten numbered slots holding the articles that fell through, best keyword match first. The front lane has a U-shaped magnet that pulls articles by meaning, then its own rack of the ten nearest. Both racks end at a merge hopper with tokens on top for reciprocal rank fusion, or a balance beam set to the weight between the lanes. In front of the hopper an inspector stands at a rerank desk with a stopwatch dial; then a results shelf of ten slots. The article the query wants is shown filled in on every rack. A scoreboard at the front right shows the percentage of exact-identifier, paraphrase and mixed queries answered in the top ten, and the milliseconds per query. Each rack has a counter for where the wanted article ranked in that lane.",
+      "Una planta clasificadora de dos carriles sobre una placa base. Atrás a la izquierda, un tablero sobre postes muestra la consulta, y un bloque divisor la manda por dos carriles. El carril de atrás está elevado: una placa de criba con agujeros cortados a la medida de las palabras exactas de la consulta, y después un estante de diez lugares numerados con los artículos que pasaron, la mejor coincidencia de palabras clave primero. El carril de adelante tiene un imán en U que atrae los artículos por significado, y después su propio estante con los diez más cercanos. Los dos estantes terminan en una tolva de fusión con fichas encima para la fusión de rango recíproco, o una balanza ajustada al peso entre los carriles. Delante de la tolva, un inspector está en un escritorio de reranking con un cronómetro; después, un estante de resultados de diez lugares. El artículo que busca la consulta aparece relleno en cada estante. Un marcador adelante a la derecha muestra el porcentaje de consultas de identificador exacto, de paráfrasis y mixtas resueltas en el top diez, y los milisegundos por consulta. Cada estante tiene un contador del puesto en que ese carril puso el artículo buscado.",
+    ),
     body: [
       plate(),
       entry(),
-      rack(LANE_A, A_H, "ranka", "KEYWORDS"),
+      rack(LANE_A, A_H, "ranka", t("KEYWORDS", "PALABRAS CLAVE")),
       sieve(),
       slots("a", LANE_SLOTS.a),
       hopper(),
-      rack(LANE_B, B_H, "rankb", "MEANING"),
+      rack(LANE_B, B_H, "rankb", t("MEANING", "SIGNIFICADO")),
       magnet(),
       slots("b", LANE_SLOTS.b),
       desk(),

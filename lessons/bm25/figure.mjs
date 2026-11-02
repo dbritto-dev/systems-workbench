@@ -8,6 +8,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, faceText } from "../../workbench/parts.mjs";
+import { t } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -74,7 +75,7 @@ function board() {
   out.push(S(k.slabOf(BOARD, BOARD_Z, BOARD_H, P, 2, 0.3), { tone: "hi", crease: "lo" }));
   const fy = BOARD.y + BOARD.d;
   out.push(L(k.pathOf([[BOARD.x + 3, BOARD_Z + 3], [BOARD.x + BOARD.w - 3, BOARD_Z + 3], [BOARD.x + BOARD.w - 3, BOARD_Z + BOARD_H - 3], [BOARD.x + 3, BOARD_Z + BOARD_H - 3]].map(([x, z]) => k.iso([x, fy, z], P)), true), { tone: "faint" }));
-  out.push(label(BOARD.x + 6, fy, BOARD_Z + BOARD_H - 7.6, "QUERY", 2.4));
+  out.push(label(BOARD.x + 6, fy, BOARD_Z + BOARD_H - 7.6, t("QUERY", "CONSULTA"), 2.4));
   out.push(faceText(P, [BOARD.x + 6, fy, BOARD_Z + 7.4], "", { size: 4.4, tone: "hi", attr: "data-query" }));
   out.push(faceText(P, [BOARD.x + 6, fy, BOARD_Z + 3.8], "", { size: 2, tone: "mid", attr: "data-corpus" }));
   return out.join("");
@@ -94,7 +95,7 @@ function scale(i) {
   out.push(k.dotsSvg([k.iso([x0 + 12.6, FRONT + 0.1, 1.9], P)], { size: 1.1, tone: "hi" }));
   out.push(digitCounter(P, { x: x0 + 15, y: FRONT, z: 1.6, count: 1, w: 3.6, h: 4.8, gap: 0.5, pad: 1, name: "sf" + i }));
   out.push(meter(P, { x: x0 + 28.6, y: FRONT, z: 1.8, r: 4.4, ticks: 8, name: "len" + i, value: 0.5 }));
-  out.push(label(x0 + 28.6, FRONT, 9.4, "LEN", 2, { anchor: "middle" }));
+  out.push(label(x0 + 28.6, FRONT, 9.4, t("LEN", "LONG"), 2, { anchor: "middle" }));
   out.push(S(k.cylinder(cx, CY, 1.6, BASE.h, PAN_Z - BASE.h, P, 16), { tone: "hi", crease: "none" }));
   out.push(`<g data-pan="${i}">${S(k.cylinder(cx, CY, PAN.r, PAN_Z, PAN.h, P, 40, 0.3), { tone: "hi", crease: "lo" })}</g>`);
   out.push(L(k.ring(cx, CY, PAN.r - 1.2, PAN_Z + PAN.h, P, 40), { tone: "faint" }));
@@ -107,8 +108,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "An assay bench on a base plate. At the back left, a shelf holds the query's terms as brass weights, one per slot, with the term and its IDF printed on the shelf front; the rarer the term, the bigger the weight. An assayer in a cap stands behind the shelf and moves to the weight being placed. At the back right a board on two posts shows the query and the corpus size. In front, five scales stand in a row, best match on the left. Each scale's base shows its rank, its document number, its score on digit wheels and a length gauge whose needle stands at the middle for a document of average length. For every query term a document contains, a disc the size of that term's weight goes into the document's pan; the disc's thickness is what the term adds to the score, so the stack height is the score.",
+      "Un banco de ensayo sobre una placa base. Atrás a la izquierda, un estante tiene los términos de la consulta como pesas de bronce, una por ranura, con el término y su IDF impresos en el frente del estante; cuanto más raro el término, más grande la pesa. Un ensayador con gorra está detrás del estante y se mueve hacia la pesa que coloca. Atrás a la derecha, un tablero sobre dos postes muestra la consulta y el tamaño del corpus. Adelante, cinco balanzas en fila, la mejor coincidencia a la izquierda. La base de cada balanza muestra su puesto, su número de documento, su puntaje en ruedas de dígitos y un medidor de longitud cuya aguja queda en el medio para un documento de longitud promedio. Por cada término de la consulta que contiene un documento, cae en su platillo un disco del tamaño de la pesa de ese término; el grosor del disco es lo que el término suma al puntaje, así que la altura de la pila es el puntaje.",
+    ),
     body: [plate(), assayer(), rack(), board(), BASE_X.map((_, i) => scale(i)).join("")],
   });
 }
