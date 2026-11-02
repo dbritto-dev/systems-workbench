@@ -4944,5 +4944,767 @@
     "es": "¿Cómo medirías si Contextual Retrieval ayuda con tus propios datos?"
    }
   ]
+ },
+ {
+  "n": 40,
+  "slug": "hashtable",
+  "area": "Fundamentals",
+  "html": "lessons/hashtable/hash-table-workbench.html",
+  "url": "https://claude.ai/artifact/Q954hdyKMTmeQKssn6xGrp",
+  "blurb": {
+   "en": "A hash table jumps straight to a bucket. It stays fast only while the hash spreads keys and buckets stay uncrowded.",
+   "es": "Una tabla hash salta directo a una cubeta. Es rápida solo si el hash reparte las claves y las cubetas no se llenan."
+  },
+  "blurb_es": "Una tabla hash salta directo a una cubeta. Es rápida solo si el hash reparte las claves y las cubetas no se llenan.",
+  "title": {
+   "en": "Hash Table Workbench",
+   "es": "Banco de trabajo: tablas hash"
+  },
+  "eyebrow": {
+   "en": "Systems lesson 40 · Hash tables",
+   "es": "Lección de sistemas 40 · Tablas hash"
+  },
+  "lede": {
+   "en": "A hash table turns a key into a bucket number, so finding the key takes a jump instead of a search. That's behind every dictionary, map, set, cache and database index on hashes, and it stays fast only while keys spread out and buckets stay uncrowded.",
+   "es": "Una tabla hash convierte una clave en un número de cubeta, así que encontrar la clave cuesta un salto en lugar de una búsqueda. Está detrás de cada diccionario, map, set, caché e índice hash de una base de datos, y se mantiene rápida solo mientras las claves se reparten y las cubetas no se llenan demasiado."
+  },
+  "machine": {
+   "en": "Pigeonhole rack",
+   "es": "Casillero"
+  },
+  "exps": [
+   {
+    "title": {
+     "en": "Keep adding, never grow",
+     "es": "Agrega sin parar, sin crecer nunca"
+    },
+    "change": {
+     "en": "Chaining, 64 buckets, resizing off · insert 64 user ids, then 1,024 · six seeded runs",
+     "es": "Encadenamiento, 64 cubetas, sin redimensionar · inserta 64 IDs de usuario y después 1,024 · seis ejecuciones con semilla fija"
+    },
+    "question": {
+     "en": "What happens to the average number of keys a lookup compares?",
+     "es": "¿Qué pasa con la cantidad promedio de claves que compara una búsqueda?"
+    }
+   },
+   {
+    "title": {
+     "en": "A hash that reads only the start of the key",
+     "es": "Un hash que solo lee el comienzo de la clave"
+    },
+    "change": {
+     "en": "1,000 user ids (user:1000 … user:9999), chaining, doubling at 75% · a good hash vs one that reads only the first 4 characters",
+     "es": "1,000 IDs de usuario (user:1000 … user:9999), encadenamiento, duplicando al 75% · un buen hash contra uno que solo lee los primeros 4 caracteres"
+    },
+    "question": {
+     "en": "What does the weak hash do to lookups?",
+     "es": "¿Qué le hace el hash débil a las búsquedas?"
+    }
+   },
+   {
+    "title": {
+     "en": "The price of doubling",
+     "es": "El precio de duplicar"
+    },
+    "change": {
+     "en": "Insert 1,000 keys into a table that starts with 8 buckets and resizes at 75% · grow by doubling, or by adding 8 buckets each time",
+     "es": "Inserta 1,000 claves en una tabla que empieza con 8 cubetas y se redimensiona al 75% · crece duplicando, o sumando 8 cubetas cada vez"
+    },
+    "question": {
+     "en": "A resize moves every key into the new table. Averaged over all 1,000 inserts, how many moves does doubling cost per insert?",
+     "es": "Redimensionar mueve cada clave a la tabla nueva. Promediado sobre las 1,000 inserciones, ¿cuántos movimientos cuesta duplicar por inserción?"
+    }
+   },
+   {
+    "title": {
+     "en": "Chaining or linear probing, 90% full",
+     "es": "Encadenamiento o sondeo lineal, al 90%"
+    },
+    "change": {
+     "en": "1,024 buckets, no resizing · fill to 50%, then to 90% · chaining keeps a list per bucket; linear probing puts one key per slot and tries the next slot when one is taken",
+     "es": "1,024 cubetas, sin redimensionar · llena hasta el 50% y después hasta el 90% · el encadenamiento guarda una lista por cubeta; el sondeo lineal pone una clave por casilla y prueba la siguiente si está ocupada"
+    },
+    "question": {
+     "en": "At 90% full, which one's lookups slow down more?",
+     "es": "Al 90%, ¿las búsquedas de cuál se vuelven más lentas?"
+    }
+   },
+   {
+    "title": {
+     "en": "Keys crafted to collide",
+     "es": "Claves hechas para colisionar"
+    },
+    "change": {
+     "en": "The hash function is public and unseeded · an attacker searches for 1,000 keys whose hashes end in the same 11 bits and sends them all · then the same keys against a hash seeded with a secret",
+     "es": "La función hash es pública y sin semilla · un atacante busca 1,000 claves cuyos hashes terminan en los mismos 11 bits y las envía todas · después, las mismas claves contra un hash con una semilla secreta"
+    },
+    "question": {
+     "en": "How much more work is inserting the crafted keys than ordinary ones?",
+     "es": "¿Cuánto más trabajo cuesta insertar las claves fabricadas que unas normales?"
+    }
+   }
+  ],
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why is a hash table lookup \"O(1) on average\", and what has to be true for that to hold?",
+    "es": "¿Por qué una búsqueda en una tabla hash es \"O(1) en promedio\", y qué tiene que cumplirse para que sea así?"
+   },
+   {
+    "en": "What is the load factor, and why does a table resize at a limit instead of when it's completely full?",
+    "es": "¿Qué es el factor de carga, y por qué una tabla se redimensiona en un límite en lugar de cuando está completamente llena?"
+   },
+   {
+    "en": "Doubling makes one insert copy every key. Why is the cost per insert still constant on average, and when does the spike still hurt?",
+    "es": "Duplicar hace que una inserción copie todas las claves. ¿Por qué el costo por inserción sigue siendo constante en promedio, y cuándo el pico igual duele?"
+   },
+   {
+    "en": "Compare chaining with open addressing (linear probing). What does each do well?",
+    "es": "Compara el encadenamiento con el direccionamiento abierto (sondeo lineal). ¿Qué hace bien cada uno?"
+   },
+   {
+    "en": "What makes a hash function good for a hash table? Why didn't resizing rescue the weak hash?",
+    "es": "¿Qué hace que una función hash sea buena para una tabla hash? ¿Por qué redimensionar no rescató al hash débil?"
+   },
+   {
+    "en": "What is hash flooding, and how do languages and frameworks defend against it?",
+    "es": "¿Qué es el hash flooding, y cómo se defienden los lenguajes y los frameworks?"
+   }
+  ]
+ },
+ {
+  "n": 41,
+  "slug": "heap",
+  "area": "Fundamentals",
+  "html": "lessons/heap/heap-workbench.html",
+  "url": "https://claude.ai/artifact/73mKQxY3gZfSjFYQQj7auv",
+  "blurb": {
+   "en": "A priority queue always serves the most important item next. A heap keeps it cheap: O(log n) to add or take the top.",
+   "es": "Una cola de prioridad atiende primero lo más importante. Un heap lo hace barato: O(log n) para agregar o sacar el tope."
+  },
+  "blurb_es": "Una cola de prioridad atiende primero lo más importante. Un heap lo hace barato: O(log n) para agregar o sacar el tope.",
+  "title": {
+   "en": "Priority Queue Workbench",
+   "es": "Banco de trabajo: colas de prioridad"
+  },
+  "eyebrow": {
+   "en": "Systems lesson 41 · Heaps",
+   "es": "Lección de sistemas 41 · Montículos (heaps)"
+  },
+  "lede": {
+   "en": "A priority queue always hands out the most important item next, however things arrived. It is almost always a binary heap: a tree packed into an array, cheap to add to and cheap to take the best from.",
+   "es": "Una cola de prioridad siempre entrega primero el elemento más importante, sin importar cómo llegaron. Casi siempre es un montículo binario (binary heap): un árbol empacado en un arreglo, barato para agregar y barato para sacar el mejor."
+  },
+  "machine": {
+   "en": "Triage tree",
+   "es": "Árbol de triaje"
+  },
+  "exps": [
+   {
+    "title": {
+     "en": "Arrival order or priority?",
+     "es": "¿Orden de llegada o prioridad?"
+    },
+    "change": {
+     "en": "Load 90% · 20% urgent (1–3), 30% soon (4–6), 50% routine (7–9) · 50 minutes, six seeded runs · the desk takes jobs in arrival order, then by priority",
+     "es": "Carga del 90% · 20% urgentes (1–3), 30% pronto (4–6), 50% de rutina (7–9) · 50 minutos, seis ejecuciones con semilla fija · el mostrador toma los trabajos por orden de llegada y después por prioridad"
+    },
+    "question": {
+     "en": "Switching from arrival order to priority, what happens to the average wait of urgent and of routine jobs?",
+     "es": "Al pasar del orden de llegada a la prioridad, ¿qué pasa con la espera promedio de los trabajos urgentes y de los de rutina?"
+    }
+   },
+   {
+    "title": {
+     "en": "Something more urgent is always there",
+     "es": "Siempre hay algo más urgente"
+    },
+    "change": {
+     "en": "Urgent and soon jobs alone fill the desk (100% of its capacity), plus a trickle of routine jobs · 10 minutes, six seeded runs · strict priority, then aging (a job gains one level per 15 s it waits)",
+     "es": "Los trabajos urgentes y pronto llenan solos el mostrador (100% de su capacidad), más un goteo de trabajos de rutina · 10 minutos, seis ejecuciones con semilla fija · prioridad estricta y después envejecimiento (aging: un trabajo sube un nivel por cada 15 s que espera)"
+    },
+    "question": {
+     "en": "Under strict priority, what happens to the oldest routine job?",
+     "es": "Con prioridad estricta, ¿qué le pasa al trabajo de rutina más antiguo?"
+    }
+   },
+   {
+    "title": {
+     "en": "A thousand times more jobs",
+     "es": "Mil veces más trabajos"
+    },
+    "change": {
+     "en": "Serve the top of a heap of 1,000 jobs, then of 1,000,000 · count swaps · compare a list kept sorted, where a new job shifts everything after it",
+     "es": "Atiende el trabajo de arriba en un heap de 1,000 trabajos y después en uno de 1,000,000 · cuenta los intercambios · compara con una lista que se mantiene ordenada, donde un trabajo nuevo desplaza todo lo que está después"
+    },
+    "question": {
+     "en": "The heap is 1,000 times bigger. How much more work does serving the top job take?",
+     "es": "El heap es 1,000 veces más grande. ¿Cuánto trabajo más cuesta atender el trabajo de arriba?"
+    }
+   },
+   {
+    "title": {
+     "en": "The ten best of a stream",
+     "es": "Los diez mejores de un flujo"
+    },
+    "change": {
+     "en": "100,000 scores go by, one at a time · keep the 10 highest",
+     "es": "Pasan 100,000 puntajes, uno por uno · guarda los 10 más altos"
+    },
+    "question": {
+     "en": "What do you keep while the stream goes by?",
+     "es": "¿Qué guardas mientras pasa el flujo?"
+    }
+   },
+   {
+    "title": {
+     "en": "Six jobs with the same priority",
+     "es": "Seis trabajos con la misma prioridad"
+    },
+    "change": {
+     "en": "Jobs A to F, all priority 5, arrive in that order among urgent (1) and routine (8) jobs while the desk keeps serving · the heap compares priority only, then priority and an arrival number",
+     "es": "Los trabajos A a F, todos de prioridad 5, llegan en ese orden entre trabajos urgentes (1) y de rutina (8) mientras el mostrador sigue atendiendo · el heap compara solo la prioridad, y después la prioridad y un número de llegada"
+    },
+    "question": {
+     "en": "Comparing priority only, in what order are A to F served?",
+     "es": "Comparando solo la prioridad, ¿en qué orden se atienden A a F?"
+    }
+   }
+  ],
+  "questions": 6,
+  "qs": [
+   {
+    "en": "A heap is a tree, but it's stored in a plain array. How do you find a node's parent and children, and why are there never gaps?",
+    "es": "Un heap es un árbol, pero se guarda en un arreglo simple. ¿Cómo encuentras el padre y los hijos de un nodo, y por qué nunca hay huecos?"
+   },
+   {
+    "en": "What do push, pop and peek cost on a heap of n items, and why isn't the heap fully sorted?",
+    "es": "¿Cuánto cuestan push, pop y peek en un heap de n elementos, y por qué el heap no está ordenado del todo?"
+   },
+   {
+    "en": "Name three places a priority queue runs in real systems, and what the priority is in each.",
+    "es": "Nombra tres lugares donde corre una cola de prioridad en sistemas reales, y cuál es la prioridad en cada uno."
+   },
+   {
+    "en": "Why can a priority queue starve low-priority work, and what are two ways to prevent it?",
+    "es": "¿Por qué una cola de prioridad puede dejar sin atender el trabajo de baja prioridad, y cuáles son dos formas de evitarlo?"
+   },
+   {
+    "en": "To keep the top k of a long stream, why a min-heap of size k, and what does it cost?",
+    "es": "Para guardar los k mejores de un flujo largo, ¿por qué un min-heap de tamaño k, y cuánto cuesta?"
+   },
+   {
+    "en": "Two jobs have the same priority. Why might the later one be served first, and how do you make ties come out in arrival order?",
+    "es": "Dos trabajos tienen la misma prioridad. ¿Por qué podría atenderse primero el que llegó después, y cómo haces que los empates salgan por orden de llegada?"
+   }
+  ]
+ },
+ {
+  "n": 42,
+  "slug": "ringbuffer",
+  "area": "Fundamentals",
+  "html": "lessons/ringbuffer/ring-buffer-workbench.html",
+  "url": "https://claude.ai/artifact/S2o4tvM6vkurFNhnA916ge",
+  "blurb": {
+   "en": "A fixed array used as a queue: fast and allocation-free, until the writer catches the reader and something must give.",
+   "es": "Un arreglo fijo usado como cola: rápido y sin reservar memoria, hasta que el escritor alcanza al lector y algo cede."
+  },
+  "blurb_es": "Un arreglo fijo usado como cola: rápido y sin reservar memoria, hasta que el escritor alcanza al lector y algo cede.",
+  "title": {
+   "en": "Ring Buffer Workbench",
+   "es": "Banco de trabajo: búfer circular"
+  },
+  "eyebrow": {
+   "en": "Systems lesson 42 · Ring buffers",
+   "es": "Lección de sistemas 42 · Búfer circular (ring buffer)"
+  },
+  "lede": {
+   "en": "A ring buffer is a fixed array used as a queue: a writer and a reader chase each other round it, and item n lives in slot n mod size. Nothing moves and nothing is allocated, so it is fast and predictable, which is why kernel logs, audio, network cards, telemetry pipelines and the LMAX Disruptor are built on one. The price is a hard size limit, and a decision about what happens when the writer catches up with the reader.",
+   "es": "Un búfer circular (ring buffer) es un arreglo fijo que se usa como cola: un escritor y un lector se persiguen dando vueltas, y el elemento n vive en el hueco n mod tamaño. Nada se mueve y no se reserva memoria, así que es rápido y predecible; por eso los logs del kernel, el audio, las tarjetas de red, las canalizaciones de telemetría y el LMAX Disruptor se construyen sobre uno. El precio es un límite de tamaño estricto, y decidir qué pasa cuando el escritor alcanza al lector."
+  },
+  "machine": {
+   "en": "Ring table",
+   "es": "Mesa del anillo"
+  },
+  "exps": [
+   {
+    "title": {
+     "en": "40 items at once into 16 slots",
+     "es": "40 elementos de golpe en 16 huecos"
+    },
+    "change": {
+     "en": "A quiet 2/s stream, a reader that does 4/s · 40 items arrive at once · overwrite oldest vs drop newest vs block the producer",
+     "es": "Un flujo tranquilo de 2/s, un lector que hace 4/s · llegan 40 elementos de golpe · sobrescribir el más viejo vs descartar el más nuevo vs frenar al productor"
+    },
+    "question": {
+     "en": "What does each policy do with the 40?",
+     "es": "¿Qué hace cada política con los 40?"
+    }
+   },
+   {
+    "title": {
+     "en": "A reader more than a lap behind",
+     "es": "Un lector a más de una vuelta de distancia"
+    },
+    "change": {
+     "en": "Overwrite oldest, ring of 16 · the writer adds 10 items a second, the reader reads 6 · 60 s · the reader checks sequence numbers vs it doesn't",
+     "es": "Sobrescribir el más viejo, anillo de 16 · el escritor agrega 10 elementos por segundo y el lector lee 6 · 60 s · el lector revisa los números de secuencia vs no los revisa"
+    },
+    "question": {
+     "en": "How many lost items does each reader notice?",
+     "es": "¿Cuántos elementos perdidos nota cada lector?"
+    }
+   },
+   {
+    "title": {
+     "en": "Sizing the ring for a burst",
+     "es": "Dimensionar el anillo para una ráfaga"
+    },
+    "change": {
+     "en": "Drop newest · a 2-second burst at 100 items a second (200 items) · the reader handles 40 a second throughout · rings of 64, 128 and 256 slots",
+     "es": "Descartar el más nuevo · una ráfaga de 2 segundos a 100 elementos por segundo (200 elementos) · el lector procesa 40 por segundo todo el tiempo · anillos de 64, 128 y 256 huecos"
+    },
+    "question": {
+     "en": "What is the smallest of those that loses nothing?",
+     "es": "¿Cuál es el más chico de esos que no pierde nada?"
+    }
+   },
+   {
+    "title": {
+     "en": "Block the producer",
+     "es": "Frenar al productor"
+    },
+    "change": {
+     "en": "8 items a second reach the producer, the reader does 5, ring of 16 · 60 s · block the producer vs overwrite oldest",
+     "es": "Llegan 8 elementos por segundo al productor, el lector hace 5, anillo de 16 · 60 s · frenar al productor vs sobrescribir el más viejo"
+    },
+    "question": {
+     "en": "With block, what happens over the minute?",
+     "es": "Si se frena al productor, ¿qué pasa durante el minuto?"
+    }
+   },
+   {
+    "title": {
+     "en": "Read in batches",
+     "es": "Leer por lotes"
+    },
+    "change": {
+     "en": "60 items a second, ring of 64, drop newest · each read costs 20 ms fixed plus 5 ms per item · one item per read vs every item available",
+     "es": "60 elementos por segundo, anillo de 64, descartar el más nuevo · cada lectura cuesta 20 ms fijos más 5 ms por elemento · un elemento por lectura vs todos los disponibles"
+    },
+    "question": {
+     "en": "Which reader keeps up?",
+     "es": "¿Qué lector alcanza?"
+    }
+   }
+  ],
+  "questions": 6,
+  "qs": [
+   {
+    "en": "How does a ring buffer make writes and reads O(1) with no allocation, and why are sizes often a power of two?",
+    "es": "¿Cómo logra un búfer circular que escribir y leer sean O(1) sin reservar memoria, y por qué el tamaño suele ser una potencia de dos?"
+   },
+   {
+    "en": "If you store only positions (0 to size − 1), the read and write positions are equal both when the ring is empty and when it is full. How do you tell the two apart?",
+    "es": "Si guardas solo posiciones (de 0 a tamaño − 1), las posiciones de lectura y escritura son iguales tanto con el anillo vacío como lleno. ¿Cómo distingues los dos casos?"
+   },
+   {
+    "en": "Overwrite, drop or block: which would you pick for the last N events kept for a crash dump, for audio playback, and for a stream of payment events? Why?",
+    "es": "Sobrescribir, descartar o frenar: ¿cuál elegirías para los últimos N eventos que se guardan para un volcado de fallas, para reproducir audio y para un flujo de eventos de pagos? ¿Por qué?"
+   },
+   {
+    "en": "Why can a ring buffer with one producer and one consumer work without locks, and what changes with several producers?",
+    "es": "¿Por qué un búfer circular con un productor y un consumidor puede funcionar sin locks, y qué cambia con varios productores?"
+   },
+   {
+    "en": "How can a reader detect that the writer lapped it, and what should it do then?",
+    "es": "¿Cómo puede un lector detectar que el escritor le sacó una vuelta, y qué debería hacer entonces?"
+   },
+   {
+    "en": "When is a ring buffer the wrong tool compared with a growable queue or a durable log?",
+    "es": "¿Cuándo un búfer circular es la herramienta equivocada frente a una cola que crece o un log durable?"
+   }
+  ]
+ },
+ {
+  "n": 43,
+  "slug": "latency",
+  "area": "Fundamentals",
+  "html": "lessons/latency/latency-numbers-workbench.html",
+  "url": "https://claude.ai/artifact/4VDg9j75VFriQkq7tTQdcp",
+  "blurb": {
+   "en": "Each step out from the CPU costs 10 to 1,000 times more. Where data lives often matters more than the code.",
+   "es": "Cada paso lejos de la CPU cuesta de 10 a 1,000 veces más. Dónde están los datos suele importar más que el código."
+  },
+  "blurb_es": "Cada paso lejos de la CPU cuesta de 10 a 1,000 veces más. Dónde están los datos suele importar más que el código.",
+  "title": {
+   "en": "Latency Numbers Workbench",
+   "es": "Banco de trabajo: números de latencia"
+  },
+  "eyebrow": {
+   "en": "Systems lesson 43 · Latency numbers",
+   "es": "Lección de sistemas 43 · Números de latencia"
+  },
+  "lede": {
+   "en": "Every read goes somewhere: a cache next to the CPU, main memory, a drive, another machine, another continent. Each step out costs about ten to a thousand times more than the last, so where your data lives usually matters more than how clever the code is.",
+   "es": "Cada lectura va a algún lugar: una caché junto a la CPU, la memoria principal, un disco, otra máquina, otro continente. Cada paso hacia afuera cuesta entre diez y mil veces más que el anterior, así que dónde viven tus datos suele importar más que lo ingenioso del código."
+  },
+  "machine": {
+   "en": "Courier depot",
+   "es": "Depósito de mensajería"
+  },
+  "exps": [
+   {
+    "title": {
+     "en": "100 lookups: memory or the network",
+     "es": "100 consultas: memoria o red"
+    },
+    "change": {
+     "en": "100 lookups, one after another · from a map in the program's own memory vs from a cache service on another machine in the same datacenter",
+     "es": "100 consultas, una tras otra · desde un mapa en la memoria del propio programa vs desde un servicio de caché en otra máquina del mismo centro de datos"
+    },
+    "question": {
+     "en": "How much longer do the 100 lookups take over the network?",
+     "es": "¿Cuánto más tardan las 100 consultas por la red?"
+    }
+   },
+   {
+    "title": {
+     "en": "100 MB: random SSD or sequential disk",
+     "es": "100 MB: SSD al azar o disco secuencial"
+    },
+    "change": {
+     "en": "Read 100 MB · from an SSD in random 4 KB pieces, one at a time · from a spinning disk straight through · (also: the disk in random 4 KB pieces)",
+     "es": "Leer 100 MB · desde un SSD en trozos de 4 KB al azar, uno a la vez · desde un disco giratorio de corrido · (también: el disco en trozos de 4 KB al azar)"
+    },
+    "question": {
+     "en": "Which finishes first: the SSD reading at random, or the old disk reading straight through?",
+     "es": "¿Cuál termina primero: el SSD leyendo al azar, o el disco viejo leyendo de corrido?"
+    }
+   },
+   {
+    "title": {
+     "en": "A million numbers: array or linked list",
+     "es": "Un millón de números: arreglo o lista enlazada"
+    },
+    "change": {
+     "en": "Add up 1 million numbers · stored side by side in an array vs one per node of a linked list scattered in memory · both are O(n), the same additions",
+     "es": "Sumar 1 millón de números · guardados uno al lado del otro en un arreglo vs uno por nodo de una lista enlazada dispersa en memoria · ambos son O(n), las mismas sumas"
+    },
+    "question": {
+     "en": "How much slower is the linked list?",
+     "es": "¿Cuánto más lenta es la lista enlazada?"
+    }
+   },
+   {
+    "title": {
+     "en": "100 small calls to another continent",
+     "es": "100 llamadas pequeñas a otro continente"
+    },
+    "change": {
+     "en": "100 calls of 1 KB each to a service across the ocean (about 150 ms per round trip) · one after another vs 10 at a time vs one batched call carrying all 100",
+     "es": "100 llamadas de 1 KB cada una a un servicio al otro lado del océano (unos 150 ms por viaje de ida y vuelta) · una tras otra vs 10 a la vez vs una sola llamada en lote con las 100"
+    },
+    "question": {
+     "en": "How long do the 100 calls take one after another?",
+     "es": "¿Cuánto tardan las 100 llamadas una tras otra?"
+    }
+   },
+   {
+    "title": {
+     "en": "A page that makes 20 reads in a row",
+     "es": "Una página que hace 20 lecturas seguidas"
+    },
+    "change": {
+     "en": "Each read needs the previous result · from the primary database on another continent vs a read replica in the same datacenter vs a cache in the server's own memory",
+     "es": "Cada lectura necesita el resultado anterior · desde la base de datos primaria en otro continente vs una réplica de lectura en el mismo centro de datos vs una caché en la memoria del propio servidor"
+    },
+    "question": {
+     "en": "Move the reads from the primary overseas to the nearby replica. How much faster is the page?",
+     "es": "Mueve las lecturas de la primaria lejana a la réplica cercana. ¿Cuánto más rápida es la página?"
+    }
+   }
+  ],
+  "questions": 6,
+  "qs": [
+   {
+    "en": "Why are these numbers worth remembering as ratios rather than exact values?",
+    "es": "¿Por qué conviene recordar estos números como proporciones y no como valores exactos?"
+   },
+   {
+    "en": "A request handler makes 30 calls, one after another, to services in the same datacenter. Roughly what does that cost, and how would you cut it?",
+    "es": "Un handler hace 30 llamadas, una tras otra, a servicios del mismo centro de datos. ¿Cuánto cuesta más o menos y cómo lo reducirías?"
+   },
+   {
+    "en": "Iterating an array and a linked list are both O(n). Why is the array so much faster?",
+    "es": "Recorrer un arreglo y una lista enlazada son ambos O(n). ¿Por qué el arreglo es mucho más rápido?"
+   },
+   {
+    "en": "When can a sequential read from a spinning disk beat random reads from an SSD, and when does that stop being true?",
+    "es": "¿Cuándo una lectura secuencial desde un disco giratorio le gana a lecturas al azar desde un SSD, y cuándo deja de ser cierto?"
+   },
+   {
+    "en": "Where does the 150 ms round trip to another continent come from, and can a faster server make it smaller?",
+    "es": "¿De dónde sale el viaje de ida y vuelta de 150 ms a otro continente, y un servidor más rápido puede achicarlo?"
+   },
+   {
+    "en": "If an L1 cache hit took one second, how long would a memory reference, an SSD read and a cross-continent round trip take? What does that say about chatty protocols?",
+    "es": "Si un acierto en la caché L1 tardara un segundo, ¿cuánto tardarían una referencia a memoria, una lectura de SSD y un viaje a otro continente? ¿Qué dice eso de los protocolos conversadores?"
+   }
+  ]
+ },
+ {
+  "n": 44,
+  "slug": "percentiles",
+  "area": "Fundamentals",
+  "html": "lessons/percentiles/tail-latency-workbench.html",
+  "url": "https://claude.ai/artifact/1qMRMg8yLZzi5rXpCSSkpd",
+  "blurb": {
+   "en": "Most requests are fast; users remember the slow ones. Percentiles show the tail, and fan-out multiplies it.",
+   "es": "Casi todas las solicitudes son rápidas; los usuarios recuerdan las lentas. Los percentiles muestran la cola."
+  },
+  "blurb_es": "Casi todas las solicitudes son rápidas; los usuarios recuerdan las lentas. Los percentiles muestran la cola.",
+  "title": {
+   "en": "Tail Latency Workbench",
+   "es": "Banco de trabajo: latencia de cola"
+  },
+  "eyebrow": {
+   "en": "Systems lesson 44 · Percentiles",
+   "es": "Lección de sistemas 44 · Percentiles"
+  },
+  "lede": {
+   "en": "Latency isn't one number. Most requests are fast; a few are slow, and those few are what users remember. Percentiles say how slow the slow ones are, and fan-out decides how many users meet them.",
+   "es": "La latencia no es un solo número. La mayoría de las solicitudes son rápidas; unas pocas son lentas, y esas pocas son las que los usuarios recuerdan. Los percentiles dicen qué tan lentas son las lentas, y el fan-out decide cuántos usuarios se las encuentran."
+  },
+  "machine": {
+   "en": "Timing hall",
+   "es": "Sala de tiempos"
+  },
+  "exps": [
+   {
+    "title": {
+     "en": "One call in 50 stalls",
+     "es": "Una llamada de cada 50 se traba"
+    },
+    "change": {
+     "en": "One backend, no fan-out · no stalls vs 1 call in 50 taking 0.4 to 1.2 s instead of about 10 ms · 20,000 requests",
+     "es": "Un backend, sin fan-out · sin trabas vs 1 llamada de cada 50 que tarda de 0.4 a 1.2 s en lugar de unos 10 ms · 20,000 solicitudes"
+    },
+    "question": {
+     "en": "With 1 call in 50 stalled, what happens to the mean, the p50 and the p99?",
+     "es": "Con 1 llamada de cada 50 trabada, ¿qué pasa con la media, el p50 y el p99?"
+    }
+   },
+   {
+    "title": {
+     "en": "Fan out to 100 backends",
+     "es": "Repartir entre 100 backends"
+    },
+    "change": {
+     "en": "Every backend stalls 1 call in 100, so its own p99 is a stall · a user request calls 1, 10 or 100 backends in parallel and waits for all of them",
+     "es": "Cada backend traba 1 llamada de cada 100, así que su propio p99 es una traba · una solicitud de usuario llama a 1, 10 o 100 backends en paralelo y espera a todos"
+    },
+    "question": {
+     "en": "At a fan-out of 100, what does the typical (p50) user request see?",
+     "es": "Con un fan-out de 100, ¿qué ve la solicitud típica (p50) de un usuario?"
+    }
+   },
+   {
+    "title": {
+     "en": "Average the hosts' p99s",
+     "es": "Promediar el p99 de cada host"
+    },
+    "change": {
+     "en": "10 hosts, 5,000 calls each · 9 healthy hosts stall 1 call in 500 · one bad host stalls 3 in 20 · the dashboard averages the ten p99s",
+     "es": "10 hosts, 5,000 llamadas cada uno · 9 hosts sanos traban 1 llamada de cada 500 · un host malo traba 3 de cada 20 · el tablero promedia los diez p99"
+    },
+    "question": {
+     "en": "How does the average of the ten p99s compare with the p99 of all 50,000 calls?",
+     "es": "¿Cómo se compara el promedio de los diez p99 con el p99 de las 50,000 llamadas?"
+    }
+   },
+   {
+    "title": {
+     "en": "Send a backup after the p95",
+     "es": "Enviar un respaldo después del p95"
+    },
+    "change": {
+     "en": "Fan-out 10, 1 call in 100 stalls · any call still out after 17 ms (the backends' p95) is sent again to another host; the first answer wins",
+     "es": "Fan-out de 10, 1 llamada de cada 100 se traba · toda llamada que siga pendiente después de 17 ms (el p95 de los backends) se envía otra vez a otro host; gana la primera respuesta"
+    },
+    "question": {
+     "en": "What does hedging cost, and what does it buy?",
+     "es": "¿Cuánto cuesta enviar respaldos (hedged requests) y qué se gana?"
+    }
+   },
+   {
+    "title": {
+     "en": "A 1-second GC pause",
+     "es": "Una pausa de GC de 1 segundo"
+    },
+    "change": {
+     "en": "One server, 400 requests a second for a minute, no stalls · at 30 s it stops for a 1-second garbage-collection pause; requests that arrive during it wait it out",
+     "es": "Un servidor, 400 solicitudes por segundo durante un minuto, sin trabas · a los 30 s se detiene por una pausa de recolección de basura (GC) de 1 segundo; las solicitudes que llegan durante la pausa la esperan"
+    },
+    "question": {
+     "en": "The dashboard shows the minute's mean. What does it say, and what did the slowest 1% see?",
+     "es": "El tablero muestra la media del minuto. ¿Qué dice, y qué vio el 1% más lento?"
+    }
+   }
+  ],
+  "questions": 6,
+  "qs": [
+   {
+    "en": "What does \"p99 = 250 ms\" mean, and why is it more useful than the mean on a latency dashboard?",
+    "es": "¿Qué significa \"p99 = 250 ms\" y por qué es más útil que la media en un tablero de latencia?"
+   },
+   {
+    "en": "Why does fanning a request out to many backends make tail latency worse, even if each backend is healthy?",
+    "es": "¿Por qué repartir una solicitud entre muchos backends empeora la latencia de cola, aunque cada backend esté sano?"
+   },
+   {
+    "en": "Why can't you average p99s across hosts or across minutes? What do you store instead?",
+    "es": "¿Por qué no puedes promediar los p99 entre hosts o entre minutos? ¿Qué guardas en su lugar?"
+   },
+   {
+    "en": "Hedged requests send a second copy of a slow call. When is that safe, and how do you keep it from becoming a load problem?",
+    "es": "Las solicitudes de respaldo (hedged requests) envían una segunda copia de una llamada lenta. ¿Cuándo es seguro y cómo evitas que se vuelva un problema de carga?"
+   },
+   {
+    "en": "Your load test reports a p99 of 15 ms, but production users see 1-second stalls. One likely reason in the test itself?",
+    "es": "Tu prueba de carga reporta un p99 de 15 ms, pero en producción los usuarios ven trabas de 1 segundo. ¿Una razón probable en la propia prueba?"
+   },
+   {
+    "en": "You are writing an SLO for an API. Which percentile do you pick, and over what window?",
+    "es": "Estás escribiendo un SLO para una API. ¿Qué percentil eliges y sobre qué ventana?"
+   }
+  ]
+ },
+ {
+  "n": 45,
+  "slug": "bigo",
+  "area": "Fundamentals",
+  "html": "lessons/bigo/big-o-workbench.html",
+  "url": "https://claude.ai/artifact/RMSmqZt8KNpYHunSbM6i6B",
+  "blurb": {
+   "en": "Big-O is how work grows with input size. Five real algorithms race on the same data: doubling, constants, worst case.",
+   "es": "Big-O es cómo crece el trabajo con el tamaño de la entrada. Cinco algoritmos reales compiten con los mismos datos."
+  },
+  "blurb_es": "Big-O es cómo crece el trabajo con el tamaño de la entrada. Cinco algoritmos reales compiten con los mismos datos.",
+  "title": {
+   "en": "Big-O Workbench",
+   "es": "Banco de trabajo: Big-O"
+  },
+  "eyebrow": {
+   "en": "Systems lesson 45 · Big-O",
+   "es": "Lección de sistemas 45 · Complejidad (Big-O)"
+  },
+  "lede": {
+   "en": "Big-O describes how the work an algorithm does grows as its input grows. It ignores what one step costs and keeps how the number of steps scales: constant, logarithmic, linear, n log n, quadratic.",
+   "es": "La notación Big-O describe cómo crece el trabajo de un algoritmo cuando crece su entrada. Ignora cuánto cuesta un paso y se queda con cómo escala la cantidad de pasos: constante, logarítmica, lineal, n log n, cuadrática."
+  },
+  "machine": {
+   "en": "Race track",
+   "es": "Pista de carreras"
+  },
+  "exps": [
+   {
+    "title": {
+     "en": "Double n",
+     "es": "Duplica n"
+    },
+    "change": {
+     "en": "n goes from 1,000 to 2,000 · same kind of data, same five algorithms",
+     "es": "n pasa de 1,000 a 2,000 · el mismo tipo de datos, los mismos cinco algoritmos"
+    },
+    "question": {
+     "en": "What happens to each lane's step count?",
+     "es": "¿Qué le pasa a la cuenta de pasos de cada carril?"
+    }
+   },
+   {
+    "title": {
+     "en": "Sorting 16 items",
+     "es": "Ordenar 16 elementos"
+    },
+    "change": {
+     "en": "Insertion sort, O(n²) with almost no overhead, vs merge sort, O(n log n), which copies halves and makes a call at every level · each comparison and move costs 1, each merge-sort call 12 more · 8 seeded shuffles",
+     "es": "Insertion sort, O(n²) casi sin costo extra, contra merge sort, O(n log n), que copia mitades y hace una llamada en cada nivel · cada comparación y movimiento cuesta 1, cada llamada de merge sort 12 más · 8 mezclas con semilla fija"
+    },
+    "question": {
+     "en": "At n = 16, which one does less work?",
+     "es": "Con n = 16, ¿cuál hace menos trabajo?"
+    }
+   },
+   {
+    "title": {
+     "en": "A loop hiding inside .includes()",
+     "es": "Un bucle escondido dentro de .includes()"
+    },
+    "change": {
+     "en": "For each of 10,000 orders, check whether its customer is on a list of 10,000 · list.includes(id), which scans the array, vs a Set built once",
+     "es": "Para cada uno de 10,000 pedidos, revisa si su cliente está en una lista de 10,000 · list.includes(id), que recorre el array, contra un Set construido una vez"
+    },
+    "question": {
+     "en": "How much more work does the array version do?",
+     "es": "¿Cuánto más trabajo hace la versión con el array?"
+    }
+   },
+   {
+    "title": {
+     "en": "Sort once, or scan every time?",
+     "es": "¿Ordenar una vez o recorrer cada vez?"
+    },
+    "change": {
+     "en": "10,000 unsorted items · q lookups, about half for values that aren't there · plan A: scan for each one · plan B: merge sort once, then binary search each one",
+     "es": "10,000 elementos sin ordenar · q búsquedas, cerca de la mitad de valores que no están · plan A: recorrer para cada una · plan B: ordenar una vez con merge sort y después búsqueda binaria para cada una"
+    },
+    "question": {
+     "en": "After how many lookups does sorting first pay off?",
+     "es": "¿Después de cuántas búsquedas conviene haber ordenado primero?"
+    }
+   },
+   {
+    "title": {
+     "en": "Insertion sort on data that's already sorted",
+     "es": "Insertion sort con datos ya ordenados"
+    },
+    "change": {
+     "en": "1,000 items · already sorted, shuffled, then reversed · the same insertion sort · steps are comparisons plus moves",
+     "es": "1,000 elementos · ya ordenados, mezclados y después invertidos · el mismo insertion sort · los pasos son comparaciones más movimientos"
+    },
+    "question": {
+     "en": "How many steps on the already-sorted input?",
+     "es": "¿Cuántos pasos con la entrada ya ordenada?"
+    }
+   }
+  ],
+  "questions": 6,
+  "qs": [
+   {
+    "en": "What does \"this function is O(n)\" promise, and what does it leave out?",
+    "es": "¿Qué promete \"esta función es O(n)\" y qué deja afuera?"
+   },
+   {
+    "en": "An endpoint takes 200 ms with 1,000 rows. Estimate it at 10,000 rows if its main loop is O(n), O(n log n) or O(n²).",
+    "es": "Un endpoint tarda 200 ms con 1,000 filas. Estima cuánto tarda con 10,000 filas si su bucle principal es O(n), O(n log n) u O(n²)."
+   },
+   {
+    "en": "Why do real sort functions switch to insertion sort, an O(n²) algorithm, for small pieces?",
+    "es": "¿Por qué las funciones de ordenamiento reales pasan a insertion sort, un algoritmo O(n²), para los pedazos pequeños?"
+   },
+   {
+    "en": "Name three ways a quadratic loop hides in ordinary-looking code.",
+    "es": "Nombra tres formas en que un bucle cuadrático se esconde en código que se ve normal."
+   },
+   {
+    "en": "Why is O(log n) almost as good as O(1) in practice, and when is O(1) not really cheap?",
+    "es": "¿Por qué O(log n) es casi tan bueno como O(1) en la práctica, y cuándo O(1) no es realmente barato?"
+   },
+   {
+    "en": "When is it worth sorting or building an index before you search?",
+    "es": "¿Cuándo vale la pena ordenar o construir un índice antes de buscar?"
+   }
+  ]
  }
 ]
