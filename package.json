@@ -9,7 +9,8 @@
     "previews": "node workbench/collection/previews.cjs",
     "gallery": "node workbench/parts-gallery.mjs",
     "shot": "node tools/shot.cjs",
-    "compare": "node tools/compare.cjs"
+    "compare": "node tools/compare.cjs",
+    "site": "node tools/build-site.mjs"
   },
   "devDependencies": {
     "pixelmatch": "^5.3.0",

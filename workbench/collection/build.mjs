@@ -3,6 +3,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { ISO_CSS } from "../kit.mjs";
 
 const lessons = JSON.parse(readFileSync(new URL("./catalog.json", import.meta.url), "utf8"));
+// --pages <file>: the GitHub Pages build. Cards link to the lesson pages in the site (same tab) instead of the
+// published artifacts, and the output is a full HTML document. Paths in lessons.json are relative to the repo
+// root, which is also the site root.
+const pagesAt = process.argv.indexOf("--pages");
+const PAGES = pagesAt > -1 ? process.argv[pagesAt + 1] : null;
+const REPO = "https://github.com/dbritto-dev/systems-workbench";
+const linkOf = (l) => (PAGES ? l.html : l.url);
+const linkAttrs = PAGES ? "" : ` target="_blank" rel="noopener"`;
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const block = (selector) => ISO_CSS.match(new RegExp(selector.replace(/[[\]"]/g, "\\$&") + "\\{([^}]*)\\}"))[1];
 const light = block('.iso[data-theme="light"]');
@@ -26,7 +34,7 @@ const card = (l) => `<article class="card" data-area="${l.area}" id="lesson-${tw
       <span class="counts">${l.exps.length} experiments · ${l.questions} questions</span>
       <span class="card-actions">
         <button type="button" class="btn" data-preview="${l.slug}">Preview</button>
-        <a class="btn primary" href="${l.url}" target="_blank" rel="noopener">Open lesson</a>
+        <a class="btn primary" href="${linkOf(l)}"${linkAttrs}>Open lesson</a>
       </span>
     </div>
   </div>
@@ -34,7 +42,7 @@ const card = (l) => `<article class="card" data-area="${l.area}" id="lesson-${tw
 
 const counts = Object.fromEntries(AREAS.map((a) => [a, lessons.filter((l) => l.area === a).length]));
 const filters = [`<button type="button" data-filter="all" aria-pressed="true">All <b>${lessons.length}</b></button>`, ...AREAS.map((a) => `<button type="button" data-filter="${a}" aria-pressed="false">${a} <b>${counts[a]}</b></button>`)].join("");
-const data = lessons.map(({ n, slug, area, url, title, eyebrow, lede, machine, exps, questions }) => ({ n, slug, area, url, title, concept: concept({ eyebrow }), lede, machine, exps, questions }));
+const data = lessons.map(({ n, slug, area, url, html, title, eyebrow, lede, machine, exps, questions }) => ({ n, slug, area, url: PAGES ? html : url, title, concept: concept({ eyebrow }), lede, machine, exps, questions }));
 
 const html = `<title>Systems Workbench</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -148,7 +156,7 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
   <main class="grid">
 ${lessons.map(card).join("\n")}
   </main>
-  <footer>Machines drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Previews are screenshots of each machine running; the lessons are interactive.</footer>
+  <footer>Machines drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Previews are screenshots of each machine running; the lessons are interactive.${PAGES ? ` · <a href="workbench/parts-gallery.html">Parts gallery</a> · <a href="${REPO}">Source on GitHub</a>` : ""}</footer>
 </div>
 <dialog id="preview" aria-labelledby="dlg-title">
   <div class="dlg">
@@ -158,7 +166,7 @@ ${lessons.map(card).join("\n")}
       <h2 id="dlg-title" data-d="title"></h2>
       <p data-d="lede"></p>
       <ol data-d="exps"></ol>
-      <div class="dlg-actions"><span class="counts" data-d="counts"></span><span class="card-actions"><button type="button" class="btn" data-close>Close</button><a class="btn primary" data-d="url" target="_blank" rel="noopener">Open lesson</a></span></div>
+      <div class="dlg-actions"><span class="counts" data-d="counts"></span><span class="card-actions"><button type="button" class="btn" data-close>Close</button><a class="btn primary" data-d="url"${linkAttrs}>Open lesson</a></span></div>
     </div>
   </div>
 </dialog>
@@ -228,5 +236,6 @@ ${lessons.map(card).join("\n")}
 })();
 </script>
 `;
-writeFileSync(new URL("./index.html", import.meta.url), html);
+if (PAGES) writeFileSync(PAGES, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${html}</html>`);
+else writeFileSync(new URL("./index.html", import.meta.url), html);
 console.log("wrote index.html", (html.length / 1024).toFixed(0) + " KB");

@@ -7,6 +7,8 @@ HTML page with three parts:
 2. **Predict, then run**: five experiments. Pick what you think will happen, then run the same model and compare.
 3. **Explain it back**: questions to answer out loud or in pairs.
 
+**Live site:** https://dbritto-dev.github.io/systems-workbench/ (deployed by `.github/workflows/pages.yml` on every push to `main`).
+
 The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy) isometric kit (MIT), vendored in
 `workbench/vendor-anatomy/` with its licence.
 
@@ -86,6 +88,7 @@ node lessons/queues/build.mjs    # rebuild one lesson
 npm run gallery                  # rebuild the parts gallery
 npm run collection               # rebuild the catalogue from lessons.json
 npm run previews -- queues       # re-shoot a lesson's catalogue preview (light + dark)
+npm run site                     # assemble the GitHub Pages site in _site/ (what the Pages workflow deploys)
 npm run shot -- lessons/queues/queue-workbench.html shot.png 2000
 npm run compare -- baseline.html lessons/queues/queue-workbench.html
 ```
