@@ -122,20 +122,21 @@ tools/                export-lessons, site-check, build-all, screenshot and base
 
 ## Working on it
 
-The site needs Node 22.23+ (see `.nvmrc`); the screenshot tools need Playwright and sharp.
+The site needs Node 22.23+ (see `.nvmrc`) and [pnpm](https://pnpm.io) (the version is pinned in `packageManager`;
+`corepack enable` picks it up). The screenshot tools need Playwright and sharp.
 
 ```sh
-npm install
-npm run dev                      # export lessons, then the Astro dev server
-npm run build                    # export lessons, then build the site into dist/ (what the Pages workflow runs)
-npm run preview                  # serve dist/ at http://localhost:4321/systems-workbench/
-npm run check:site               # with preview running: every lesson in both languages, experiments, 390 px, search
-npm run export -- queues         # re-export one lesson after editing it (the dev server picks it up)
-npm run lessons                  # rebuild the standalone lesson pages (or: node tools/build-all.mjs queues stacks)
-npm run gallery                  # rebuild the parts gallery
-npm run previews -- queues       # re-shoot a lesson's catalogue preview (light + dark)
-npm run shot -- lessons/queues/queue-workbench.html shot.png 2000
-npm run compare -- baseline.html lessons/queues/queue-workbench.html
+pnpm install
+pnpm dev                          # export lessons, then the Astro dev server
+pnpm build                        # export lessons, then build the site into dist/ (what the Pages workflow runs)
+pnpm preview                      # serve dist/ at http://localhost:4321/systems-workbench/
+pnpm check:site                   # with preview running: every lesson in both languages, experiments, 390 px, search
+pnpm export:lessons queues        # re-export one lesson after editing it (the dev server picks it up)
+pnpm lessons                      # rebuild the standalone lesson pages (or: node tools/build-all.mjs queues stacks)
+pnpm gallery                      # rebuild the parts gallery
+pnpm previews queues              # re-shoot a lesson's catalogue preview (light + dark)
+pnpm shot lessons/queues/queue-workbench.html shot.png 2000
+pnpm compare baseline.html lessons/queues/queue-workbench.html
 ```
 
 Set `CHROMIUM_PATH` if Playwright should use a browser other than its own.
@@ -146,4 +147,4 @@ Set `CHROMIUM_PATH` if Playwright should use a browser other than its own.
 2. Build it and check the machine reads from a still frame: with no labels, a viewer should be able to name every part
    that matters and its state. Use or add shared parts in `workbench/parts.mjs` rather than drawing one-offs.
 3. Add it to `workbench/collection/lessons.json` (with `blurb` and `blurb_es` of at most ~120 characters), then
-   `npm run previews -- <slug>` and `npm run build`. The collection, search and both language routes pick it up.
+   `pnpm previews <slug>` and `pnpm build`. The collection, search and both language routes pick it up.
