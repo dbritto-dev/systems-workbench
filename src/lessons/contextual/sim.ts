@@ -1,3 +1,4 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Contextual retrieval, modelled end to end on a small synthetic corpus.
 //   documents: quarterly filings (16 companies × 8 quarters) and user manuals (8 products);
 //   chunks: each filing has a cover (the only chunk naming the company and quarter), three of six standard
@@ -8,7 +9,8 @@
 //            prepended before embedding and before BM25 indexing;
 //   retrieval: a toy embedding (synonyms share a meaning; names carry only a little), real BM25, weighted rank
 //              fusion of the two, and a reranker that reads query and chunk together.
-// Every number on the page comes from here. Plain JS, no imports: the page inlines this file.
+// Every number on the page comes from here, worked out at build time.
+import { meanBy } from "../../lib/stats";
 
 export function rngOf(seed) {
   let a = seed >>> 0;
@@ -241,7 +243,7 @@ const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] 
 // ---------- BM25 ----------
 export function bm25Index(docs, k1 = 1.2, b = 0.75) {
   const toks = docs.map(tokens);
-  const avg = toks.reduce((s, t) => s + t.length, 0) / toks.length;
+  const avg = meanBy(toks, (t) => t.length);
   const df = new Map();
   toks.forEach((t) => new Set(t).forEach((w) => df.set(w, (df.get(w) || 0) + 1)));
   const N = docs.length;

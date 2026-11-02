@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A print shop that indexes documents, and a front counter that answers questions from the index.
 //   back: a stack of bound reports; a guillotine cuts each one into chunk cards (the cover, which says whose
 //         report it is, is left behind); a context press reads the whole booklet lying on its head and stamps a
@@ -7,9 +8,10 @@
 //          who picks the best into the tray that is passed on to the model; a scoreboard of questions asked and
 //          answers missed. The answer chunk is the lit card wherever it is.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, sign, lamp, faceText, variants } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, sign, lamp, faceText, variants } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -78,11 +80,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 50 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
-const at = (p) => k.iso(p, P);
-const seg = (a, b) => k.segment(a, b, P);
+const { S, L, D, at, seg } = shorthand(P);
 const label = (x, y, z, text, size = 2.6, face = "y") => faceText(P, [x, y, z], text, { size, tone: "mid", face });
 
 function plate() {
