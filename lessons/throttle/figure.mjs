@@ -8,6 +8,7 @@ import * as k from "../../workbench/kit.mjs";
 import { basePlate } from "../../workbench/parts.mjs";
 import { sphereOf } from "../../workbench/vendor-anatomy/kit/lathe.mjs";
 import { digitPath, counterCells, digitsOf } from "./digits.js";
+import { t, isT } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 380;
@@ -71,10 +72,12 @@ const L = (d, style) => k.lineSvg(d, style);
 const D = (points, style) => k.dotsSvg(points, style);
 const slab = (plan, z, h, steps = 3, bevel = 0) => k.slabOf(plan, z, h, P, steps, bevel);
 const flat = (d) => ({ fill: d, outline: d, crease: "", top: "", shades: [] });
+// value may be t(en, es): one text per language.
+const bi = (value, draw) => (isT(value) ? `<g data-l="en">${draw(value.en)}</g><g data-l="es">${draw(value.es)}</g>` : draw(value));
 const text = (x, y, z, value, { size = 3, tone = "lo", anchor = "start" } = {}) =>
-  k.faceTextSvg(k.sideMatrix([x, y], z, P, "left"), value, { size, tone, anchor });
+  bi(value, (v) => k.faceTextSvg(k.sideMatrix([x, y], z, P, "left"), v, { size, tone, anchor }));
 const topText = (x, y, z, value, { size = 3, tone = "lo", anchor = "middle" } = {}) =>
-  k.faceTextSvg(k.topMatrix([x, y], z, P, "x"), value, { size, tone, anchor });
+  bi(value, (v) => k.faceTextSvg(k.topMatrix([x, y], z, P, "x"), v, { size, tone, anchor }));
 
 function counter(c, name, value = 0) {
   const out = [];
@@ -104,7 +107,7 @@ function feeder() {
   const fx = FEEDER.x + FEEDER.w;
   out.push(L(k.faceRectX(P, fx, CY - 4.4, CY + 4.4, TRACK.z1, TRACK.z1 + 7.2), { tone: "mid" }));
   out.push(counter(COUNTERS.events, "events"));
-  out.push(text(FEEDER.x + 3.2, FEEDER.y + FEEDER.d, 17.4, "EVENTS", { size: 3.1 }));
+  out.push(text(FEEDER.x + 3.2, FEEDER.y + FEEDER.d, 17.4, t("EVENTS", "EVENTOS"), { size: 3.1 }));
   return out.join("");
 }
 
@@ -152,7 +155,7 @@ function binFront() {
   const b = BIN;
   return S(slab({ x: b.x, y: b.y + b.d - 1.2, w: b.w, d: 1.2, r: 0.3 }, 0, b.h, 2), { tone: "hi" })
     + counter(COUNTERS.dropped, "dropped")
-    + topText(b.x + b.w / 2, b.y + b.d + 5.4, 0, "DROPPED", { size: 2.8, tone: "lo" });
+    + topText(b.x + b.w / 2, b.y + b.d + 5.4, 0, t("DROPPED", "DESCARTADOS"), { size: 2.8, tone: "lo" });
 }
 
 function track() {
@@ -200,7 +203,7 @@ function pressBack() {
   out.push(S(k.cylinder(PRESS_X, CY, 2.8, 48, 6, P, 18), { tone: "hi" }));
   out.push(S(slab({ x: BED.x + 1, y: BED.y + 1, w: BED.w - 2, d: 17, r: 1 }, BED_H + 38, 4.4, 3, 0.4), { tone: "hi" }));
   out.push(counter(COUNTERS.handled, "handled"));
-  out.push(text(BED.x + 5, BED.y + BED.d, 12.8, "HANDLED", { size: 2.6 }));
+  out.push(text(BED.x + 5, BED.y + BED.d, 12.8, t("HANDLED", "PROCESADOS"), { size: 2.6 }));
   return out.join("");
 }
 function ram() {
@@ -215,7 +218,7 @@ function tray() {
   return out.join("");
 }
 const trayFront = () => S(slab({ x: TRAY.x, y: TRAY.y + TRAY.d - 1, w: TRAY.w, d: 1, r: 0.3 }, 0, TRAY.h, 2), { tone: "hi" })
-  + topText(TRAY.x + TRAY.w / 2, TRAY.y + TRAY.d + 4.6, 0, "DONE", { size: 2.8, tone: "lo" });
+  + topText(TRAY.x + TRAY.w / 2, TRAY.y + TRAY.d + 4.6, 0, t("DONE", "HECHOS"), { size: 2.8, tone: "lo" });
 
 // Calls-per-second gauge: a dial on a pedestal, needle live.
 function gauge() {
@@ -224,7 +227,8 @@ function gauge() {
   out.push(L(k.ring(g.cx, g.cy, g.r, g.top, P, 36), { tone: "lo" }));
   const tick = (f, len) => { const a = g.from + (g.to - g.from) * f; return k.segment([g.cx + Math.sin(a) * g.r, g.cy - Math.cos(a) * g.r, g.top], [g.cx + Math.sin(a) * (g.r - len), g.cy - Math.cos(a) * (g.r - len), g.top], P); };
   out.push(L(Array.from({ length: 13 }, (_, i) => tick(i / 12, i % 3 === 0 ? 2.4 : 1.2)).join(""), { tone: "mid" }));
-  out.push(topText(g.cx, g.cy + 4.2, g.top, "CALLS/S", { size: 1.9, tone: "lo" }));
+  // The Spanish word is longer: set it a little nearer the centre, where the dial is wider.
+  out.push(`<g data-l="en">${topText(g.cx, g.cy + 4.2, g.top, "CALLS/S", { size: 1.9, tone: "lo" })}</g><g data-l="es">${topText(g.cx, g.cy + 3.3, g.top, "LLAMADAS/S", { size: 1.9, tone: "lo" })}</g>`);
   out.push(`<path class="iso-line" data-tone="lit" data-needle style="stroke-width:1.6" d="${needlePath(0)}"/>`);
   out.push(D([at([g.cx, g.cy, g.top])], { size: 0.9, tone: "hi" }));
   return out.join("");
@@ -266,8 +270,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A ball track on a base plate. Event balls leave a hopper on the left and roll toward a gate. A metronome behind the gate swings once per interval and holds the gate blade down while it swings. In front of the gate, a hinged flap holds the newest waiting ball; balls that are replaced or not allowed to wait fall through it into a discard bin under the track. Balls that pass the gate roll on to a press, the handler, and then into a tray. Counters show events, dropped and handled; a dial shows handler calls per second. In front, a rail shows where the user is (a figure) and what the screen shows (a lit frame); the dashed gap between them is how far behind the screen is.",
+      "Una pista de bolas sobre una placa base. Las bolas de eventos salen de una tolva a la izquierda y ruedan hacia una compuerta. Un metrónomo detrás de la compuerta oscila una vez por intervalo y mantiene baja la hoja de la compuerta mientras oscila. Delante de la compuerta, una trampilla con bisagra retiene la bola más nueva que espera; las bolas reemplazadas o que no pueden esperar caen por ella a un cesto de descarte bajo la pista. Las bolas que pasan la compuerta ruedan hasta una prensa, el handler, y luego a una bandeja. Unos contadores muestran los eventos, los descartados y los procesados; un dial muestra las llamadas al handler por segundo. Al frente, un riel muestra dónde está el usuario (una figura) y qué muestra la pantalla (un marco iluminado); el espacio punteado entre ellos es cuánto va atrasada la pantalla.",
+    ),
     body: [
       basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H }),
       metronome(),

@@ -6,6 +6,7 @@
 import * as k from "../../workbench/kit.mjs";
 import { basePlate } from "../../workbench/parts.mjs";
 import { digitPath, counterCells, digitsOf } from "./digits.js";
+import { t, isT } from "../../workbench/i18n.mjs";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -90,8 +91,12 @@ const S = (paths, style) => k.solidSvg(paths, style);
 const L = (d, style) => k.lineSvg(d, style);
 const D = (points, style) => k.dotsSvg(points, style);
 const slab = (plan, z, h, steps = 3, bevel = 0) => k.slabOf({ r: 0.4, ...plan }, z, h, P, steps, bevel);
-export const text = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
+// value may be t(en, es): one <text> per language (static words only; live text keeps a single <text>).
+const text1 = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
   `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
+export const text = (x, y, z, value, opts) => (isT(value)
+  ? `<g data-l="en">${text1(x, y, z, value.en, opts)}</g><g data-l="es">${text1(x, y, z, value.es, opts)}</g>`
+  : text1(x, y, z, value, opts));
 
 function counter(c, name, value = 0) {
   const out = [];
@@ -161,7 +166,7 @@ function shaftFront() {
     out.push(`<g data-mark="${name}" style="display:none">${L(k.pathOf([at([c[0], c[1], c[2] + DIALS.r * 0.55]), at([c[0], c[1], c[2] + DIALS.r * 1.02])]), { tone: "hi" })}</g>`);
     out.push(`<path class="pie" data-pie="${name}" d=""/>`);
     out.push(D([at(c)], { size: 0.7, tone: "hi" }));
-    out.push(text(c[0], c[1], CROSS_Z[0] + 1.1, name === "quiet" ? "DOOR TIMER" : "FIRST WAITING", { size: 2.1, tone: "mid", anchor: "middle" }));
+    out.push(text(c[0], c[1], CROSS_Z[0] + 1.1, name === "quiet" ? t("DOOR TIMER", "TEMPORIZADOR") : t("FIRST WAITING", "ESPERA DEL 1.º"), { size: 2.1, tone: "mid", anchor: "middle" }));
   }
   return out.join("");
 }
@@ -211,7 +216,7 @@ function mezz() {
   out.push(S(k.slabOf(DESK, TOP, DESK_H, P, 3, 0.4), { tone: "hi", crease: "lo" }));
   out.push(L(SLOTS.map(([sx, sy]) => k.lineOnTop([sx - TICKET.w / 2 - 0.4, sy + TICKET.d / 2 + 0.6], [sx + TICKET.w / 2 + 0.4, sy + TICKET.d / 2 + 0.6], TOP + DESK_H, P)).join(""), { tone: "lo" }));
   out.push(counter(COUNTERS.sent, "sent", 0));
-  out.push(text(DESK.x + 18, DESK_FRONT, TOP + 2.2, "REQUESTS SENT", { size: 2.4, tone: "mid" }));
+  out.push(text(DESK.x + 18, DESK_FRONT, TOP + 2.2, t("REQUESTS SENT", "SOLICITUDES ENVIADAS"), { size: 2.4, tone: "mid" }));
   return out.join("");
 }
 function server() {
@@ -253,7 +258,7 @@ function keyboard() {
   // The keys counter on its own stand.
   out.push(S(k.slabOf(KEYS_BOX, 0, KEYS_H, P, 3, 0.4), { tone: "mid" }));
   out.push(counter(COUNTERS.keys, "keys", 0));
-  out.push(text(KEYS_BOX.x + KEYS_BOX.w / 2, KEYS_BOX.y + KEYS_BOX.d, 9.4, "KEYS", { size: 2.4, tone: "mid", anchor: "middle" }));
+  out.push(text(KEYS_BOX.x + KEYS_BOX.w / 2, KEYS_BOX.y + KEYS_BOX.d, 9.4, t("KEYS", "TECLAS"), { size: 2.4, tone: "mid", anchor: "middle" }));
   return out.join("");
 }
 function keyCap(plan) {
@@ -269,12 +274,12 @@ function screen() {
     const b = FIELDS[key];
     out.push(`<path class="field" data-field="${key}" d="${k.faceRectY(P, b.x0, b.x1, f, b.z0, b.z1)}"/>`);
   }
-  out.push(text(FIELDS.typed.x0, f, FIELDS.typed.z1 + 1.2, "TYPED", { size: 2.4, tone: "mid" }));
-  out.push(text(FIELDS.shown.x0, f, FIELDS.shown.z1 + 1.2, "RESULTS FOR", { size: 2.4, tone: "mid" }));
+  out.push(text(FIELDS.typed.x0, f, FIELDS.typed.z1 + 1.2, t("TYPED", "ESCRITO"), { size: 2.4, tone: "mid" }));
+  out.push(text(FIELDS.shown.x0, f, FIELDS.shown.z1 + 1.2, t("RESULTS FOR", "RESULTADOS DE"), { size: 2.4, tone: "mid" }));
   out.push(text(FIELDS.typed.x0 + 1.8, f, FIELDS.typed.z0 + 2, "", { size: 4, tone: "hi", attr: "data-text=\"typed\"" }));
   out.push(text(FIELDS.shown.x0 + 1.8, f, FIELDS.shown.z0 + 2, "", { size: 4, tone: "hi", attr: "data-text=\"shown\"" }));
   out.push(counter(COUNTERS.stale, "stale", 0));
-  out.push(text(82.4, f, 6.4, "OLDER ANSWER SHOWN", { size: 2.4, tone: "mid", anchor: "end" }));
+  out.push(text(82.4, f, 6.4, t("OLDER ANSWER SHOWN", "RESPUESTA ANTERIOR MOSTRADA"), { size: 2.4, tone: "mid", anchor: "end" }));
   // The stale lamp on top of the panel.
   out.push(S(k.cylinder(LAMP.x, LAMP.y, 2.2, LAMP.z, 0.8, P, 18), { tone: "mid" }));
   out.push(`<g data-lamp="off">${S(k.cylinder(LAMP.x, LAMP.y, 1.6, LAMP.z + 0.8, 2.4, P, 16, 0.4), { tone: "hi", crease: "lo" })}</g>`);
@@ -292,8 +297,10 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "An elevator lobby on a base plate. Every keystroke on the keyboard at the front sends a small figure to the elevator. With debounce, the elevator door stays open while figures keep arriving, and a door timer over it restarts with each one; when nobody has arrived for the wait time, the doors close and the car carries everyone up to the server floor as a single request. Without debounce, each figure climbs the stairs alone, one request per key. Answers come back down a wire to a screen that shows what was typed and which search the results belong to. A tape along the front marks every keystroke and every request.",
+      "Un vestíbulo de elevador sobre una placa base. Cada pulsación en el teclado del frente manda una pequeña figura al elevador. Con debounce, la puerta del elevador sigue abierta mientras siguen llegando figuras, y un temporizador sobre ella se reinicia con cada una; cuando no llega nadie durante el tiempo de espera, las puertas se cierran y la cabina lleva a todos al piso del servidor como una sola solicitud. Sin debounce, cada figura sube sola por la escalera: una solicitud por tecla. Las respuestas bajan por un cable hasta una pantalla que muestra lo escrito y a qué búsqueda pertenecen los resultados. Una cinta a lo largo del frente marca cada pulsación y cada solicitud.",
+    ),
     body: [
       plate(),
       shaftBack(),
