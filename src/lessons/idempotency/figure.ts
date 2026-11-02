@@ -1,11 +1,13 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A payment counter: four customers send payment slips down lanes to card terminals on a long
 // counter; replies come back the same way, and a lost reply drops into the trough across the lanes.
 // Behind the counter, the key rack: one pigeonhole per idempotency key, holding the stored receipt
 // (or a flag while the charge is still in progress). The till at the right counts orders vs charges.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { t, isT } from "../../workbench/i18n.mjs";
-import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { t, isT } from "../../../workbench/i18n.mjs";
+import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 460;
@@ -58,12 +60,11 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
 // A bilingual value (t()) draws one <text> per language; live texts stay a single <text> set by the script.
+// Not draw.ts's text(): the attribute goes after the class and the value isn't escaped, and the figure must stay
+// byte-identical to the standalone page's.
 export const textY = (x, y, z, value, opts = {}) => (isT(value)
   ? `<g data-l="en">${textY1(x, y, z, value.en, opts)}</g><g data-l="es">${textY1(x, y, z, value.es, opts)}</g>`
   : textY1(x, y, z, value, opts));

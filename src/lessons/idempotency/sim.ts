@@ -1,7 +1,10 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Idempotency keys: customers pay at a counter over a lossy line, and retry when no reply comes back.
 // The server can remember each key's result (and hold an in-progress marker) so a retry is answered
 // from the stored receipt instead of charging the card again. Seeded and deterministic; shared by the
-// live figure and the headless experiments.
+// live figure and the experiments (run at build time).
+
+import { averageOver } from "../../lib/stats";
 
 export const CUSTOMERS = 4;
 export const REQ_TIME = 0.8;          // request travel, customer → counter
@@ -15,6 +18,7 @@ export const THINK = [1, 3];          // time between a customer's purchases
 export const AMOUNTS = [12, 18, 25, 40, 55, 70];
 export const SLOTS = 30;              // pigeonholes on the key rack (the live figure shows the newest keys)
 
+// mulberry32. Not one of the shared generators (src/lib/random), so it stays here.
 export function rng(seed) {
   let s = seed >>> 0 || 1;
   return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -153,28 +157,24 @@ export function makeSim(cfg, seed = 1) {
   };
 }
 
-// ---------- headless runs for the experiments ----------
+// ---------- headless runs for the experiments (at build time) ----------
+const seedList = (n, base, step) => Array.from({ length: n }, (_, s) => base + s * step);
+
 export function runScenario(cfg, { duration = 180, seeds = 8 } = {}) {
-  const sum = { purchases: 0, settled: 0, charges: 0, extra: 0, doubled: 0, replays: 0, conflicts: 0, rejected: 0, lost: 0, gaveUp: 0, expiredHits: 0, wrongAmount: 0, retries: 0 };
-  for (let s = 0; s < seeds; s++) {
-    const m = makeSim(cfg, 1000 + s * 7919);
+  return averageOver(seedList(seeds, 1000, 7919), (seed) => {
+    const m = makeSim(cfg, seed);
     m.runTo(duration);
     const done = m.purchases.filter((p) => p.done);
-    sum.purchases += done.length;
-    sum.settled += done.filter((p) => p.outcome === "paid").length;
-    sum.doubled += done.filter((p) => p.charges > 1).length;
-    sum.retries += done.reduce((a, p) => a + p.tries - 1, 0);
-    for (const k of ["charges", "extra", "replays", "conflicts", "rejected", "lost", "gaveUp", "expiredHits", "wrongAmount"]) sum[k] += m.stats[k];
-  }
-  for (const k in sum) sum[k] /= seeds;
-  return sum;
+    const r = { purchases: done.length, settled: done.filter((p) => p.outcome === "paid").length, charges: 0, extra: 0, doubled: done.filter((p) => p.charges > 1).length, replays: 0, conflicts: 0, rejected: 0, lost: 0, gaveUp: 0, expiredHits: 0, wrongAmount: 0, retries: done.reduce((a, p) => a + p.tries - 1, 0) };
+    for (const k of ["charges", "extra", "replays", "conflicts", "rejected", "lost", "gaveUp", "expiredHits", "wrongAmount"]) r[k] = m.stats[k];
+    return r;
+  });
 }
 
 // The customer double-clicks Pay on every purchase: two identical requests leave together.
 export function doubleClickRun(cfg, { purchases = 40, seeds = 8 } = {}) {
-  let charged = 0, twice = 0, conflicts = 0;
-  for (let s = 0; s < seeds; s++) {
-    const m = makeSim({ ...cfg, loss: 0 }, 5000 + s * 104729);
+  return averageOver(seedList(seeds, 5000, 104729), (seed) => {
+    const m = makeSim({ ...cfg, loss: 0 }, seed);
     let t = 0, n = 0;
     while (n < purchases) {
       t += 0.05; m.runTo(t);
@@ -183,7 +183,17 @@ export function doubleClickRun(cfg, { purchases = 40, seeds = 8 } = {}) {
     }
     m.runTo(t + 30);
     const ps = m.purchases.filter((p) => p.client === 0 && p.dbl);
-    charged += ps.length; twice += ps.filter((p) => p.charges > 1).length; conflicts += m.stats.conflicts;
-  }
-  return { purchases: charged / seeds, twice: twice / seeds, conflicts: conflicts / seeds };
+    return { purchases: ps.length, twice: ps.filter((p) => p.charges > 1).length, conflicts: m.stats.conflicts };
+  });
+}
+
+// Every experiment's numbers, run once at build time.
+export function experimentResults() {
+  return {
+    lost: runScenario({ keys: "off", loss: 0.1 }),
+    keys: { off: runScenario({ keys: "off", loss: 0.1 }), on: runScenario({ keys: "store", loss: 0.1 }) },
+    race: { late: runScenario({ keys: "store", loss: 0, timeout: "impatient" }), claim: runScenario({ keys: "lock", loss: 0, timeout: "impatient" }) },
+    ttl: { long: runScenario({ keys: "lock", loss: 0.3, lifetime: "long" }), short: runScenario({ keys: "lock", loss: 0.3, lifetime: "short" }) },
+    drift: { on: runScenario({ keys: "lock", loss: 0.3, drift: 0.5 }), off: runScenario({ keys: "off", loss: 0.3, drift: 0.5 }) },
+  };
 }
