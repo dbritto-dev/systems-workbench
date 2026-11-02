@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // Three stacks on one base plate, each a pile you can only touch from the top.
 //   Left: the call stack, a tall plate tower; every call puts a labelled plate on top, every return lifts the top
 //         one off. A collar on a corner post marks the top; the shelf at the limit is where the stack overflows.
@@ -7,9 +8,10 @@
 //         from the top (newest first, a stack) or from a slot at the bottom (oldest first, a queue). Requests
 //         older than the client's timeout fade: finishing them is wasted work.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, digitCounter, faceText, person } from "../../workbench/parts.mjs";
-import { t as bi } from "../../workbench/i18n.mjs";   // bi: t is a common local name here
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, digitCounter, faceText, person } from "../../../workbench/parts.mjs";
+import { t as bi } from "../../../workbench/i18n.mjs";   // bi: t is a common local name here
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -66,10 +68,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 50 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const text = (x, y, z, value, opts) => faceText(P, [x, y, z], value, opts);
 const hidden = (on) => (on ? "" : ' style="display:none"');
 

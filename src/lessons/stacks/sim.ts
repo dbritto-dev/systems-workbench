@@ -1,10 +1,11 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: three places a stack (last in, first out) shows up.
 //   1. The call stack: each call pushes a frame, each return pops one; too deep and it overflows.
 //   2. Undo and redo: two stacks; undo moves the top edit to redo, a new edit empties redo.
 //   3. A busy server that takes the newest waiting request first (a stack) or the oldest (a queue).
-// Plain functions, no imports: the page inlines this file and the experiments run it in the browser.
+// Plain functions; the experiments run them in the browser.
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+import { rng } from "../../lib/random";
 
 // ---------- 1. The call stack ----------
 // A small tree for the depth-first walk: node -> children.
@@ -147,9 +148,4 @@ export function serverRun(order, load, seconds = 60, seed = 7) {
   const waits = sv.done.map((r) => r.end - r.t).sort((a, b) => a - b);
   const p = (q) => (waits.length ? waits[Math.min(waits.length - 1, Math.floor(q * waits.length))] : 0);
   return { onTimeShare: decided ? sv.onTime / decided : 1, onTime: sv.onTime, late: sv.late, pastDeadline, waiting: sv.waiting.length, oldest: sv.oldest(), p50: p(0.5), p99: p(0.99), arrived: sv.arrived };
-}
-
-export function averageOf(runs) {
-  const keys = Object.keys(runs[0]);
-  return Object.fromEntries(keys.map((key) => [key, runs.reduce((s, r) => s + r[key], 0) / runs.length]));
 }
