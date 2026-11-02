@@ -1,8 +1,11 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: five shops (pods) on a street, one warehouse (the database).
 // Times in seconds. The figure and every experiment step this same model.
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
+
 export const SHOPS = 5;
 export const DT = 0.1;
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 function poisson(random, mean) {
   if (mean <= 0) return 0;
   if (mean > 30) return Math.max(0, Math.round(mean + Math.sqrt(mean) * Math.sqrt(-2 * Math.log(1 - random())) * Math.cos(2 * Math.PI * random())));
@@ -144,8 +147,4 @@ export function scenario(options, events, to, seed) {
   return { sim, marks, totals: sim.totals };
 }
 
-export function average(fn, seeds = [3, 5, 7, 11]) {
-  const runs = seeds.map(fn);
-  const keys = Object.keys(runs[0]);
-  return Object.fromEntries(keys.map((k) => [k, runs.reduce((s, r) => s + r[k], 0) / runs.length]));
-}
+export const average = (fn, seeds = [3, 5, 7, 11]) => averageOver(seeds, fn);

@@ -1,9 +1,11 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A shopping street: five shops (pods), each with an open sign (readiness) and an inspector with a tally board
 // (liveness), supply pipes from one shared warehouse (the database), and a traffic warden whose peg board is the
 // service's endpoint list. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand, hiddenUnless as show } from "../../lib/draw";
 
 export const WIDTH = 720;
 export const HEIGHT = 460;
@@ -51,10 +53,8 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 58 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
+const { S, L } = shorthand(P);
 const face = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-const show = (on) => (on ? "" : ' style="display:none"');
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
