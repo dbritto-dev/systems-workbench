@@ -1,13 +1,15 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A count room for ranked ballots: reciprocal rank fusion you can watch.
 //   three judges (rankers) post ranked ballots on boards at the back: a column of document cards, best first;
 //   a counting clerk walks the ballots rank by rank; for each card a token flies into that document's tube;
 //   a token's height is the vote's share of the fused score, 1 / (k + rank), so it shrinks with rank;
 //   each tube has a counter and the standings board shows the current top five.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
-import * as k from "../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, digitCounter, person, card, plaque, dial, pennant, faceText } from "../../workbench/parts.mjs";
-import { QUERY, JUDGES } from "./sim.js";
-import { t } from "../../workbench/i18n.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, rulerStrip, labelPlate, digitCounter, person, card, plaque, dial, pennant, faceText } from "../../../workbench/parts.mjs";
+import { QUERY, JUDGES } from "./sim";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 720;
 export const HEIGHT = 470;
@@ -48,9 +50,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 50 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const seg = (a, b) => k.segment(a, b, P);
+const { S, L, seg } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })

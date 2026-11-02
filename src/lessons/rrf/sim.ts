@@ -1,9 +1,13 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Reciprocal rank fusion: merge several ranked lists into one.
 // Shared by the live figure and the experiments. No randomness in the fusion itself; the experiments
 // average over seeded synthetic queries.
 //
 // RRF (Cormack, Clarke & Büttcher, SIGIR 2009): score(d) = Σ over lists of w / (k + rank of d in that list),
 // k = 60 by default. A document missing from a list gets nothing from it.
+
+import { xorshift32 } from "../../lib/random";
+import { mean } from "../../lib/stats";
 
 export const K_DEFAULT = 60;
 
@@ -81,10 +85,7 @@ export const pointsOf = (vote, { k = K_DEFAULT, mode = "rrf", w = 1 }) =>
 // meaning ranker: cosine 0.2..0.9 from the semantic match
 // clicks ranker: popularity, unrelated to this query
 // ---------------------------------------------------------------------------------------------
-export function makeRng(seed) {
-  let s = (seed >>> 0) || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
+export const makeRng = xorshift32;
 function gauss(rnd) { const u = 1 - rnd(), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 
 export function synthQuery(seed, n = 300) {
@@ -117,7 +118,6 @@ export function synthQuery(seed, n = 300) {
 export const hits = (fused, docs, n) => fused.slice(0, n).filter((e) => (docs[e.id]?.rel ?? 0) > 0).length;
 
 export const SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
-const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const avgOver = (fn) => mean(SEEDS.map((s) => fn(synthQuery(s))));
 
 // 1. Different scales: add the raw scores, or fuse the ranks.
