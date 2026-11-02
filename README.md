@@ -9,6 +9,11 @@ HTML page with three parts:
 
 **Live site:** https://dbritto-dev.github.io/systems-workbench/ (deployed by `.github/workflows/pages.yml` on every push to `main`).
 
+**English and Spanish:** every page ships both languages, with an EN / ES switch beside the theme switch. Add
+`?lang=es` (or `?lang=en`) to any URL to link to one language; otherwise the page uses the reader's last choice, then
+the browser's language. The Spanish is neutral Latin American Spanish; [workbench/I18N.md](workbench/I18N.md) is the
+guide for translating a lesson, and `tools/i18n-check.cjs` checks one.
+
 The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy) isometric kit (MIT), vendored in
 `workbench/vendor-anatomy/` with its licence.
 

@@ -13,7 +13,8 @@ for (const l of lessons) {
   l.title = bi(h.match(/<h1>([\s\S]*?)<\/h1>/)[1]);
   l.eyebrow = bi(h.match(/<header>\s*<div class="eyebrow">([\s\S]*?)<\/div>/)[1]);
   l.lede = bi(h.match(/<p class="lede">([\s\S]*?)<\/p>/)[1], (x) => x.split(/\s+(?:This lesson|Esta lección)\b/)[0].trim());
-  l.blurb = l.blurb_es && l.blurb ? { en: l.blurb, es: l.blurb_es } : (l.blurb || l.lede);
+  const ledeEn = typeof l.lede === "object" ? l.lede.en : l.lede;
+  l.blurb = l.blurb_es ? { en: l.blurb || ledeEn, es: l.blurb_es } : (l.blurb || l.lede);
   l.machine = bi(h.match(/data-corner="title">([\s\S]*?)<\/span>(?=<span class="iso-plate-corner")/)[1]);
   l.exps = [...h.matchAll(/<article class="exp"[\s\S]*?<h3>([\s\S]*?)<\/h3>[\s\S]*?<div class="exp-change">([\s\S]*?)<\/div>\s*<div class="exp-q">([\s\S]*?)<\/div>/g)]
     .map((m) => ({ title: bi(m[1], (x) => x.replace(/^\d+\.\s*/, "")), change: bi(m[2]), question: bi(m[3]) }));
