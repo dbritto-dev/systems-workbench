@@ -1,5 +1,5 @@
 // Systems lesson 26 · Sagas. Built on the shared workbench layer (../../workbench).
-import { writePage, figurePlate, panel, seg, speedSeg, actions, inlineModule } from "../../workbench/page.mjs";
+import { writePage, figurePlate, panel, seg, speedSeg, actions, inlineModule, t, tx } from "../../workbench/page.mjs";
 import { buildFigure, folderSvg, puckSvg, P, GEOMETRY, HOOKS } from "./figure.mjs";
 
 const sim = inlineModule(new URL("./sim.js", import.meta.url));
@@ -8,97 +8,98 @@ const sim = inlineModule(new URL("./sim.js", import.meta.url));
 const EXPERIMENTS = [
   {
     id: "nosaga",
-    title: "A card is declined after everything is booked",
-    change: "No saga · each counter is called in turn and nothing is undone · 20% of cards are declined · 3 minutes of customers",
-    question: "The flight, hotel and car are booked, then the card is declined. What happens to those three bookings?",
-    options: ["They are cancelled automatically, because the trip failed", "They stay booked for a trip that will never happen, and the boards fill up", "The customer is charged anyway, so nothing is lost"],
+    title: t("A card is declined after everything is booked", "Rechazan una tarjeta cuando todo ya está reservado"),
+    change: t("No saga · each counter is called in turn and nothing is undone · 20% of cards are declined · 3 minutes of customers", "Sin saga · se llama a cada mostrador por turno y nada se deshace · se rechaza el 20% de las tarjetas · 3 minutos de clientes"),
+    question: t("The flight, hotel and car are booked, then the card is declined. What happens to those three bookings?", "El vuelo, el hotel y el auto están reservados, y luego rechazan la tarjeta. ¿Qué pasa con esas tres reservas?"),
+    options: [t("They are cancelled automatically, because the trip failed", "Se cancelan automáticamente, porque el viaje falló"), t("They stay booked for a trip that will never happen, and the boards fill up", "Siguen reservadas para un viaje que nunca va a ocurrir, y los tableros se llenan"), t("The customer is charged anyway, so nothing is lost", "Al cliente se le cobra igual, así que no se pierde nada")],
     answer: 1,
-    why: "Each counter committed its own booking in its own database. Nothing ties them together, so when payment fails nobody tells the flight, hotel and car counters. Their tags stay on the boards, holding stock no one will use, and later customers are turned away for it. A saga gives every step an undo and runs those undos, newest first, when a later step fails.",
+    why: t("Each counter committed its own booking in its own database. Nothing ties them together, so when payment fails nobody tells the flight, hotel and car counters. Their tags stay on the boards, holding stock no one will use, and later customers are turned away for it. A saga gives every step an undo and runs those undos, newest first, when a later step fails.", "Cada mostrador confirmó su propia reserva en su propia base de datos. Nada las une, así que cuando falla el pago nadie avisa a los mostradores de vuelo, hotel y auto. Sus etiquetas quedan en los tableros, ocupando lugares que nadie va a usar, y por eso más tarde otros clientes se quedan sin lugar. Una saga le da a cada paso un deshacer (una compensación) y, cuando falla un paso posterior, ejecuta esos deshacer del más reciente al más antiguo."),
     watch: { style: "none", decline: "0.2", lost: "0", order: "standard", slots: "8", rate: "0.3" },
   },
   {
     id: "lost",
-    title: "Undo calls that time out",
-    change: "Saga · a quarter of undo calls time out, and half of those actually ran before the reply was lost · 40% of cards declined",
-    question: "Compare three policies for a timed-out undo: give up, retry, or retry with the same idempotency key. What does each leave behind?",
-    options: ["Retrying fixes it either way: running an undo twice is harmless", "Giving up strands trips half-done; plain retries sometimes undo twice; retries with a key end clean", "Giving up is safest, because a timed-out undo probably worked"],
+    title: t("Undo calls that time out", "Llamadas de deshacer que dan timeout"),
+    change: t("Saga · a quarter of undo calls time out, and half of those actually ran before the reply was lost · 40% of cards declined", "Saga · un cuarto de las llamadas de deshacer dan timeout, y la mitad de esas sí se ejecutó antes de que se perdiera la respuesta · se rechaza el 40% de las tarjetas"),
+    question: t("Compare three policies for a timed-out undo: give up, retry, or retry with the same idempotency key. What does each leave behind?", "Compara tres políticas para un deshacer con timeout: rendirse, reintentar o reintentar con la misma clave de idempotencia. ¿Qué deja cada una?"),
+    options: [t("Retrying fixes it either way: running an undo twice is harmless", "Reintentar lo arregla de cualquier forma: deshacer dos veces no hace daño"), t("Giving up strands trips half-done; plain retries sometimes undo twice; retries with a key end clean", "Rendirse deja viajes a medias; reintentar sin más a veces deshace dos veces; reintentar con clave termina limpio"), t("Giving up is safest, because a timed-out undo probably worked", "Rendirse es lo más seguro, porque un deshacer con timeout probablemente funcionó")],
     answer: 1,
-    why: "A timeout tells you nothing: the undo may or may not have happened. Giving up leaves the trip stuck with bookings nobody will release. Retrying is the only way forward, but a retry of an undo that already ran releases someone else's room or refunds twice. The idempotency key lets the counter recognise the repeat and do nothing, so the saga can retry until it gets a definite answer.",
+    why: t("A timeout tells you nothing: the undo may or may not have happened. Giving up leaves the trip stuck with bookings nobody will release. Retrying is the only way forward, but a retry of an undo that already ran releases someone else's room or refunds twice. The idempotency key lets the counter recognise the repeat and do nothing, so the saga can retry until it gets a definite answer.", "Un timeout no te dice nada: el deshacer pudo haberse hecho o no. Rendirse deja el viaje atascado con reservas que nadie va a liberar. Reintentar es la única forma de avanzar, pero reintentar un deshacer que ya se ejecutó libera la habitación de otra persona o reembolsa dos veces. La clave de idempotencia le permite al mostrador reconocer la repetición y no hacer nada, así que la saga puede reintentar hasta obtener una respuesta definitiva."),
     watch: { style: "orch", decline: "0.4", lost: "0.25", undo: "retry", order: "standard", slots: "8", rate: "0.3" },
   },
   {
     id: "email",
-    title: "Send the confirmation first",
-    change: "Order: email → flight → hotel → car → payment, instead of email last · 20% of cards declined",
-    question: "Of the trips that fail after the email went out, how many customers received a confirmation?",
-    options: ["None: the saga recalls the email", "Every one of them: an email can't be undone", "About half of them"],
+    title: t("Send the confirmation first", "Envía la confirmación primero"),
+    change: t("Order: email → flight → hotel → car → payment, instead of email last · 20% of cards declined", "Orden: correo → vuelo → hotel → auto → pago, en vez de correo al final · se rechaza el 20% de las tarjetas"),
+    question: t("Of the trips that fail after the email went out, how many customers received a confirmation?", "De los viajes que fallan después de enviar el correo, ¿cuántos clientes recibieron una confirmación?"),
+    options: [t("None: the saga recalls the email", "Ninguno: la saga recupera el correo"), t("Every one of them: an email can't be undone", "Todos: un correo no se puede deshacer"), t("About half of them", "Más o menos la mitad")],
     answer: 1,
-    why: "Some steps have no undo: an email, a text message, a shipped parcel. The best the saga can do is send a second \"sorry, cancelled\" message. So steps that can't be compensated go after the last step that can fail (the pivot), where nothing can roll them back anymore.",
+    why: t("Some steps have no undo: an email, a text message, a shipped parcel. The best the saga can do is send a second \"sorry, cancelled\" message. So steps that can't be compensated go after the last step that can fail (the pivot), where nothing can roll them back anymore.", "Algunos pasos no tienen deshacer: un correo, un mensaje de texto, un paquete enviado. Lo mejor que puede hacer la saga es mandar un segundo mensaje de \"perdón, cancelado\". Por eso los pasos que no se pueden compensar van después del último paso que puede fallar (el pivote, pivot), donde ya nada puede revertirlos."),
     watch: { style: "orch", decline: "0.2", lost: "0", order: "mailFirst", slots: "8", rate: "0.3" },
   },
   {
     id: "isolation",
-    title: "Few seats, busy day",
-    change: "5 seats on each board · a customer every 2.5 s · 40% of cards declined · payment checked last",
-    question: "Customers are turned away because the flight is full. How many of them were blocked by a seat held by a trip that was later undone?",
-    options: ["None: a held seat is a real booking", "A few, by bad luck", "Most of them"],
+    title: t("Few seats, busy day", "Pocos lugares, día ocupado"),
+    change: t("5 seats on each board · a customer every 2.5 s · 40% of cards declined · payment checked last", "5 lugares en cada tablero · un cliente cada 2.5 s · se rechaza el 40% de las tarjetas · el pago se revisa al final"),
+    question: t("Customers are turned away because the flight is full. How many of them were blocked by a seat held by a trip that was later undone?", "Hay clientes que se quedan sin lugar porque el vuelo está lleno. ¿Cuántos de ellos quedaron bloqueados por un lugar retenido por un viaje que después se deshizo?"),
+    options: [t("None: a held seat is a real booking", "Ninguno: un lugar retenido es una reserva real"), t("A few, by bad luck", "Unos pocos, por mala suerte"), t("Most of them", "La mayoría")],
     answer: 2,
-    why: "A saga has no isolation: every step's booking is visible to everyone the moment it commits, even though the trip may still be undone. Doomed trips hold seats for several seconds, and full boards turn real customers away. Checking the step most likely to fail first (here, the card) means doomed trips never hold anything. Other fixes: pending holds that expire, or a semantic lock other trips can see.",
+    why: t("A saga has no isolation: every step's booking is visible to everyone the moment it commits, even though the trip may still be undone. Doomed trips hold seats for several seconds, and full boards turn real customers away. Checking the step most likely to fail first (here, the card) means doomed trips never hold anything. Other fixes: pending holds that expire, or a semantic lock other trips can see.", "Una saga no tiene aislamiento: la reserva de cada paso es visible para todos en cuanto se confirma, aunque el viaje todavía se pueda deshacer. Los viajes condenados retienen lugares durante varios segundos, y los tableros llenos dejan sin lugar a clientes reales. Revisar primero el paso con más probabilidad de fallar (aquí, la tarjeta) hace que los viajes condenados nunca retengan nada. Otras soluciones: retenciones pendientes que vencen, o un bloqueo semántico (semantic lock) que los otros viajes puedan ver."),
     watch: { style: "orch", decline: "0.4", lost: "0", order: "standard", slots: "5", rate: "0.4" },
   },
   {
     id: "choreo",
-    title: "Drop the orchestrator",
-    change: "Choreography: each counter hands the folder to the next directly, and back on failure · no desk, no checklist",
-    question: "What changes?",
-    options: ["Nothing: it only looks different", "Trips finish faster, but to find where a trip is you ask counter after counter", "Trips get slower and harder to find"],
+    title: t("Drop the orchestrator", "Quita el orquestador"),
+    change: t("Choreography: each counter hands the folder to the next directly, and back on failure · no desk, no checklist", "Coreografía: cada mostrador le pasa la carpeta directamente al siguiente, y de vuelta si algo falla · sin escritorio, sin lista de control"),
+    question: t("What changes?", "¿Qué cambia?"),
+    options: [t("Nothing: it only looks different", "Nada: solo se ve distinto"), t("Trips finish faster, but to find where a trip is you ask counter after counter", "Los viajes terminan más rápido, pero para saber dónde está un viaje preguntas mostrador por mostrador"), t("Trips get slower and harder to find", "Los viajes se vuelven más lentos y más difíciles de encontrar")],
     answer: 1,
-    why: "Without the round trip to the desk, every step is quicker. But no one holds the whole picture: to answer \"where is my trip?\" you ask each counter in turn, and a folder in transit between counters shows up nowhere. Orchestration costs a hop per step and a central component; choreography spreads the saga's logic across services and makes it harder to follow and to change.",
+    why: t("Without the round trip to the desk, every step is quicker. But no one holds the whole picture: to answer \"where is my trip?\" you ask each counter in turn, and a folder in transit between counters shows up nowhere. Orchestration costs a hop per step and a central component; choreography spreads the saga's logic across services and makes it harder to follow and to change.", "Sin el viaje de ida y vuelta al escritorio, cada paso es más rápido. Pero nadie tiene el panorama completo: para responder \"¿dónde está mi viaje?\" preguntas a cada mostrador por turno, y una carpeta en tránsito entre mostradores no aparece en ninguno. La orquestación cuesta un salto por paso y un componente central; la coreografía reparte la lógica de la saga entre servicios y la hace más difícil de seguir y de cambiar."),
     watch: { style: "choreo", decline: "0.2", lost: "0", order: "standard", slots: "8", rate: "0.3" },
   },
 ];
 
 const QUESTIONS = [
-  ["Why can't you wrap \"book flight, book hotel, charge card\" in one database transaction?",
-    "Each service owns its own database, and often a third party owns it (an airline, a payment provider). There is no shared transaction across them, and holding locks across slow remote calls (two-phase commit) would block everyone and fail when any participant is down. A saga accepts that each step commits on its own and plans the way back instead."],
-  ["What makes a good compensation?",
-    "It undoes the business effect, not the history: a refund, a cancellation, a release. It is idempotent (safe to run twice, usually through an idempotency key), it can be retried until it gives a definite answer, and it should not be able to fail for business reasons. If it can, the saga needs a human or a parking place for stuck trips."],
-  ["Where do you put a step that can't be undone, and a step that is likely to fail?",
-    "Likely-to-fail steps go early, so failures happen before much has to be undone. Steps that can't be compensated (emails, shipping) go after the pivot, the last step that can fail, so they only run for trips that will definitely complete."],
-  ["A saga has no isolation. Describe an anomaly and a way to soften it.",
-    "Other requests see intermediate state: a seat held by a trip that will be undone turns a real customer away, or a refund reads a balance mid-saga. Mitigations: order steps so doomed trips fail early, use pending states that others can see and skip (a semantic lock), reservations that expire, and updates that commute so order doesn't matter."],
-  ["When would you choose orchestration, and when choreography?",
-    "Orchestration when the flow has many steps or branches, when you need to see and change it in one place, and when support must answer \"where is this order?\". Choreography when there are few steps and teams want services to react to events without a central coordinator, accepting that the flow is spread across services and harder to trace."],
-  ["An undo call to the hotel times out. What do you know, and what do you do?",
-    "Nothing: the cancel may have run and only the reply was lost. Retry with the same idempotency key until the hotel gives a definite answer; never assume either way. If retries run out, park the saga as stuck and alert someone, because its bookings are still holding stock."],
+  [t("Why can't you wrap \"book flight, book hotel, charge card\" in one database transaction?", "¿Por qué no puedes envolver \"reservar vuelo, reservar hotel, cobrar la tarjeta\" en una sola transacción de base de datos?"),
+    t("Each service owns its own database, and often a third party owns it (an airline, a payment provider). There is no shared transaction across them, and holding locks across slow remote calls (two-phase commit) would block everyone and fail when any participant is down. A saga accepts that each step commits on its own and plans the way back instead.", "Cada servicio es dueño de su propia base de datos, y a menudo es de un tercero (una aerolínea, un proveedor de pagos). No hay una transacción compartida entre ellos, y mantener bloqueos durante llamadas remotas lentas (commit en dos fases, two-phase commit) bloquearía a todos y fallaría cuando cualquier participante esté caído. Una saga acepta que cada paso se confirme por su cuenta y, en cambio, planea el camino de regreso.")],
+  [t("What makes a good compensation?", "¿Qué hace buena a una compensación?"),
+    t("It undoes the business effect, not the history: a refund, a cancellation, a release. It is idempotent (safe to run twice, usually through an idempotency key), it can be retried until it gives a definite answer, and it should not be able to fail for business reasons. If it can, the saga needs a human or a parking place for stuck trips.", "Deshace el efecto de negocio, no la historia: un reembolso, una cancelación, una liberación. Es idempotente (segura de ejecutar dos veces, normalmente con una clave de idempotencia), se puede reintentar hasta que da una respuesta definitiva y no debería poder fallar por razones de negocio. Si puede, la saga necesita a una persona o un lugar donde estacionar los viajes atascados.")],
+  [t("Where do you put a step that can't be undone, and a step that is likely to fail?", "¿Dónde pones un paso que no se puede deshacer, y uno que probablemente falle?"),
+    t("Likely-to-fail steps go early, so failures happen before much has to be undone. Steps that can't be compensated (emails, shipping) go after the pivot, the last step that can fail, so they only run for trips that will definitely complete.", "Los pasos que probablemente fallen van temprano, para que las fallas ocurran antes de que haya mucho que deshacer. Los pasos que no se pueden compensar (correos, envíos) van después del pivote (pivot), el último paso que puede fallar, para que solo se ejecuten en viajes que seguro se van a completar.")],
+  [t("A saga has no isolation. Describe an anomaly and a way to soften it.", "Una saga no tiene aislamiento. Describe una anomalía y una forma de suavizarla."),
+    t("Other requests see intermediate state: a seat held by a trip that will be undone turns a real customer away, or a refund reads a balance mid-saga. Mitigations: order steps so doomed trips fail early, use pending states that others can see and skip (a semantic lock), reservations that expire, and updates that commute so order doesn't matter.", "Otras solicitudes ven estados intermedios: un lugar retenido por un viaje que se va a deshacer deja sin lugar a un cliente real, o un reembolso lee un saldo a mitad de la saga. Mitigaciones: ordenar los pasos para que los viajes condenados fallen temprano, usar estados pendientes que otros puedan ver y saltar (un bloqueo semántico, semantic lock), reservas que vencen y actualizaciones conmutativas para que el orden no importe.")],
+  [t("When would you choose orchestration, and when choreography?", "¿Cuándo elegirías orquestación y cuándo coreografía?"),
+    t("Orchestration when the flow has many steps or branches, when you need to see and change it in one place, and when support must answer \"where is this order?\". Choreography when there are few steps and teams want services to react to events without a central coordinator, accepting that the flow is spread across services and harder to trace.", "Orquestación cuando el flujo tiene muchos pasos o ramas, cuando necesitas verlo y cambiarlo en un solo lugar y cuando soporte tiene que responder \"¿dónde está este pedido?\". Coreografía cuando hay pocos pasos y los equipos quieren que los servicios reaccionen a eventos sin un coordinador central, aceptando que el flujo queda repartido entre servicios y es más difícil de rastrear.")],
+  [t("An undo call to the hotel times out. What do you know, and what do you do?", "Una llamada de deshacer al hotel da timeout. ¿Qué sabes y qué haces?"),
+    t("Nothing: the cancel may have run and only the reply was lost. Retry with the same idempotency key until the hotel gives a definite answer; never assume either way. If retries run out, park the saga as stuck and alert someone, because its bookings are still holding stock.", "Nada: la cancelación pudo haberse ejecutado y solo se perdió la respuesta. Reintenta con la misma clave de idempotencia hasta que el hotel dé una respuesta definitiva; nunca asumas nada. Si se acaban los reintentos, estaciona la saga como atascada y avísale a alguien, porque sus reservas siguen ocupando lugares.")],
 ];
 
 // ---------- page ----------
 const figure = figurePlate({
-  title: "Travel agency",
+  title: t("Travel agency", "Agencia de viajes"),
   keys: [
-    { mark: "lit", label: "A folder riding back to undo its steps, or left stuck; tags held for a stuck trip (crossed out)" },
-    { mark: "raised", label: "Counters with tag boards, the postbox, the orchestrator desk and the scoreboard" },
-    { mark: "flat", label: "Forward track, return track and the stuck ledge" },
+    { mark: "lit", label: t("A folder riding back to undo its steps, or left stuck; tags held for a stuck trip (crossed out)", "Una carpeta que regresa para deshacer sus pasos, o que quedó atascada; etiquetas retenidas por un viaje atascado (tachadas)") },
+    { mark: "raised", label: t("Counters with tag boards, the postbox, the orchestrator desk and the scoreboard", "Mostradores con tableros de etiquetas, el buzón, el escritorio del orquestador y el marcador") },
+    { mark: "flat", label: t("Forward track, return track and the stuck ledge", "Vía de ida, vía de regreso y la repisa de atascados") },
   ],
   caption:
-    "A folder enters at the door and rides the forward track. Each counter books its part, hangs a tag on its board and stamps the folder; the postbox sends the confirmation, which can't be taken back. If a step fails, the folder drops to the return track and every counter it already visited takes its tag down. Without a saga the return track is closed and the folder is left on the ledge with its tags still hanging. The orchestrator desk sends a courier along the dashed lines for each step and keeps one checklist row per trip; with choreography it is covered.",
-  stage: 'data-agency aria-label="Saga simulation. Space pauses or resumes."',
+    t("A folder enters at the door and rides the forward track. Each counter books its part, hangs a tag on its board and stamps the folder; the postbox sends the confirmation, which can't be taken back. If a step fails, the folder drops to the return track and every counter it already visited takes its tag down. Without a saga the return track is closed and the folder is left on the ledge with its tags still hanging. The orchestrator desk sends a courier along the dashed lines for each step and keeps one checklist row per trip; with choreography it is covered.", "Una carpeta entra por la puerta y avanza por la vía de ida. Cada mostrador reserva su parte, cuelga una etiqueta en su tablero y sella la carpeta; el buzón envía la confirmación, que ya no se puede recuperar. Si un paso falla, la carpeta baja a la vía de regreso y cada mostrador que ya visitó descuelga su etiqueta. Sin saga, la vía de regreso está cerrada y la carpeta queda en la repisa con sus etiquetas todavía colgadas. El escritorio del orquestador manda un mensajero por las líneas punteadas en cada paso y lleva una fila de la lista de control por viaje; con coreografía queda tapado."),
+  stage: "data-agency",
+  stageLabel: t("Saga simulation. Space pauses or resumes.", "Simulación de una saga. Espacio pausa o reanuda."),
   svg: buildFigure(),
 });
 
 const controls = panel({
-  stats: [["done", "Trips booked"], ["undone", "Undone cleanly"], ["stuck", "Left half-done"], ["turned", "Turned away"], ["wrongMail", "Wrong emails"], ["doubles", "Undone twice"]],
+  stats: [["done", t("Trips booked", "Viajes reservados")], ["undone", t("Undone cleanly", "Deshechos limpios")], ["stuck", t("Left half-done", "Quedaron a medias")], ["turned", t("Turned away", "Sin lugar")], ["wrongMail", t("Wrong emails", "Correos erróneos")], ["doubles", t("Undone twice", "Deshechos dos veces")]],
   controls: [
-    seg("style", "Coordination", [["orch", "Orchestrator"], ["choreo", "Choreography"], ["none", "No undo"]], "orch"),
-    seg("order", "Order", [["standard", "Email last"], ["mailFirst", "Email first"], ["payFirst", "Card first"]], "standard"),
-    seg("undo", "Timed-out undo", [["none", "Give up"], ["retry", "Retry"], ["idem", "Retry with key"]], "idem"),
-    seg("decline", "Cards declined", [["0", "0%"], ["0.2", "20%"], ["0.4", "40%"]], "0.2"),
-    seg("lost", "Undo timeouts", [["0", "None"], ["0.25", "25%"]], "0"),
-    seg("slots", "Seats per board", [["5", "5"], ["8", "8"]], "8"),
-    seg("rate", "Customers", [["0.2", "1 per 5 s"], ["0.3", "1 per 3 s"], ["0.4", "1 per 2.5 s"]], "0.3"),
+    seg("style", t("Coordination", "Coordinación"), [["orch", t("Orchestrator", "Orquestador")], ["choreo", t("Choreography", "Coreografía")], ["none", t("No undo", "Sin deshacer")]], "orch"),
+    seg("order", t("Order", "Orden"), [["standard", t("Email last", "Correo al final")], ["mailFirst", t("Email first", "Correo primero")], ["payFirst", t("Card first", "Tarjeta primero")]], "standard"),
+    seg("undo", t("Timed-out undo", "Deshacer con timeout"), [["none", t("Give up", "Rendirse")], ["retry", t("Retry", "Reintentar")], ["idem", t("Retry with key", "Reintentar con clave")]], "idem"),
+    seg("decline", t("Cards declined", "Tarjetas rechazadas"), [["0", "0%"], ["0.2", "20%"], ["0.4", "40%"]], "0.2"),
+    seg("lost", t("Undo timeouts", "Timeouts al deshacer"), [["0", t("None", "Ninguno")], ["0.25", "25%"]], "0"),
+    seg("slots", t("Seats per board", "Lugares por tablero"), [["5", "5"], ["8", "8"]], "8"),
+    seg("rate", t("Customers", "Clientes"), [["0.2", t("1 per 5 s", "1 cada 5 s")], ["0.3", t("1 per 3 s", "1 cada 3 s")], ["0.4", t("1 per 2.5 s", "1 cada 2.5 s")]], "0.3"),
     speedSeg(),
-    actions("Do something", [["decline", "Decline the next card"], ["reset", "Start over"], ["pause", "Pause"]]),
+    actions(t("Do something", "Haz algo"), [["decline", t("Decline the next card", "Rechazar la próxima tarjeta")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]]),
   ],
 });
 
@@ -133,7 +134,9 @@ const svg = stage.querySelector("svg");
 const q = (s) => svg.querySelector(s);
 const qa = (s) => [...svg.querySelectorAll(s)];
 const readout = document.querySelector("[data-readout]");
-const say = (text) => { if (readout.textContent !== text) readout.textContent = text; };
+const { T: Tr, L } = WB; // T is taken by the sim's timing constants
+const NAMES_ES = { F: "vuelo", H: "hotel", C: "auto", P: "pago", M: "correo de confirmación" };
+const say = (v) => { const text = L(v); if (readout.textContent !== text) readout.textContent = text; };
 const layer = q("[data-folders]");
 const stationsEl = q("[data-stations]");
 const stations = Object.fromEntries(["F", "H", "C", "P", "M"].map((s) => [s, q('[data-station="' + s + '"]')]));
@@ -255,15 +258,22 @@ function paint() {
 
   // Readout: what the most interesting trip is doing.
   const undoing = active.find((trip) => t >= trip.compAt);
-  if (undoing) { const f = folderAt(undoing, t); say("trip " + (undoing.id + 1) + " · " + (undoing.failReason === "sold" ? NAMES[model.order[undoing.failSlot]] + " full" : "card declined") + " · undoing " + Math.max(0, f.steps) + " step" + (f.steps === 1 ? "" : "s")); }
-  else if (n.stuck && cfg.style === "none") say(n.stuck + " half-done trip" + (n.stuck === 1 ? "" : "s") + " · " + n.orphans + " bookings held for nobody");
-  else say(active.length + " trip" + (active.length === 1 ? "" : "s") + " in progress · " + n.done + " booked");
+  if (undoing) {
+    const f = folderAt(undoing, t), sold = undoing.failReason === "sold", svc = model.order[undoing.failSlot], steps = Math.max(0, f.steps);
+    say(Tr("trip " + (undoing.id + 1) + " · " + (sold ? NAMES[svc] + " full" : "card declined") + " · undoing " + steps + " step" + (f.steps === 1 ? "" : "s"),
+      "viaje " + (undoing.id + 1) + " · " + (sold ? NAMES_ES[svc] + " lleno" : "tarjeta rechazada") + " · deshaciendo " + steps + " paso" + (f.steps === 1 ? "" : "s")));
+  }
+  else if (n.stuck && cfg.style === "none") say(Tr(n.stuck + " half-done trip" + (n.stuck === 1 ? "" : "s") + " · " + n.orphans + " bookings held for nobody",
+    n.stuck + " viaje" + (n.stuck === 1 ? "" : "s") + " a medias · " + n.orphans + " reservas retenidas para nadie"));
+  else say(Tr(active.length + " trip" + (active.length === 1 ? "" : "s") + " in progress · " + n.done + " booked",
+    active.length + " viaje" + (active.length === 1 ? "" : "s") + " en curso · " + n.done + " reservados"));
 }
 const statEls = Object.fromEntries([...document.querySelectorAll("[data-s]")].map((el) => [el.dataset.s, el]));
 function stat(key, value) { const el = statEls[key]; const text = String(value); if (el && el.textContent !== text) el.textContent = text; }
 
 const pauseBtn = document.querySelector('[data-act="pause"]');
-const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(); }, onPause: (on) => { pauseBtn.textContent = on ? "Play" : "Pause"; if (on) say("paused"); } });
+const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(); }, onPause: (on) => { pauseBtn.textContent = on ? L("Play", "Reanudar") : L("Pause", "Pausa"); if (on) say(Tr("paused", "en pausa")); } });
+WB.onLang(() => { pauseBtn.textContent = loop.paused ? L("Play", "Reanudar") : L("Pause", "Pausa"); paint(); if (loop.paused) say(Tr("paused", "en pausa")); });
 
 function set(name, raw, quiet) {
   WB.pressSeg(name, raw);
@@ -272,7 +282,7 @@ function set(name, raw, quiet) {
   if (!quiet) restart();
 }
 WB.onSegments((name, value) => set(name, value));
-document.querySelector('[data-act="decline"]').addEventListener("click", () => { model.declineNext(); if (loop.paused) loop.setPaused(false); say("the next card will be declined"); });
+document.querySelector('[data-act="decline"]').addEventListener("click", () => { model.declineNext(); if (loop.paused) loop.setPaused(false); say(Tr("the next card will be declined", "la próxima tarjeta será rechazada")); });
 document.querySelector('[data-act="reset"]').addEventListener("click", () => restart());
 pauseBtn.addEventListener("click", () => loop.toggle());
 stage.addEventListener("keydown", (e) => { if (e.key === " ") { e.preventDefault(); loop.toggle(); } });
@@ -285,32 +295,37 @@ const RUNS = {
   nosaga: () => {
     const a = runScenario({ style: "none", decline: 0.2 }), b = runScenario({ style: "orch", decline: 0.2 });
     const top = Math.max(a.done, b.done, a.turned, b.turned, 1);
-    return { verdict: "No saga: " + one(a.stuck) + " trips left half-done, " + one(a.orphans) + " bookings still held for nobody at the end, " + one(a.turned) + " customers turned away. With a saga: " + one(b.stuck) + " left half-done, " + one(b.undone) + " undone cleanly, " + one(b.turned) + " turned away, and " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
-      bars: [["Booked, no saga", a.done / top, one(a.done)], ["Booked, saga", b.done / top, one(b.done), true], ["Turned away, no saga", a.turned / top, one(a.turned)], ["Turned away, saga", b.turned / top, one(b.turned), true]] };
+    return { verdict: Tr("No saga: " + one(a.stuck) + " trips left half-done, " + one(a.orphans) + " bookings still held for nobody at the end, " + one(a.turned) + " customers turned away. With a saga: " + one(b.stuck) + " left half-done, " + one(b.undone) + " undone cleanly, " + one(b.turned) + " turned away, and " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
+        "Sin saga: " + one(a.stuck) + " viajes a medias, " + one(a.orphans) + " reservas todavía retenidas para nadie al final, " + one(a.turned) + " clientes sin lugar. Con saga: " + one(b.stuck) + " a medias, " + one(b.undone) + " deshechos limpios, " + one(b.turned) + " sin lugar, y " + one(b.done) + " viajes reservados en vez de " + one(a.done) + "."),
+      bars: [[Tr("Booked, no saga", "Reservados, sin saga"), a.done / top, one(a.done)], [Tr("Booked, saga", "Reservados, con saga"), b.done / top, one(b.done), true], [Tr("Turned away, no saga", "Sin lugar, sin saga"), a.turned / top, one(a.turned)], [Tr("Turned away, saga", "Sin lugar, con saga"), b.turned / top, one(b.turned), true]] };
   },
   lost: () => {
     const base = { style: "orch", decline: 0.4, lost: 0.25 };
     const g = runScenario({ ...base, undo: "none" }), r = runScenario({ ...base, undo: "retry" }), k = runScenario({ ...base, undo: "idem" });
     const top = Math.max(g.stuck, r.doubles, 1);
-    return { verdict: "Give up: " + one(g.stuck) + " trips stuck half-done, " + one(g.orphans) + " bookings never released. Retry: " + one(r.stuck) + " stuck, but " + one(r.doubles) + " undos ran twice (another customer's seat released, or a double refund). Retry with a key: " + one(k.stuck) + " stuck, " + one(k.doubles) + " twice.",
-      bars: [["Stuck, give up", g.stuck / top, one(g.stuck)], ["Undone twice, retry", r.doubles / top, one(r.doubles)], ["Stuck or twice, retry with key", (k.stuck + k.doubles) / top, one(k.stuck + k.doubles), true]] };
+    return { verdict: Tr("Give up: " + one(g.stuck) + " trips stuck half-done, " + one(g.orphans) + " bookings never released. Retry: " + one(r.stuck) + " stuck, but " + one(r.doubles) + " undos ran twice (another customer's seat released, or a double refund). Retry with a key: " + one(k.stuck) + " stuck, " + one(k.doubles) + " twice.",
+        "Rendirse: " + one(g.stuck) + " viajes atascados a medias, " + one(g.orphans) + " reservas nunca liberadas. Reintentar: " + one(r.stuck) + " atascados, pero " + one(r.doubles) + " llamadas de deshacer se ejecutaron dos veces (se liberó el lugar de otro cliente, o hubo un reembolso doble). Reintentar con clave: " + one(k.stuck) + " atascados, " + one(k.doubles) + " dos veces."),
+      bars: [[Tr("Stuck, give up", "A medias, rendirse"), g.stuck / top, one(g.stuck)], [Tr("Undone twice, retry", "Deshechos dos veces, reintentar"), r.doubles / top, one(r.doubles)], [Tr("Stuck or twice, retry with key", "A medias o dos veces, con clave"), (k.stuck + k.doubles) / top, one(k.stuck + k.doubles), true]] };
   },
   email: () => {
     const last = runScenario({ style: "orch", decline: 0.2 }), first = runScenario({ style: "orch", decline: 0.2, order: "mailFirst" });
     const failed = first.undone + first.stuck, top = Math.max(failed, 1);
-    return { verdict: "Email last: " + one(last.wrongMail) + " wrong confirmations. Email first: " + one(first.wrongMail) + " of " + one(failed) + " failed trips had already been confirmed by email (" + pct(failed ? first.wrongMail / failed : 0) + ").",
-      bars: [["Failed trips, email first", failed / top, one(failed)], ["Confirmed anyway", first.wrongMail / top, one(first.wrongMail), true], ["Confirmed anyway, email last", last.wrongMail / top, one(last.wrongMail)]] };
+    return { verdict: Tr("Email last: " + one(last.wrongMail) + " wrong confirmations. Email first: " + one(first.wrongMail) + " of " + one(failed) + " failed trips had already been confirmed by email (" + pct(failed ? first.wrongMail / failed : 0) + ").",
+        "Correo al final: " + one(last.wrongMail) + " confirmaciones erróneas. Correo primero: " + one(first.wrongMail) + " de " + one(failed) + " viajes fallidos ya se habían confirmado por correo (" + pct(failed ? first.wrongMail / failed : 0) + ")."),
+      bars: [[Tr("Failed trips, email first", "Viajes fallidos, correo primero"), failed / top, one(failed)], [Tr("Confirmed anyway", "Confirmados igual"), first.wrongMail / top, one(first.wrongMail), true], [Tr("Confirmed anyway, email last", "Confirmados igual, correo al final"), last.wrongMail / top, one(last.wrongMail)]] };
   },
   isolation: () => {
     const base = { style: "orch", decline: 0.4, slots: 5, rate: 0.4 };
     const a = runScenario(base), b = runScenario({ ...base, order: "payFirst" }), top = Math.max(a.turned, 1);
-    return { verdict: "Payment last: " + one(a.turned) + " customers turned away for full seats, " + one(a.wrongTurned) + " of them (" + pct(a.turned ? a.wrongTurned / a.turned : 0) + ") while a seat was held by a trip that was later undone. Card checked first: " + one(b.turned) + " turned away, " + one(b.wrongTurned) + " by doomed trips; " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
-      bars: [["Turned away, payment last", a.turned / top, one(a.turned)], ["…by a doomed trip's seat", a.wrongTurned / top, one(a.wrongTurned), true], ["Turned away, card first", b.turned / top, one(b.turned)], ["…by a doomed trip's seat", b.wrongTurned / top, one(b.wrongTurned), true]] };
+    return { verdict: Tr("Payment last: " + one(a.turned) + " customers turned away for full seats, " + one(a.wrongTurned) + " of them (" + pct(a.turned ? a.wrongTurned / a.turned : 0) + ") while a seat was held by a trip that was later undone. Card checked first: " + one(b.turned) + " turned away, " + one(b.wrongTurned) + " by doomed trips; " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
+        "Pago al final: " + one(a.turned) + " clientes sin lugar por cupo lleno, " + one(a.wrongTurned) + " de ellos (" + pct(a.turned ? a.wrongTurned / a.turned : 0) + ") mientras un viaje que después se deshizo retenía un lugar. Tarjeta primero: " + one(b.turned) + " sin lugar, " + one(b.wrongTurned) + " por viajes condenados; " + one(b.done) + " viajes reservados en vez de " + one(a.done) + "."),
+      bars: [[Tr("Turned away, payment last", "Sin lugar, pago al final"), a.turned / top, one(a.turned)], [Tr("…by a doomed trip's seat", "…por el lugar de un viaje condenado"), a.wrongTurned / top, one(a.wrongTurned), true], [Tr("Turned away, card first", "Sin lugar, tarjeta primero"), b.turned / top, one(b.turned)], [Tr("…by a doomed trip's seat", "…por el lugar de un viaje condenado"), b.wrongTurned / top, one(b.wrongTurned), true]] };
   },
   choreo: () => {
     const o = runScenario({ style: "orch", decline: 0.2 }), c = runScenario({ style: "choreo", decline: 0.2 }), top = Math.max(o.tripTime, c.tripTime);
-    return { verdict: "Time per booked trip: " + one(o.tripTime) + " s orchestrated, " + one(c.tripTime) + " s choreographed. Finding a trip in progress: 1 look at the checklist vs " + one(c.findAsks) + " counters asked on average, and " + pct(c.findMissed) + " of the time the folder was between counters, so nobody had it.",
-      bars: [["Trip time, orchestrator", o.tripTime / top, one(o.tripTime) + " s"], ["Trip time, choreography", c.tripTime / top, one(c.tripTime) + " s", true], ["Counters asked to find a trip", c.findAsks / 5, one(c.findAsks) + " of 5", true]] };
+    return { verdict: Tr("Time per booked trip: " + one(o.tripTime) + " s orchestrated, " + one(c.tripTime) + " s choreographed. Finding a trip in progress: 1 look at the checklist vs " + one(c.findAsks) + " counters asked on average, and " + pct(c.findMissed) + " of the time the folder was between counters, so nobody had it.",
+        "Tiempo por viaje reservado: " + one(o.tripTime) + " s orquestado, " + one(c.tripTime) + " s coreografiado. Encontrar un viaje en curso: 1 vistazo a la lista de control vs " + one(c.findAsks) + " mostradores consultados en promedio, y el " + pct(c.findMissed) + " de las veces la carpeta estaba entre mostradores, así que nadie la tenía."),
+      bars: [[Tr("Trip time, orchestrator", "Tiempo del viaje, orquestador"), o.tripTime / top, one(o.tripTime) + " s"], [Tr("Trip time, choreography", "Tiempo del viaje, coreografía"), c.tripTime / top, one(c.tripTime) + " s", true], [Tr("Counters asked to find a trip", "Mostradores consultados por viaje"), c.findAsks / 5, Tr(one(c.findAsks) + " of 5", one(c.findAsks) + " de 5"), true]] };
   },
 };
 WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
@@ -325,13 +340,12 @@ restart();
 `;
 
 const size = writePage(new URL("./saga-workbench.html", import.meta.url), {
-  title: "Saga Workbench",
-  eyebrow: "Systems lesson 26 · Sagas",
-  lede: "Booking a trip touches several services that share no transaction: the flight, the hotel, the car, the card. A saga runs each step on its own and, when a later one fails, runs the undo of every earlier step. This lesson builds one: watch a machine do it, predict what breaks it, then explain it back.",
-  machine: { intro: "Folders ride past five counters. Each counter books its part and hangs a tag; when the card is declined or a board is full, the folder rides back on the lower track and the tags come down. Try <em>Decline the next card</em>, then switch to <em>No undo</em> and watch tags pile up for trips that never happen.", figure, panel: controls },
-  predict: { intro: "Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: three minutes of customers, averaged over eight seeded runs.", experiments: EXPERIMENTS },
+  title: t("Saga Workbench", "Banco de trabajo: sagas"),
+  eyebrow: t("Systems lesson 26 · Sagas", "Lección de sistemas 26 · Sagas"),
+  lede: t("Booking a trip touches several services that share no transaction: the flight, the hotel, the car, the card. A saga runs each step on its own and, when a later one fails, runs the undo of every earlier step. This lesson builds one: watch a machine do it, predict what breaks it, then explain it back.", "Reservar un viaje toca varios servicios que no comparten ninguna transacción: el vuelo, el hotel, el auto, la tarjeta. Una saga ejecuta cada paso por separado y, cuando uno posterior falla, ejecuta el deshacer de cada paso anterior. Esta lección construye una: mira cómo lo hace una máquina, predice qué la rompe y después explícalo."),
+  machine: { intro: t("Folders ride past five counters. Each counter books its part and hangs a tag; when the card is declined or a board is full, the folder rides back on the lower track and the tags come down. Try <em>Decline the next card</em>, then switch to <em>No undo</em> and watch tags pile up for trips that never happen.", "Las carpetas pasan frente a cinco mostradores. Cada mostrador reserva su parte y cuelga una etiqueta; cuando se rechaza la tarjeta o un tablero está lleno, la carpeta regresa por la vía de abajo y las etiquetas se descuelgan. Prueba <em>Rechazar la próxima tarjeta</em>, luego cambia a <em>Sin deshacer</em> y mira cómo se acumulan etiquetas de viajes que nunca ocurren."), figure, panel: controls },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: three minutes of customers, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina: tres minutos de clientes, promediados sobre ocho ejecuciones con semilla fija."), experiments: EXPERIMENTS },
   explain: { questions: QUESTIONS },
-  footer: `Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson.`,
   css,
   script: live,
 });

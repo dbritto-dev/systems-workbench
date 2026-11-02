@@ -5,6 +5,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../workbench/kit.mjs";
 import { basePlate, rulerStrip } from "../../workbench/parts.mjs";
+import { t, isT } from "../../workbench/i18n.mjs";
 import { sphereOf } from "../../workbench/vendor-anatomy/kit/lathe.mjs";
 
 export const WIDTH = 700;
@@ -35,8 +36,8 @@ const CHECK = { x0: DESK.x + 5, x1: DESK.x + DESK.w - 5, y0: DESK.y + 3, y1: DES
 const SCORE = { x: -144, y: 22, w: 70, d: 3, r: 0.5 };
 const SCORE_Z = [4, 50];
 export const SCORE_ROWS = ["done", "undone", "stuck", "wrongMail", "turned"];
-const SCORE_LABELS = { done: "BOOKED", undone: "UNDONE", stuck: "STUCK", wrongMail: "WRONG EMAIL", turned: "TURNED AWAY" };
-export const LABELS = { F: "FLIGHT", H: "HOTEL", C: "CAR", P: "PAY", M: "EMAIL" };
+const SCORE_LABELS = { done: t("BOOKED", "RESERVADOS"), undone: t("UNDONE", "DESHECHOS"), stuck: t("STUCK", "A MEDIAS"), wrongMail: t("WRONG EMAIL", "CORREO ERRÓNEO"), turned: t("TURNED AWAY", "SIN LUGAR") };
+export const LABELS = { F: t("FLIGHT", "VUELO"), H: "HOTEL", C: t("CAR", "AUTO"), P: t("PAY", "PAGO"), M: t("EMAIL", "CORREO") };
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [BOARD.x + SX[0], BOARD.y, BOARD_H + 2], [BOARD.x + BOARD.w + SX[4], BOARD.y, BOARD_H + 2], [SCORE.x + SCORE.w, SCORE.y, SCORE_Z[1] + 2]],
@@ -50,7 +51,11 @@ const S = (paths, style) => k.solidSvg(paths, style);
 const L = (d, style) => k.lineSvg(d, style);
 const D = (points, style) => k.dotsSvg(points, style);
 const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-const text = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
+// A bilingual value (t(en, es)) draws two texts, one per language; the page shows one.
+const text = (x, y, z, value, opts = {}) => isT(value)
+  ? `<g data-l="en">${text1(x, y, z, value.en, opts)}</g><g data-l="es">${text1(x, y, z, value.es, opts)}</g>`
+  : text1(x, y, z, value, opts);
+const text1 = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
   `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
 
 function plate() {
@@ -110,7 +115,9 @@ function station(svc) {
     out.push(S(k.cylinder(0, -57, 7.5, 0, 30, P, 30), { tone: "hi", crease: "none" }));
     out.push(S(sphereOf([0, -57, 30], 7.5, P), { tone: "hi", crease: "lo" }));
     out.push(S(k.slabOf({ x: -4, y: -50.4, w: 8, d: 1, r: 0.4 }, 23, 2, P, 2), { tone: "mid", crease: "none" }));
-    out.push(S(k.slabOf({ x: -6, y: -50.2, w: 12, d: 1, r: 0.3 }, 12, 6, P, 2), { tone: "mid", crease: "none" }));
+    // The name plate: "CORREO" is longer than "EMAIL", so the Spanish plate is wider (the page shows one).
+    const plateOf = (w) => S(k.slabOf({ x: -w / 2, y: -50.2, w, d: 1, r: 0.3 }, 12, 6, P, 2), { tone: "mid", crease: "none" });
+    out.push(`<g data-l="en">${plateOf(12)}</g><g data-l="es">${plateOf(15)}</g>`);
     out.push(text(0, -49.2, 13.6, LABELS[svc], { size: 3.4, tone: "hi", anchor: "middle" }));
     out.push(`<g data-letter style="display:none">${S(k.slabOf({ x: -3.2, y: -50.6, w: 6.4, d: 0.6, r: 0.2 }, 25, 5, P, 1), { tone: "hi", crease: "lo", lit: false })}</g>`);
   }
@@ -205,8 +212,9 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label:
+    label: t(
       "A travel agency on a base plate. Five counters stand in a row: flight, hotel, car, payment and a postbox for the confirmation email. Each booking counter has a board of hooks where it hangs a tag for every booking it holds. A trip folder rides the forward track past the counters, collecting a stamp at each. If a step fails, the folder drops to the return track and rides back, and each counter it passes takes its tag down. Half-done trips are left on a ledge at the front. At the front, an orchestrator desk with a checklist sends couriers to the counters along dashed lines, and a scoreboard counts trips booked, undone, stuck, wrong emails and customers turned away.",
+      "Una agencia de viajes sobre una placa base. Cinco mostradores en fila: vuelo, hotel, auto, pago y un buzón para el correo de confirmación. Cada mostrador de reservas tiene un tablero con ganchos donde cuelga una etiqueta por cada reserva que retiene. Una carpeta de viaje avanza por la vía de ida frente a los mostradores y recibe un sello en cada uno. Si un paso falla, la carpeta baja a la vía de regreso y vuelve, y cada mostrador por el que pasa descuelga su etiqueta. Los viajes a medias quedan en una repisa al frente. Al frente, un escritorio del orquestador con una lista de control manda mensajeros a los mostradores por líneas punteadas, y un marcador cuenta los viajes reservados, deshechos, a medias, los correos erróneos y los clientes sin lugar."),
     body: [
       plate(),
       wires(),
