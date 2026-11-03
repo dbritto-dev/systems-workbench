@@ -1,19 +1,17 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The dispatch office in the browser: steps the pub/sub model, moves the capsules, cards and stamps, wires the
-// controls and the experiment cards. mount() gets the build-time data from page.ts (projection, geometry, results).
+// The dispatch office in the browser: steps the pub/sub model, moves the capsules, cards and stamps, and answers
+// the controls. mount() gets the build-time data from page.ts (projection, geometry) and root, the <wb-lesson>.
 import { translateAlong, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { readout, stats as statsStrip, show, act, pauseControls } from "../../runtime/dom";
+import { show, playPause } from "../../runtime/dom";
 import { lerp, lerpVec, easeInOutCubic } from "../../lib/tween";
 import { clamp } from "../../lib/stats";
-import { n0, secs2 } from "../../lib/format";
 import { T, STATIONS, STATION_X, OFFLINE_STATION, createModel, step, active, subscribed, setOffline, setDurable } from "./sim";
 
-export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G }, root) {
   const LETTER = "ABCDE";
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const platenEl = q("[data-platen]"), pubcard = q("[data-pubcard]"), pubcap = q("[data-pubcap]"), rotor = q("[data-rotor]");
   const tubeEls = STATION_X.map((_, i) => q('[data-tube="' + i + '"]'));
@@ -45,8 +43,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   const clamp01 = (v) => clamp(v);
   // T is the timing table here, so bilingual messages use B(en, es).
   const B = WB.T, L = WB.L;
-  const sayText = readout();
-  const say = (msg) => sayText(L(msg));
+  const say = (msg) => root.figure.say(L(msg));
   const place = (el, p, opacity = 1) => { el.setAttribute("transform", translateAlong(P, p)); el.style.opacity = String(opacity); };
   const trayVisible = (i) => active(m, i) && !(m.cfg.shared && i === 1) && (m.stations[i].online || m.cfg.durable);
   const stackTop = (n) => G.TRAY_FLOOR + Math.min(n, G.TRAY_MAX - 1) * G.TRAY_STEP;
@@ -140,7 +137,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     }
   }
 
-  const stat = statsStrip();
+  const stat = (key, value) => root.stat(key, value);
   function showStats() {
     const sum = (f) => m.stations.reduce((a, s) => a + f(s), 0);
     stat("published", m.published);
@@ -154,7 +151,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   function advance(dt) { let left = dt; while (left > 1e-9) { const d = Math.min(0.02, left); step(m, d); left -= d; } }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, sayText);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: (dt) => { advance(dt * speed); events(); paint(); showStats(); }, onPause: pause.onPause });
   pause.bind(clock);
   clock.setPaused(clock.paused);
@@ -176,68 +173,25 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
       if (cfg.shared) { m.queues[0].push(...m.queues[1]); m.queues[1].length = 0; }
     }
     if (name === "speed") speed = Number(raw);
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
   }
   function restart() { m = fresh(); drops = new Array(STATIONS).fill(null); note = null; paint(); showStats(); say(B("starting", "empezando")); }
   const DEFAULTS = { subs: 3, station: "normal", durable: "true", crash: 0, idempotent: "false", shared: "false" };
-  WB.onSegments(set);
-  act("reset").addEventListener("click", restart);
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: restart };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (computed at build time from the same model; see sim.ts) ----------
-  const num = n0;
-  const RUNS = {
-    fanout: () => {
-      const { two, five, direct } = RESULTS.fanout, top = direct * 1.05;
-      return {
-        verdict: B("With 2 or 5 subscribers the press spends " + secs2(two) + " per message either way. Calling 5 stations directly and waiting would take " + secs2(direct) + ".",
-          "Con 2 o 5 suscriptores la prensa dedica " + secs2(two) + " por mensaje en ambos casos. Llamar directamente a 5 estaciones y esperar tomaría " + secs2(direct) + "."),
-        bars: [[B("Pub/sub, 2 subs", "Pub/sub, 2 susc."), two / top, secs2(two)], [B("Pub/sub, 5 subs", "Pub/sub, 5 susc."), five / top, secs2(five), true], [B("Direct calls, 5", "Llamadas directas, 5"), direct / top, secs2(direct)]] };
-    },
-    slow: () => {
-      const { fast, slow } = RESULTS.slow;
-      const dTop = Math.max(fast.a, slow.a) * 1.25;
-      const cards = (n) => B(num(n) + " cards", num(n) + " tarjetas");
-      return {
-        verdict: B("A still finishes each message " + secs2(slow.a) + " after it is printed, the same as before. After 100 messages C has " + num(slow.c) + " cards waiting, and the pile grows by about 25 a minute.",
-          "A sigue terminando cada mensaje " + secs2(slow.a) + " después de impreso, igual que antes. Tras 100 mensajes C tiene " + num(slow.c) + " tarjetas esperando, y la pila crece unas 25 por minuto."),
-        bars: [[B("A's delay, C normal", "Demora de A, C normal"), fast.a / dTop, secs2(fast.a)], [B("A's delay, C slow", "Demora de A, C lenta"), slow.a / dTop, secs2(slow.a), true], [B("C's backlog, normal", "Pendientes de C, normal"), fast.c / 100, cards(fast.c)], [B("C's backlog, slow", "Pendientes de C, lenta"), slow.c / 100, cards(slow.c), true]] };
-    },
-    offline: () => {
-      const { nd, du, back } = RESULTS.offline;
-      const top = Math.max(nd.lost, du.peak) * 1.15;
-      return {
-        verdict: B("Without a durable subscription C lost " + num(nd.lost) + " messages. With one it lost " + num(du.lost) + ": " + num(du.peak) + " cards waited in its tray and C caught up about " + Math.round(back) + " s after it came back.",
-          "Sin suscripción duradera C perdió " + num(nd.lost) + " mensajes. Con una perdió " + num(du.lost) + ": " + num(du.peak) + " tarjetas esperaron en su bandeja y C se puso al día unos " + Math.round(back) + " s después de volver."),
-        bars: [[B("Lost, not durable", "Perdidos, no duradera"), nd.lost / top, num(nd.lost), true], [B("Lost, durable", "Perdidos, duradera"), du.lost / top, num(du.lost)], [B("Peak tray, durable", "Bandeja máx., duradera"), du.peak / top, B(num(du.peak) + " cards", num(du.peak) + " tarjetas")]] };
-    },
-    crash: () => {
-      const { plain, idem } = RESULTS.crash;
-      const top = plain.runs * 1.08;
-      return {
-        verdict: B("For " + num(plain.pub) + " different messages, A's handler ran " + num(plain.runs) + " times. A plain handler applied " + num(plain.effects) + " effects; an idempotent one applied " + num(idem.effects) + ".",
-          "Para " + num(plain.pub) + " mensajes distintos, el handler de A corrió " + num(plain.runs) + " veces. Un handler simple aplicó " + num(plain.effects) + " efectos; uno idempotente aplicó " + num(idem.effects) + "."),
-        bars: [[B("Different messages", "Mensajes distintos"), plain.pub / top, num(plain.pub)], [B("Handler runs", "Ejecuciones del handler"), plain.runs / top, num(plain.runs), true], [B("Effects, plain", "Efectos, simple"), plain.effects / top, num(plain.effects), true], [B("Effects, idempotent", "Efectos, idempotente"), idem.effects / top, num(idem.effects)]] };
-    },
-    shared: () => {
-      const { own, sh } = RESULTS.shared;
-      const top = own.pub * 1.05;
-      return {
-        verdict: B("With their own subscriptions A and B each handled " + num(own.a) + " of " + num(own.pub) + ". Sharing one queue, A handled " + num(sh.a) + " and B " + num(sh.b) + ": each message went to exactly one of them.",
-          "Con sus propias suscripciones, A y B procesaron cada una " + num(own.a) + " de " + num(own.pub) + ". Compartiendo una cola, A procesó " + num(sh.a) + " y B " + num(sh.b) + ": cada mensaje fue exactamente a una de ellas."),
-        bars: [[B("Own: A", "Propia: A"), own.a / top, num(own.a)], [B("Own: B", "Propia: B"), own.b / top, num(own.b)], [B("Shared: A", "Compartida: A"), sh.a / top, num(sh.a), true], [B("Shared: B", "Compartida: B"), sh.b / top, num(sh.b), true]] };
-    },
-  };
-  // Bars never draw past their track.
-  const CLAMPED = Object.fromEntries(Object.entries(RUNS).map(([id, run]) => [id, () => { const out = run(); out.bars = out.bars.map(([label, share, ...rest]) => [label, Math.min(1, share), ...rest]); return out; }]));
-  WB.experiments({ list: EXPERIMENTS, runs: CLAMPED, watch: (exp) => {
-    const w = { ...DEFAULTS, ...exp.watch };
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+
+  root.on("watch", (watch) => {
+    const w = { ...DEFAULTS, ...watch };
     for (const name of ["subs", "durable", "crash", "idempotent", "shared"]) set(name, String(w[name]));
     cfg.slow = cfg.offline = false;
     restart();
     set("station", w.station);
-    WB.pressSeg("station", w.station);
+    root.press("station", w.station);
     if (clock.paused) clock.setPaused(false);
-  } });
+  });
 
   paint(); showStats();
 }

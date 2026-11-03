@@ -1,13 +1,53 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 03 · Load balancing: a parcel sorting station, a turntable (the load balancer) and up to five counters.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct } from "../../lib/format";
 import { buildFigure, P, GEOMETRY, parcelSvg } from "./figure";
 import { experimentResults } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran them in
 // the browser on click; they are seeded, so the numbers are the same).
 const RESULTS = experimentResults();
+
+// What each card shows after a run.
+const secs = (x) => (x >= 100 ? Math.round(x) : x.toFixed(1)) + " s";
+const scale = (values) => Math.max(...values) * 1.08;
+const RUNS = {
+  add: () => {
+    const { a, b } = RESULTS.add, top = scale([a.p95, b.p95]);
+    const less = Math.round(100 * (1 - b.p95 / a.p95)), more = Math.round(100 / 3);
+    return { verdict: t("p95 went from " + secs(a.p95) + " to " + secs(b.p95) + ", " + less + "% lower, from " + more + "% more capacity. The median fell from " + secs(a.p50) + " to " + secs(b.p50) + ".",
+        "El p95 pasó de " + secs(a.p95) + " a " + secs(b.p95) + ", " + less + "% menos, con " + more + "% más de capacidad. La mediana bajó de " + secs(a.p50) + " a " + secs(b.p50) + "."),
+      bars: [[t("3 counters", "3 mostradores"), a.p95 / top, secs(a.p95)], [t("4 counters", "4 mostradores"), b.p95 / top, secs(b.p95), true]] };
+  },
+  slow: () => {
+    const { a, b, c } = RESULTS.slow, top = scale([a.p95, b.p95, c.p95]);
+    return { verdict: t("Round robin: p95 " + secs(a.p95) + " → " + secs(b.p95) + " after ten minutes, and still climbing. Least connections with the same slow counter: " + secs(c.p95) + ".",
+        "Round robin: p95 " + secs(a.p95) + " → " + secs(b.p95) + " después de diez minutos, y sigue subiendo. Menos conexiones con el mismo mostrador lento: " + secs(c.p95) + "."),
+      bars: [[t("All normal", "Todos normales"), a.p95 / top, secs(a.p95)], [t("Slow, round robin", "Lento, round robin"), b.p95 / top, secs(b.p95), true], [t("Slow, least conn.", "Lento, menos conex."), c.p95 / top, secs(c.p95)]] };
+  },
+  uneven: () => {
+    const { r, a, b } = RESULTS.uneven, top = scale([r.p95, a.p95, b.p95]);
+    const less = Math.round(100 * (1 - b.p95 / a.p95));
+    return { verdict: t("p95 with round robin " + secs(a.p95) + ", with least connections " + secs(b.p95) + " (" + less + "% lower). The median fell from " + secs(a.p50) + " to " + secs(b.p50) + ".",
+        "p95 con round robin " + secs(a.p95) + ", con menos conexiones " + secs(b.p95) + " (" + less + "% menos). La mediana bajó de " + secs(a.p50) + " a " + secs(b.p50) + "."),
+      bars: [[t("Random", "Aleatorio"), r.p95 / top, secs(r.p95)], [t("Round robin", "Round robin"), a.p95 / top, secs(a.p95)], [t("Least conn.", "Menos conex."), b.p95 / top, secs(b.p95), true]] };
+  },
+  crash: () => {
+    const { e30, e10, e2 } = RESULTS.crash, top = scale([e30, e10, e2]);
+    const f = (x) => x.toFixed(1);
+    return { verdict: t("Failed parcels per crash: " + f(e30) + " with 30 s checks, " + f(e10) + " with 10 s, " + f(e2) + " with 2 s. The last ones were already inside the counter when it died.",
+        "Paquetes fallidos por caída: " + f(e30) + " con chequeos cada 30 s, " + f(e10) + " cada 10 s, " + f(e2) + " cada 2 s. Los últimos ya estaban dentro del mostrador cuando se cayó."),
+      bars: [[t("Check every 30 s", "Chequeo cada 30 s"), e30 / top, f(e30), true], [t("Check every 10 s", "Chequeo cada 10 s"), e10 / top, f(e10)], [t("Check every 2 s", "Chequeo cada 2 s"), e2 / top, f(e2)]] };
+  },
+  sticky: () => {
+    const { a, b } = RESULTS.sticky;
+    return { verdict: t("Busiest counter " + pct(a.busiest) + " → " + pct(Math.min(1, b.busiest)) + ", quietest " + pct(a.quietest) + " → " + pct(b.quietest) + ". p95 went from " + secs(a.p95) + " to " + secs(b.p95) + ".",
+        "Mostrador más ocupado " + pct(a.busiest) + " → " + pct(Math.min(1, b.busiest)) + ", más libre " + pct(a.quietest) + " → " + pct(b.quietest) + ". El p95 pasó de " + secs(a.p95) + " a " + secs(b.p95) + "."),
+      bars: [[t("Busiest, not sticky", "Más ocupado, sin sesiones"), a.busiest, pct(a.busiest)], [t("Busiest, sticky", "Más ocupado, con sesiones"), Math.min(1, b.busiest), pct(Math.min(1, b.busiest)), true], [t("Quietest, sticky", "Más libre, con sesiones"), b.quietest, pct(b.quietest)]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -145,13 +185,11 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over six runs of ten minutes each.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la figura, promediados en seis corridas de diez minutos cada una."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la figura, promediados en seis corridas de diez minutos cada una."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P,
     G: GEOMETRY,
     PARCEL_SVG: parcelSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

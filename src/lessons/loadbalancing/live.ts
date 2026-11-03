@@ -1,21 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The sorting station in the browser: steps the model, rides parcels from the infeed through the turntable and down
-// the lanes, turns the arm, works the presses, wires the controls and the experiment cards. mount() gets the
-// build-time data from page.ts (projection, geometry, parcel drawing, results).
+// the lanes, turns the arm, works the presses, and answers the controls. mount() gets the build-time data from
+// page.ts (projection, geometry, parcel drawing) and root, the <wb-lesson>.
 import { translateAlong, solidSvg, extrude } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { T, L } from "../../runtime/wb";
-import { readout, stats as statsStrip, show, act, pauseControls } from "../../runtime/dom";
+import { show, playPause } from "../../runtime/dom";
 import { lerp, easeInOutCubic } from "../../lib/tween";
 import { clamp, rankQuantile } from "../../lib/stats";
 import { pct } from "../../lib/format";
 import { TRANSFER, SLOW, createStation } from "./sim";
 
-export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, PARCEL_SVG }, root) {
   const IN_TIME = 1.2;
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const infeedLayer = q("[data-infeed]"), armEl = q("[data-arm]");
   const lanes = G.LANES.map((ly, i) => ({
@@ -37,8 +36,7 @@ export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
 
   const ease = easeInOutCubic;
   const clamp01 = (t) => clamp(t);
-  const sayText = readout();
-  const say = (msg) => sayText(L(msg));
+  const say = (msg) => root.figure.say(L(msg));
   function armOf(angle) {
     const c = Math.cos(angle), s = Math.sin(angle), x = G.TABLE[0], y = G.TABLE[1];
     const pt = (u, v) => [x + u * c - v * s, y + u * s + v * c];
@@ -158,7 +156,7 @@ export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
     }
   }
 
-  const stat = statsStrip();
+  const stat = (key, value) => root.stat(key, value);
   function showStats() {
     const done = station.st.done.slice(base.done).slice(-300);
     const times = done.map((j) => j.end - j.arrive);
@@ -176,7 +174,7 @@ export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, sayText);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: (dt) => { advance(dt * speed); }, onPause: pause.onPause });
   pause.bind(clock);
   clock.setPaused(clock.paused);
@@ -192,62 +190,23 @@ export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
     if (name === "heavy") { opts.heavy = value === "true"; station.set({ heavy: opts.heavy }); }
     if (name === "sticky") { opts.sticky = value === "true"; station.set({ sticky: opts.sticky }); }
     if (name === "speed") speed = Number(value);
-    WB.pressSeg(name, value);
+    root.press(name, value);
   }
   function crash() { station.kill(1); say(T("counter 2 crashed · the balancer doesn't know yet", "el mostrador 2 se cayó · el balanceador todavía no lo sabe")); for (const e of station.st.events.splice(0)) handle(e); if (clock.paused) clock.setPaused(false); }
   function restart() { for (let i = 0; i < 5; i++) station.restart(i); say(T("counters restarted · back in at the next health check", "mostradores reiniciados · vuelven en el siguiente chequeo de salud")); }
-  WB.onSegments(set);
-  act("crash").addEventListener("click", crash);
-  act("restart").addEventListener("click", restart);
-  act("reset").addEventListener("click", resetCounts);
+  root.on("change", (name, value) => set(name, value));
+  const actions = { crash, restart, reset: resetCounts };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (computed at build time from the same model; see sim.ts) ----------
-  const secs = (x) => (x >= 100 ? Math.round(x) : x.toFixed(1)) + " s";
-  const scale = (values) => Math.max(...values) * 1.08;
-  const RUNS = {
-    add: () => {
-      const { a, b } = RESULTS.add, top = scale([a.p95, b.p95]);
-      const less = Math.round(100 * (1 - b.p95 / a.p95)), more = Math.round(100 / 3);
-      return { verdict: T("p95 went from " + secs(a.p95) + " to " + secs(b.p95) + ", " + less + "% lower, from " + more + "% more capacity. The median fell from " + secs(a.p50) + " to " + secs(b.p50) + ".",
-          "El p95 pasó de " + secs(a.p95) + " a " + secs(b.p95) + ", " + less + "% menos, con " + more + "% más de capacidad. La mediana bajó de " + secs(a.p50) + " a " + secs(b.p50) + "."),
-        bars: [[T("3 counters", "3 mostradores"), a.p95 / top, secs(a.p95)], [T("4 counters", "4 mostradores"), b.p95 / top, secs(b.p95), true]] };
-    },
-    slow: () => {
-      const { a, b, c } = RESULTS.slow, top = scale([a.p95, b.p95, c.p95]);
-      return { verdict: T("Round robin: p95 " + secs(a.p95) + " → " + secs(b.p95) + " after ten minutes, and still climbing. Least connections with the same slow counter: " + secs(c.p95) + ".",
-          "Round robin: p95 " + secs(a.p95) + " → " + secs(b.p95) + " después de diez minutos, y sigue subiendo. Menos conexiones con el mismo mostrador lento: " + secs(c.p95) + "."),
-        bars: [[T("All normal", "Todos normales"), a.p95 / top, secs(a.p95)], [T("Slow, round robin", "Lento, round robin"), b.p95 / top, secs(b.p95), true], [T("Slow, least conn.", "Lento, menos conex."), c.p95 / top, secs(c.p95)]] };
-    },
-    uneven: () => {
-      const { r, a, b } = RESULTS.uneven, top = scale([r.p95, a.p95, b.p95]);
-      const less = Math.round(100 * (1 - b.p95 / a.p95));
-      return { verdict: T("p95 with round robin " + secs(a.p95) + ", with least connections " + secs(b.p95) + " (" + less + "% lower). The median fell from " + secs(a.p50) + " to " + secs(b.p50) + ".",
-          "p95 con round robin " + secs(a.p95) + ", con menos conexiones " + secs(b.p95) + " (" + less + "% menos). La mediana bajó de " + secs(a.p50) + " a " + secs(b.p50) + "."),
-        bars: [[T("Random", "Aleatorio"), r.p95 / top, secs(r.p95)], [T("Round robin", "Round robin"), a.p95 / top, secs(a.p95)], [T("Least conn.", "Menos conex."), b.p95 / top, secs(b.p95), true]] };
-    },
-    crash: () => {
-      const { e30, e10, e2 } = RESULTS.crash, top = scale([e30, e10, e2]);
-      const f = (x) => x.toFixed(1);
-      return { verdict: T("Failed parcels per crash: " + f(e30) + " with 30 s checks, " + f(e10) + " with 10 s, " + f(e2) + " with 2 s. The last ones were already inside the counter when it died.",
-          "Paquetes fallidos por caída: " + f(e30) + " con chequeos cada 30 s, " + f(e10) + " cada 10 s, " + f(e2) + " cada 2 s. Los últimos ya estaban dentro del mostrador cuando se cayó."),
-        bars: [[T("Check every 30 s", "Chequeo cada 30 s"), e30 / top, f(e30), true], [T("Check every 10 s", "Chequeo cada 10 s"), e10 / top, f(e10)], [T("Check every 2 s", "Chequeo cada 2 s"), e2 / top, f(e2)]] };
-    },
-    sticky: () => {
-      const { a, b } = RESULTS.sticky;
-      return { verdict: T("Busiest counter " + pct(a.busiest) + " → " + pct(Math.min(1, b.busiest)) + ", quietest " + pct(a.quietest) + " → " + pct(b.quietest) + ". p95 went from " + secs(a.p95) + " to " + secs(b.p95) + ".",
-          "Mostrador más ocupado " + pct(a.busiest) + " → " + pct(Math.min(1, b.busiest)) + ", más libre " + pct(a.quietest) + " → " + pct(b.quietest) + ". El p95 pasó de " + secs(a.p95) + " a " + secs(b.p95) + "."),
-        bars: [[T("Busiest, not sticky", "Más ocupado, sin sesiones"), a.busiest, pct(a.busiest)], [T("Busiest, sticky", "Más ocupado, con sesiones"), Math.min(1, b.busiest), pct(Math.min(1, b.busiest)), true], [T("Quietest, sticky", "Más libre, con sesiones"), b.quietest, pct(b.quietest)]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     restart();
     set("servers", w.servers); set("algorithm", w.algorithm); set("rate", w.rate); set("sizes", w.sizes);
     set("slow", String(w.slow)); set("sticky", String(w.sticky)); set("heavy", String(w.heavy)); set("check", w.check);
     resetCounts();
     if (clock.paused) clock.setPaused(false);
     if (w.crash) setTimeout(crash, 3000);
-  } });
+  });
 
   advance(0); showStats();
 }

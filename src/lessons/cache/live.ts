@@ -1,21 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The records office in the browser: plays each request as a sequence of steps (press, hit or fetch from the archive,
-// place the card), keeps the rack's cards and their time to live, wires the controls and the experiment cards.
-// mount() gets the build-time data from page.ts (projection, geometry, experiment results).
+// place the card), keeps the rack's cards and their time to live, and answers the controls. mount() gets the
+// build-time data from page.ts (projection, geometry) and root, the <wb-lesson>.
 import { translateAlong, solidSvg, slabOf, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats as statsStrip, act, pauseControls, setLit as lightUp } from "../../runtime/dom";
+import { playPause, setLit as lightUp } from "../../runtime/dom";
 import { lerp, lerpVec, easeInOutCubic } from "../../lib/tween";
-import { pct, secs2 } from "../../lib/format";
+import { secs2 } from "../../lib/format";
 import { rng } from "../../lib/random";
 import { TIMING, HIT_TIME, MISS_TIME, RECORDS, pickRecord } from "./sim";
 
-export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G }, root) {
   const CLOCK = [-28, -42], CLOCK_R = 14, CLOCK_TOP = 12, CARRY_Y = 48, CARRY_Z = 8, LIFT_Z = 52;
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const drawersBox = q("[data-drawers]");
   const drawerEls = G.DRAWERS.map((_, i) => q('[data-drawer="' + i + '"]'));
@@ -39,8 +38,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
 
   const ease = easeInOutCubic;
   const lerp3 = lerpVec;
-  const sayText = readout();
-  const say = (m) => sayText(L(m));
+  const say = (m) => root.figure.say(L(m));
 
   function setCar(x) { carX = x; carriageEl.setAttribute("transform", translateAlong(P, [x, 0, 0])); }
   function setDrawer(i, open) {
@@ -170,7 +168,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     needle.setAttribute("d", lineOnTop([CLOCK[0] - Math.sin(a) * 2.6, CLOCK[1] + Math.cos(a) * 2.6], [CLOCK[0] + Math.sin(a) * (CLOCK_R - 3.4), CLOCK[1] - Math.cos(a) * (CLOCK_R - 3.4)], CLOCK_TOP + 0.2, P));
   }
 
-  const stat = statsStrip();
+  const stat = (key, value) => root.stat(key, value);
   function showStats() {
     const looked = stats.hits + stats.misses;
     stat("requests", stats.requests);
@@ -182,7 +180,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, sayText);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: (dt) => { advance(dt * cfg.speed); paint(); }, onPause: pause.onPause });
   pause.bind(clock);
   clock.setPaused(clock.paused);
@@ -194,7 +192,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     if (name === "traffic") cfg.traffic = raw;
     if (name === "invalidate") cfg.invalidate = raw === "true" || raw === true;
     if (name === "speed") cfg.speed = Number(raw);
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
   }
   function flushRack() { rack.forEach((c, i) => clearSlot(i)); say(T("rack emptied", "estante vaciado")); }
   function changeRecord() {
@@ -206,42 +204,18 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     say(T(en, es));
     if (clock.paused) clock.setPaused(false);
   }
-  WB.onSegments(set);
-  act("flush").addEventListener("click", flushRack);
-  act("change").addEventListener("click", changeRecord);
-  act("reset").addEventListener("click", resetCounts);
+  root.on("change", (name, value) => set(name, value));
+  const actions = { flush: flushRack, change: changeRecord, reset: resetCounts };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (computed at build time from the same model; see sim.ts) ----------
-  const RUNS = {
-    ttl: () => { const a = RESULTS.base, b = RESULTS.ttl; return {
-      verdict: T("Hit rate " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", average wait " + secs2(a.avgTime) + " → " + secs2(b.avgTime) + ".",
-        "Tasa de aciertos " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", espera media " + secs2(a.avgTime) + " → " + secs2(b.avgTime) + "."),
-      bars: [[T("TTL 60 s", "TTL 60 s"), a.hitRate, pct(a.hitRate)], [T("TTL 6 s", "TTL 6 s"), b.hitRate, pct(b.hitRate), true]] }; },
-    size: () => { const a = RESULTS.base, b = RESULTS.size; return {
-      verdict: T("Room fell to a third; hit rate only fell from " + pct(a.hitRate) + " to " + pct(b.hitRate) + ".",
-        "El espacio cayó a un tercio; la tasa de aciertos solo bajó de " + pct(a.hitRate) + " a " + pct(b.hitRate) + "."),
-      bars: [[T("12 slots", "12 lugares"), a.hitRate, pct(a.hitRate)], [T("4 slots", "4 lugares"), b.hitRate, pct(b.hitRate), true]] }; },
-    even: () => { const a = RESULTS.base, b = RESULTS.even; return {
-      verdict: T("Hit rate " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", close to 12 of 40 records (30%).",
-        "Tasa de aciertos " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", cerca de 12 de 40 registros (30%)."),
-      bars: [[T("Popular traffic", "Tráfico popular"), a.hitRate, pct(a.hitRate)], [T("Even traffic", "Tráfico parejo"), b.hitRate, pct(b.hitRate), true]] }; },
-    flush: () => { const { warm, first, later } = RESULTS.flush; const top = Math.max(warm, first, later) * 1.1; const more = Math.round(100 * (first / warm - 1)); return {
-      verdict: T("The first 10 requests after emptying took " + more + "% longer on average; requests 11 to 30 were already back to " + secs2(later) + ".",
-        "Las primeras 10 solicitudes después de vaciar tardaron en promedio " + more + "% más; las solicitudes 11 a 30 ya habían vuelto a " + secs2(later) + "."),
-      bars: [[T("Never emptied", "Nunca vaciado"), warm / top, secs2(warm)], [T("First 10 after", "Primeras 10 después"), first / top, secs2(first), true], [T("Requests 11–30", "Solicitudes 11–30"), later / top, secs2(later)]] }; },
-    stale: () => { const { off, on } = RESULTS.stale; return {
-      verdict: T(pct(off) + " of rack reads of #1 were stale. With invalidate on write: " + pct(on) + ".",
-        pct(off) + " de las lecturas de #1 desde el estante fueron obsoletas. Con invalidar al escribir: " + pct(on) + "."),
-      bars: [[T("Invalidate off", "Invalidar: no"), off, pct(off), true], [T("Invalidate on", "Invalidar: sí"), on, pct(on)]] }; },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     set("ttl", w.ttl); set("slots", w.slots); set("traffic", w.traffic); if ("invalidate" in w) set("invalidate", String(w.invalidate));
     resetCounts();
     if (clock.paused) clock.setPaused(false);
     if (w.flush) setTimeout(flushRack, 2500);
     if (w.change) setTimeout(changeRecord, 2500);
-  } });
+  });
 
   paint(); showStats(); applySlots(12);
 }

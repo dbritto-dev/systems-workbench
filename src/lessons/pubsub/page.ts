@@ -1,7 +1,8 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 02 · Pub/sub: a pneumatic dispatch office, a press (publisher), a hub and tubes (broker) and stations.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { n0, secs2 } from "../../lib/format";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { experimentResults } from "./sim";
 
@@ -9,6 +10,51 @@ import { experimentResults } from "./sim";
 // the browser on click; they are seeded, so the numbers are the same).
 const RESULTS = experimentResults();
 
+// What each card shows after a run.
+const RUNS_RAW = {
+  fanout: () => {
+    const { two, five, direct } = RESULTS.fanout, top = direct * 1.05;
+    return {
+      verdict: t("With 2 or 5 subscribers the press spends " + secs2(two) + " per message either way. Calling 5 stations directly and waiting would take " + secs2(direct) + ".",
+        "Con 2 o 5 suscriptores la prensa dedica " + secs2(two) + " por mensaje en ambos casos. Llamar directamente a 5 estaciones y esperar tomaría " + secs2(direct) + "."),
+      bars: [[t("Pub/sub, 2 subs", "Pub/sub, 2 susc."), two / top, secs2(two)], [t("Pub/sub, 5 subs", "Pub/sub, 5 susc."), five / top, secs2(five), true], [t("Direct calls, 5", "Llamadas directas, 5"), direct / top, secs2(direct)]] };
+  },
+  slow: () => {
+    const { fast, slow } = RESULTS.slow;
+    const dTop = Math.max(fast.a, slow.a) * 1.25;
+    const cards = (n) => t(n0(n) + " cards", n0(n) + " tarjetas");
+    return {
+      verdict: t("A still finishes each message " + secs2(slow.a) + " after it is printed, the same as before. After 100 messages C has " + n0(slow.c) + " cards waiting, and the pile grows by about 25 a minute.",
+        "A sigue terminando cada mensaje " + secs2(slow.a) + " después de impreso, igual que antes. Tras 100 mensajes C tiene " + n0(slow.c) + " tarjetas esperando, y la pila crece unas 25 por minuto."),
+      bars: [[t("A's delay, C normal", "Demora de A, C normal"), fast.a / dTop, secs2(fast.a)], [t("A's delay, C slow", "Demora de A, C lenta"), slow.a / dTop, secs2(slow.a), true], [t("C's backlog, normal", "Pendientes de C, normal"), fast.c / 100, cards(fast.c)], [t("C's backlog, slow", "Pendientes de C, lenta"), slow.c / 100, cards(slow.c), true]] };
+  },
+  offline: () => {
+    const { nd, du, back } = RESULTS.offline;
+    const top = Math.max(nd.lost, du.peak) * 1.15;
+    return {
+      verdict: t("Without a durable subscription C lost " + n0(nd.lost) + " messages. With one it lost " + n0(du.lost) + ": " + n0(du.peak) + " cards waited in its tray and C caught up about " + Math.round(back) + " s after it came back.",
+        "Sin suscripción duradera C perdió " + n0(nd.lost) + " mensajes. Con una perdió " + n0(du.lost) + ": " + n0(du.peak) + " tarjetas esperaron en su bandeja y C se puso al día unos " + Math.round(back) + " s después de volver."),
+      bars: [[t("Lost, not durable", "Perdidos, no duradera"), nd.lost / top, n0(nd.lost), true], [t("Lost, durable", "Perdidos, duradera"), du.lost / top, n0(du.lost)], [t("Peak tray, durable", "Bandeja máx., duradera"), du.peak / top, t(n0(du.peak) + " cards", n0(du.peak) + " tarjetas")]] };
+  },
+  crash: () => {
+    const { plain, idem } = RESULTS.crash;
+    const top = plain.runs * 1.08;
+    return {
+      verdict: t("For " + n0(plain.pub) + " different messages, A's handler ran " + n0(plain.runs) + " times. A plain handler applied " + n0(plain.effects) + " effects; an idempotent one applied " + n0(idem.effects) + ".",
+        "Para " + n0(plain.pub) + " mensajes distintos, el handler de A corrió " + n0(plain.runs) + " veces. Un handler simple aplicó " + n0(plain.effects) + " efectos; uno idempotente aplicó " + n0(idem.effects) + "."),
+      bars: [[t("Different messages", "Mensajes distintos"), plain.pub / top, n0(plain.pub)], [t("Handler runs", "Ejecuciones del handler"), plain.runs / top, n0(plain.runs), true], [t("Effects, plain", "Efectos, simple"), plain.effects / top, n0(plain.effects), true], [t("Effects, idempotent", "Efectos, idempotente"), idem.effects / top, n0(idem.effects)]] };
+  },
+  shared: () => {
+    const { own, sh } = RESULTS.shared;
+    const top = own.pub * 1.05;
+    return {
+      verdict: t("With their own subscriptions A and B each handled " + n0(own.a) + " of " + n0(own.pub) + ". Sharing one queue, A handled " + n0(sh.a) + " and B " + n0(sh.b) + ": each message went to exactly one of them.",
+        "Con sus propias suscripciones, A y B procesaron cada una " + n0(own.a) + " de " + n0(own.pub) + ". Compartiendo una cola, A procesó " + n0(sh.a) + " y B " + n0(sh.b) + ": cada mensaje fue exactamente a una de ellas."),
+      bars: [[t("Own: A", "Propia: A"), own.a / top, n0(own.a)], [t("Own: B", "Propia: B"), own.b / top, n0(own.b)], [t("Shared: A", "Compartida: A"), sh.a / top, n0(sh.a), true], [t("Shared: B", "Compartida: B"), sh.b / top, n0(sh.b), true]] };
+  },
+};
+// Bars never draw past their track.
+const RUNS = Object.fromEntries(Object.entries(RUNS_RAW).map(([id, run]) => [id, () => { const out = run(); out.bars = out.bars.map(([label, share, ...rest]) => [label, Math.min(1, share), ...rest]); return out; }]));
 const EXPERIMENTS = [
   {
     id: "fanout",
@@ -143,12 +189,10 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from two simulated minutes of the same machine (100 messages), averaged over six runs.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen de dos minutos simulados de la misma máquina (100 mensajes), promediados en seis corridas."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen de dos minutos simulados de la misma máquina (100 mensajes), promediados en seis corridas."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

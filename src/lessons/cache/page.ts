@@ -1,13 +1,38 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 01 · Caching: a records office with a card rack (the cache) in front of an archive chest.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct, secs2 } from "../../lib/format";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { experimentResults } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran them in
 // the browser on click; they are seeded, so the numbers are the same).
 const RESULTS = experimentResults();
+
+// What each card shows after a run.
+const RUNS = {
+  ttl: () => { const a = RESULTS.base, b = RESULTS.ttl; return {
+    verdict: t("Hit rate " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", average wait " + secs2(a.avgTime) + " → " + secs2(b.avgTime) + ".",
+      "Tasa de aciertos " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", espera media " + secs2(a.avgTime) + " → " + secs2(b.avgTime) + "."),
+    bars: [[t("TTL 60 s", "TTL 60 s"), a.hitRate, pct(a.hitRate)], [t("TTL 6 s", "TTL 6 s"), b.hitRate, pct(b.hitRate), true]] }; },
+  size: () => { const a = RESULTS.base, b = RESULTS.size; return {
+    verdict: t("Room fell to a third; hit rate only fell from " + pct(a.hitRate) + " to " + pct(b.hitRate) + ".",
+      "El espacio cayó a un tercio; la tasa de aciertos solo bajó de " + pct(a.hitRate) + " a " + pct(b.hitRate) + "."),
+    bars: [[t("12 slots", "12 lugares"), a.hitRate, pct(a.hitRate)], [t("4 slots", "4 lugares"), b.hitRate, pct(b.hitRate), true]] }; },
+  even: () => { const a = RESULTS.base, b = RESULTS.even; return {
+    verdict: t("Hit rate " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", close to 12 of 40 records (30%).",
+      "Tasa de aciertos " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", cerca de 12 de 40 registros (30%)."),
+    bars: [[t("Popular traffic", "Tráfico popular"), a.hitRate, pct(a.hitRate)], [t("Even traffic", "Tráfico parejo"), b.hitRate, pct(b.hitRate), true]] }; },
+  flush: () => { const { warm, first, later } = RESULTS.flush; const top = Math.max(warm, first, later) * 1.1; const more = Math.round(100 * (first / warm - 1)); return {
+    verdict: t("The first 10 requests after emptying took " + more + "% longer on average; requests 11 to 30 were already back to " + secs2(later) + ".",
+      "Las primeras 10 solicitudes después de vaciar tardaron en promedio " + more + "% más; las solicitudes 11 a 30 ya habían vuelto a " + secs2(later) + "."),
+    bars: [[t("Never emptied", "Nunca vaciado"), warm / top, secs2(warm)], [t("First 10 after", "Primeras 10 después"), first / top, secs2(first), true], [t("Requests 11–30", "Solicitudes 11–30"), later / top, secs2(later)]] }; },
+  stale: () => { const { off, on } = RESULTS.stale; return {
+    verdict: t(pct(off) + " of rack reads of #1 were stale. With invalidate on write: " + pct(on) + ".",
+      pct(off) + " de las lecturas de #1 desde el estante fueron obsoletas. Con invalidar al escribir: " + pct(on) + "."),
+    bars: [[t("Invalidate off", "Invalidar: no"), off, pct(off), true], [t("Invalidate on", "Invalidar: sí"), on, pct(on)]] }; },
+};
 
 const EXPERIMENTS = [
   {
@@ -143,7 +168,7 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over 9,000 simulated requests of the same machine; the figure's starting point is a 67% hit rate.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados son el promedio de 9,000 solicitudes simuladas de la misma máquina; la figura arranca con una tasa de aciertos de 67%."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados son el promedio de 9,000 solicitudes simuladas de la misma máquina; la figura arranca con una tasa de aciertos de 67%."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   // Figure-specific styles: empty slots hide their card, the TTL strip fill, blanking covers.
   css: `
@@ -156,7 +181,5 @@ export default defineLesson({
   data: {
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
