@@ -1,6 +1,9 @@
+// @ts-nocheck: model ported as-is; random numbers and averages come from src/lib.
 // One model of a single-threaded event loop, shared by the figure and the experiments.
 // Time is in milliseconds of loop time. One operator (the call stack) runs one thing at a time:
 // first every microtask in the tray, then a frame if one is due, then the next macrotask on the conveyor.
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
 
 export const FRAME_MS = 16;          // the heartbeat lamp should blink this often
 export const CYCLE_MS = 500;         // every cycle: one CPU job (if any) and, if on, one promise flood
@@ -11,8 +14,6 @@ export const HELPERS = 4;            // background thread pool size
 export const CHUNK_MS = 5;           // a chunked CPU job yields after this much work
 export const FLOOD = { count: 400, each: 0.5 };   // a promise chain: 400 callbacks of 0.5 ms
 export const STEP = 0.25;            // simulation resolution
-
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // cfg: { job: ms of CPU work per cycle (0 = none), chunk: bool, flood: bool, worker: bool, delay: setTimeout delay ms }
 export function createLoop(cfg, seed = 7) {
@@ -39,9 +40,9 @@ export function resetStats(L) {
   L.lastFrame = L.t;
 }
 
-const task = (L, kind, label, ms, done, extra = {}) => ({ id: L.nextSeq++, kind, label, left: ms, total: ms, done, ...extra });
+export const task = (L, kind, label, ms, done, extra = {}) => ({ id: L.nextSeq++, kind, label, left: ms, total: ms, done, ...extra });
 
-function armTimer(L, delay, label = "setTimeout", onRun) {
+export function armTimer(L, delay, label = "setTimeout", onRun) {
   L.timers.push({ id: L.nextSeq++, due: L.t + delay, set: L.t, label, onRun });
 }
 
@@ -146,7 +147,7 @@ function pick(L) {
 
 // ---------- headless runs for the experiments ----------
 export function measure(cfg, { ms = 3000, warm = 500, seeds = [3, 5, 7, 11] } = {}) {
-  const runs = seeds.map((seed) => {
+  return averageOver(seeds, (seed) => {
     const L = createLoop(cfg, seed);
     advance(L, warm);
     resetStats(L);
@@ -160,8 +161,6 @@ export function measure(cfg, { ms = 3000, warm = 500, seeds = [3, 5, 7, 11] } = 
       jobAvg: s.jobs ? s.jobSum / s.jobs : 0,
     };
   });
-  const mean = (k) => runs.reduce((a, r) => a + r[k], 0) / runs.length;
-  return Object.fromEntries(Object.keys(runs[0]).map((k) => [k, mean(k)]));
 }
 
 // The order puzzle: one script that logs, queues a promise callback and arms setTimeout(0), run on an idle loop.

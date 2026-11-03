@@ -1,3 +1,4 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // The event loop as a workshop. One operator stands behind one desk (the call stack): frames stack on a
 // spindle at the left hand, the microtask tray sits at the right hand, and the conveyor (macrotasks) runs
 // into the desk through a gate that stays shut while the tray holds anything. Timers wait in a cabinet
@@ -5,10 +6,11 @@
 // do I/O and send finished reads down a channel into the conveyor's hopper. A worker bench with its own
 // helper can take CPU jobs, and a big lamp should blink every 16 ms.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
-import { sphereOf } from "../../workbench/vendor-anatomy/kit/lathe.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { sphereOf } from "../../../workbench/vendor-anatomy/kit/lathe.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -83,10 +85,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L } = shorthand(P);
 const top = (a, b, z) => k.lineOnTop(a, b, z, P);
 
 // ---------- a pawn: one person ----------
