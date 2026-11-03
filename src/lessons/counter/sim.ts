@@ -1,12 +1,14 @@
+// @ts-nocheck: model ported as-is; random numbers and averages come from src/lib.
 // Shared model for the figure and the experiments: a grow-only counter kept by several nodes in a
 // sequentially consistent key/value store (like Maelstrom's seq-kv). Times are seconds of figure time.
+import { rng } from "../../lib/random";
+import { averageOver } from "../../lib/stats";
 export const LATENCY = 0.25;       // one-way courier time between a branch and the register
 export const JITTER = 0.08;        // ± on every trip
 export const STALE_MAX = 0.6;      // a plain read may be served from a state up to this old (never older than what the node has already seen)
 export const REFRESH = 1.0;        // each node re-reads the counter this often to answer its clients
 export const NODE_NAMES = ["A", "B", "C"];
 
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // cfg: { approach: "shared" | "cas" | "g", nodes: 2 | 3, rate (adds/s per node), stopAt (no adds after), partitions: [[from, to]] cutting the last node,
 //        script: [[t, node]] extra adds, background: false to use only the script, refresh: false to skip periodic reads }
@@ -156,31 +158,22 @@ export function convergeTime(sim, from) {
   return agreedAt === null ? null : Math.max(0, agreedAt - from);
 }
 
-export function averageOver(fn, seeds = [3, 5, 7, 11, 13, 17, 19, 23]) {
-  const runs = seeds.map((s) => fn(s));
-  const keys = Object.keys(runs[0]);
-  const out = {};
-  for (const key of keys) out[key] = runs.reduce((s, r) => s + (r[key] ?? 0), 0) / runs.length;
-  out.runs = runs;
-  return out;
-}
-
 // ---------- the five experiments (used by the page and by the build's own check) ----------
 const SEEDS = [3, 5, 7, 11, 13, 17, 19, 23];
 const run = (cfg, T, seed) => { const s = makeSim(cfg, seed); s.runTo(T); return s; };
 
 export function lostAdds() {
-  return averageOver((seed) => { const s = run({ approach: "shared", nodes: 3, rate: 0.3, stopAt: 60 }, 90, seed); return { added: s.added, stored: s.stored(), lost: 1 - s.stored() / s.added }; }, SEEDS);
+  return averageOver(SEEDS, (seed) => { const s = run({ approach: "shared", nodes: 3, rate: 0.3, stopAt: 60 }, 90, seed); return { added: s.added, stored: s.stored(), lost: 1 - s.stored() / s.added }; });
 }
 export function casCost(rate) {
-  return averageOver((seed) => { const s = run({ approach: "cas", nodes: 3, rate, stopAt: 60 }, 240, seed); return { added: s.added, stored: s.stored(), exact: s.stored() === s.added ? 1 : 0, retries: s.retries / s.added, msgs: s.addMessages / s.added }; }, SEEDS);
+  return averageOver(SEEDS, (seed) => { const s = run({ approach: "cas", nodes: 3, rate, stopAt: 60 }, 240, seed); return { added: s.added, stored: s.stored(), exact: s.stored() === s.added ? 1 : 0, retries: s.retries / s.added, msgs: s.addMessages / s.added }; });
 }
 export function slotCost(rate) {
-  return averageOver((seed) => { const s = run({ approach: "g", nodes: 3, rate, stopAt: 60 }, 90, seed); return { added: s.added, stored: s.stored(), exact: s.stored() === s.added ? 1 : 0, retries: s.retries / s.added, msgs: s.addMessages / s.added }; }, SEEDS);
+  return averageOver(SEEDS, (seed) => { const s = run({ approach: "g", nodes: 3, rate, stopAt: 60 }, 90, seed); return { added: s.added, stored: s.stored(), exact: s.stored() === s.added ? 1 : 0, retries: s.retries / s.added, msgs: s.addMessages / s.added }; });
 }
 // Cut the far branch (C) off from 20 s to 35 s; adds stop when it heals. Views are sampled every 0.25 s.
 export function partitionRun() {
-  return averageOver((seed) => {
+  return averageOver(SEEDS, (seed) => {
     const s = makeSim({ approach: "g", nodes: 3, rate: 0.3, stopAt: 35, partitions: [[20, 35]] }, seed);
     const behind = [0, 0, 0];
     for (let t = 20; t < 35; t += 0.25) {
@@ -189,11 +182,11 @@ export function partitionRun() {
     }
     s.runTo(70);
     return { farBehind: behind[2], nearBehind: Math.max(behind[0], behind[1]), converge: convergeTime(s, 35) ?? 99, exact: s.stored() === s.added ? 1 : 0 };
-  }, SEEDS);
+  });
 }
 // B adds; as soon as B's add is acknowledged, A and B each read once.
 export function readAfterAdd() {
-  return averageOver((seed) => {
+  return averageOver(SEEDS, (seed) => {
     const s = makeSim({ approach: "cas", nodes: 3, rate: 0, background: false, refresh: false }, seed);
     const trials = 20;
     for (let k = 0; k < trials; k++) {
@@ -206,5 +199,5 @@ export function readAfterAdd() {
     }
     const seen = (who) => s.log.filter((e) => e.type === "view" && e.asked && e.asked[0] === who && e.value >= Number(e.asked.slice(1)) + 1).length / trials;
     return { other: seen("A"), own: seen("B") };
-  }, SEEDS);
+  });
 }

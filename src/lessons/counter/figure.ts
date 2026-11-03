@@ -1,12 +1,14 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // Three branch offices keep one shared count in a central register, by courier.
 // Every number that matters is a row of printed counter wheels on a real object:
 //   each branch: a hand tally clicker (adds it took) and a desk display (the total it last read);
 //   the register: one big shared counter (one key), or one slot counter per branch (G-counter);
 //   compare-and-swap: a stamp over the shared counter and a spindle of rejected slips.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, digitCounter } from "../../workbench/parts.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { basePlate, rulerStrip, digitCounter } from "../../../workbench/parts.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 420;
@@ -46,10 +48,7 @@ export const P = k.fitProjection(
   { pad: 20, azimuth: 50 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 
 const counter = (c, name, value = 0) => digitCounter(P, { ...c, proud: PROUD, name, value });
 
