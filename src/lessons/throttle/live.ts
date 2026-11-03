@@ -1,28 +1,26 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The metronome gate in the browser: feeds the event stream through the gate model in slow motion, rolls the balls,
-// swings the metronome, wires the controls and the experiment cards. mount() gets the build-time data from page.ts
-// (geometry, the ball drawing, experiment results).
+// swings the metronome and answers the controls. mount() gets the build-time data from page.ts (geometry, the ball
+// drawing) and root, the <wb-lesson>.
 import { iso, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
-import { one, pct, msFromSecs } from "../../lib/format";
 import { makeGate, makeStream, TRAVEL, ROLL, FALL } from "./sim";
 import { livePaths } from "./paths";
 
-export default function mount({ P, G, GAUGE, BALL_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, GAUGE, BALL_SVG }, root) {
   const railX = (v) => G.RAIL.x0 + 8 + (Math.max(0, Math.min(G.VALUE_MAX, v)) / G.VALUE_MAX) * (G.RAIL.x1 - G.RAIL.x0 - 16);
   const ARM = G.ARM;
   const { armPaths, needlePath, gapPath } = livePaths(P, { PIVOT: G.PIVOT, ARM, GAUGE, RAIL: G.RAIL, LANE_USER: G.LANE_USER });
 
   const SLOW = 0.1;            // seconds of input per second on the page at ×1
   const PRESS = 0.03, HOP = 0.02, PILE_T = 0.5;
-  const stage = document.querySelector("[data-gate]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
 
   function pool(layer, n) {
@@ -187,24 +185,24 @@ export default function mount({ P, G, GAUGE, BALL_SVG, RESULTS, EXPERIMENTS }) {
     if (cfg.input === "you" && !ev.length && !incoming.length) line = T("hold the button to scroll", "mantén presionado el botón para hacer scroll");
     say(L(line));
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, maxDt: 0.1, step: (dt) => { clock += dt * SLOW * cfg.speed; advance(clock); paint(); }, onPause: pause.onPause });
 
   function set(name, raw, quiet) {
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     if (name === "mode") cfg.mode = raw;
     if (name === "wait") cfg.wait = Number(raw);
     if (name === "edges") cfg.edges = raw;
     if (name === "input") { cfg.input = raw; if (!quiet) cfg.rate = 60; }
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
+  root.on("change", (name, value) => set(name, value));
 
   // Your hand: hold to scroll, click to send one event.
-  const holdBtn = act("hold");
+  const holdBtn = root.button("hold");
   function toYou() { if (cfg.input !== "you") set("input", "you"); if (loop.paused) loop.setPaused(false); }
   function startHold() { toYou(); if (holding) return; holding = true; holdNext = clock + TRAVEL; holdBtn.setAttribute("data-held", ""); }
   function stopHold() { holding = false; holdBtn.removeAttribute("data-held"); }
@@ -215,57 +213,25 @@ export default function mount({ P, G, GAUGE, BALL_SVG, RESULTS, EXPERIMENTS }) {
   holdBtn.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); startHold(); } });
   holdBtn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") stopHold(); });
   holdBtn.addEventListener("blur", stopHold);
-  act("click").addEventListener("click", () => {
-    toYou();
-    const t = Math.max(clock + TRAVEL, incoming.length ? incoming[incoming.length - 1].t + 0.001 : 0);
-    incoming.push({ t, v: liveV });
-  });
-  act("reset").addEventListener("click", () => { stopHold(); restart(); });
+  const actions = {
+    click: () => {
+      toYou();
+      const t = Math.max(clock + TRAVEL, incoming.length ? incoming[incoming.length - 1].t + 0.001 : 0);
+      incoming.push({ t, v: liveV });
+    },
+    reset: () => { stopHold(); restart(); },
+  };
+  root.on("action", (name) => actions[name]?.());
   pause.bind(loop);
 
-  // ---------- experiments (results computed at build time from the same model, eight seeds each) ----------
-  const RUNS = {
-    scroll: () => {
-      const { off, thr } = RESULTS.scroll;
-      return { verdict: T("While scrolling: " + Math.round(off.callsPerSec) + " handler calls a second with no gate, " + Math.round(thr.callsPerSec) + " with the throttle. At 6 ms a call that is " + msFromSecs(off.workPerSec) + " of work per second of scrolling against " + msFromSecs(thr.workPerSec) + ", and the screen is never more than " + msFromSecs(thr.maxLag) + " behind.",
-          "Durante el scroll: " + Math.round(off.callsPerSec) + " llamadas al handler por segundo sin compuerta, " + Math.round(thr.callsPerSec) + " con el throttle. A 6 ms por llamada, eso es " + msFromSecs(off.workPerSec) + " de trabajo por segundo de scroll contra " + msFromSecs(thr.workPerSec) + ", y la pantalla nunca va más de " + msFromSecs(thr.maxLag) + " atrasada."),
-        bars: [[T("Calls / s, no gate", "Llamadas / s, sin compuerta"), 1, String(Math.round(off.callsPerSec))], [T("Calls / s, throttle 100 ms", "Llamadas / s, throttle 100 ms"), thr.callsPerSec / off.callsPerSec, String(Math.round(thr.callsPerSec)), true]] };
-    },
-    trailing: () => {
-      const { lead, both } = RESULTS.trailing;
-      return { verdict: T("The handler saw the position the user stopped at in " + pct(lead.finalHandled) + " of bursts with leading only, and " + pct(both.finalHandled) + " with leading + trailing (for " + one(both.callsPerSec - lead.callsPerSec) + " more calls a second).",
-          "El handler vio la posición donde se detuvo el usuario en el " + pct(lead.finalHandled) + " de las ráfagas con solo el flanco inicial, y en el " + pct(both.finalHandled) + " con inicio + final (a cambio de " + one(both.callsPerSec - lead.callsPerSec) + " llamadas más por segundo)."),
-        bars: [[T("Final position handled, leading only", "Posición final procesada, solo inicio"), lead.finalHandled, pct(lead.finalHandled), true], [T("Final position handled, both edges", "Posición final procesada, ambos flancos"), both.finalHandled, pct(both.finalHandled)]] };
-    },
-    drag: () => {
-      const { thr, deb } = RESULTS.drag, top = Math.max(1, thr.duringPerBurst);
-      return { verdict: T("During each 3 s drag the throttle updated " + Math.round(thr.duringPerBurst) + " times, about every " + msFromSecs(3 / Math.max(1, thr.duringPerBurst)) + "; the debounce updated " + Math.round(deb.duringPerBurst) + " times, and once " + msFromSecs(0.1) + " after each drag ended.",
-          "Durante cada arrastre de 3 s, el throttle actualizó " + Math.round(thr.duringPerBurst) + " veces, cerca de cada " + msFromSecs(3 / Math.max(1, thr.duringPerBurst)) + "; el debounce actualizó " + Math.round(deb.duringPerBurst) + " veces, y una vez " + msFromSecs(0.1) + " después de que terminó cada arrastre."),
-        bars: [[T("Updates during a drag, throttle", "Actualizaciones durante un arrastre, throttle"), thr.duringPerBurst / top, String(Math.round(thr.duringPerBurst))], [T("Updates during a drag, debounce", "Actualizaciones durante un arrastre, debounce"), deb.duringPerBurst / top, String(Math.round(deb.duringPerBurst)), true]] };
-    },
-    clicks: () => {
-      const { thr, qu } = RESULTS.clicks;
-      const lost = thr.dropped / thr.n;
-      return { verdict: T("Throttled: " + Math.round(thr.calls) + " of " + Math.round(thr.n) + " clicks reached the cart; " + pct(lost) + " of the items vanished without an error. Queued at the same pace, every item arrived, but the last one up to " + one(qu.maxDelay) + " s after its click.",
-          "Con throttle: " + Math.round(thr.calls) + " de " + Math.round(thr.n) + " clics llegaron al carrito; el " + pct(lost) + " de los artículos desapareció sin ningún error. En una cola al mismo ritmo llegaron todos los artículos, pero el último hasta " + one(qu.maxDelay) + " s después de su clic."),
-        bars: [[T("Items lost, throttle", "Artículos perdidos, throttle"), lost, pct(lost), true], [T("Items lost, queue", "Artículos perdidos, cola"), 0, "0%"], [T("Longest wait, queue (of 5 s)", "Espera más larga, cola (de 5 s)"), Math.min(1, qu.maxDelay / 5), one(qu.maxDelay) + " s"]] };
-    },
-    interval: () => {
-      const rs = RESULTS.interval;
-      const top = Math.max(...rs.map(({ r }) => r.callsPerSec));
-      return { verdict: T(rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " calls/s, screen up to " + msFromSecs(r.maxLag) + " behind").join(" · ") + ".",
-          rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " llamadas/s, pantalla hasta " + msFromSecs(r.maxLag) + " atrasada").join(" · ") + "."),
-        bars: rs.flatMap(({ w, r }, n) => [[T("Calls / s, " + msFromSecs(w), "Llamadas / s, " + msFromSecs(w)), r.callsPerSec / top, String(Math.round(r.callsPerSec)), n === 2], [T("Behind, at worst, " + msFromSecs(w), "Atraso máximo, " + msFromSecs(w)), Math.min(1, r.maxLag / 0.5), msFromSecs(r.maxLag), n === 2]]) };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     stopHold();
     set("mode", w.mode, true); set("wait", String(w.wait), true); set("edges", w.edges, true); set("input", w.input, true);
     cfg.rate = w.rate;
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

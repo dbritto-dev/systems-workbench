@@ -1,21 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The elevator lobby in the browser: runs the debounce model, moves passengers, the car, tickets and answers, wires
-// the controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, part drawings,
-// experiment results).
+// The elevator lobby in the browser: runs the debounce model, moves passengers, the car, tickets and answers, and
+// answers the controls. mount() gets the build-time data from page.ts (geometry, part drawings) and root, the
+// <wb-lesson>.
 import { iso, pathOf, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, show, setText, act, pauseControls } from "../../runtime/dom";
+import { show, setText, playPause } from "../../runtime/dom";
 import { lerpVec, smoothstep } from "../../lib/tween";
-import { one, msFromSecs } from "../../lib/format";
+import { msFromSecs } from "../../lib/format";
 import { makeSim } from "./sim";
 
-export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PEG_SVG, POST_SVG, RESULTS, TYPE }) {
-  const stage = document.querySelector("[data-lobby]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, PAWN, TICKET_SVG, DOT_SVG, PEG_SVG, POST_SVG, TYPE }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   const at = (p) => iso(p, P);
   const path = (pts) => pathOf(pts.map(at));
@@ -240,20 +239,21 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
     for (let i = 0; i < seg.length; i++) { if (d <= seg[i]) return lerp(pts[i], pts[i + 1], d / seg[i]); d -= seg[i]; }
     return pts[pts.length - 1];
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     cfg[name] = ["wait", "maxWait"].includes(name) ? Number(raw) : raw;
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
 
   // The "Type here" box: Panel has no text input, so it goes in here, between the settings and the speed control.
   const typeBox = document.createElement("div");
@@ -265,8 +265,8 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
   typeIn.setAttribute("data-type", "");
   typeIn.setAttribute("aria-label", L(TYPE.aria));
   typeBox.append(typeLabel, typeIn);
-  const speedBox = document.querySelector('[data-set="speed"]')?.closest(".control");
-  if (speedBox) speedBox.before(typeBox); else document.querySelector(".controls").append(typeBox);
+  const speedBox = root.$('[data-set="speed"]')?.closest(".control");
+  if (speedBox) speedBox.before(typeBox); else root.$(".controls").append(typeBox);
   typeIn.addEventListener("focus", () => { if (cfg.input !== "live") set("input", "live"); });
   typeIn.addEventListener("input", () => {
     if (cfg.input !== "live") set("input", "live");
@@ -274,51 +274,12 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
     if (loop.paused) loop.setPaused(false);
   });
 
-  // ---------- experiments (results computed at build time from the same model, six seeds each) ----------
-  const sec = (x) => (x >= 1 ? one(x) + " s" : msFromSecs(x));
-  const RUNS = {
-    search: () => {
-      const { off, on } = RESULTS.search;
-      return { verdict: T("A search is " + one(off.keysPerSession) + " keys on average. Without debounce it sent " + one(off.perSession) + " requests; with a 300 ms debounce, " + one(on.perSession) + ".",
-          "Una búsqueda tiene " + one(off.keysPerSession) + " teclas en promedio. Sin debounce enviaba " + one(off.perSession) + " solicitudes; con un debounce de 300 ms, " + one(on.perSession) + "."),
-        bars: [[T("Keys per search", "Teclas por búsqueda"), 1, one(off.keysPerSession)], [T("Requests, no debounce", "Solicitudes, sin debounce"), off.perSession / off.keysPerSession, one(off.perSession)], [T("Requests, 300 ms debounce", "Solicitudes, debounce de 300 ms"), on.perSession / off.keysPerSession, one(on.perSession), true]] };
-    },
-    wait: () => {
-      const r = RESULTS.wait;
-      const k = r[0].keysPerSession, lagTop = Math.max(...r.map((x) => x.lag));
-      const reqs = r.map((x) => one(x.perSession)).join(" → "), lags = r.map((x) => msFromSecs(x.lag)).join(" → ");
-      return { verdict: T("Requests per search: " + reqs + " (of " + one(k) + " keys). Last key to results: " + lags + ".",
-          "Solicitudes por búsqueda: " + reqs + " (de " + one(k) + " teclas). De la última tecla a los resultados: " + lags + "."),
-        bars: [[T("Requests, 100 ms", "Solicitudes, 100 ms"), r[0].perSession / k, one(r[0].perSession)], [T("Requests, 300 ms", "Solicitudes, 300 ms"), r[1].perSession / k, one(r[1].perSession)], [T("Requests, 1 s", "Solicitudes, 1 s"), r[2].perSession / k, one(r[2].perSession), true],
-          [T("Wait for results, 100 ms", "Espera de resultados, 100 ms"), r[0].lag / lagTop, msFromSecs(r[0].lag)], [T("Wait for results, 1 s", "Espera de resultados, 1 s"), r[2].lag / lagTop, msFromSecs(r[2].lag), true]] };
-    },
-    hold: () => {
-      const { plain, capped } = RESULTS.hold;
-      return { verdict: T("Debounce 300 ms: the first request left " + sec(plain.firstSend) + " after the stream began, " + one(plain.sentDuring) + " during it. With maxWait 1 s: first after " + sec(capped.firstSend) + ", " + one(capped.sentDuring) + " during the 5 s.",
-          "Debounce de 300 ms: la primera solicitud salió " + sec(plain.firstSend) + " después de que empezó el flujo, " + one(plain.sentDuring) + " durante él. Con maxWait de 1 s: la primera a los " + sec(capped.firstSend) + ", " + one(capped.sentDuring) + " durante los 5 s."),
-        bars: [[T("First request, 300 ms", "Primera solicitud, 300 ms"), Math.min(1, plain.firstSend / 6), sec(plain.firstSend), true], [T("First request, maxWait 1 s", "Primera solicitud, maxWait 1 s"), Math.min(1, capped.firstSend / 6), sec(capped.firstSend)]] };
-    },
-    clicks: () => {
-      const r = RESULTS.clicks;
-      const names = ["No debounce", "Trailing 300 ms", "Leading 300 ms"], nombres = ["Sin debounce", "Al final 300 ms", "Al inicio 300 ms"];
-      return { verdict: T(r.map((x, i) => names[i] + ": " + one(x.perSession) + " orders, first after " + msFromSecs(x.firstSend)).join(" · ") + ".",
-          r.map((x, i) => nombres[i] + ": " + one(x.perSession) + " pedidos, el primero a los " + msFromSecs(x.firstSend)).join(" · ") + "."),
-        bars: r.flatMap((x, i) => [[T(names[i] + ", orders", nombres[i] + ", pedidos"), x.perSession / 2, one(x.perSession), i === 2], [T(names[i] + ", delay", nombres[i] + ", demora"), Math.min(1, x.firstSend / 0.6), msFromSecs(x.firstSend), i === 2]]) };
-    },
-    order: () => {
-      const { off, deb, can } = RESULTS.order;
-      const per = (x) => Math.round(x.staleShare * 100), top = Math.max(1, per(off));
-      return { verdict: T("Times an older answer replaced a newer one, per 100 searches: " + per(off) + " without debounce, " + per(deb) + " with a 300 ms debounce, " + per(can) + " when each new request cancels the older one.",
-          "Veces que una respuesta anterior reemplazó a una más reciente, por cada 100 búsquedas: " + per(off) + " sin debounce, " + per(deb) + " con un debounce de 300 ms, " + per(can) + " cuando cada solicitud nueva cancela la anterior."),
-        bars: [[T("No debounce", "Sin debounce"), per(off) / top, String(per(off))], [T("Debounce 300 ms", "Debounce de 300 ms"), per(deb) / top, String(per(deb)), true], [T("Debounce + cancel", "Debounce + cancelar"), per(can) / top, String(per(can))]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     for (const key of ["mode", "wait", "maxWait", "input", "latency", "cancel"]) set(key, String(w[key]), true);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

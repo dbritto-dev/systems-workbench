@@ -1,8 +1,52 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 34 · Stacks: three stacks on one machine (the call stack, undo and redo, a busy server).
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { averageOver } from "../../lib/stats";
+import { pct } from "../../lib/format";
 import { buildFigure, P, FIRST, CS_GEOM, UR_GEOM, COL_GEOM, COUNTERS } from "./figure";
+import { callOps, walkOrder, makeEditor, serverRun } from "./sim";
+
+// What each card shows after a run, worked out at build time from the same model the page runs (the server
+// experiment averaged over six seeds).
+const SEEDS = [1, 2, 3, 4, 5, 6];
+const RUNS = {
+  calls: () => {
+    const r = callOps("sum", 5, 1000);
+    const pops = r.ops.filter((o) => o.op === "pop");
+    const order = pops.map((o) => o.label.replace("sum ", "sum(") + ")→" + o.ret).join(", ");
+    return { verdict: t("Deepest: " + r.max + " frames. Returns in order: " + order + ".", "Profundidad máxima: " + r.max + " marcos. Retornos en orden: " + order + "."),
+      bars: [[t("Deepest stack", "Pila más profunda"), r.max / 5, t(r.max + " frames", r.max + " marcos")], [t("First to return", "Primera en retornar"), 1 / 5, pops[0].label.replace("sum ", "sum(") + ")", true], [t("Last to return", "Última en retornar"), 1, pops[pops.length - 1].label.replace("sum ", "sum(") + ") = " + r.result]] };
+  },
+  overflow: () => {
+    const rec = callOps("sum", 5000, 1000), it = callOps("loop", 5000, 1000);
+    const at = (rec.max + 1).toLocaleString("en"), res = it.result.toLocaleString("en");
+    return { verdict: t("Recursive: stack overflow when frame " + at + " didn't fit, no result. Loop: depth " + it.max + ", result " + res + ".",
+        "Recursiva: desbordamiento de pila cuando el marco " + at + " no cupo, sin resultado. Bucle: profundidad " + it.max + ", resultado " + res + "."),
+      bars: [[t("Recursive, frames in use", "Recursiva, marcos en uso"), 1, t(rec.max.toLocaleString("en") + " · overflow", rec.max.toLocaleString("en") + " · desbordamiento"), true], [t("Loop, frames in use", "Bucle, marcos en uso"), it.max / 1000, String(it.max)]] };
+  },
+  undo: () => {
+    const e = makeEditor(); e.type("A"); e.type("B"); e.type("C"); e.undoOne(); e.undoOne();
+    const redo = e.redo.slice().reverse(), before = redo.join(" (top), then "), antes = redo.join(" (arriba), luego ");
+    e.type("D");
+    return { verdict: t("Before typing D, redo held " + before + ". After: document " + e.doc.join(" ") + ", undo " + e.undo.join(" ") + ", redo empty; " + e.dropped + " edits thrown away.",
+        "Antes de escribir D, rehacer tenía " + antes + ". Después: documento " + e.doc.join(" ") + ", deshacer " + e.undo.join(" ") + ", rehacer vacía; " + e.dropped + " ediciones descartadas."),
+      bars: [[t("Undo stack", "Pila de deshacer"), e.undo.length / 3, e.undo.join(" ")], [t("Redo stack", "Pila de rehacer"), 0, t("empty", "vacía"), true], [t("Thrown away", "Descartadas"), e.dropped / 3, String(e.dropped)]] };
+  },
+  walk: () => {
+    const dfs = walkOrder("stack"), bfs = walkOrder("queue");
+    return { verdict: t("Stack (depth first): " + dfs.join(", ") + ". Queue (breadth first): " + bfs.join(", ") + ". After 2 the stack visits " + dfs[dfs.indexOf(2) + 1] + ".",
+        "Pila (en profundidad): " + dfs.join(", ") + ". Cola (en anchura): " + bfs.join(", ") + ". Después de 2, la pila visita " + dfs[dfs.indexOf(2) + 1] + "."),
+      bars: [[t("Stack: after 2", "Pila: después de 2"), 1, String(dfs[dfs.indexOf(2) + 1]), true], [t("Queue: after 2", "Cola: después de 2"), 1, String(bfs[bfs.indexOf(2) + 1])]] };
+  },
+  overload: () => {
+    const avg = (order, load) => averageOver(SEEDS, (s) => serverRun(order, load, 60, s));
+    const f = avg("fifo", 1.2), l = avg("lifo", 1.2), f8 = avg("fifo", 0.8), l8 = avg("lifo", 0.8);
+    return { verdict: t("At 120%: oldest first finished " + pct(f.onTimeShare) + " in time, newest first " + pct(l.onTimeShare) + ". The oldest request still waiting: " + f.oldest.toFixed(0) + " s vs " + l.oldest.toFixed(0) + " s (starved). At 80% load oldest first wins: " + pct(f8.onTimeShare) + " vs " + pct(l8.onTimeShare) + ", slowest 1% " + f8.p99.toFixed(1) + " s vs " + l8.p99.toFixed(1) + " s.",
+        "Al 120%: la más antigua primero terminó a tiempo el " + pct(f.onTimeShare) + "; la más nueva primero, el " + pct(l.onTimeShare) + ". La solicitud más antigua que sigue esperando: " + f.oldest.toFixed(0) + " s contra " + l.oldest.toFixed(0) + " s (sin atender). Con carga del 80% gana la más antigua primero: " + pct(f8.onTimeShare) + " contra " + pct(l8.onTimeShare) + "; el 1% más lento, " + f8.p99.toFixed(1) + " s contra " + l8.p99.toFixed(1) + " s."),
+      bars: [[t("In time, oldest first", "A tiempo, más antigua primero"), f.onTimeShare, pct(f.onTimeShare)], [t("In time, newest first", "A tiempo, más nueva primero"), l.onTimeShare, pct(l.onTimeShare), true], [t("Oldest waiting, oldest first", "Espera más larga, más antigua primero"), Math.min(1, f.oldest / 60), f.oldest.toFixed(0) + " s"], [t("Oldest waiting, newest first", "Espera más larga, más nueva primero"), Math.min(1, l.oldest / 60), l.oldest.toFixed(0) + " s", true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -125,7 +169,7 @@ export default defineLesson({
       "Escribir, Deshacer y Rehacer toman el control del editor que estaba en demostración; Empezar de nuevo lo devuelve. El modelo del servidor corre cuatro veces más lento que el tiempo real para que puedas seguir cada solicitud."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine; the server experiment is averaged over six seeded runs.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina; el experimento del servidor se promedia sobre seis ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina; el experimento del servidor se promedia sobre seis ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson. Newest-first under overload follows Facebook's adaptive LIFO, described in <a href="https://queue.acm.org/detail.cfm?id=2839461" target="_blank" rel="noopener">Fail at Scale</a> (ACM Queue, 2015).`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección. Atender primero lo más nuevo bajo sobrecarga sigue el adaptive LIFO de Facebook, descrito en <a href="https://queue.acm.org/detail.cfm?id=2839461" target="_blank" rel="noopener">Fail at Scale</a> (ACM Queue, 2015).`),
@@ -143,6 +187,5 @@ export default defineLesson({
     COLG: COL_GEOM,
     COUNTERS,
     FIRST,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

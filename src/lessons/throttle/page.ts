@@ -1,7 +1,8 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 32 · Throttle: a metronome gate on a ball track.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { one, pct, msFromSecs } from "../../lib/format";
 import { buildFigure, ballSvg, P, GEOMETRY, GAUGE } from "./figure";
 import { avg } from "./sim";
 
@@ -13,6 +14,42 @@ const RESULTS = {
   drag: { thr: avg({ kind: "drag", mode: "throttle", wait: 0.1 }), deb: avg({ kind: "drag", mode: "debounce", wait: 0.1 }) },
   clicks: { thr: avg({ kind: "clicks", mode: "throttle", wait: 0.5 }), qu: avg({ kind: "clicks", mode: "queue", wait: 0.5 }) },
   interval: [0.016, 0.1, 0.5].map((w) => ({ w, r: avg({ kind: "scroll", rate: 120, mode: "throttle", wait: w }) })),
+};
+
+// What each card shows after a run.
+const RUNS = {
+  scroll: () => {
+    const { off, thr } = RESULTS.scroll;
+    return { verdict: t("While scrolling: " + Math.round(off.callsPerSec) + " handler calls a second with no gate, " + Math.round(thr.callsPerSec) + " with the throttle. At 6 ms a call that is " + msFromSecs(off.workPerSec) + " of work per second of scrolling against " + msFromSecs(thr.workPerSec) + ", and the screen is never more than " + msFromSecs(thr.maxLag) + " behind.",
+        "Durante el scroll: " + Math.round(off.callsPerSec) + " llamadas al handler por segundo sin compuerta, " + Math.round(thr.callsPerSec) + " con el throttle. A 6 ms por llamada, eso es " + msFromSecs(off.workPerSec) + " de trabajo por segundo de scroll contra " + msFromSecs(thr.workPerSec) + ", y la pantalla nunca va más de " + msFromSecs(thr.maxLag) + " atrasada."),
+      bars: [[t("Calls / s, no gate", "Llamadas / s, sin compuerta"), 1, String(Math.round(off.callsPerSec))], [t("Calls / s, throttle 100 ms", "Llamadas / s, throttle 100 ms"), thr.callsPerSec / off.callsPerSec, String(Math.round(thr.callsPerSec)), true]] };
+  },
+  trailing: () => {
+    const { lead, both } = RESULTS.trailing;
+    return { verdict: t("The handler saw the position the user stopped at in " + pct(lead.finalHandled) + " of bursts with leading only, and " + pct(both.finalHandled) + " with leading + trailing (for " + one(both.callsPerSec - lead.callsPerSec) + " more calls a second).",
+        "El handler vio la posición donde se detuvo el usuario en el " + pct(lead.finalHandled) + " de las ráfagas con solo el flanco inicial, y en el " + pct(both.finalHandled) + " con inicio + final (a cambio de " + one(both.callsPerSec - lead.callsPerSec) + " llamadas más por segundo)."),
+      bars: [[t("Final position handled, leading only", "Posición final procesada, solo inicio"), lead.finalHandled, pct(lead.finalHandled), true], [t("Final position handled, both edges", "Posición final procesada, ambos flancos"), both.finalHandled, pct(both.finalHandled)]] };
+  },
+  drag: () => {
+    const { thr, deb } = RESULTS.drag, top = Math.max(1, thr.duringPerBurst);
+    return { verdict: t("During each 3 s drag the throttle updated " + Math.round(thr.duringPerBurst) + " times, about every " + msFromSecs(3 / Math.max(1, thr.duringPerBurst)) + "; the debounce updated " + Math.round(deb.duringPerBurst) + " times, and once " + msFromSecs(0.1) + " after each drag ended.",
+        "Durante cada arrastre de 3 s, el throttle actualizó " + Math.round(thr.duringPerBurst) + " veces, cerca de cada " + msFromSecs(3 / Math.max(1, thr.duringPerBurst)) + "; el debounce actualizó " + Math.round(deb.duringPerBurst) + " veces, y una vez " + msFromSecs(0.1) + " después de que terminó cada arrastre."),
+      bars: [[t("Updates during a drag, throttle", "Actualizaciones durante un arrastre, throttle"), thr.duringPerBurst / top, String(Math.round(thr.duringPerBurst))], [t("Updates during a drag, debounce", "Actualizaciones durante un arrastre, debounce"), deb.duringPerBurst / top, String(Math.round(deb.duringPerBurst)), true]] };
+  },
+  clicks: () => {
+    const { thr, qu } = RESULTS.clicks;
+    const lost = thr.dropped / thr.n;
+    return { verdict: t("Throttled: " + Math.round(thr.calls) + " of " + Math.round(thr.n) + " clicks reached the cart; " + pct(lost) + " of the items vanished without an error. Queued at the same pace, every item arrived, but the last one up to " + one(qu.maxDelay) + " s after its click.",
+        "Con throttle: " + Math.round(thr.calls) + " de " + Math.round(thr.n) + " clics llegaron al carrito; el " + pct(lost) + " de los artículos desapareció sin ningún error. En una cola al mismo ritmo llegaron todos los artículos, pero el último hasta " + one(qu.maxDelay) + " s después de su clic."),
+      bars: [[t("Items lost, throttle", "Artículos perdidos, throttle"), lost, pct(lost), true], [t("Items lost, queue", "Artículos perdidos, cola"), 0, "0%"], [t("Longest wait, queue (of 5 s)", "Espera más larga, cola (de 5 s)"), Math.min(1, qu.maxDelay / 5), one(qu.maxDelay) + " s"]] };
+  },
+  interval: () => {
+    const rs = RESULTS.interval;
+    const top = Math.max(...rs.map(({ r }) => r.callsPerSec));
+    return { verdict: t(rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " calls/s, screen up to " + msFromSecs(r.maxLag) + " behind").join(" · ") + ".",
+        rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " llamadas/s, pantalla hasta " + msFromSecs(r.maxLag) + " atrasada").join(" · ") + "."),
+      bars: rs.flatMap(({ w, r }, n) => [[t("Calls / s, " + msFromSecs(w), "Llamadas / s, " + msFromSecs(w)), r.callsPerSec / top, String(Math.round(r.callsPerSec)), n === 2], [t("Behind, at worst, " + msFromSecs(w), "Atraso máximo, " + msFromSecs(w)), Math.min(1, r.maxLag / 0.5), msFromSecs(r.maxLag), n === 2]]) };
+  },
 };
 
 const EXPERIMENTS = [
@@ -134,7 +171,7 @@ export default defineLesson({
       "La máquina va en cámara lenta: a ×1, un segundo en la página es una décima de segundo de entrada real. Elige <em>Tu mano</em> y mantén presionado el botón para hacer scroll, o presiona Clic varias veces rápido."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs of 20 seconds of input.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija de 20 segundos de entrada."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija de 20 segundos de entrada."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). The gate follows the usual <code>throttle(fn, wait, { leading, trailing })</code> semantics. Simulation written for this lesson.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). La compuerta sigue la semántica habitual de <code>throttle(fn, wait, { leading, trailing })</code>. Simulación escrita para esta lección.`),
@@ -149,7 +186,5 @@ export default defineLesson({
     G: GEOMETRY,
     GAUGE,
     BALL_SVG: ballSvg(false),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

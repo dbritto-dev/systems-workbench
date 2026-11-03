@@ -1,7 +1,8 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 31 · Debounce: an elevator that leaves only when nobody new has arrived.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { one, msFromSecs } from "../../lib/format";
 import { buildFigure, pawnSvg, ticketSvg, dotSvg, pegSvg, postSvg, P, GEOMETRY } from "./figure";
 import { averaged } from "./sim";
 
@@ -13,6 +14,46 @@ const RESULTS = {
   hold: { plain: averaged({ mode: "trailing", wait: 0.3, input: "hold", latency: "steady" }), capped: averaged({ mode: "trailing", wait: 0.3, maxWait: 1, input: "hold", latency: "steady" }) },
   clicks: ["none", "trailing", "leading"].map((m) => averaged({ mode: m, wait: 0.3, input: "clicks", latency: "steady" })),
   order: { off: averaged({ mode: "none", latency: "variable" }), deb: averaged({ mode: "trailing", wait: 0.3, latency: "variable" }), can: averaged({ mode: "trailing", wait: 0.3, latency: "variable", cancel: true }) },
+};
+
+// What each card shows after a run.
+const sec = (x) => (x >= 1 ? one(x) + " s" : msFromSecs(x));
+const RUNS = {
+  search: () => {
+    const { off, on } = RESULTS.search;
+    return { verdict: t("A search is " + one(off.keysPerSession) + " keys on average. Without debounce it sent " + one(off.perSession) + " requests; with a 300 ms debounce, " + one(on.perSession) + ".",
+        "Una búsqueda tiene " + one(off.keysPerSession) + " teclas en promedio. Sin debounce enviaba " + one(off.perSession) + " solicitudes; con un debounce de 300 ms, " + one(on.perSession) + "."),
+      bars: [[t("Keys per search", "Teclas por búsqueda"), 1, one(off.keysPerSession)], [t("Requests, no debounce", "Solicitudes, sin debounce"), off.perSession / off.keysPerSession, one(off.perSession)], [t("Requests, 300 ms debounce", "Solicitudes, debounce de 300 ms"), on.perSession / off.keysPerSession, one(on.perSession), true]] };
+  },
+  wait: () => {
+    const r = RESULTS.wait;
+    const k = r[0].keysPerSession, lagTop = Math.max(...r.map((x) => x.lag));
+    const reqs = r.map((x) => one(x.perSession)).join(" → "), lags = r.map((x) => msFromSecs(x.lag)).join(" → ");
+    return { verdict: t("Requests per search: " + reqs + " (of " + one(k) + " keys). Last key to results: " + lags + ".",
+        "Solicitudes por búsqueda: " + reqs + " (de " + one(k) + " teclas). De la última tecla a los resultados: " + lags + "."),
+      bars: [[t("Requests, 100 ms", "Solicitudes, 100 ms"), r[0].perSession / k, one(r[0].perSession)], [t("Requests, 300 ms", "Solicitudes, 300 ms"), r[1].perSession / k, one(r[1].perSession)], [t("Requests, 1 s", "Solicitudes, 1 s"), r[2].perSession / k, one(r[2].perSession), true],
+        [t("Wait for results, 100 ms", "Espera de resultados, 100 ms"), r[0].lag / lagTop, msFromSecs(r[0].lag)], [t("Wait for results, 1 s", "Espera de resultados, 1 s"), r[2].lag / lagTop, msFromSecs(r[2].lag), true]] };
+  },
+  hold: () => {
+    const { plain, capped } = RESULTS.hold;
+    return { verdict: t("Debounce 300 ms: the first request left " + sec(plain.firstSend) + " after the stream began, " + one(plain.sentDuring) + " during it. With maxWait 1 s: first after " + sec(capped.firstSend) + ", " + one(capped.sentDuring) + " during the 5 s.",
+        "Debounce de 300 ms: la primera solicitud salió " + sec(plain.firstSend) + " después de que empezó el flujo, " + one(plain.sentDuring) + " durante él. Con maxWait de 1 s: la primera a los " + sec(capped.firstSend) + ", " + one(capped.sentDuring) + " durante los 5 s."),
+      bars: [[t("First request, 300 ms", "Primera solicitud, 300 ms"), Math.min(1, plain.firstSend / 6), sec(plain.firstSend), true], [t("First request, maxWait 1 s", "Primera solicitud, maxWait 1 s"), Math.min(1, capped.firstSend / 6), sec(capped.firstSend)]] };
+  },
+  clicks: () => {
+    const r = RESULTS.clicks;
+    const names = ["No debounce", "Trailing 300 ms", "Leading 300 ms"], nombres = ["Sin debounce", "Al final 300 ms", "Al inicio 300 ms"];
+    return { verdict: t(r.map((x, i) => names[i] + ": " + one(x.perSession) + " orders, first after " + msFromSecs(x.firstSend)).join(" · ") + ".",
+        r.map((x, i) => nombres[i] + ": " + one(x.perSession) + " pedidos, el primero a los " + msFromSecs(x.firstSend)).join(" · ") + "."),
+      bars: r.flatMap((x, i) => [[t(names[i] + ", orders", nombres[i] + ", pedidos"), x.perSession / 2, one(x.perSession), i === 2], [t(names[i] + ", delay", nombres[i] + ", demora"), Math.min(1, x.firstSend / 0.6), msFromSecs(x.firstSend), i === 2]]) };
+  },
+  order: () => {
+    const { off, deb, can } = RESULTS.order;
+    const per = (x) => Math.round(x.staleShare * 100), top = Math.max(1, per(off));
+    return { verdict: t("Times an older answer replaced a newer one, per 100 searches: " + per(off) + " without debounce, " + per(deb) + " with a 300 ms debounce, " + per(can) + " when each new request cancels the older one.",
+        "Veces que una respuesta anterior reemplazó a una más reciente, por cada 100 búsquedas: " + per(off) + " sin debounce, " + per(deb) + " con un debounce de 300 ms, " + per(can) + " cuando cada solicitud nueva cancela la anterior."),
+      bars: [[t("No debounce", "Sin debounce"), per(off) / top, String(per(off))], [t("Debounce 300 ms", "Debounce de 300 ms"), per(deb) / top, String(per(deb)), true], [t("Debounce + cancel", "Debounce + cancelar"), per(can) / top, String(per(can))]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -141,7 +182,7 @@ export default defineLesson({
       "Cambiar un ajuste reinicia la ejecución. Elige “Tú escribes” y escribe en el cuadro para manejar la máquina tú mismo."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over six seeded runs of two minutes each.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre seis ejecuciones con semilla fija de dos minutos cada una."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre seis ejecuciones con semilla fija de dos minutos cada una."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson. Lesson 32 covers the throttle, debounce's sibling.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección. La lección 32 trata el throttle, el hermano del debounce.`),
@@ -161,13 +202,11 @@ export default defineLesson({
   data: {
     P,
     G: GEOMETRY,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
     PAWN: pawnSvg(),
     TICKET_SVG: ticketSvg(),
     DOT_SVG: dotSvg(),
     PEG_SVG: pegSvg(),
     POST_SVG: postSvg(),
-    RESULTS,
     // The "Type here" box (Panel has no text input): its label, placeholder and accessible name.
     TYPE: { label: t("Type here", "Escribe aquí"), placeholder: t("type to feed keystrokes", "escribe para enviar pulsaciones"), aria: t("Type to send keystrokes into the machine", "Escribe para enviar pulsaciones a la máquina") },
   },

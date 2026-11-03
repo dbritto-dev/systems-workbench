@@ -1,21 +1,18 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The three stacks in the browser: steps the call stack, the undo/redo editor and the busy server, wires the
-// controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, first frame).
+// The three stacks in the browser: steps the call stack, the undo/redo editor and the busy server, and answers the
+// controls. mount() gets the build-time data from page.ts (geometry, first frame) and root, the <wb-lesson>.
 import { iso, pathOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls, setText, setLit } from "../../runtime/dom";
+import { show, playPause, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
-import { averageOver } from "../../lib/stats";
-import { pct } from "../../lib/format";
-import { callOps, walkOrder, makeEditor, makeServer, serverRun, TIMEOUT } from "./sim";
+import { callOps, makeEditor, makeServer, TIMEOUT } from "./sim";
 
-export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-stacks]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const ease = smoothstep;
 
   // Counters: digit wheels from the shared parts (WB.counter redraws only the wheels that changed).
@@ -23,7 +20,7 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
   const wheel = (name, v) => dials[name].set(Math.min(v, 10 ** COUNTERS[name].count - 1));
 
   const cfg = { program: "sum", n: 10, order: "lifo", load: 1.2, speed: 1 };
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
   let focus = "cs", focusAt = 0;   // which station the readout narrates
 
   // ======== 1. the call stack ========
@@ -232,7 +229,7 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
     if (focus === "ur" && focusAt > 0) { if (urMsg) say(L(urMsg)); return; }
     say(cs.last ? L(cs.last) : L("starting", "iniciando"));
   }
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({
     stage,
     step: (dt) => {
@@ -247,70 +244,32 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST, EXPERIMENTS 
 
   function restartAll() { csRestart(cfg.program === "sum" && cfg.n === 10 ? FIRST.stack.length : 0); urRestart(); svRestart(); }
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     if (name === "program") { cfg.program = raw; if (!quiet) csRestart(); }
     if (name === "n") { cfg.n = Number(raw); if (!quiet) csRestart(); }
     if (name === "order") { cfg.order = raw; sv.setOrder(raw); }
     if (name === "load") { cfg.load = Number(raw); if (!quiet) svRestart(); }
   }
-  WB.onSegments((name, value) => set(name, value));
+  root.on("change", (name, value) => set(name, value));
   const LETTERS = "STACKPUSHPOP";
   let typed = 0;
-  for (const name of ["type", "undo", "redo"]) act(name).addEventListener("click", () => {
+  const edit = (name) => {
     ur.manual = true;
     if (name === "type") { if (urDo("type:" + LETTERS[typed % LETTERS.length])) typed++; }
     else urDo(name);
     if (loop.paused) loop.setPaused(false);
-  });
-  act("reset").addEventListener("click", () => { cs.overflows = 0; restartAll(); });
-
-  // ---------- experiments ----------
-  const SEEDS = [1, 2, 3, 4, 5, 6];
-  const RUNS = {
-    calls: () => {
-      const r = callOps("sum", 5, 1000);
-      const pops = r.ops.filter((o) => o.op === "pop");
-      const order = pops.map((o) => o.label.replace("sum ", "sum(") + ")→" + o.ret).join(", ");
-      return { verdict: T("Deepest: " + r.max + " frames. Returns in order: " + order + ".", "Profundidad máxima: " + r.max + " marcos. Retornos en orden: " + order + "."),
-        bars: [[T("Deepest stack", "Pila más profunda"), r.max / 5, T(r.max + " frames", r.max + " marcos")], [T("First to return", "Primera en retornar"), 1 / 5, pops[0].label.replace("sum ", "sum(") + ")", true], [T("Last to return", "Última en retornar"), 1, pops[pops.length - 1].label.replace("sum ", "sum(") + ") = " + r.result]] };
-    },
-    overflow: () => {
-      const rec = callOps("sum", 5000, 1000), it = callOps("loop", 5000, 1000);
-      const at = (rec.max + 1).toLocaleString("en"), res = it.result.toLocaleString("en");
-      return { verdict: T("Recursive: stack overflow when frame " + at + " didn't fit, no result. Loop: depth " + it.max + ", result " + res + ".",
-          "Recursiva: desbordamiento de pila cuando el marco " + at + " no cupo, sin resultado. Bucle: profundidad " + it.max + ", resultado " + res + "."),
-        bars: [[T("Recursive, frames in use", "Recursiva, marcos en uso"), 1, T(rec.max.toLocaleString("en") + " · overflow", rec.max.toLocaleString("en") + " · desbordamiento"), true], [T("Loop, frames in use", "Bucle, marcos en uso"), it.max / 1000, String(it.max)]] };
-    },
-    undo: () => {
-      const e = makeEditor(); e.type("A"); e.type("B"); e.type("C"); e.undoOne(); e.undoOne();
-      const redo = e.redo.slice().reverse(), before = redo.join(" (top), then "), antes = redo.join(" (arriba), luego ");
-      e.type("D");
-      return { verdict: T("Before typing D, redo held " + before + ". After: document " + e.doc.join(" ") + ", undo " + e.undo.join(" ") + ", redo empty; " + e.dropped + " edits thrown away.",
-          "Antes de escribir D, rehacer tenía " + antes + ". Después: documento " + e.doc.join(" ") + ", deshacer " + e.undo.join(" ") + ", rehacer vacía; " + e.dropped + " ediciones descartadas."),
-        bars: [[T("Undo stack", "Pila de deshacer"), e.undo.length / 3, e.undo.join(" ")], [T("Redo stack", "Pila de rehacer"), 0, T("empty", "vacía"), true], [T("Thrown away", "Descartadas"), e.dropped / 3, String(e.dropped)]] };
-    },
-    walk: () => {
-      const dfs = walkOrder("stack"), bfs = walkOrder("queue");
-      return { verdict: T("Stack (depth first): " + dfs.join(", ") + ". Queue (breadth first): " + bfs.join(", ") + ". After 2 the stack visits " + dfs[dfs.indexOf(2) + 1] + ".",
-          "Pila (en profundidad): " + dfs.join(", ") + ". Cola (en anchura): " + bfs.join(", ") + ". Después de 2, la pila visita " + dfs[dfs.indexOf(2) + 1] + "."),
-        bars: [[T("Stack: after 2", "Pila: después de 2"), 1, String(dfs[dfs.indexOf(2) + 1]), true], [T("Queue: after 2", "Cola: después de 2"), 1, String(bfs[bfs.indexOf(2) + 1])]] };
-    },
-    overload: () => {
-      const avg = (order, load) => averageOver(SEEDS, (s) => serverRun(order, load, 60, s));
-      const f = avg("fifo", 1.2), l = avg("lifo", 1.2), f8 = avg("fifo", 0.8), l8 = avg("lifo", 0.8);
-      return { verdict: T("At 120%: oldest first finished " + pct(f.onTimeShare) + " in time, newest first " + pct(l.onTimeShare) + ". The oldest request still waiting: " + f.oldest.toFixed(0) + " s vs " + l.oldest.toFixed(0) + " s (starved). At 80% load oldest first wins: " + pct(f8.onTimeShare) + " vs " + pct(l8.onTimeShare) + ", slowest 1% " + f8.p99.toFixed(1) + " s vs " + l8.p99.toFixed(1) + " s.",
-          "Al 120%: la más antigua primero terminó a tiempo el " + pct(f.onTimeShare) + "; la más nueva primero, el " + pct(l.onTimeShare) + ". La solicitud más antigua que sigue esperando: " + f.oldest.toFixed(0) + " s contra " + l.oldest.toFixed(0) + " s (sin atender). Con carga del 80% gana la más antigua primero: " + pct(f8.onTimeShare) + " contra " + pct(l8.onTimeShare) + "; el 1% más lento, " + f8.p99.toFixed(1) + " s contra " + l8.p99.toFixed(1) + " s."),
-        bars: [[T("In time, oldest first", "A tiempo, más antigua primero"), f.onTimeShare, pct(f.onTimeShare)], [T("In time, newest first", "A tiempo, más nueva primero"), l.onTimeShare, pct(l.onTimeShare), true], [T("Oldest waiting, oldest first", "Espera más larga, más antigua primero"), Math.min(1, f.oldest / 60), f.oldest.toFixed(0) + " s"], [T("Oldest waiting, newest first", "Espera más larga, más nueva primero"), Math.min(1, l.oldest / 60), l.oldest.toFixed(0) + " s", true]] };
-    },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  const actions = { type: () => edit("type"), undo: () => edit("undo"), redo: () => edit("redo"), reset: () => { cs.overflows = 0; restartAll(); } };
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     if (w.program) { set("program", w.program, true); if (w.n) set("n", String(w.n), true); csRestart(); }
     if (w.editor) urRestart(WATCH, true);
     if (w.order) { set("order", w.order, true); set("load", String(w.load), true); svRestart(); }
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restartAll();
