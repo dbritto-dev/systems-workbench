@@ -114,14 +114,13 @@ export default defineLesson({
       { seg: "next", label: t("Next version", "Siguiente versión"), options: [["good", t("Good", "Buena")], ["bad", t("Broken", "Rota")], ["incompatible", t("New data format", "Formato de datos nuevo")]], value: "good" },
       { seg: "load", label: t("Traffic", "Tráfico"), options: [["normal", "Normal"], ["high", t("Busy", "Alto")]], value: "normal" },
       { speed: true },
-      { actions: [["rollout", t("Start rollout", "Iniciar despliegue")], ["reset", t("Reset", "Reiniciar")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
+      { actions: [["rollout", t("Start rollout", "Iniciar despliegue"), { primary: true }], ["reset", t("Reset", "Reiniciar")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
     note: t("Kubernetes does not allow maxUnavailable and maxSurge to both be 0; choosing that sets maxSurge to 1.", "Kubernetes no permite que maxUnavailable y maxSurge sean 0 a la vez; si eliges eso, maxSurge pasa a 1."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over eight simulated rollouts of the same yard: six bays, 6 s warm-up, 2.4 s per crane move.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados son el promedio de ocho despliegues simulados del mismo patio: seis bahías, 6 s de calentamiento, 2.4 s por movimiento de la grúa."), experiments: EXPERIMENTS },
   explain: { questions: QUESTIONS },
-  // Warm-up strip, the darker old modules, headed groups of result bars, and the primary look for "Start rollout"
-  // (Panel draws action buttons as plain .btn; this copies .btn.primary from the workbench CSS).
+  // Warm-up strip, the darker old modules and headed groups of result bars.
   css: `
 .warm-fill{fill:var(--anatomy-mid);stroke:none}
 .mod-old .iso-top{fill:var(--anatomy-shade-1)}
@@ -129,7 +128,6 @@ export default defineLesson({
 .mod-old .iso-edge{stroke:var(--anatomy-mid)}
 .bar-group{font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted);margin-top:6px}
 .bar-group:first-child{margin-top:0}
-.btn[data-act="rollout"]{background:var(--anatomy-strong);border-color:var(--anatomy-strong);color:var(--anatomy-card)}
 `,
   data: {
     P,

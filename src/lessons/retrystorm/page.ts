@@ -170,18 +170,16 @@ export default defineLesson({
       { seg: "layers", label: t("Layers that retry", "Capas que reintentan"), options: [[1, "1"], [3, "3"]], value: 1 },
       { seg: "budget", label: t("Retry budget", "Presupuesto de reintentos"), options: [["false", t("Off", "No")], ["true", "10%"]], value: "false" },
       { speed: true },
-      { actions: [["rush", t("Send a rush", "Enviar una avalancha")], ["restart", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
+      { actions: [["rush", t("Send a rush", "Enviar una avalancha"), { primary: true }], ["restart", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
   predict: { intro: t('Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same office, averaged over 16 two-minute runs after a rush of 16 visitors.',
     'Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen de la misma taquilla, promediados sobre 16 ejecuciones de dos minutos después de una avalancha de 16 visitantes.'), experiments: EXPERIMENTS },
   explain: { questions: QUESTIONS },
-  // Experiment results here come in titled groups of bars. "Send a rush" is the panel's primary button (the panel's
-  // action buttons are all plain, so it gets .btn.primary's look here).
+  // Experiment results here come in titled groups of bars.
   css: `
 .bar-group{font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted);margin-top:6px}
 .bar-group:first-child{margin-top:0}
-.btn[data-act="rush"]{background:var(--anatomy-strong);border-color:var(--anatomy-strong);color:var(--anatomy-card)}
 `,
   data: {
     P,

@@ -12,11 +12,11 @@ import type { Bi } from "../i18n";
 export type { Bi };
 
 /** A control under the figure. `for` tags it (data-for) so the live code can show one group at a time;
- *  `hidden` starts it hidden. */
+ *  `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (.btn.primary). */
 export type Control = (
   | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number }
   | { speed: true; options?: [value: number, label: string][]; value?: number }
-  | { actions: [act: string, label: Bi][]; label: Bi }
+  | { actions: [act: string, label: Bi, opts?: { primary?: boolean }][]; label: Bi }
 ) & { for?: string; hidden?: boolean };
 
 export interface Plate {

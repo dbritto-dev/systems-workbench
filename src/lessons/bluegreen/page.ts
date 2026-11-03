@@ -121,18 +121,16 @@ export default defineLesson({
       { seg: "draining", label: t("Connection draining", "Drenado de conexiones"), options: [["on", t("On", "Sí")], ["off", t("Off", "No")]], value: "on" },
       { seg: "migration", label: t("Green's migration", "Migración de verde"), options: [["compatible", "Compatible"], ["breaking", t("Breaking", "Incompatible")]], value: "compatible" },
       { speed: true },
-      // The flip button is the primary action; Panel can't mark one, so the css below styles it as .btn.primary.
-      { actions: [["flip", t("Flip to green", "Cambiar a verde")], ["redeploy", t("Redeploy green", "Redesplegar verde")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
+      { actions: [["flip", t("Flip to green", "Cambiar a verde"), { primary: true }], ["redeploy", t("Redeploy green", "Redesplegar verde")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over six runs: requests arrive at 5 per second, and each line has three presses.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados en seis corridas: llegan 5 solicitudes por segundo y cada línea tiene tres prensas."), experiments: EXPERIMENTS },
   explain: { questions: QUESTIONS },
-  // Five stats instead of six; the item pool is hidden until placed; the flip button looks like .btn.primary.
+  // Five stats instead of six; the item pool is hidden until placed.
   css: `
 .stats{grid-template-columns:repeat(5,1fr)}
 @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.stat{border-bottom:1px solid var(--anatomy-faint)}.stat:nth-child(3){border-right:1px solid var(--anatomy-faint)}.stat:nth-child(2n){border-right:0}}
 [data-pool]{display:none}
-.btn[data-act="flip"],.btn[data-act="flip"]:hover{background:var(--anatomy-strong);border-color:var(--anatomy-strong);color:var(--anatomy-card)}
 `,
   data: {
     P,
