@@ -1,7 +1,12 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a restaurant pass.
 // One CPU core (the waiters' hands), a kitchen with a fixed number of burners (the dependency),
 // and orders that each need a little CPU, one I/O call (cooking) and a little CPU to deliver.
 // Times are in milliseconds of simulated time.
+// Shared by the page (experiment results at build time) and the live code.
+import { rng } from "../../lib/random";
+import { meanBy, percentile } from "../../lib/stats";
+
 export const DEFAULTS = {
   mode: "async",      // "blocking": threads that wait at the window; "async": one waiter, a ticket rail and a bell
   threads: 4,         // blocking threads
@@ -17,8 +22,6 @@ export const DEFAULTS = {
   jitter: 0.1,        // cooking time varies ±10%
   seed: 1,
 };
-
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 export function createSim(options) {
   const o = { ...DEFAULTS, ...options };
@@ -146,14 +149,12 @@ export function createSim(options) {
     advance(t) { while (heap.length && heap[0].t <= t) { const e = pop(); now = e.t; e.fn(); } now = Math.max(now, t); },
     runToEnd() { let guard = 0; while (heap.length && guard++ < 5e6) { const e = pop(); now = e.t; e.fn(); } return this.metrics(); },
     metrics() {
-      const sorted = (a) => [...a].sort((x, y) => x - y);
-      const pct = (a, p) => { if (!a.length) return 0; const s = sorted(a); return s[Math.min(s.length - 1, Math.floor(p * (s.length - 1)))]; };
       const total = st.latencies.length ? Math.max(...st.latencies) : now;
       return {
         total, done: st.done, failed: st.failed,
         throughput: total > 0 ? (st.done / total) * 1000 : 0,
-        p95: pct(st.latencies, 0.95),
-        bellP95: pct(st.bellWaits, 0.95),
+        p95: percentile(st.latencies, 0.95),
+        bellP95: percentile(st.bellWaits, 0.95),
         maxInFlight: st.maxInFlight,
         busy: total > 0 ? st.coreBusy / total : 0,
       };
@@ -164,6 +165,13 @@ export function createSim(options) {
 // Average a configuration over several seeds.
 export function measure(options, seeds = [1, 2, 3, 4, 5, 6]) {
   const runs = seeds.map((seed) => createSim({ ...options, seed }).runToEnd());
-  const mean = (k) => runs.reduce((s, r) => s + r[k], 0) / runs.length;
+  const mean = (k) => meanBy(runs, (r) => r[k]);
   return { total: mean("total"), done: mean("done"), failed: mean("failed"), throughput: mean("throughput"), p95: mean("p95"), bellP95: mean("bellP95"), maxInFlight: mean("maxInFlight"), busy: mean("busy") };
 }
+
+// ---------- experiments: computed once at build time from the same model (the original ran them in the browser) ----------
+export const threadsRun = () => ({ a: measure({ mode: "blocking", threads: 4, n: 100 }), b: measure({ mode: "async", n: 100 }) });
+export const cpuRun = () => ({ a: measure({ mode: "blocking", threads: 4, n: 100, cpu: 40, io: 10 }), b: measure({ mode: "async", n: 100, cpu: 40, io: 10 }) });
+export const loopRun = () => ({ a: measure({ mode: "async", n: 20, gather: "sequential" }), b: measure({ mode: "async", n: 20 }) });
+export const limitRun = () => ({ a: measure({ mode: "async", n: 1000 }), b: measure({ mode: "async", n: 1000, limit: 20 }) });
+export const blockRun = () => ({ a: measure({ mode: "async", n: 100 }), b: measure({ mode: "async", n: 100, block: 15 }) });

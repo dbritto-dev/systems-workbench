@@ -1,10 +1,12 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A restaurant pass: an order desk (the CPU) with a spike of orders, a permit board (the concurrency limit),
 // a pass counter with a ticket rail and a service bell, a kitchen range with 32 burners (the dependency),
 // and the waiters who carry orders between them.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) on the workbench layer.
-import * as k from "../../workbench/kit.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 720;
 export const HEIGHT = 420;
@@ -54,10 +56,7 @@ export const P = k.fitProjection(
   WIDTH, HEIGHT, { pad: 22, azimuth: 52 },
 );
 
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 const byDepth = (items) => [...items].sort((a, b) => k.depthOf(a.at, P) - k.depthOf(b.at, P));
 
 function plate() {
