@@ -70,6 +70,14 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 48 | [Hedged Requests](https://dbritto-dev.github.io/systems-workbench/lessons/hedging/) | Traffic | Kitchen pass | Slow answer? Send a copy to another replica and keep the first reply. It cuts the tail, as long as copies stay rare. |
 | 49 | [HTTP/1.1 vs HTTP/2](https://dbritto-dev.github.io/systems-workbench/lessons/http2/) | Traffic | Order depot | HTTP/1.1 waits a round trip per request on each connection; HTTP/2 sends all at once, but a lost packet stalls them all. |
 | 50 | [Fair Queueing](https://dbritto-dev.github.io/systems-workbench/lessons/fairqueue/) | Traffic | Dispatch desk | In one shared line a batch job makes everyone wait. A lane per tenant, served in turn, keeps each wait its own. |
+| 51 | [Frame Budget](https://dbritto-dev.github.io/systems-workbench/lessons/frames/) | Frontend | Frame conveyor | At 60 Hz each frame gets 16.7 ms. A long task drops every frame it covers, and a click waits for the next paint. |
+| 52 | [Layout Thrashing](https://dbritto-dev.github.io/systems-workbench/lessons/layout/) | Frontend | Typesetting bench | Read a size after changing a style and the browser lays out the page on the spot. Do it per item and it thrashes. |
+| 53 | [List Virtualization](https://dbritto-dev.github.io/systems-workbench/lessons/virtualization/) | Frontend | Reading window | A 10,000-row list puts 10,000 rows in the DOM. Windowing renders only what is on screen, and loses Ctrl+F. |
+| 54 | [Re-render Cascades](https://dbritto-dev.github.io/systems-workbench/lessons/rerenders/) | Frontend | Component board | A state change re-renders everything below it. Keep state low, subscribe narrowly, and memo only where it pays. |
+| 55 | [Request Waterfalls](https://dbritto-dev.github.io/systems-workbench/lessons/waterfalls/) | Frontend | Relay track | Fetch on render and each request waits for another. Every link costs a round trip, however fast the server is. |
+| 56 | [Critical Rendering Path](https://dbritto-dev.github.io/systems-workbench/lessons/renderpath/) | Frontend | Page-load bench | Nothing paints before the HTML, the head's stylesheets and its classic scripts. Then images and fonts decide LCP and CLS. |
+| 57 | [Stale-While-Revalidate](https://dbritto-dev.github.io/systems-workbench/lessons/swr/) | Frontend | Copy rack | Show the cached copy at once, refetch in the background: instant screens that can show old data for a while. |
+| 58 | [Optimistic UI](https://dbritto-dev.github.io/systems-workbench/lessons/optimistic/) | Frontend | Front counter | Show the like before the server says yes. Instant, until a failure must roll back or a late answer undoes the tap. |
 
 The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and deployed to
 GitHub Pages: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
