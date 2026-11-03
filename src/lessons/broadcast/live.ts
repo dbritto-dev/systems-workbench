@@ -5,7 +5,7 @@
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
-import { pct, int } from "../../lib/format";
+import { pct, int, msOrSecs } from "../../lib/format";
 import { rankQuantileSorted } from "../../lib/stats";
 import { TOPOLOGIES, HOP, createNet, hubsOf } from "./sim";
 
@@ -133,7 +133,8 @@ export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
         "valor " + (spot.id + 1) + " · entró en el nodo " + (spot.origin + 1) + " · " + lit + " de " + op.target + " encendidos" + (op.done ? " en " + took + " ms" : "") + (net.stats.overload ? " · red saturada" : "")));
     }
   }
-  // A point a share u of the way along a polyline (by length).
+  // A point a share u of the way along a polyline (by length). Not src/lib/geometry's pointAlong: a share, not a
+  // distance, a straight two-point shortcut, and no clamp below the start.
   function along(pts, u) {
     if (pts.length === 2) return [pts[0][0] + (pts[1][0] - pts[0][0]) * u, pts[0][1] + (pts[1][1] - pts[0][1]) * u];
     const seg = []; let total = 0;
@@ -145,7 +146,7 @@ export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
 
   const stat = stats();
   // Seconds as "250 ms" under one second, "1.25 s" above; "–" when there is nothing to show.
-  const ms = (x) => (isFinite(x) ? (x >= 1 ? x.toFixed(2) + " s" : Math.round(x * 1000) + " ms") : "–");
+  const ms = (x) => (isFinite(x) ? msOrSecs(x) : "–");
   // Messages per value: one decimal, whole with thousands separators from 100 up.
   const n1 = (x) => (x >= 100 ? int(x) : x.toFixed(1));
   function showStats() {

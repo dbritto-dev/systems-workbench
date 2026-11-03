@@ -103,18 +103,6 @@ export function runDeploy({ seed = 1, duration = 3600, promoteAt = null, stopAtD
   return d;
 }
 
-// ---------- track geometry: the figure draws the tracks with these, the live code runs the trains along them ----------
-const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
-export function lengthOf(points) { let s = 0; for (let i = 1; i < points.length; i++) s += Math.hypot(...sub(points[i], points[i - 1])); return s; }
-export function pointAt(points, s) {
-  for (let i = 1; i < points.length; i++) {
-    const seg = Math.hypot(...sub(points[i], points[i - 1]));
-    if (s <= seg || i === points.length - 1) { const t = Math.max(0, Math.min(1, s / seg)); return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * t, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * t]; }
-    s -= seg;
-  }
-  return points[points.length - 1];
-}
-
 // ---------- experiments: computed once at build time from the same model ----------
 const seedsOf = (n) => Array.from({ length: n }, (_, i) => i + 1);
 export function blastRun() {

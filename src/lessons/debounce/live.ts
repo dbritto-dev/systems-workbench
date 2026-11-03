@@ -8,7 +8,7 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, show, setText, act, pauseControls } from "../../runtime/dom";
 import { lerpVec, smoothstep } from "../../lib/tween";
-import { one } from "../../lib/format";
+import { one, msFromSecs } from "../../lib/format";
 import { makeSim } from "./sim";
 
 export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PEG_SVG, POST_SVG, RESULTS, TYPE }) {
@@ -203,7 +203,7 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
     if (shownNow !== seenShown) {
       seenShown = shownNow;
       const last = m.events[m.events.length - 1];
-      if (last && m.screen.text === typed && m.screen.id === m.screen.maxId) { const r = m.requests[m.screen.id]; if (r.done >= last.t) lagText = Math.round((r.done - last.t) * 1000) + " ms"; }
+      if (last && m.screen.text === typed && m.screen.id === m.screen.maxId) { const r = m.requests[m.screen.id]; if (r.done >= last.t) lagText = msFromSecs(r.done - last.t); }
     }
 
     // Readout and stats.
@@ -232,7 +232,7 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
     for (let i = 0; i <= n; i++) { const a = (i / n) * frac * Math.PI * 2; pts.push([c[0] + r * Math.sin(a), c[1], c[2] + r * Math.cos(a)]); }
     pie[name].setAttribute("d", pathOf(pts.map(at), true));
   }
-  // A point a share f of the way along a polyline (by length).
+  // A point a share f of the way along a polyline (by length), in 3D; not src/lib/geometry's pointAlong (x, y, by distance).
   function along(pts, f) {
     const seg = []; let total = 0;
     for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1], pts[i][2] - pts[i - 1][2]); seg.push(l); total += l; }
@@ -275,8 +275,7 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
   });
 
   // ---------- experiments (results computed at build time from the same model, six seeds each) ----------
-  const ms = (x) => Math.round(x * 1000) + " ms";
-  const sec = (x) => (x >= 1 ? one(x) + " s" : ms(x));
+  const sec = (x) => (x >= 1 ? one(x) + " s" : msFromSecs(x));
   const RUNS = {
     search: () => {
       const { off, on } = RESULTS.search;
@@ -287,11 +286,11 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
     wait: () => {
       const r = RESULTS.wait;
       const k = r[0].keysPerSession, lagTop = Math.max(...r.map((x) => x.lag));
-      const reqs = r.map((x) => one(x.perSession)).join(" → "), lags = r.map((x) => ms(x.lag)).join(" → ");
+      const reqs = r.map((x) => one(x.perSession)).join(" → "), lags = r.map((x) => msFromSecs(x.lag)).join(" → ");
       return { verdict: T("Requests per search: " + reqs + " (of " + one(k) + " keys). Last key to results: " + lags + ".",
           "Solicitudes por búsqueda: " + reqs + " (de " + one(k) + " teclas). De la última tecla a los resultados: " + lags + "."),
         bars: [[T("Requests, 100 ms", "Solicitudes, 100 ms"), r[0].perSession / k, one(r[0].perSession)], [T("Requests, 300 ms", "Solicitudes, 300 ms"), r[1].perSession / k, one(r[1].perSession)], [T("Requests, 1 s", "Solicitudes, 1 s"), r[2].perSession / k, one(r[2].perSession), true],
-          [T("Wait for results, 100 ms", "Espera de resultados, 100 ms"), r[0].lag / lagTop, ms(r[0].lag)], [T("Wait for results, 1 s", "Espera de resultados, 1 s"), r[2].lag / lagTop, ms(r[2].lag), true]] };
+          [T("Wait for results, 100 ms", "Espera de resultados, 100 ms"), r[0].lag / lagTop, msFromSecs(r[0].lag)], [T("Wait for results, 1 s", "Espera de resultados, 1 s"), r[2].lag / lagTop, msFromSecs(r[2].lag), true]] };
     },
     hold: () => {
       const { plain, capped } = RESULTS.hold;
@@ -302,9 +301,9 @@ export default function mount({ P, G, EXPERIMENTS, PAWN, TICKET_SVG, DOT_SVG, PE
     clicks: () => {
       const r = RESULTS.clicks;
       const names = ["No debounce", "Trailing 300 ms", "Leading 300 ms"], nombres = ["Sin debounce", "Al final 300 ms", "Al inicio 300 ms"];
-      return { verdict: T(r.map((x, i) => names[i] + ": " + one(x.perSession) + " orders, first after " + ms(x.firstSend)).join(" · ") + ".",
-          r.map((x, i) => nombres[i] + ": " + one(x.perSession) + " pedidos, el primero a los " + ms(x.firstSend)).join(" · ") + "."),
-        bars: r.flatMap((x, i) => [[T(names[i] + ", orders", nombres[i] + ", pedidos"), x.perSession / 2, one(x.perSession), i === 2], [T(names[i] + ", delay", nombres[i] + ", demora"), Math.min(1, x.firstSend / 0.6), ms(x.firstSend), i === 2]]) };
+      return { verdict: T(r.map((x, i) => names[i] + ": " + one(x.perSession) + " orders, first after " + msFromSecs(x.firstSend)).join(" · ") + ".",
+          r.map((x, i) => nombres[i] + ": " + one(x.perSession) + " pedidos, el primero a los " + msFromSecs(x.firstSend)).join(" · ") + "."),
+        bars: r.flatMap((x, i) => [[T(names[i] + ", orders", nombres[i] + ", pedidos"), x.perSession / 2, one(x.perSession), i === 2], [T(names[i] + ", delay", nombres[i] + ", demora"), Math.min(1, x.firstSend / 0.6), msFromSecs(x.firstSend), i === 2]]) };
     },
     order: () => {
       const { off, deb, can } = RESULTS.order;

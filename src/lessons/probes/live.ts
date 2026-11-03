@@ -8,6 +8,7 @@ import { L, T } from "../../runtime/wb";
 import { readout, stats, act as button, pauseControls } from "../../runtime/dom";
 import { easeInOutQuad } from "../../lib/tween";
 import { n0 } from "../../lib/format";
+import { polylineLength, pointAlong } from "../../lib/geometry";
 import { makeSim } from "./sim";
 
 export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
@@ -101,24 +102,15 @@ export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
     p.busy = true;
     tokens.push({ p, path: [[G.SPAWN[0], G.SPAWN[1]], [cx, G.WALK_Y], [cx, G.SHOP.y1 + 5]], ok, t: 0 });
   }
-  function lengthOf(path) { let n = 0; for (let i = 1; i < path.length; i++) n += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); return n; }
-  function pointOn(path, d) {
-    for (let i = 1; i < path.length; i++) {
-      const seg = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
-      if (d <= seg || i === path.length - 1) { const u = seg ? Math.max(0, Math.min(1, d / seg)) : 1; return [path[i - 1][0] + (path[i][0] - path[i - 1][0]) * u, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * u]; }
-      d -= seg;
-    }
-    return path[path.length - 1];
-  }
   function paintTokens(realDt) {
     for (const tk of tokens) {
       tk.t += realDt;
-      const len = lengthOf(tk.path), go = len / WALK, back = tk.ok ? 0.35 : Math.min(go, 1.2);
+      const len = polylineLength(tk.path), go = len / WALK, back = tk.ok ? 0.35 : Math.min(go, 1.2);
       let d, opacity = 1, lit = false;
       if (tk.t < go) d = ease(tk.t / go) * len;
       else if (tk.ok) { d = len; opacity = 1 - (tk.t - go) / back; }
       else { const u = (tk.t - go) / back; d = len * (1 - ease(Math.min(1, u))); lit = true; opacity = u > 0.75 ? (1 - u) / 0.25 : 1; }
-      const [x, y] = pointOn(tk.path, d);
+      const [x, y] = pointAlong(tk.path, d);
       tk.p.g.setAttribute("transform", translateAlong(P, [x, y, 0]));
       tk.p.g.style.opacity = String(Math.max(0, opacity));
       tk.p.g.style.display = "";

@@ -7,6 +7,7 @@ import * as WB from "../../runtime/wb";
 import { L as tr, T } from "../../runtime/wb";
 import { readout, stats, show, act, pauseControls } from "../../runtime/dom";
 import { createLoop, advance, resetStats, task, armTimer } from "./sim";
+import { millis } from "../../lib/format";
 
 export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
   const MS_PER_SECOND = 40;
@@ -47,7 +48,6 @@ export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
   })(loop);
 
   const stackDepth = (r) => !r ? 0 : r.kind === "cpu" ? 3 : r.kind === "promise" ? 2 : 1;
-  const msText = (v) => (v < 10 ? v.toFixed(1) : Math.round(v)) + " ms";
 
   function paint() {
     const L = loop;
@@ -93,10 +93,10 @@ export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
   function showStats() {
     const s = loop.stats, span = loop.t - s.since;
     stat("busy", span > 20 ? Math.round((100 * s.busy) / span) + "%" : "–");
-    stat("late", s.timers ? msText(s.lateMax) : "–");
-    stat("gap", span > 40 ? msText(Math.max(s.gapMax, loop.t - loop.lastFrame)) : "–");
-    stat("io", s.ioDone ? msText(s.ioWaitSum / s.ioDone) : "–");
-    stat("job", s.jobs ? msText(s.lastJob) : "–");
+    stat("late", s.timers ? millis(s.lateMax) : "–");
+    stat("gap", span > 40 ? millis(Math.max(s.gapMax, loop.t - loop.lastFrame)) : "–");
+    stat("io", s.ioDone ? millis(s.ioWaitSum / s.ioDone) : "–");
+    stat("job", s.jobs ? millis(s.lastJob) : "–");
     stat("queue", String(loop.macro.length + loop.micro.length));
   }
 
@@ -128,14 +128,13 @@ export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
   pause.bind(clock);
 
   // ---------- experiments (numbers computed from the same model at build time) ----------
-  const ms = (v) => msText(v);
   const RUNS = {
     long: () => {
       const { a, b } = RESULTS.long;
       const top = Math.max(a.lateMax, b.lateMax, a.gapMax, b.gapMax) * 1.05;
-      return { verdict: T("With the 200 ms job, the 10 ms timer ran up to " + ms(b.lateMax) + " late (" + ms(a.lateMax) + " without it), and the longest gap between frames grew from " + ms(a.gapMax) + " to " + ms(b.gapMax) + ".",
-          "Con el trabajo de 200 ms, el temporizador de 10 ms se ejecutó hasta " + ms(b.lateMax) + " tarde (" + ms(a.lateMax) + " sin él), y el mayor hueco entre cuadros creció de " + ms(a.gapMax) + " a " + ms(b.gapMax) + "."),
-        bars: [[T("Timer late, no job", "Retraso de timer, sin trabajo"), a.lateMax / top, ms(a.lateMax)], [T("Timer late, 200 ms job", "Retraso de timer, trabajo de 200 ms"), b.lateMax / top, ms(b.lateMax), true], [T("Frame gap, no job", "Hueco entre cuadros, sin trabajo"), a.gapMax / top, ms(a.gapMax)], [T("Frame gap, 200 ms job", "Hueco entre cuadros, trabajo de 200 ms"), b.gapMax / top, ms(b.gapMax), true]] };
+      return { verdict: T("With the 200 ms job, the 10 ms timer ran up to " + millis(b.lateMax) + " late (" + millis(a.lateMax) + " without it), and the longest gap between frames grew from " + millis(a.gapMax) + " to " + millis(b.gapMax) + ".",
+          "Con el trabajo de 200 ms, el temporizador de 10 ms se ejecutó hasta " + millis(b.lateMax) + " tarde (" + millis(a.lateMax) + " sin él), y el mayor hueco entre cuadros creció de " + millis(a.gapMax) + " a " + millis(b.gapMax) + "."),
+        bars: [[T("Timer late, no job", "Retraso de timer, sin trabajo"), a.lateMax / top, millis(a.lateMax)], [T("Timer late, 200 ms job", "Retraso de timer, trabajo de 200 ms"), b.lateMax / top, millis(b.lateMax), true], [T("Frame gap, no job", "Hueco entre cuadros, sin trabajo"), a.gapMax / top, millis(a.gapMax)], [T("Frame gap, 200 ms job", "Hueco entre cuadros, trabajo de 200 ms"), b.gapMax / top, millis(b.gapMax), true]] };
     },
     order: () => {
       const o = RESULTS.order, es = o.map((x) => LABEL_ES[x] || x);
@@ -145,23 +144,23 @@ export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
     flood: () => {
       const { a, b } = RESULTS.flood;
       const top = Math.max(a.ioWaitMax, b.ioWaitMax, a.gapMax, b.gapMax) * 1.05;
-      return { verdict: T("While the chain ran, I/O callbacks waited up to " + ms(b.ioWaitMax) + " (" + ms(a.ioWaitMax) + " without it), and the longest gap between frames was " + ms(b.gapMax) + ".",
-          "Mientras corría la cadena, los callbacks de E/S esperaron hasta " + ms(b.ioWaitMax) + " (" + ms(a.ioWaitMax) + " sin ella), y el mayor hueco entre cuadros fue de " + ms(b.gapMax) + "."),
-        bars: [[T("I/O wait, no chain", "Espera de E/S, sin cadena"), a.ioWaitMax / top, ms(a.ioWaitMax)], [T("I/O wait, promise chain", "Espera de E/S, cadena de promesas"), b.ioWaitMax / top, ms(b.ioWaitMax), true], [T("Frame gap, no chain", "Hueco entre cuadros, sin cadena"), a.gapMax / top, ms(a.gapMax)], [T("Frame gap, promise chain", "Hueco entre cuadros, cadena de promesas"), b.gapMax / top, ms(b.gapMax), true]] };
+      return { verdict: T("While the chain ran, I/O callbacks waited up to " + millis(b.ioWaitMax) + " (" + millis(a.ioWaitMax) + " without it), and the longest gap between frames was " + millis(b.gapMax) + ".",
+          "Mientras corría la cadena, los callbacks de E/S esperaron hasta " + millis(b.ioWaitMax) + " (" + millis(a.ioWaitMax) + " sin ella), y el mayor hueco entre cuadros fue de " + millis(b.gapMax) + "."),
+        bars: [[T("I/O wait, no chain", "Espera de E/S, sin cadena"), a.ioWaitMax / top, millis(a.ioWaitMax)], [T("I/O wait, promise chain", "Espera de E/S, cadena de promesas"), b.ioWaitMax / top, millis(b.ioWaitMax), true], [T("Frame gap, no chain", "Hueco entre cuadros, sin cadena"), a.gapMax / top, millis(a.gapMax)], [T("Frame gap, promise chain", "Hueco entre cuadros, cadena de promesas"), b.gapMax / top, millis(b.gapMax), true]] };
     },
     chunk: () => {
       const { a, b } = RESULTS.chunk;
       const gt = Math.max(a.gapMax, b.gapMax) * 1.05, jt = Math.max(a.jobAvg, b.jobAvg) * 1.05;
-      return { verdict: T("In 5 ms chunks, the longest frame gap fell from " + ms(a.gapMax) + " to " + ms(b.gapMax) + ", and the job took " + ms(b.jobAvg) + " instead of " + ms(a.jobAvg) + ".",
-          "En trozos de 5 ms, el mayor hueco entre cuadros bajó de " + ms(a.gapMax) + " a " + ms(b.gapMax) + ", y el trabajo tardó " + ms(b.jobAvg) + " en vez de " + ms(a.jobAvg) + "."),
-        bars: [[T("Frame gap, one block", "Hueco entre cuadros, un bloque"), a.gapMax / gt, ms(a.gapMax)], [T("Frame gap, chunked", "Hueco entre cuadros, en trozos"), b.gapMax / gt, ms(b.gapMax), true], [T("Job time, one block", "Tiempo del trabajo, un bloque"), a.jobAvg / jt, ms(a.jobAvg)], [T("Job time, chunked", "Tiempo del trabajo, en trozos"), b.jobAvg / jt, ms(b.jobAvg), true]] };
+      return { verdict: T("In 5 ms chunks, the longest frame gap fell from " + millis(a.gapMax) + " to " + millis(b.gapMax) + ", and the job took " + millis(b.jobAvg) + " instead of " + millis(a.jobAvg) + ".",
+          "En trozos de 5 ms, el mayor hueco entre cuadros bajó de " + millis(a.gapMax) + " a " + millis(b.gapMax) + ", y el trabajo tardó " + millis(b.jobAvg) + " en vez de " + millis(a.jobAvg) + "."),
+        bars: [[T("Frame gap, one block", "Hueco entre cuadros, un bloque"), a.gapMax / gt, millis(a.gapMax)], [T("Frame gap, chunked", "Hueco entre cuadros, en trozos"), b.gapMax / gt, millis(b.gapMax), true], [T("Job time, one block", "Tiempo del trabajo, un bloque"), a.jobAvg / jt, millis(a.jobAvg)], [T("Job time, chunked", "Tiempo del trabajo, en trozos"), b.jobAvg / jt, millis(b.jobAvg), true]] };
     },
     worker: () => {
       const { a, b } = RESULTS.worker;
       const gt = Math.max(a.gapMax, b.gapMax) * 1.05, jt = Math.max(a.jobAvg, b.jobAvg) * 1.05;
-      return { verdict: T("With a worker, the longest frame gap was " + ms(b.gapMax) + " (" + ms(a.gapMax) + " on the main thread), and the job took " + ms(b.jobAvg) + " instead of " + ms(a.jobAvg) + ".",
-          "Con un worker, el mayor hueco entre cuadros fue de " + ms(b.gapMax) + " (" + ms(a.gapMax) + " en el hilo principal), y el trabajo tardó " + ms(b.jobAvg) + " en vez de " + ms(a.jobAvg) + "."),
-        bars: [[T("Frame gap, main thread", "Hueco entre cuadros, hilo principal"), a.gapMax / gt, ms(a.gapMax)], [T("Frame gap, worker", "Hueco entre cuadros, worker"), b.gapMax / gt, ms(b.gapMax), true], [T("Job time, main thread", "Tiempo del trabajo, hilo principal"), a.jobAvg / jt, ms(a.jobAvg)], [T("Job time, worker", "Tiempo del trabajo, worker"), b.jobAvg / jt, ms(b.jobAvg), true]] };
+      return { verdict: T("With a worker, the longest frame gap was " + millis(b.gapMax) + " (" + millis(a.gapMax) + " on the main thread), and the job took " + millis(b.jobAvg) + " instead of " + millis(a.jobAvg) + ".",
+          "Con un worker, el mayor hueco entre cuadros fue de " + millis(b.gapMax) + " (" + millis(a.gapMax) + " en el hilo principal), y el trabajo tardó " + millis(b.jobAvg) + " en vez de " + millis(a.jobAvg) + "."),
+        bars: [[T("Frame gap, main thread", "Hueco entre cuadros, hilo principal"), a.gapMax / gt, millis(a.gapMax)], [T("Frame gap, worker", "Hueco entre cuadros, worker"), b.gapMax / gt, millis(b.gapMax), true], [T("Job time, main thread", "Tiempo del trabajo, hilo principal"), a.jobAvg / jt, millis(a.jobAvg)], [T("Job time, worker", "Tiempo del trabajo, worker"), b.jobAvg / jt, millis(b.jobAvg), true]] };
     },
   };
   WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {

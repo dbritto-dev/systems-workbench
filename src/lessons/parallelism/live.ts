@@ -6,6 +6,7 @@ import * as WB from "../../runtime/wb";
 import { L as tr, T } from "../../runtime/wb";
 import { readout, stats as statsStrip, act, pauseControls } from "../../runtime/dom";
 import { PAR, makeShop, amdahl, speedup } from "./sim";
+import { secs1, msFromSecs } from "../../lib/format";
 
 export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMENTS }) {
   const NS = "http://www.w3.org/2000/svg";
@@ -101,7 +102,7 @@ export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMEN
     clockHand.setAttribute("d", needleOf((t - shop.jobStart) / PAR.BIG));
     // Readout.
     const waitingTool = shop.workers.filter((w) => w.waiting).length;
-    const job = shop.jobsDone + 1, last = shop.lastTime ? shop.lastTime.toFixed(1) + " s" : "";
+    const job = shop.jobsDone + 1, last = shop.lastTime ? secs1(shop.lastTime) : "";
     if (WB.lang() === "es") {
       if (shop.phase === "work") say("trabajo " + job + " · " + shop.doneCount + " de " + shop.chunks.length + " bloques hechos" + (waitingTool ? " · " + waitingTool + (waitingTool === 1 ? " espera" : " esperan") + " la herramienta" : "") + (last ? " · último " + last : ""));
       else if (shop.phase === "merge") say("trabajo " + job + " · uniendo " + shop.chunks.length + " bloques · bancos inactivos");
@@ -115,7 +116,7 @@ export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMEN
 
   function showStats() {
     stat("jobs", shop.jobsDone);
-    stat("last", shop.lastTime ? (cfg.job === "tiny" ? Math.round(shop.lastTime * 1000) + " ms" : shop.lastTime.toFixed(1) + " s") : "–");
+    stat("last", shop.lastTime ? (cfg.job === "tiny" ? msFromSecs(shop.lastTime) : secs1(shop.lastTime)) : "–");
     stat("busy", shop.t > 0.5 ? Math.round((100 * shop.busyTime) / shop.t) + "%" : "–");
     stat("toolwait", cfg.tool && shop.t > 0.5 ? Math.round((100 * shop.toolWaitTime) / (shop.t * cfg.workers)) + "%" : "–");
   }
@@ -144,8 +145,6 @@ export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMEN
 
   // ---------- experiments (results computed at build time from the same model) ----------
   const x1 = (v) => v.toFixed(1) + "×";
-  const s1 = (v) => v.toFixed(1) + " s";
-  const ms = (v) => Math.round(v * 1000) + " ms";
   const RUNS = {
     amdahl: () => {
       const { list, limit } = RESULTS.amdahl;
@@ -157,9 +156,9 @@ export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMEN
     oversub: () => {
       const { a, b } = RESULTS.oversub, top = Math.max(a, b);
       const slower = Math.round(100 * (b / a - 1));
-      return { verdict: T("Job time " + s1(a) + " with 8 workers, " + s1(b) + " with 16 on the same 8 benches: " + slower + "% slower.",
-          "Tiempo del trabajo: " + s1(a) + " con 8 trabajadores, " + s1(b) + " con 16 en los mismos 8 bancos: " + slower + "% más lento."),
-        bars: [[T("8 workers", "8 trabajadores"), a / top, s1(a)], [T("16 workers", "16 trabajadores"), b / top, s1(b), true]] };
+      return { verdict: T("Job time " + secs1(a) + " with 8 workers, " + secs1(b) + " with 16 on the same 8 benches: " + slower + "% slower.",
+          "Tiempo del trabajo: " + secs1(a) + " con 8 trabajadores, " + secs1(b) + " con 16 en los mismos 8 bancos: " + slower + "% más lento."),
+        bars: [[T("8 workers", "8 trabajadores"), a / top, secs1(a)], [T("16 workers", "16 trabajadores"), b / top, secs1(b), true]] };
     },
     tool: () => {
       const { off, on } = RESULTS.tool;
@@ -169,15 +168,15 @@ export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMEN
     },
     tiny: () => {
       const { one, eight, more } = RESULTS.tiny, top = Math.max(one, eight, more);
-      return { verdict: T("A 0.3 s job took " + ms(one) + " with 1 worker and " + ms(eight) + " split across 8. Split into 32 chunks it took " + ms(more) + ".",
-          "Un trabajo de 0.3 s tardó " + ms(one) + " con 1 trabajador y " + ms(eight) + " repartido entre 8. Dividido en 32 bloques tardó " + ms(more) + "."),
-        bars: [[T("1 worker", "1 trabajador"), one / top, ms(one)], [T("8 workers, 8 chunks", "8 trabajadores, 8 bloques"), eight / top, ms(eight), true], [T("8 workers, 32 chunks", "8 trabajadores, 32 bloques"), more / top, ms(more)]] };
+      return { verdict: T("A 0.3 s job took " + msFromSecs(one) + " with 1 worker and " + msFromSecs(eight) + " split across 8. Split into 32 chunks it took " + msFromSecs(more) + ".",
+          "Un trabajo de 0.3 s tardó " + msFromSecs(one) + " con 1 trabajador y " + msFromSecs(eight) + " repartido entre 8. Dividido en 32 bloques tardó " + msFromSecs(more) + "."),
+        bars: [[T("1 worker", "1 trabajador"), one / top, msFromSecs(one)], [T("8 workers, 8 chunks", "8 trabajadores, 8 bloques"), eight / top, msFromSecs(eight), true], [T("8 workers, 32 chunks", "8 trabajadores, 32 bloques"), more / top, msFromSecs(more)]] };
     },
     uneven: () => {
       const { even, u8, u32 } = RESULTS.uneven, top = Math.max(even, u8, u32);
-      return { verdict: T("Job time " + s1(even) + " with even chunks, " + s1(u8) + " with one heavy chunk, " + s1(u32) + " once the job is cut into 32 chunks.",
-          "Tiempo del trabajo: " + s1(even) + " con bloques parejos, " + s1(u8) + " con un bloque pesado, " + s1(u32) + " al cortar el trabajo en 32 bloques."),
-        bars: [[T("Even, 8 chunks", "Parejo, 8 bloques"), even / top, s1(even)], [T("Heavy, 8 chunks", "Pesado, 8 bloques"), u8 / top, s1(u8), true], [T("Heavy, 32 chunks", "Pesado, 32 bloques"), u32 / top, s1(u32)]] };
+      return { verdict: T("Job time " + secs1(even) + " with even chunks, " + secs1(u8) + " with one heavy chunk, " + secs1(u32) + " once the job is cut into 32 chunks.",
+          "Tiempo del trabajo: " + secs1(even) + " con bloques parejos, " + secs1(u8) + " con un bloque pesado, " + secs1(u32) + " al cortar el trabajo en 32 bloques."),
+        bars: [[T("Even, 8 chunks", "Parejo, 8 bloques"), even / top, secs1(even)], [T("Heavy, 8 chunks", "Pesado, 8 bloques"), u8 / top, secs1(u8), true], [T("Heavy, 32 chunks", "Pesado, 32 bloques"), u32 / top, secs1(u32)]] };
     },
   };
   WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {

@@ -7,7 +7,7 @@ import { digitPath, counterCells } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T, digitsOf } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
-import { pct } from "../../lib/format";
+import { pct, msOrSecs } from "../../lib/format";
 import { rankQuantileSorted } from "../../lib/stats";
 import { makeSim, slowdown, RETRY } from "./sim";
 
@@ -178,7 +178,7 @@ export default function mount({ P, G, CAB_SVG, RESULTS, EXPERIMENTS }) {
     const p95 = rankQuantileSorted(lat, 0.95);
     const waiting = model.waiting(), leaked = model.leaked();
     stat("served", Math.round(lastSecond.length / since));
-    stat("p95", lat.length ? (p95 < 1 ? Math.round(p95 * 1000) + " ms" : p95.toFixed(2) + " s") : "–");
+    stat("p95", lat.length ? msOrSecs(p95) : "–");
     stat("waiting", waiting);
     stat("failed", (model.timeouts + model.refused) + (model.refused ? L(" (" + model.refused + " refused)", " (" + model.refused + " rechazadas)") : ""));
     stat("open", open + " / 60");
@@ -206,14 +206,13 @@ export default function mount({ P, G, CAB_SVG, RESULTS, EXPERIMENTS }) {
   act("reset").addEventListener("click", () => restart());
 
   // ---------- experiments (numbers computed at build time from the same model) ----------
-  const ms = (s) => (s < 1 ? Math.round(s * 1000) + " ms" : s.toFixed(2) + " s");
   let scaleTimer = null;
   const RUNS = {
     nopool: () => {
       const r = RESULTS.nopool, top = Math.max(r.none.p50, r.pooled.p50);
-      return { verdict: T("Typical request: " + ms(r.none.p50) + " opening a connection each time, " + ms(r.pooled.p50) + " with a pool of 10, " + (r.none.p50 / r.pooled.p50).toFixed(1) + " times longer, for the same queries.",
-          "Solicitud típica: " + ms(r.none.p50) + " abriendo una conexión cada vez, " + ms(r.pooled.p50) + " con un pool de 10: " + (r.none.p50 / r.pooled.p50).toFixed(1) + " veces más, para las mismas consultas."),
-        bars: [[T("Pool of 10", "Pool de 10"), r.pooled.p50 / top, ms(r.pooled.p50)], [T("New connection each time", "Conexión nueva cada vez"), r.none.p50 / top, ms(r.none.p50), true]] };
+      return { verdict: T("Typical request: " + msOrSecs(r.none.p50) + " opening a connection each time, " + msOrSecs(r.pooled.p50) + " with a pool of 10, " + (r.none.p50 / r.pooled.p50).toFixed(1) + " times longer, for the same queries.",
+          "Solicitud típica: " + msOrSecs(r.none.p50) + " abriendo una conexión cada vez, " + msOrSecs(r.pooled.p50) + " con un pool de 10: " + (r.none.p50 / r.pooled.p50).toFixed(1) + " veces más, para las mismas consultas."),
+        bars: [[T("Pool of 10", "Pool de 10"), r.pooled.p50 / top, msOrSecs(r.pooled.p50)], [T("New connection each time", "Conexión nueva cada vez"), r.none.p50 / top, msOrSecs(r.none.p50), true]] };
     },
     size: () => {
       const rs = RESULTS.size, top = Math.max(...rs.map((r) => r.served));
@@ -229,8 +228,8 @@ export default function mount({ P, G, CAB_SVG, RESULTS, EXPERIMENTS }) {
     },
     api: () => {
       const r = RESULTS.api;
-      return { verdict: T("API call before the transaction: " + pct(r.before.failShare) + " failed, typical response " + ms(r.before.p50) + ". Inside it: " + pct(r.inside.failShare) + " failed and the typical response was " + ms(r.inside.p50) + ", with the database running about " + r.inside.active.toFixed(1) + " query at a time.",
-          "Llamada a la API antes de la transacción: falló el " + pct(r.before.failShare) + ", respuesta típica " + ms(r.before.p50) + ". Dentro de ella: falló el " + pct(r.inside.failShare) + " y la respuesta típica fue " + ms(r.inside.p50) + ", con la base de datos ejecutando unas " + r.inside.active.toFixed(1) + " consultas a la vez."),
+      return { verdict: T("API call before the transaction: " + pct(r.before.failShare) + " failed, typical response " + msOrSecs(r.before.p50) + ". Inside it: " + pct(r.inside.failShare) + " failed and the typical response was " + msOrSecs(r.inside.p50) + ", with the database running about " + r.inside.active.toFixed(1) + " query at a time.",
+          "Llamada a la API antes de la transacción: falló el " + pct(r.before.failShare) + ", respuesta típica " + msOrSecs(r.before.p50) + ". Dentro de ella: falló el " + pct(r.inside.failShare) + " y la respuesta típica fue " + msOrSecs(r.inside.p50) + ", con la base de datos ejecutando unas " + r.inside.active.toFixed(1) + " consultas a la vez."),
         bars: [[T("Failed, API before", "Fallidas, API antes"), r.before.failShare, pct(r.before.failShare)], [T("Failed, API inside", "Fallidas, API dentro"), r.inside.failShare, pct(r.inside.failShare), true], [T("Database queries at once, inside", "Consultas a la vez en la base de datos, dentro"), Math.min(1, r.inside.active / 8), T(r.inside.active.toFixed(1) + " of 8 it can run at full speed", r.inside.active.toFixed(1) + " de las 8 que puede correr a toda velocidad")]] };
     },
     scale: () => {

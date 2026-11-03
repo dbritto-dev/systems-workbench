@@ -7,7 +7,7 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats as statsStrip, act, pauseControls, setLit as lightUp } from "../../runtime/dom";
 import { lerp, lerpVec, easeInOutCubic } from "../../lib/tween";
-import { pct } from "../../lib/format";
+import { pct, secs2 } from "../../lib/format";
 import { rng } from "../../lib/random";
 import { TIMING, HIT_TIME, MISS_TIME, RECORDS, pickRecord } from "./sim";
 
@@ -177,7 +177,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     stat("hits", stats.hits);
     stat("misses", stats.misses);
     stat("rate", looked ? Math.round(100 * stats.hits / looked) + "%" : "–");
-    stat("wait", stats.requests ? (stats.wait / stats.requests).toFixed(2) + " s" : "–");
+    stat("wait", stats.requests ? secs2(stats.wait / stats.requests) : "–");
     stat("stale", stats.stale);
   }
 
@@ -212,11 +212,10 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   act("reset").addEventListener("click", resetCounts);
 
   // ---------- experiments (computed at build time from the same model; see sim.ts) ----------
-  const secs = (x) => x.toFixed(2) + " s";
   const RUNS = {
     ttl: () => { const a = RESULTS.base, b = RESULTS.ttl; return {
-      verdict: T("Hit rate " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", average wait " + secs(a.avgTime) + " → " + secs(b.avgTime) + ".",
-        "Tasa de aciertos " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", espera media " + secs(a.avgTime) + " → " + secs(b.avgTime) + "."),
+      verdict: T("Hit rate " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", average wait " + secs2(a.avgTime) + " → " + secs2(b.avgTime) + ".",
+        "Tasa de aciertos " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", espera media " + secs2(a.avgTime) + " → " + secs2(b.avgTime) + "."),
       bars: [[T("TTL 60 s", "TTL 60 s"), a.hitRate, pct(a.hitRate)], [T("TTL 6 s", "TTL 6 s"), b.hitRate, pct(b.hitRate), true]] }; },
     size: () => { const a = RESULTS.base, b = RESULTS.size; return {
       verdict: T("Room fell to a third; hit rate only fell from " + pct(a.hitRate) + " to " + pct(b.hitRate) + ".",
@@ -227,9 +226,9 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
         "Tasa de aciertos " + pct(a.hitRate) + " → " + pct(b.hitRate) + ", cerca de 12 de 40 registros (30%)."),
       bars: [[T("Popular traffic", "Tráfico popular"), a.hitRate, pct(a.hitRate)], [T("Even traffic", "Tráfico parejo"), b.hitRate, pct(b.hitRate), true]] }; },
     flush: () => { const { warm, first, later } = RESULTS.flush; const top = Math.max(warm, first, later) * 1.1; const more = Math.round(100 * (first / warm - 1)); return {
-      verdict: T("The first 10 requests after emptying took " + more + "% longer on average; requests 11 to 30 were already back to " + secs(later) + ".",
-        "Las primeras 10 solicitudes después de vaciar tardaron en promedio " + more + "% más; las solicitudes 11 a 30 ya habían vuelto a " + secs(later) + "."),
-      bars: [[T("Never emptied", "Nunca vaciado"), warm / top, secs(warm)], [T("First 10 after", "Primeras 10 después"), first / top, secs(first), true], [T("Requests 11–30", "Solicitudes 11–30"), later / top, secs(later)]] }; },
+      verdict: T("The first 10 requests after emptying took " + more + "% longer on average; requests 11 to 30 were already back to " + secs2(later) + ".",
+        "Las primeras 10 solicitudes después de vaciar tardaron en promedio " + more + "% más; las solicitudes 11 a 30 ya habían vuelto a " + secs2(later) + "."),
+      bars: [[T("Never emptied", "Nunca vaciado"), warm / top, secs2(warm)], [T("First 10 after", "Primeras 10 después"), first / top, secs2(first), true], [T("Requests 11–30", "Solicitudes 11–30"), later / top, secs2(later)]] }; },
     stale: () => { const { off, on } = RESULTS.stale; return {
       verdict: T(pct(off) + " of rack reads of #1 were stale. With invalidate on write: " + pct(on) + ".",
         pct(off) + " de las lecturas de #1 desde el estante fueron obsoletas. Con invalidar al escribir: " + pct(on) + "."),

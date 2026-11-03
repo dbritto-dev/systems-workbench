@@ -42,7 +42,7 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG, RESULTS, EXPERIMENTS }
   const dedupeEl = q("[data-dedupe]");
   const extraLabels = { twice: q('[data-extra-label="twice"]'), caught: q('[data-extra-label="caught"]') };
 
-  // The rail as a polyline with cumulative lengths.
+  // The rail as a polyline with cumulative lengths (not src/lib/geometry's pointAlong: a share, unclamped, by running sums).
   const railLen = [0]; for (let i = 1; i < G.RAIL.length; i++) railLen.push(railLen[i - 1] + Math.hypot(G.RAIL[i][0] - G.RAIL[i - 1][0], G.RAIL[i][1] - G.RAIL[i - 1][1]));
   function alongRail(f) {
     const d = f * railLen[railLen.length - 1];

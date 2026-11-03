@@ -8,7 +8,7 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
-import { one, pct } from "../../lib/format";
+import { one, pct, msFromSecs } from "../../lib/format";
 import { makeGate, makeStream, TRAVEL, ROLL, FALL } from "./sim";
 import { livePaths } from "./paths";
 
@@ -224,12 +224,11 @@ export default function mount({ P, G, GAUGE, BALL_SVG, RESULTS, EXPERIMENTS }) {
   pause.bind(loop);
 
   // ---------- experiments (results computed at build time from the same model, eight seeds each) ----------
-  const ms = (x) => Math.round(x * 1000) + " ms";
   const RUNS = {
     scroll: () => {
       const { off, thr } = RESULTS.scroll;
-      return { verdict: T("While scrolling: " + Math.round(off.callsPerSec) + " handler calls a second with no gate, " + Math.round(thr.callsPerSec) + " with the throttle. At 6 ms a call that is " + ms(off.workPerSec) + " of work per second of scrolling against " + ms(thr.workPerSec) + ", and the screen is never more than " + ms(thr.maxLag) + " behind.",
-          "Durante el scroll: " + Math.round(off.callsPerSec) + " llamadas al handler por segundo sin compuerta, " + Math.round(thr.callsPerSec) + " con el throttle. A 6 ms por llamada, eso es " + ms(off.workPerSec) + " de trabajo por segundo de scroll contra " + ms(thr.workPerSec) + ", y la pantalla nunca va más de " + ms(thr.maxLag) + " atrasada."),
+      return { verdict: T("While scrolling: " + Math.round(off.callsPerSec) + " handler calls a second with no gate, " + Math.round(thr.callsPerSec) + " with the throttle. At 6 ms a call that is " + msFromSecs(off.workPerSec) + " of work per second of scrolling against " + msFromSecs(thr.workPerSec) + ", and the screen is never more than " + msFromSecs(thr.maxLag) + " behind.",
+          "Durante el scroll: " + Math.round(off.callsPerSec) + " llamadas al handler por segundo sin compuerta, " + Math.round(thr.callsPerSec) + " con el throttle. A 6 ms por llamada, eso es " + msFromSecs(off.workPerSec) + " de trabajo por segundo de scroll contra " + msFromSecs(thr.workPerSec) + ", y la pantalla nunca va más de " + msFromSecs(thr.maxLag) + " atrasada."),
         bars: [[T("Calls / s, no gate", "Llamadas / s, sin compuerta"), 1, String(Math.round(off.callsPerSec))], [T("Calls / s, throttle 100 ms", "Llamadas / s, throttle 100 ms"), thr.callsPerSec / off.callsPerSec, String(Math.round(thr.callsPerSec)), true]] };
     },
     trailing: () => {
@@ -240,8 +239,8 @@ export default function mount({ P, G, GAUGE, BALL_SVG, RESULTS, EXPERIMENTS }) {
     },
     drag: () => {
       const { thr, deb } = RESULTS.drag, top = Math.max(1, thr.duringPerBurst);
-      return { verdict: T("During each 3 s drag the throttle updated " + Math.round(thr.duringPerBurst) + " times, about every " + ms(3 / Math.max(1, thr.duringPerBurst)) + "; the debounce updated " + Math.round(deb.duringPerBurst) + " times, and once " + ms(0.1) + " after each drag ended.",
-          "Durante cada arrastre de 3 s, el throttle actualizó " + Math.round(thr.duringPerBurst) + " veces, cerca de cada " + ms(3 / Math.max(1, thr.duringPerBurst)) + "; el debounce actualizó " + Math.round(deb.duringPerBurst) + " veces, y una vez " + ms(0.1) + " después de que terminó cada arrastre."),
+      return { verdict: T("During each 3 s drag the throttle updated " + Math.round(thr.duringPerBurst) + " times, about every " + msFromSecs(3 / Math.max(1, thr.duringPerBurst)) + "; the debounce updated " + Math.round(deb.duringPerBurst) + " times, and once " + msFromSecs(0.1) + " after each drag ended.",
+          "Durante cada arrastre de 3 s, el throttle actualizó " + Math.round(thr.duringPerBurst) + " veces, cerca de cada " + msFromSecs(3 / Math.max(1, thr.duringPerBurst)) + "; el debounce actualizó " + Math.round(deb.duringPerBurst) + " veces, y una vez " + msFromSecs(0.1) + " después de que terminó cada arrastre."),
         bars: [[T("Updates during a drag, throttle", "Actualizaciones durante un arrastre, throttle"), thr.duringPerBurst / top, String(Math.round(thr.duringPerBurst))], [T("Updates during a drag, debounce", "Actualizaciones durante un arrastre, debounce"), deb.duringPerBurst / top, String(Math.round(deb.duringPerBurst)), true]] };
     },
     clicks: () => {
@@ -254,9 +253,9 @@ export default function mount({ P, G, GAUGE, BALL_SVG, RESULTS, EXPERIMENTS }) {
     interval: () => {
       const rs = RESULTS.interval;
       const top = Math.max(...rs.map(({ r }) => r.callsPerSec));
-      return { verdict: T(rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " calls/s, screen up to " + ms(r.maxLag) + " behind").join(" · ") + ".",
-          rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " llamadas/s, pantalla hasta " + ms(r.maxLag) + " atrasada").join(" · ") + "."),
-        bars: rs.flatMap(({ w, r }, n) => [[T("Calls / s, " + Math.round(w * 1000) + " ms", "Llamadas / s, " + Math.round(w * 1000) + " ms"), r.callsPerSec / top, String(Math.round(r.callsPerSec)), n === 2], [T("Behind, at worst, " + Math.round(w * 1000) + " ms", "Atraso máximo, " + Math.round(w * 1000) + " ms"), Math.min(1, r.maxLag / 0.5), ms(r.maxLag), n === 2]]) };
+      return { verdict: T(rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " calls/s, screen up to " + msFromSecs(r.maxLag) + " behind").join(" · ") + ".",
+          rs.map(({ w, r }) => Math.round(w * 1000) + " ms: " + Math.round(r.callsPerSec) + " llamadas/s, pantalla hasta " + msFromSecs(r.maxLag) + " atrasada").join(" · ") + "."),
+        bars: rs.flatMap(({ w, r }, n) => [[T("Calls / s, " + msFromSecs(w), "Llamadas / s, " + msFromSecs(w)), r.callsPerSec / top, String(Math.round(r.callsPerSec)), n === 2], [T("Behind, at worst, " + msFromSecs(w), "Atraso máximo, " + msFromSecs(w)), Math.min(1, r.maxLag / 0.5), msFromSecs(r.maxLag), n === 2]]) };
     },
   };
   WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {

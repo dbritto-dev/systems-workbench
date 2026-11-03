@@ -7,7 +7,7 @@ import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, show as setVis, act, pauseControls } from "../../runtime/dom";
-import { int } from "../../lib/format";
+import { int, oneUnder10, millis } from "../../lib/format";
 import { planPage, average, crateLevel } from "./sim";
 
 export default function mount({ P, G, PICKER_SVG, CARGO_SVG, EXPERIMENTS }) {
@@ -51,7 +51,6 @@ export default function mount({ P, G, PICKER_SVG, CARGO_SVG, EXPERIMENTS }) {
     return fillCache.get(step);
   }
   const cargoScale = (bytes) => Math.max(1, Math.min(2.6, 1 + 0.4 * Math.log10(Math.max(1, bytes) / 1000)));
-  const fmt = (ms) => ms < 10 ? ms.toFixed(1) : String(Math.round(ms));
   const kb = (b) => b < 1e6 ? (b / 1000).toFixed(b < 1e4 ? 1 : 0) + " KB" : (b / 1e6).toFixed(2) + " MB";
 
   const cfg = { mode: "n1", rows: 20, items: 5, nested: false, dist: "region", speed: 1 };
@@ -131,15 +130,15 @@ export default function mount({ P, G, PICKER_SVG, CARGO_SVG, EXPERIMENTS }) {
 
     // Readout and stats.
     const modeName = L({ n1: "N+1", par: "N+1, 5 at once", batch: "batched", join: "JOIN" }[cfg.mode], { n1: "N+1", par: "N+1, 5 a la vez", batch: "por lotes", join: "JOIN" }[cfg.mode]);
-    if (clock >= plan.end) say(L("page done in " + fmt(plan.end) + " ms · " + plan.queries + (plan.queries === 1 ? " query" : " queries"),
-      "página lista en " + fmt(plan.end) + " ms · " + plan.queries + (plan.queries === 1 ? " consulta" : " consultas")));
+    if (clock >= plan.end) say(L("page done in " + oneUnder10(plan.end) + " ms · " + plan.queries + (plan.queries === 1 ? " query" : " queries"),
+      "página lista en " + oneUnder10(plan.end) + " ms · " + plan.queries + (plan.queries === 1 ? " consulta" : " consultas")));
     else if (lead && lead.tr) {
       const what = lead.phase === "out" ? L("walking to the warehouse", "caminando al almacén") : lead.phase === "serve" ? L("waiting at the counter", "esperando en el mostrador") : L("carrying " + kb(lead.tr.bytes) + " back", "trayendo " + kb(lead.tr.bytes) + " de vuelta");
       say(modeName + L(" · query " + (lead.tr.q + 1) + " of " + plan.queries + " · ", " · consulta " + (lead.tr.q + 1) + " de " + plan.queries + " · ") + what);
     } else say(modeName + L(" · " + started + " of " + plan.queries + " queries sent", " · " + started + " de " + plan.queries + " consultas enviadas"));
     stat("queries", started + L(" of ", " de ") + plan.queries);
-    stat("time", fmt(t) + " ms");
-    stat("last", lastMs === null ? "–" : fmt(lastMs) + " ms");
+    stat("time", millis(t));
+    stat("last", lastMs === null ? "–" : millis(lastMs));
     stat("bytes", kb(bytes));
     stat("perpage", plan.queries);
     stat("pages", pages);
@@ -169,7 +168,7 @@ export default function mount({ P, G, PICKER_SVG, CARGO_SVG, EXPERIMENTS }) {
   act("reset").addEventListener("click", () => restart());
 
   // ---------- experiments ----------
-  const one = fmt;
+  const one = oneUnder10;
   const base = { mode: "n1", rows: 20, items: 5, nested: false, dist: "region" };
   const RUNS = {
     distance: () => {

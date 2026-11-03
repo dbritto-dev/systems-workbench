@@ -8,7 +8,7 @@ import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { lerp, lerpVec as lerp3, easeInOutCubic as ease } from "../../lib/tween";
 import { clamp as clamp01, rankQuantile } from "../../lib/stats";
-import { pct } from "../../lib/format";
+import { pct, secs1 } from "../../lib/format";
 import { createWorld, prepareGreen, flip, step } from "./sim";
 
 export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
@@ -139,7 +139,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     }
     stat("served", w.stats.ok);
     stat("errors", errors);
-    stat("p95", latencies.length ? rankQuantile(latencies, 0.95).toFixed(1) + " s" : "–");
+    stat("p95", latencies.length ? secs1(rankQuantile(latencies, 0.95)) : "–");
     stat("recover", !incident ? "–" : w.t - incident.last < 10 ? L("ongoing", "en curso") : Math.max(1, Math.round(incident.last - incident.start)) + " s");
     const busy = w.sides.blue.workers.filter((x) => x.job).length + w.sides.green.workers.filter((x) => x.job).length;
     stat("running", "6 · " + busy + L(" busy", " ocupados"));
@@ -198,7 +198,6 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   act("reset").addEventListener("click", () => { start(); seenLog = 0; tell(T("started over · blue live", "reinicio · azul en vivo")); });
 
   // ---------- experiments (numbers computed at build time from the same model) ----------
-  const secs = (x) => x.toFixed(1) + " s";
   const RUNS = {
     rollback: () => { const r = RESULTS.rollback, top = r.rolling * 1.05; return {
       verdict: T("Errors stopped " + Math.round(r.flip) + " s after the bad flip with blue-green (15 s of it waiting for the alarm), against " + Math.round(r.rolling) + " s with a rolling redeploy. Failed requests: " + Math.round(r.flipErrors) + " against " + Math.round(r.rollingErrors) + ".",
@@ -209,9 +208,9 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
         "Azul-verde mantiene " + r.blueGreenServers + " servidores para atender el trabajo de " + r.normal + "; un despliegue gradual mantiene " + r.rollingServers + ". Después del cambio, el lado inactivo estuvo ocupado el " + pct(r.idleBusy) + " del tiempo, y el lado en vivo el " + pct(r.liveBusy) + "."),
       bars: [[T("Normal", "Normal"), r.normal / top, String(r.normal)], [T("Rolling", "Gradual"), r.rollingServers / top, String(r.rollingServers)], [T("Blue-green", "Azul-verde"), r.blueGreenServers / top, String(r.blueGreenServers), true]] }; },
     cold: () => { const r = RESULTS.cold, top = Math.max(r.cold.p95, r.warm.p95) * 1.1; return {
-      verdict: T("In the 30 s after the flip, p95 latency was " + secs(r.warm.p95) + " with a warm green and " + secs(r.cold.p95) + " with a cold one, and the cold flip turned away about " + Math.round(r.cold.turned) + " requests (warm: " + Math.round(r.warm.turned) + ").",
-        "En los 30 s después del cambio, la latencia p95 fue de " + secs(r.warm.p95) + " con un verde precalentado y de " + secs(r.cold.p95) + " con uno frío, y el cambio en frío rechazó unas " + Math.round(r.cold.turned) + " solicitudes (precalentado: " + Math.round(r.warm.turned) + ")."),
-      bars: [[T("Before the flip", "Antes del cambio"), r.warm.before / top, secs(r.warm.before)], [T("Warm green", "Verde precalentado"), r.warm.p95 / top, secs(r.warm.p95)], [T("Cold green", "Verde frío"), r.cold.p95 / top, secs(r.cold.p95), true]] }; },
+      verdict: T("In the 30 s after the flip, p95 latency was " + secs1(r.warm.p95) + " with a warm green and " + secs1(r.cold.p95) + " with a cold one, and the cold flip turned away about " + Math.round(r.cold.turned) + " requests (warm: " + Math.round(r.warm.turned) + ").",
+        "En los 30 s después del cambio, la latencia p95 fue de " + secs1(r.warm.p95) + " con un verde precalentado y de " + secs1(r.cold.p95) + " con uno frío, y el cambio en frío rechazó unas " + Math.round(r.cold.turned) + " solicitudes (precalentado: " + Math.round(r.warm.turned) + ")."),
+      bars: [[T("Before the flip", "Antes del cambio"), r.warm.before / top, secs1(r.warm.before)], [T("Warm green", "Verde precalentado"), r.warm.p95 / top, secs1(r.warm.p95)], [T("Cold green", "Verde frío"), r.cold.p95 / top, secs1(r.cold.p95), true]] }; },
     drain: () => { const r = RESULTS.drain, top = Math.max(r.off, 1) * 1.1; return {
       verdict: T("Without draining, about " + r.off.toFixed(1) + " requests failed at each flip. With draining: " + Math.round(r.on) + ".",
         "Sin drenado, fallaron unas " + r.off.toFixed(1) + " solicitudes en cada cambio. Con drenado: " + Math.round(r.on) + "."),

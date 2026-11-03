@@ -7,13 +7,14 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { easeInOutCubic as ease } from "../../lib/tween";
-import { pct as pctOf } from "../../lib/format";
+import { pct as pctOf, pctTenths } from "../../lib/format";
 import { rng } from "../../lib/random";
-import { INTERVAL, RULES, newDeploy, canaryFailures, canaryRate, hitCount, decide, advance, lengthOf as pathLength, pointAt as pathPoint } from "./sim";
+import { INTERVAL, RULES, newDeploy, canaryFailures, canaryRate, hitCount, decide, advance } from "./sim";
+import { polylineLength, pointAlong } from "../../lib/geometry";
 
 export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
-  const LEN = { old: pathLength(G.PATHS.old), new: pathLength(G.PATHS.new) };
-  const DERAIL_S = pathLength([[-170, 0], [-104, 0], [-64, G.NEW_Y]]) + (G.DERAIL_X + 64);
+  const LEN = { old: polylineLength(G.PATHS.old), new: polylineLength(G.PATHS.new) };
+  const DERAIL_S = polylineLength([[-170, 0], [-104, 0], [-64, G.NEW_Y]]) + (G.DERAIL_X + 64);
   const SPEED = 62, HEADWAY = 31;
 
   const stage = document.querySelector("[data-office]");
@@ -61,7 +62,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
       if (t.failed && t.s >= DERAIL_S) { t.off = Math.min(1, t.off + dt / 0.9); }
       else if (t.s >= end) { t.gone = Math.min(1, t.gone + dt / 0.5); }
       else t.s = Math.min(end, t.s + SPEED * dt);
-      const [x, y] = pathPoint(G.PATHS[t.track], t.s);
+      const [x, y] = pointAlong(G.PATHS[t.track], t.s);
       const e = ease(t.off);
       t.el.setAttribute("transform", translateAlong(P, [x, y + 13 * e, -2 * e]));
       const fadeIn = Math.min(1, t.s / 10);
@@ -107,7 +108,6 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     needles.timer.setAttribute("d", needle(G.DIALS.timer, tc, G.DIAL_R - 3));
   }
 
-  const pctText = (x) => (100 * x).toFixed(x < 0.1 ? 1 : 0) + "%";
   function showStats() {
     stat("old", d.old.req + " · " + d.old.err);
     stat("new", d.nw.req + " · " + d.nw.err);
@@ -122,7 +122,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     else if (d.decision === "promoted") text = T("promoted · every order on the new build", "promovida · todos los pedidos en la versión nueva");
     else if (promoteAt !== null && d.decision === "watching" && d.pct > 0) text = T("canary " + d.pct + "% · " + fails + " failed, " + d.nw.wrong + " wrong prices · promote in " + Math.max(0, Math.ceil(promoteAt - d.t)) + " s", "canario " + d.pct + "% · " + fails + " fallidos, " + d.nw.wrong + " precios erróneos · se promueve en " + Math.max(0, Math.ceil(promoteAt - d.t)) + " s");
     else if (d.pct === 0) text = T("canary at 0% · nothing to watch", "canario en 0% · nada que vigilar");
-    else text = T("canary " + d.pct + "% · " + fails + " of " + d.nw.req + " failed (" + pctText(canaryRate(d)) + ") · check in " + left + " s" + (d.auto ? "" : " · arm off"), "canario " + d.pct + "% · " + fails + " de " + d.nw.req + " fallidos (" + pctText(canaryRate(d)) + ") · revisión en " + left + " s" + (d.auto ? "" : " · brazo apagado"));
+    else text = T("canary " + d.pct + "% · " + fails + " of " + d.nw.req + " failed (" + pctTenths(canaryRate(d)) + ") · check in " + left + " s" + (d.auto ? "" : " · arm off"), "canario " + d.pct + "% · " + fails + " de " + d.nw.req + " fallidos (" + pctTenths(canaryRate(d)) + ") · revisión en " + left + " s" + (d.auto ? "" : " · brazo apagado"));
     say(L(text));
   }
 

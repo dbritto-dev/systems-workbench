@@ -8,6 +8,7 @@ import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
 import { secs } from "../../lib/format";
+import { polylineLength } from "../../lib/geometry";
 import { makeSim, setFlag, rollback, step, flippers } from "./sim";
 
 export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
@@ -35,6 +36,7 @@ export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS })
     const cx = G.STAGES[server];
     return [[G.RAIL_X0, G.RAIL_Y], [cx, G.RAIL_Y], [cx, G.DECK_FRONT + 3]];
   }
+  // Not geometry's pointAlong(): no clamping, and past the end it returns the last point itself.
   function along(points, dist) {
     for (let i = 1; i < points.length; i++) {
       const a = points[i - 1], b = points[i], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -43,7 +45,6 @@ export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS })
     }
     return points[points.length - 1];
   }
-  const lengthOf = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
 
   function restart() {
     sim = makeSim({ ...cfg }, seed++);
@@ -55,7 +56,7 @@ export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS })
       if (!slot) return;
       slot.busy = true; slot.g.style.display = "";
       const pts = routeOf(r.server);
-      tokens.push({ slot, r, pts, len: lengthOf(pts), born: sim.t, turn: Math.abs(G.STAGES[r.server] - G.RAIL_X0) });
+      tokens.push({ slot, r, pts, len: polylineLength(pts), born: sim.t, turn: Math.abs(G.STAGES[r.server] - G.RAIL_X0) });
     };
     sim.onFetch = (s) => {
       const el = document.createElementNS(NS, "circle"); el.setAttribute("r", "1.6"); el.setAttribute("class", "pulse");
@@ -89,7 +90,7 @@ export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS })
     pulses = pulses.filter((p) => {
       const u = (sim.t - p.born) / PULSE_TIME;
       if (u >= 1) { p.el.remove(); return false; }
-      const flat = CABLES[p.server].map((c) => [c[0], c[1]]), total = lengthOf(flat);
+      const flat = CABLES[p.server].map((c) => [c[0], c[1]]), total = polylineLength(flat);
       const [x, y] = along(flat, u * total);
       const [sx, sy] = iso([x, y, 1.6], P);
       p.el.setAttribute("cx", sx.toFixed(1)); p.el.setAttribute("cy", sy.toFixed(1));

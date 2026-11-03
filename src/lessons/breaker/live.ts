@@ -5,7 +5,7 @@ import { lineOnTop, translateAlong } from "../../../workbench/vendor-anatomy/kit
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
-import { pct as percent } from "../../lib/format";
+import { pct as percent, secs1 } from "../../lib/format";
 import { rankQuantile } from "../../lib/stats";
 import { createSim, STEP, WINDOW } from "./sim";
 import { bladeSvg } from "./blade";
@@ -102,7 +102,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     stat("fast", c.failedFast);
     stat("slow", c.failedSlow);
     stat("dropped", c.dropped);
-    stat("p95", c.latencies.length ? rankQuantile(c.latencies, 0.95).toFixed(1) + " s" : "–");
+    stat("p95", c.latencies.length ? secs1(rankQuantile(c.latencies, 0.95)) : "–");
     stat("load", machine.load() + " / " + machine.cfg.cap);
   }
 
@@ -128,10 +128,9 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   act("reset").addEventListener("click", resetCounts);
 
   // ---------- experiments (results computed at build time from the same model, 8 seeds each) ----------
-  const secs = (x) => x.toFixed(1) + " s";
   const recoveryText = (r) => r.recovered === 0 ? T("> " + WINDOW + " s", "> " + WINDOW + " s")
-    : r.recovered < r.runs ? T(secs(r.recovery) + " (" + r.recovered + " of " + r.runs + " runs)", secs(r.recovery) + " (" + r.recovered + " de " + r.runs + " corridas)")
-    : T(secs(r.recovery), secs(r.recovery));
+    : r.recovered < r.runs ? T(secs1(r.recovery) + " (" + r.recovered + " of " + r.runs + " runs)", secs1(r.recovery) + " (" + r.recovered + " de " + r.runs + " corridas)")
+    : T(secs1(r.recovery), secs1(r.recovery));
   const recoveryShare = (r) => r.recovered === 0 ? 1 : Math.min(1, r.recovery / WINDOW);
   const RUNS = {
     slow: () => {
@@ -145,14 +144,14 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
       const top = Math.max(a.p95Supplier, b.p95Supplier);
       return { verdict: T("Requests that never call the supplier went from " + percent(a.localServed) + " to " + percent(b.localServed) + " served. Supplier requests now fail: " + percent(b.failedSlow) + " of all requests failed after waiting out the timeout.",
           "Las solicitudes que nunca llaman al proveedor pasaron de " + percent(a.localServed) + " a " + percent(b.localServed) + " atendidas. Las solicitudes al proveedor ahora fallan: el " + percent(b.failedSlow) + " de todas las solicitudes falló después de esperar el tiempo límite completo."),
-        bars: [[T("No timeout: others served", "Sin límite: otras atendidas"), a.localServed, percent(a.localServed)], [T("1.5 s: others served", "1.5 s: otras atendidas"), b.localServed, percent(b.localServed), true], [T("No timeout: p95 wait", "Sin límite: espera p95"), a.p95Supplier / top, secs(a.p95Supplier)], [T("1.5 s: p95 wait", "1.5 s: espera p95"), b.p95Supplier / top, secs(b.p95Supplier), true]] };
+        bars: [[T("No timeout: others served", "Sin límite: otras atendidas"), a.localServed, percent(a.localServed)], [T("1.5 s: others served", "1.5 s: otras atendidas"), b.localServed, percent(b.localServed), true], [T("No timeout: p95 wait", "Sin límite: espera p95"), a.p95Supplier / top, secs1(a.p95Supplier)], [T("1.5 s: p95 wait", "1.5 s: espera p95"), b.p95Supplier / top, secs1(b.p95Supplier), true]] };
     },
     breaker: () => {
       const { a, b } = RESULTS.breaker;
       const top = Math.max(a.p50Supplier, b.p50Supplier);
-      return { verdict: T("Calls in progress at the supplier: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " on average. A supplier request now fails in " + secs(b.p50Supplier) + " (median), not " + secs(a.p50Supplier) + ".",
-          "Llamadas en curso en el proveedor: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " en promedio. Una solicitud al proveedor ahora falla en " + secs(b.p50Supplier) + " (mediana), no en " + secs(a.p50Supplier) + "."),
-        bars: [[T("Breaker off: load", "Sin interruptor: carga"), a.load / 15, a.load.toFixed(1)], [T("Breaker on: load", "Con interruptor: carga"), b.load / 15, b.load.toFixed(1), true], [T("Breaker off: median wait", "Sin interruptor: espera mediana"), a.p50Supplier / top, secs(a.p50Supplier)], [T("Breaker on: median wait", "Con interruptor: espera mediana"), b.p50Supplier / top, secs(b.p50Supplier), true]] };
+      return { verdict: T("Calls in progress at the supplier: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " on average. A supplier request now fails in " + secs1(b.p50Supplier) + " (median), not " + secs1(a.p50Supplier) + ".",
+          "Llamadas en curso en el proveedor: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " en promedio. Una solicitud al proveedor ahora falla en " + secs1(b.p50Supplier) + " (mediana), no en " + secs1(a.p50Supplier) + "."),
+        bars: [[T("Breaker off: load", "Sin interruptor: carga"), a.load / 15, a.load.toFixed(1)], [T("Breaker on: load", "Con interruptor: carga"), b.load / 15, b.load.toFixed(1), true], [T("Breaker off: median wait", "Sin interruptor: espera mediana"), a.p50Supplier / top, secs1(a.p50Supplier)], [T("Breaker on: median wait", "Con interruptor: espera mediana"), b.p50Supplier / top, secs1(b.p50Supplier), true]] };
     },
     retries: () => {
       const { a, b, c } = RESULTS.retries;

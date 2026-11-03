@@ -5,7 +5,7 @@ import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mj
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
-import { int } from "../../lib/format";
+import { int, oneUnder10 } from "../../lib/format";
 import { STATIONS, runJob, human } from "./sim";
 
 export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT_HOW }) {
@@ -29,7 +29,7 @@ export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT
     if (ns < 999.5e6) return sig(ns / 1e6) + " ms";
     return sig(ns / 1e9) + " s";
   }
-  const humanText = (ns) => { const [v, u] = human(ns); return (v >= 10 ? String(Math.round(v)) : v.toFixed(1)) + " " + L(UNITS[u]); };
+  const humanText = (ns) => { const [v, u] = human(ns); return oneUnder10(v) + " " + L(UNITS[u]); };
 
   const cfg = { job: "lookups", how: { ...DEFAULT_HOW }, speed: 1 };
   const SPEED = 230;   // world units a second on screen: a trip to the other continent and back takes about 2 s

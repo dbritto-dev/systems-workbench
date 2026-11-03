@@ -5,7 +5,7 @@ import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
-import { lengthOf, pointAt } from "./sim";
+import { polylineLength, pointAlong } from "../../lib/geometry";
 
 export const WIDTH = 700;
 export const HEIGHT = 420;
@@ -78,9 +78,9 @@ function bed(points, skip = 0) {
   const rails = [offset(points, RAIL), offset(points, -RAIL)].map((line) => k.onTop(line, BED_H, P)).join("");
   // Sleepers every 6 units, edge to edge of the bed.
   const sleepers = [];
-  const total = lengthOf(points);
+  const total = polylineLength(points);
   for (let s = 3 + skip; s < total - 2; s += 6) {
-    const a = pointAt(points, s), b = pointAt(points, s + 0.01);
+    const a = pointAlong(points, s), b = pointAlong(points, s + 0.01);
     const dir = norm(sub(b, a)), n = [-dir[1], dir[0]];
     sleepers.push(k.lineOnTop([a[0] + n[0] * (BED - 0.6), a[1] + n[1] * (BED - 0.6)], [a[0] - n[0] * (BED - 0.6), a[1] - n[1] * (BED - 0.6)], BED_H, P));
   }

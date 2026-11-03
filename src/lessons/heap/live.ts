@@ -5,7 +5,7 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, show, act, pauseControls, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
-import { pct, int } from "../../lib/format";
+import { pct, int, secs1 } from "../../lib/format";
 import { makeClinic } from "./sim";
 
 export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOTS, FIRST, RAIL_Y, R, EXPERIMENTS }) {
@@ -118,8 +118,8 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
     stat("swaps", lastSwaps);
     stat("avgSwaps", c.ops ? (c.swapSum / c.ops).toFixed(2) : "–");
     stat("waiting", c.heap.size());
-    stat("urgent", c.served[0] ? c.avgWait(0).toFixed(1) + " s" : "–");
-    stat("routine", c.served[2] ? c.avgWait(2).toFixed(1) + " s" : "–");
+    stat("urgent", c.served[0] ? secs1(c.avgWait(0)) : "–");
+    stat("routine", c.served[2] ? secs1(c.avgWait(2)) : "–");
     stat("oldest", c.oldest(2).toFixed(0) + " s");
   }
 
@@ -160,22 +160,21 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
   act("reset").addEventListener("click", restart);
 
   // ---------- experiments ----------
-  const s1 = (x) => x.toFixed(1) + " s";
   const RUNS = {
     order: () => {
       const f = R.order.fifo, p = R.order.prio, top = Math.max(f.routine, p.routine);
-      return { verdict: T("Arrival order: urgent " + s1(f.urgent) + ", routine " + s1(f.routine) + ", all jobs " + s1(f.all) + ". Priority: urgent " + s1(p.urgent) + ", routine " + s1(p.routine) + ", all jobs " + s1(p.all) + ".",
-          "Por llegada: urgentes " + s1(f.urgent) + ", de rutina " + s1(f.routine) + ", todos " + s1(f.all) + ". Por prioridad: urgentes " + s1(p.urgent) + ", de rutina " + s1(p.routine) + ", todos " + s1(p.all) + "."),
-        bars: [[T("Urgent, arrival order", "Urgentes, por llegada"), f.urgent / top, s1(f.urgent)], [T("Urgent, priority", "Urgentes, por prioridad"), p.urgent / top, s1(p.urgent), true],
-          [T("Routine, arrival order", "De rutina, por llegada"), f.routine / top, s1(f.routine)], [T("Routine, priority", "De rutina, por prioridad"), p.routine / top, s1(p.routine), true],
-          [T("All jobs, arrival order", "Todos, por llegada"), f.all / top, s1(f.all)], [T("All jobs, priority", "Todos, por prioridad"), p.all / top, s1(p.all), true]] };
+      return { verdict: T("Arrival order: urgent " + secs1(f.urgent) + ", routine " + secs1(f.routine) + ", all jobs " + secs1(f.all) + ". Priority: urgent " + secs1(p.urgent) + ", routine " + secs1(p.routine) + ", all jobs " + secs1(p.all) + ".",
+          "Por llegada: urgentes " + secs1(f.urgent) + ", de rutina " + secs1(f.routine) + ", todos " + secs1(f.all) + ". Por prioridad: urgentes " + secs1(p.urgent) + ", de rutina " + secs1(p.routine) + ", todos " + secs1(p.all) + "."),
+        bars: [[T("Urgent, arrival order", "Urgentes, por llegada"), f.urgent / top, secs1(f.urgent)], [T("Urgent, priority", "Urgentes, por prioridad"), p.urgent / top, secs1(p.urgent), true],
+          [T("Routine, arrival order", "De rutina, por llegada"), f.routine / top, secs1(f.routine)], [T("Routine, priority", "De rutina, por prioridad"), p.routine / top, secs1(p.routine), true],
+          [T("All jobs, arrival order", "Todos, por llegada"), f.all / top, secs1(f.all)], [T("All jobs, priority", "Todos, por prioridad"), p.all / top, secs1(p.all), true]] };
     },
     starve: () => {
       const p = R.starve.prio, a = R.starve.aging;
-      return { verdict: T("Strict priority: the oldest routine job waited " + int(p.oldestRoutine) + " s of the 600, and only " + pct(p.routineServed) + " of routine jobs were served. Aging: oldest " + int(a.oldestRoutine) + " s, " + pct(a.routineServed) + " served; urgent jobs' average wait went from " + s1(p.urgent) + " to " + s1(a.urgent) + ".",
-          "Prioridad estricta: el trabajo de rutina más antiguo esperó " + int(p.oldestRoutine) + " s de los 600, y solo se atendió el " + pct(p.routineServed) + " de los de rutina. Aging: el más antiguo, " + int(a.oldestRoutine) + " s, y se atendió el " + pct(a.routineServed) + "; la espera promedio de los urgentes pasó de " + s1(p.urgent) + " a " + s1(a.urgent) + "."),
+      return { verdict: T("Strict priority: the oldest routine job waited " + int(p.oldestRoutine) + " s of the 600, and only " + pct(p.routineServed) + " of routine jobs were served. Aging: oldest " + int(a.oldestRoutine) + " s, " + pct(a.routineServed) + " served; urgent jobs' average wait went from " + secs1(p.urgent) + " to " + secs1(a.urgent) + ".",
+          "Prioridad estricta: el trabajo de rutina más antiguo esperó " + int(p.oldestRoutine) + " s de los 600, y solo se atendió el " + pct(p.routineServed) + " de los de rutina. Aging: el más antiguo, " + int(a.oldestRoutine) + " s, y se atendió el " + pct(a.routineServed) + "; la espera promedio de los urgentes pasó de " + secs1(p.urgent) + " a " + secs1(a.urgent) + "."),
         bars: [[T("Oldest routine wait, strict", "Rutina más antigua, estricta"), p.oldestRoutine / 600, int(p.oldestRoutine) + " s"], [T("Oldest routine wait, aging", "Rutina más antigua, aging"), a.oldestRoutine / 600, int(a.oldestRoutine) + " s", true],
-          [T("Urgent average wait, strict", "Urgentes en promedio, estricta"), p.urgent / 600, s1(p.urgent)], [T("Urgent average wait, aging", "Urgentes en promedio, aging"), a.urgent / 600, s1(a.urgent), true]] };
+          [T("Urgent average wait, strict", "Urgentes en promedio, estricta"), p.urgent / 600, secs1(p.urgent)], [T("Urgent average wait, aging", "Urgentes en promedio, aging"), a.urgent / 600, secs1(a.urgent), true]] };
     },
     grow: () => {
       const a = R.grow.small, b = R.grow.big;

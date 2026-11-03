@@ -10,6 +10,7 @@ import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { lerp, easeInOutCubic as ease } from "../../lib/tween";
 import { rng } from "../../lib/random";
 import { KEYS, NODE_IDS, HOT_KEY, HOT_SHARE, keyHash, keyAngle, ringPoints, ownerOnRing, assign, loads, spread, moved } from "./sim";
+import { pctTenths } from "../../lib/format";
 
 export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
   const { depthOf, slabOf, cylinder, lineOnTop, planOutline, insetPlan, haloOf, sideSeam, translateAlong } = k;
@@ -96,7 +97,6 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
 
   const arc = (a, b, t, lift) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t) + Math.sin(Math.PI * t) * lift];
   const tell = (v) => say(Lg(v));
-  const pct = (x) => (100 * x).toFixed(x < 0.1 ? 1 : 0) + "%";
   const activeNodes = () => NODE_IDS.slice(0, cfg.count).filter((n) => !(cfg.failed && n === "C"));
   const binIndex = (node) => NODE_IDS.indexOf(node);
   const binState = (i) => i >= cfg.count ? "absent" : cfg.failed && NODE_IDS[i] === "C" ? "down" : "up";
@@ -124,10 +124,10 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
     const nodes = activeNodes(), s = spread(Object.fromEntries(nodes.map((n) => [n, share[n]])));
     const busiest = nodes.reduce((a, b) => (share[b] > share[a] ? b : a)), quietest = nodes.reduce((a, b) => (share[b] < share[a] ? b : a));
     stat("nodes", Lg(nodes.length + (cfg.failed && cfg.count >= 3 ? " (C down)" : ""), nodes.length + (cfg.failed && cfg.count >= 3 ? " (C caído)" : "")));
-    stat("moved", lastMove ? lastMove.count + " · " + pct(lastMove.share) : "–");
+    stat("moved", lastMove ? lastMove.count + " · " + pctTenths(lastMove.share) : "–");
     stat("ratio", s.ratio.toFixed(2) + "×");
-    stat("busiest", busiest + " · " + pct(share[busiest]));
-    stat("quietest", quietest + " · " + pct(share[quietest]));
+    stat("busiest", busiest + " · " + pctTenths(share[busiest]));
+    stat("quietest", quietest + " · " + pctTenths(share[quietest]));
     stat("sorted", sorted);
   }
 
@@ -174,7 +174,7 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
     for (let key = 0; key < KEYS; key += 25) if (beforeOwners[key] !== owners[key]) sample.push(key);
     const target = { ...share };
     const total = 1.1 + 0.035 * sample.length;
-    tell(T(label.en + " · " + mv.count + " of 1,000 keys moved (" + pct(mv.share) + ")" + fromText, label.es + " · " + mv.count + " de 1,000 claves se movieron (" + pct(mv.share) + ")" + fromEs));
+    tell(T(label.en + " · " + mv.count + " of 1,000 keys moved (" + pctTenths(mv.share) + ")" + fromText, label.es + " · " + mv.count + " de 1,000 claves se movieron (" + pctTenths(mv.share) + ")" + fromEs));
     steps.push({ dur: total, run: (t) => {
       const time = t * total;
       for (const id of NODE_IDS) shown[id] = lerp(shareOf(beforeShare, id), shareOf(target, id), ease(Math.min(1, time / total)));
@@ -252,11 +252,11 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
   const RUNS = {
     modulo: () => {
       const { m } = RESULTS.modulo;
-      return { verdict: T(pct(m) + " of the keys moved to a different node, against 20% that had to.", "El " + pct(m) + " de las claves se movió a otro nodo, frente al 20% que tenía que moverse."), bars: [["hash mod n", m, pct(m), true], [T("Least possible", "Mínimo posible"), 0.2, "20%"]] };
+      return { verdict: T(pctTenths(m) + " of the keys moved to a different node, against 20% that had to.", "El " + pctTenths(m) + " de las claves se movió a otro nodo, frente al 20% que tenía que moverse."), bars: [["hash mod n", m, pctTenths(m), true], [T("Least possible", "Mínimo posible"), 0.2, "20%"]] };
     },
     ring: () => {
       const { m, r, one } = RESULTS.ring;
-      return { verdict: T("On average " + pct(r) + " of keys moved, and in " + pct(one) + " of clusters they all came from a single neighbour.", "En promedio se movió el " + pct(r) + " de las claves, y en el " + pct(one) + " de los clústeres todas vinieron de un solo vecino."), bars: [["hash mod n", m, pct(m)], [T("Hash ring", "Anillo de hash"), r, pct(r), true]] };
+      return { verdict: T("On average " + pctTenths(r) + " of keys moved, and in " + pctTenths(one) + " of clusters they all came from a single neighbour.", "En promedio se movió el " + pctTenths(r) + " de las claves, y en el " + pctTenths(one) + " de los clústeres todas vinieron de un solo vecino."), bars: [["hash mod n", m, pctTenths(m)], [T("Hash ring", "Anillo de hash"), r, pctTenths(r), true]] };
     },
     balance: () => {
       const { r1, r10, r100 } = RESULTS.balance, top = 2.6;
@@ -268,7 +268,7 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
     },
     hot: () => {
       const { b3, b6 } = RESULTS.hot;
-      return { verdict: T("The busiest node served " + pct(b3) + " of all requests with 3 nodes and still " + pct(b6) + " with 6, where a fair share is 17%.", "El nodo más ocupado atendió el " + pct(b3) + " de todas las solicitudes con 3 nodos y todavía el " + pct(b6) + " con 6, donde la parte justa es 17%."), bars: [[T("3 nodes", "3 nodos"), b3, pct(b3)], [T("6 nodes", "6 nodos"), b6, pct(b6), true], [T("Fair share, 6", "Parte justa, 6"), 1 / 6, "17%"]] };
+      return { verdict: T("The busiest node served " + pctTenths(b3) + " of all requests with 3 nodes and still " + pctTenths(b6) + " with 6, where a fair share is 17%.", "El nodo más ocupado atendió el " + pctTenths(b3) + " de todas las solicitudes con 3 nodos y todavía el " + pctTenths(b6) + " con 6, donde la parte justa es 17%."), bars: [[T("3 nodes", "3 nodos"), b3, pctTenths(b3)], [T("6 nodes", "6 nodos"), b6, pctTenths(b6), true], [T("Fair share, 6", "Parte justa, 6"), 1 / 6, "17%"]] };
     },
   };
   WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {

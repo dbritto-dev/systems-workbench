@@ -6,7 +6,7 @@ import { T } from "../../runtime/wb";
 import { readout, stats as statsStrip, act, pauseControls } from "../../runtime/dom";
 import { easeInOutQuad as ease, approach } from "../../lib/tween";
 import { mean as avg } from "../../lib/stats";
-import { pct } from "../../lib/format";
+import { pct, secs1 } from "../../lib/format";
 import { DT, createKitchen, step, isReady, stats } from "./sim";
 import { movingParts } from "./parts";
 
@@ -95,7 +95,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     const s = stats(K);
     stat("done", s.done);
     stat("rate", s.done ? s.perMinute.toFixed(1) : "–");
-    stat("time", s.done ? s.avgTime.toFixed(1) + " s" : "–");
+    stat("time", s.done ? secs1(s.avgTime) : "–");
     stat("cooking", K.now > 0.5 ? pct(s.cooking) : "–");
     stat("switching", K.now > 0.5 ? pct(s.switching) : "–");
     stat("idle", K.now > 0.5 ? pct(s.idle) : "–");
@@ -124,42 +124,41 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   pause.bind(clock);
 
   // ---------- experiments (results computed at build time from the same model) ----------
-  const fmt = (x) => x.toFixed(1) + " s";
   const RUNS = {
     waiting: () => {
       const { a, b } = RESULTS.waiting;
       const top = a.total * 1.05, less = Math.round(100 * (1 - b.total / a.total));
-      return { verdict: T("All four served in " + fmt(a.total) + " one at a time, " + fmt(b.total) + " switching while pans simmer: " + less + "% less. The cook was idle " + pct(a.idle) + " of the time one at a time, " + pct(b.idle) + " switching.",
-          "Los cuatro servidos en " + fmt(a.total) + " una a la vez y en " + fmt(b.total) + " cambiando mientras las sartenes hierven: " + less + "% menos. El cocinero estuvo inactivo el " + pct(a.idle) + " del tiempo una a la vez y el " + pct(b.idle) + " cambiando."),
-        bars: [[T("One at a time", "Una a la vez"), a.total / top, fmt(a.total)], [T("Switch on simmer", "Cambiar al hervir"), b.total / top, fmt(b.total), true]] };
+      return { verdict: T("All four served in " + secs1(a.total) + " one at a time, " + secs1(b.total) + " switching while pans simmer: " + less + "% less. The cook was idle " + pct(a.idle) + " of the time one at a time, " + pct(b.idle) + " switching.",
+          "Los cuatro servidos en " + secs1(a.total) + " una a la vez y en " + secs1(b.total) + " cambiando mientras las sartenes hierven: " + less + "% menos. El cocinero estuvo inactivo el " + pct(a.idle) + " del tiempo una a la vez y el " + pct(b.idle) + " cambiando."),
+        bars: [[T("One at a time", "Una a la vez"), a.total / top, secs1(a.total)], [T("Switch on simmer", "Cambiar al hervir"), b.total / top, secs1(b.total), true]] };
     },
     busy: () => {
       const { a, b } = RESULTS.busy;
       const top = Math.max(a.total, b.total) * 1.05;
-      return { verdict: T("Total " + fmt(a.total) + " one at a time vs " + fmt(b.total) + " taking turns. The average dish came out at " + fmt(avg(a.finish)) + " vs " + fmt(avg(b.finish)) + ".",
-          "Total: " + fmt(a.total) + " una a la vez contra " + fmt(b.total) + " por turnos. El plato promedio salió a los " + fmt(avg(a.finish)) + " contra " + fmt(avg(b.finish)) + "."),
-        bars: [[T("One at a time: all", "Una a la vez: todos"), a.total / top, fmt(a.total)], [T("Taking turns: all", "Por turnos: todos"), b.total / top, fmt(b.total), true], [T("One at a time: avg dish", "Una a la vez: plato prom."), avg(a.finish) / top, fmt(avg(a.finish))], [T("Taking turns: avg dish", "Por turnos: plato prom."), avg(b.finish) / top, fmt(avg(b.finish)), true]] };
+      return { verdict: T("Total " + secs1(a.total) + " one at a time vs " + secs1(b.total) + " taking turns. The average dish came out at " + secs1(avg(a.finish)) + " vs " + secs1(avg(b.finish)) + ".",
+          "Total: " + secs1(a.total) + " una a la vez contra " + secs1(b.total) + " por turnos. El plato promedio salió a los " + secs1(avg(a.finish)) + " contra " + secs1(avg(b.finish)) + "."),
+        bars: [[T("One at a time: all", "Una a la vez: todos"), a.total / top, secs1(a.total)], [T("Taking turns: all", "Por turnos: todos"), b.total / top, secs1(b.total), true], [T("One at a time: avg dish", "Una a la vez: plato prom."), avg(a.finish) / top, secs1(avg(a.finish))], [T("Taking turns: avg dish", "Por turnos: plato prom."), avg(b.finish) / top, secs1(avg(b.finish)), true]] };
     },
     slice: () => {
       const { a, b } = RESULTS.slice;
-      return { verdict: T("Moving took " + pct(a.switching) + " of the cook's time with 3 s turns and " + pct(b.switching) + " with 0.3 s turns; the batch went from " + fmt(a.total) + " to " + fmt(b.total) + ".",
-          "Moverse ocupó el " + pct(a.switching) + " del tiempo del cocinero con turnos de 3 s y el " + pct(b.switching) + " con turnos de 0.3 s; la tanda pasó de " + fmt(a.total) + " a " + fmt(b.total) + "."),
+      return { verdict: T("Moving took " + pct(a.switching) + " of the cook's time with 3 s turns and " + pct(b.switching) + " with 0.3 s turns; the batch went from " + secs1(a.total) + " to " + secs1(b.total) + ".",
+          "Moverse ocupó el " + pct(a.switching) + " del tiempo del cocinero con turnos de 3 s y el " + pct(b.switching) + " con turnos de 0.3 s; la tanda pasó de " + secs1(a.total) + " a " + secs1(b.total) + "."),
         bars: [[T("3 s turns", "Turnos de 3 s"), a.switching, pct(a.switching)], [T("0.3 s turns", "Turnos de 0.3 s"), b.switching, pct(b.switching), true]] };
     },
     fair: () => {
       const { a, b } = RESULTS.fair;
       const sa = avg(a.finish.slice(1)), sb = avg(b.finish.slice(1));
       const top = Math.max(a.finish[0], b.finish[0], sa, sb) * 1.05;
-      return { verdict: T("The small dishes came out at " + fmt(sa) + " on average without turns and " + fmt(sb) + " with 1 s turns. The stew went from " + fmt(a.finish[0]) + " to " + fmt(b.finish[0]) + ".",
-          "Los platos pequeños salieron en promedio a los " + fmt(sa) + " sin turnos y a los " + fmt(sb) + " con turnos de 1 s. El guiso pasó de " + fmt(a.finish[0]) + " a " + fmt(b.finish[0]) + "."),
-        bars: [[T("Small, no turns", "Pequeños, sin turnos"), sa / top, fmt(sa)], [T("Small, 1 s turns", "Pequeños, turnos de 1 s"), sb / top, fmt(sb), true], [T("Stew, no turns", "Guiso, sin turnos"), a.finish[0] / top, fmt(a.finish[0])], [T("Stew, 1 s turns", "Guiso, turnos de 1 s"), b.finish[0] / top, fmt(b.finish[0]), true]] };
+      return { verdict: T("The small dishes came out at " + secs1(sa) + " on average without turns and " + secs1(sb) + " with 1 s turns. The stew went from " + secs1(a.finish[0]) + " to " + secs1(b.finish[0]) + ".",
+          "Los platos pequeños salieron en promedio a los " + secs1(sa) + " sin turnos y a los " + secs1(sb) + " con turnos de 1 s. El guiso pasó de " + secs1(a.finish[0]) + " a " + secs1(b.finish[0]) + "."),
+        bars: [[T("Small, no turns", "Pequeños, sin turnos"), sa / top, secs1(sa)], [T("Small, 1 s turns", "Pequeños, turnos de 1 s"), sb / top, secs1(sb), true], [T("Stew, no turns", "Guiso, sin turnos"), a.finish[0] / top, secs1(a.finish[0])], [T("Stew, 1 s turns", "Guiso, turnos de 1 s"), b.finish[0] / top, secs1(b.finish[0]), true]] };
     },
     pans: () => {
       const { r2, r4, r8 } = RESULTS.pans;
       const rt = Math.max(r2.perMinute, r4.perMinute, r8.perMinute) * 1.1, tt = r8.avgTime * 1.1;
-      return { verdict: T("Per minute: " + r4.perMinute.toFixed(1) + " with 4 pans, " + r8.perMinute.toFixed(1) + " with 8. Time per dish: " + fmt(r4.avgTime) + " → " + fmt(r8.avgTime) + ". With 4 pans the cook was idle " + pct(r4.idle) + " of the time.",
-          "Por minuto: " + r4.perMinute.toFixed(1) + " con 4 sartenes, " + r8.perMinute.toFixed(1) + " con 8. Tiempo por plato: " + fmt(r4.avgTime) + " → " + fmt(r8.avgTime) + ". Con 4 sartenes el cocinero estuvo inactivo el " + pct(r4.idle) + " del tiempo."),
-        bars: [[T("2 pans: per min", "2 sartenes: por min"), r2.perMinute / rt, r2.perMinute.toFixed(1)], [T("4 pans: per min", "4 sartenes: por min"), r4.perMinute / rt, r4.perMinute.toFixed(1)], [T("8 pans: per min", "8 sartenes: por min"), r8.perMinute / rt, r8.perMinute.toFixed(1), true], [T("4 pans: per dish", "4 sartenes: por plato"), r4.avgTime / tt, fmt(r4.avgTime)], [T("8 pans: per dish", "8 sartenes: por plato"), r8.avgTime / tt, fmt(r8.avgTime), true]] };
+      return { verdict: T("Per minute: " + r4.perMinute.toFixed(1) + " with 4 pans, " + r8.perMinute.toFixed(1) + " with 8. Time per dish: " + secs1(r4.avgTime) + " → " + secs1(r8.avgTime) + ". With 4 pans the cook was idle " + pct(r4.idle) + " of the time.",
+          "Por minuto: " + r4.perMinute.toFixed(1) + " con 4 sartenes, " + r8.perMinute.toFixed(1) + " con 8. Tiempo por plato: " + secs1(r4.avgTime) + " → " + secs1(r8.avgTime) + ". Con 4 sartenes el cocinero estuvo inactivo el " + pct(r4.idle) + " del tiempo."),
+        bars: [[T("2 pans: per min", "2 sartenes: por min"), r2.perMinute / rt, r2.perMinute.toFixed(1)], [T("4 pans: per min", "4 sartenes: por min"), r4.perMinute / rt, r4.perMinute.toFixed(1)], [T("8 pans: per min", "8 sartenes: por min"), r8.perMinute / rt, r8.perMinute.toFixed(1), true], [T("4 pans: per dish", "4 sartenes: por plato"), r4.avgTime / tt, secs1(r4.avgTime)], [T("8 pans: per dish", "8 sartenes: por plato"), r8.avgTime / tt, secs1(r8.avgTime), true]] };
     },
   };
   WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
