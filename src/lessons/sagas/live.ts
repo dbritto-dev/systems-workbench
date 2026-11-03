@@ -1,25 +1,23 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The travel agency in the browser: runs the model, moves the folders along the tracks, the couriers, the tags on
-// the boards, the checklist and the scoreboard, and wires the controls and the experiment cards. mount() gets the
-// build-time data from page.ts (geometry, folder and puck drawings, results).
+// the boards, the checklist and the scoreboard, and answers the controls. mount() gets the build-time data from
+// page.ts (geometry, folder and puck drawings) and root, the <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
-import { one, pct } from "../../lib/format";
+import { playPause } from "../../runtime/dom";
 import { makeSim, folderAt, NAMES } from "./sim";
 
-export default function mount({ P, G, HOOKS, FOLDER_SVG, PUCK_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, HOOKS, FOLDER_SVG, PUCK_SVG }, root) {
   const NS = "http://www.w3.org/2000/svg";
   const POOL = 28, PUCKS = 8;
   const WARM = 40;   // each run starts this many seconds in, so the first frame already shows trips, tags and counts
 
-  const stage = document.querySelector("[data-agency]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
   const NAMES_ES = { F: "vuelo", H: "hotel", C: "auto", P: "pago", M: "correo de confirmación" };
-  const sayText = readout();
+  const sayText = (text) => root.figure.say(text);
   const say = (v) => sayText(L(v));
   const layer = q("[data-folders]");
   const stationsEl = q("[data-stations]");
@@ -152,64 +150,31 @@ export default function mount({ P, G, HOOKS, FOLDER_SVG, PUCK_SVG, RESULTS, EXPE
     else say(T(active.length + " trip" + (active.length === 1 ? "" : "s") + " in progress · " + n.done + " booked",
       active.length + " viaje" + (active.length === 1 ? "" : "s") + " en curso · " + n.done + " reservados"));
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = ["style", "order", "undo"].includes(name) ? raw : Number(raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("decline").addEventListener("click", () => { model.declineNext(); if (loop.paused) loop.setPaused(false); say(T("the next card will be declined", "la próxima tarjeta será rechazada")); });
-  act("reset").addEventListener("click", () => restart());
-
-  // ---------- experiments (numbers computed at build time from the same model, 8 seeds each) ----------
-  const RUNS = {
-    nosaga: () => {
-      const { a, b } = RESULTS.nosaga;
-      const top = Math.max(a.done, b.done, a.turned, b.turned, 1);
-      return { verdict: T("No saga: " + one(a.stuck) + " trips left half-done, " + one(a.orphans) + " bookings still held for nobody at the end, " + one(a.turned) + " customers turned away. With a saga: " + one(b.stuck) + " left half-done, " + one(b.undone) + " undone cleanly, " + one(b.turned) + " turned away, and " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
-          "Sin saga: " + one(a.stuck) + " viajes a medias, " + one(a.orphans) + " reservas todavía retenidas para nadie al final, " + one(a.turned) + " clientes sin lugar. Con saga: " + one(b.stuck) + " a medias, " + one(b.undone) + " deshechos limpios, " + one(b.turned) + " sin lugar, y " + one(b.done) + " viajes reservados en vez de " + one(a.done) + "."),
-        bars: [[T("Booked, no saga", "Reservados, sin saga"), a.done / top, one(a.done)], [T("Booked, saga", "Reservados, con saga"), b.done / top, one(b.done), true], [T("Turned away, no saga", "Sin lugar, sin saga"), a.turned / top, one(a.turned)], [T("Turned away, saga", "Sin lugar, con saga"), b.turned / top, one(b.turned), true]] };
-    },
-    lost: () => {
-      const { g, r, k } = RESULTS.lost;
-      const top = Math.max(g.stuck, r.doubles, 1);
-      return { verdict: T("Give up: " + one(g.stuck) + " trips stuck half-done, " + one(g.orphans) + " bookings never released. Retry: " + one(r.stuck) + " stuck, but " + one(r.doubles) + " undos ran twice (another customer's seat released, or a double refund). Retry with a key: " + one(k.stuck) + " stuck, " + one(k.doubles) + " twice.",
-          "Rendirse: " + one(g.stuck) + " viajes atascados a medias, " + one(g.orphans) + " reservas nunca liberadas. Reintentar: " + one(r.stuck) + " atascados, pero " + one(r.doubles) + " llamadas de deshacer se ejecutaron dos veces (se liberó el lugar de otro cliente, o hubo un reembolso doble). Reintentar con clave: " + one(k.stuck) + " atascados, " + one(k.doubles) + " dos veces."),
-        bars: [[T("Stuck, give up", "A medias, rendirse"), g.stuck / top, one(g.stuck)], [T("Undone twice, retry", "Deshechos dos veces, reintentar"), r.doubles / top, one(r.doubles)], [T("Stuck or twice, retry with key", "A medias o dos veces, con clave"), (k.stuck + k.doubles) / top, one(k.stuck + k.doubles), true]] };
-    },
-    email: () => {
-      const { last, first } = RESULTS.email;
-      const failed = first.undone + first.stuck, top = Math.max(failed, 1);
-      return { verdict: T("Email last: " + one(last.wrongMail) + " wrong confirmations. Email first: " + one(first.wrongMail) + " of " + one(failed) + " failed trips had already been confirmed by email (" + pct(failed ? first.wrongMail / failed : 0) + ").",
-          "Correo al final: " + one(last.wrongMail) + " confirmaciones erróneas. Correo primero: " + one(first.wrongMail) + " de " + one(failed) + " viajes fallidos ya se habían confirmado por correo (" + pct(failed ? first.wrongMail / failed : 0) + ")."),
-        bars: [[T("Failed trips, email first", "Viajes fallidos, correo primero"), failed / top, one(failed)], [T("Confirmed anyway", "Confirmados igual"), first.wrongMail / top, one(first.wrongMail), true], [T("Confirmed anyway, email last", "Confirmados igual, correo al final"), last.wrongMail / top, one(last.wrongMail)]] };
-    },
-    isolation: () => {
-      const { a, b } = RESULTS.isolation, top = Math.max(a.turned, 1);
-      return { verdict: T("Payment last: " + one(a.turned) + " customers turned away for full seats, " + one(a.wrongTurned) + " of them (" + pct(a.turned ? a.wrongTurned / a.turned : 0) + ") while a seat was held by a trip that was later undone. Card checked first: " + one(b.turned) + " turned away, " + one(b.wrongTurned) + " by doomed trips; " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
-          "Pago al final: " + one(a.turned) + " clientes sin lugar por cupo lleno, " + one(a.wrongTurned) + " de ellos (" + pct(a.turned ? a.wrongTurned / a.turned : 0) + ") mientras un viaje que después se deshizo retenía un lugar. Tarjeta primero: " + one(b.turned) + " sin lugar, " + one(b.wrongTurned) + " por viajes condenados; " + one(b.done) + " viajes reservados en vez de " + one(a.done) + "."),
-        bars: [[T("Turned away, payment last", "Sin lugar, pago al final"), a.turned / top, one(a.turned)], [T("…by a doomed trip's seat", "…por el lugar de un viaje condenado"), a.wrongTurned / top, one(a.wrongTurned), true], [T("Turned away, card first", "Sin lugar, tarjeta primero"), b.turned / top, one(b.turned)], [T("…by a doomed trip's seat", "…por el lugar de un viaje condenado"), b.wrongTurned / top, one(b.wrongTurned), true]] };
-    },
-    choreo: () => {
-      const { o, c } = RESULTS.choreo, top = Math.max(o.tripTime, c.tripTime);
-      return { verdict: T("Time per booked trip: " + one(o.tripTime) + " s orchestrated, " + one(c.tripTime) + " s choreographed. Finding a trip in progress: 1 look at the checklist vs " + one(c.findAsks) + " counters asked on average, and " + pct(c.findMissed) + " of the time the folder was between counters, so nobody had it.",
-          "Tiempo por viaje reservado: " + one(o.tripTime) + " s orquestado, " + one(c.tripTime) + " s coreografiado. Encontrar un viaje en curso: 1 vistazo a la lista de control vs " + one(c.findAsks) + " mostradores consultados en promedio, y el " + pct(c.findMissed) + " de las veces la carpeta estaba entre mostradores, así que nadie la tenía."),
-        bars: [[T("Trip time, orchestrator", "Tiempo del viaje, orquestador"), o.tripTime / top, one(o.tripTime) + " s"], [T("Trip time, choreography", "Tiempo del viaje, coreografía"), c.tripTime / top, one(c.tripTime) + " s", true], [T("Counters asked to find a trip", "Mostradores consultados por viaje"), c.findAsks / 5, T(one(c.findAsks) + " of 5", one(c.findAsks) + " de 5"), true]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    decline: () => { model.declineNext(); if (loop.paused) loop.setPaused(false); say(T("the next card will be declined", "la próxima tarjeta será rechazada")); },
+    reset: () => restart(),
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w, id) => {
     for (const [k, v] of Object.entries(w)) set(k, v, true);
-    restart(exp.id === "nosaga" ? 4 : WARM);
+    restart(id === "nosaga" ? 4 : WARM);
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

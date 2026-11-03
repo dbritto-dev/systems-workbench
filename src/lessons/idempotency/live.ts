@@ -1,21 +1,19 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The payment counter in the browser: runs the model, draws slips, replies, the key rack and the till, wires the
-// controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, tokens, results).
+// The payment counter in the browser: runs the model, draws slips, replies, the key rack and the till, and answers
+// the controls. mount() gets the build-time data from page.ts (geometry, tokens) and root, the <wb-lesson>.
 import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L, T } from "../../runtime/wb";
-import { readout, stats, show, setText, act, pauseControls } from "../../runtime/dom";
-import { n0, pct } from "../../lib/format";
+import { L } from "../../runtime/wb";
+import { show, setText, playPause } from "../../runtime/dom";
 import { makeSim, SLOTS } from "./sim";
 
-export default function mount({ P, G, TOKENS, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, TOKENS }, root) {
   const POOL = 60, PILE = 3;
   const WARM = 30;   // each run starts half a minute in, so the first frame already shows keys, retries and lost replies
 
-  const stage = document.querySelector("[data-counter]");
-  const svg = stage.querySelector("svg");
-  const q = (s, root = svg) => root.querySelector(s);
-  const say = readout();
+  const { stage, svg } = root.figure;
+  const q = (s, within = svg) => within.querySelector(s);
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   const label = (key) => "ABCD"[Number(key.slice(1, key.indexOf("-")))] + key.slice(key.indexOf("-") + 1);
 
@@ -175,60 +173,28 @@ export default function mount({ P, G, TOKENS, RESULTS, EXPERIMENTS }) {
     stat("r422", S.rejected);
     stat("lost", S.lost);
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = name === "loss" || name === "drift" ? Number(raw) : raw;
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("double").addEventListener("click", () => { model.doubleClick(0, clock); if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = { double: () => { model.doubleClick(0, clock); if (loop.paused) loop.setPaused(false); }, reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (numbers computed at build time from the same model, 8 seeds each) ----------
-  const RUNS = {
-    lost: () => {
-      const r = RESULTS.lost;
-      return { verdict: T("Of " + n0(r.purchases) + " orders, " + n0(r.doubled) + " were charged twice (" + pct(r.doubled / r.purchases) + "), against " + n0(r.lost) + " lost replies. Every charge was a real request; the duplicates came from correct retries.",
-          "De " + n0(r.purchases) + " pedidos, a " + n0(r.doubled) + " se les cobró dos veces (" + pct(r.doubled / r.purchases) + "), frente a " + n0(r.lost) + " respuestas perdidas. Cada cobro fue una solicitud real; los duplicados vinieron de reintentos correctos."),
-        bars: [[T("Orders", "Pedidos"), 1, n0(r.purchases)], [T("Replies lost", "Respuestas perdidas"), r.lost / r.purchases, n0(r.lost)], [T("Charged twice", "Cobrados dos veces"), r.doubled / r.purchases, n0(r.doubled), true]] };
-    },
-    keys: () => {
-      const { off, on } = RESULTS.keys, top = Math.max(off.doubled, on.replays, 1);
-      return { verdict: T("With keys, " + n0(on.doubled) + " orders were charged twice (" + n0(off.doubled) + " without). " + n0(on.replays) + " retries were answered from the rack with the original receipt.",
-          "Con claves, a " + n0(on.doubled) + " pedidos se les cobró dos veces (" + n0(off.doubled) + " sin claves). " + n0(on.replays) + " reintentos se respondieron desde el casillero con el recibo original."),
-        bars: [[T("Charged twice, no keys", "Cobrados dos veces, sin claves"), off.doubled / top, n0(off.doubled)], [T("Charged twice, with keys", "Cobrados dos veces, con claves"), on.doubled / top, n0(on.doubled), true], [T("Answered from the rack", "Respondidos del casillero"), on.replays / top, n0(on.replays), true]] };
-    },
-    race: () => {
-      const { late, claim } = RESULTS.race;
-      return { verdict: T("Filing the key after charging: " + n0(late.doubled) + " of " + n0(late.purchases) + " orders charged twice (" + pct(late.doubled / late.purchases) + "), with no reply ever lost. Claiming the key first: " + n0(claim.doubled) + " charged twice, and " + n0(claim.conflicts) + " early retries told \"still in progress\" (409).",
-          "Guardando la clave después de cobrar: " + n0(late.doubled) + " de " + n0(late.purchases) + " pedidos cobrados dos veces (" + pct(late.doubled / late.purchases) + "), sin que se perdiera ninguna respuesta. Reservando la clave primero: " + n0(claim.doubled) + " cobrados dos veces, y a " + n0(claim.conflicts) + " reintentos tempranos se les respondió \"todavía en curso\" (409)."),
-        bars: [[T("Charged twice, filed after", "Cobrados dos veces, guardada después"), late.doubled / late.purchases, pct(late.doubled / late.purchases), true], [T("Charged twice, claimed first", "Cobrados dos veces, reservada primero"), claim.doubled / claim.purchases, pct(claim.doubled / claim.purchases), true]] };
-    },
-    ttl: () => {
-      const { long, short } = RESULTS.ttl, top = Math.max(short.doubled, short.expiredHits, 1);
-      return { verdict: T("Keys kept 1 day: " + n0(long.doubled) + " orders charged twice. Kept 8 s: " + n0(short.doubled) + " of " + n0(short.purchases) + " charged twice; " + n0(short.expiredHits) + " retries arrived after their key was gone.",
-          "Claves guardadas 1 día: " + n0(long.doubled) + " pedidos cobrados dos veces. Guardadas 8 s: " + n0(short.doubled) + " de " + n0(short.purchases) + " cobrados dos veces; " + n0(short.expiredHits) + " reintentos llegaron cuando su clave ya no estaba."),
-        bars: [[T("Charged twice, 1 day", "Cobrados dos veces, 1 día"), long.doubled / top, n0(long.doubled)], [T("Charged twice, 8 s", "Cobrados dos veces, 8 s"), short.doubled / top, n0(short.doubled), true], [T("Retries after expiry", "Reintentos tras vencer"), short.expiredHits / top, n0(short.expiredHits)]] };
-    },
-    drift: () => {
-      const { on, off } = RESULTS.drift, top = Math.max(on.rejected, off.wrongAmount, 1);
-      return { verdict: T("With keys: " + n0(on.rejected) + " retries with a changed amount were rejected (422) and " + n0(on.extra) + " extra charges were made. Without keys, " + n0(off.wrongAmount) + " orders were charged a second time at a different amount.",
-          "Con claves: " + n0(on.rejected) + " reintentos con un monto cambiado se rechazaron (422) y se hicieron " + n0(on.extra) + " cobros extra. Sin claves, a " + n0(off.wrongAmount) + " pedidos se les cobró una segunda vez con otro monto."),
-        bars: [[T("Rejected (422), with keys", "Rechazados (422), con claves"), on.rejected / top, n0(on.rejected), true], [T("Wrong second charges, with keys", "Segundos cobros erróneos, con claves"), on.wrongAmount / top, n0(on.wrongAmount)], [T("Wrong second charges, no keys", "Segundos cobros erróneos, sin claves"), off.wrongAmount / top, n0(off.wrongAmount)]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    for (const [name, value] of Object.entries(exp.watch)) set(name, String(value), true);
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
+    for (const [name, value] of Object.entries(w)) set(name, String(value), true);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

@@ -1,12 +1,50 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 26 · Sagas: a travel agency that undoes earlier bookings when a later step fails.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, folderSvg, puckSvg, P, GEOMETRY, HOOKS } from "./figure";
 import { experimentResults } from "./sim";
+import { one, pct } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran them on click).
 const RESULTS = experimentResults();
+
+// What each card shows after a run.
+const RUNS = {
+  nosaga: () => {
+    const { a, b } = RESULTS.nosaga;
+    const top = Math.max(a.done, b.done, a.turned, b.turned, 1);
+    return { verdict: t("No saga: " + one(a.stuck) + " trips left half-done, " + one(a.orphans) + " bookings still held for nobody at the end, " + one(a.turned) + " customers turned away. With a saga: " + one(b.stuck) + " left half-done, " + one(b.undone) + " undone cleanly, " + one(b.turned) + " turned away, and " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
+        "Sin saga: " + one(a.stuck) + " viajes a medias, " + one(a.orphans) + " reservas todavía retenidas para nadie al final, " + one(a.turned) + " clientes sin lugar. Con saga: " + one(b.stuck) + " a medias, " + one(b.undone) + " deshechos limpios, " + one(b.turned) + " sin lugar, y " + one(b.done) + " viajes reservados en vez de " + one(a.done) + "."),
+      bars: [[t("Booked, no saga", "Reservados, sin saga"), a.done / top, one(a.done)], [t("Booked, saga", "Reservados, con saga"), b.done / top, one(b.done), true], [t("Turned away, no saga", "Sin lugar, sin saga"), a.turned / top, one(a.turned)], [t("Turned away, saga", "Sin lugar, con saga"), b.turned / top, one(b.turned), true]] };
+  },
+  lost: () => {
+    const { g, r, k } = RESULTS.lost;
+    const top = Math.max(g.stuck, r.doubles, 1);
+    return { verdict: t("Give up: " + one(g.stuck) + " trips stuck half-done, " + one(g.orphans) + " bookings never released. Retry: " + one(r.stuck) + " stuck, but " + one(r.doubles) + " undos ran twice (another customer's seat released, or a double refund). Retry with a key: " + one(k.stuck) + " stuck, " + one(k.doubles) + " twice.",
+        "Rendirse: " + one(g.stuck) + " viajes atascados a medias, " + one(g.orphans) + " reservas nunca liberadas. Reintentar: " + one(r.stuck) + " atascados, pero " + one(r.doubles) + " llamadas de deshacer se ejecutaron dos veces (se liberó el lugar de otro cliente, o hubo un reembolso doble). Reintentar con clave: " + one(k.stuck) + " atascados, " + one(k.doubles) + " dos veces."),
+      bars: [[t("Stuck, give up", "A medias, rendirse"), g.stuck / top, one(g.stuck)], [t("Undone twice, retry", "Deshechos dos veces, reintentar"), r.doubles / top, one(r.doubles)], [t("Stuck or twice, retry with key", "A medias o dos veces, con clave"), (k.stuck + k.doubles) / top, one(k.stuck + k.doubles), true]] };
+  },
+  email: () => {
+    const { last, first } = RESULTS.email;
+    const failed = first.undone + first.stuck, top = Math.max(failed, 1);
+    return { verdict: t("Email last: " + one(last.wrongMail) + " wrong confirmations. Email first: " + one(first.wrongMail) + " of " + one(failed) + " failed trips had already been confirmed by email (" + pct(failed ? first.wrongMail / failed : 0) + ").",
+        "Correo al final: " + one(last.wrongMail) + " confirmaciones erróneas. Correo primero: " + one(first.wrongMail) + " de " + one(failed) + " viajes fallidos ya se habían confirmado por correo (" + pct(failed ? first.wrongMail / failed : 0) + ")."),
+      bars: [[t("Failed trips, email first", "Viajes fallidos, correo primero"), failed / top, one(failed)], [t("Confirmed anyway", "Confirmados igual"), first.wrongMail / top, one(first.wrongMail), true], [t("Confirmed anyway, email last", "Confirmados igual, correo al final"), last.wrongMail / top, one(last.wrongMail)]] };
+  },
+  isolation: () => {
+    const { a, b } = RESULTS.isolation, top = Math.max(a.turned, 1);
+    return { verdict: t("Payment last: " + one(a.turned) + " customers turned away for full seats, " + one(a.wrongTurned) + " of them (" + pct(a.turned ? a.wrongTurned / a.turned : 0) + ") while a seat was held by a trip that was later undone. Card checked first: " + one(b.turned) + " turned away, " + one(b.wrongTurned) + " by doomed trips; " + one(b.done) + " trips booked instead of " + one(a.done) + ".",
+        "Pago al final: " + one(a.turned) + " clientes sin lugar por cupo lleno, " + one(a.wrongTurned) + " de ellos (" + pct(a.turned ? a.wrongTurned / a.turned : 0) + ") mientras un viaje que después se deshizo retenía un lugar. Tarjeta primero: " + one(b.turned) + " sin lugar, " + one(b.wrongTurned) + " por viajes condenados; " + one(b.done) + " viajes reservados en vez de " + one(a.done) + "."),
+      bars: [[t("Turned away, payment last", "Sin lugar, pago al final"), a.turned / top, one(a.turned)], [t("…by a doomed trip's seat", "…por el lugar de un viaje condenado"), a.wrongTurned / top, one(a.wrongTurned), true], [t("Turned away, card first", "Sin lugar, tarjeta primero"), b.turned / top, one(b.turned)], [t("…by a doomed trip's seat", "…por el lugar de un viaje condenado"), b.wrongTurned / top, one(b.wrongTurned), true]] };
+  },
+  choreo: () => {
+    const { o, c } = RESULTS.choreo, top = Math.max(o.tripTime, c.tripTime);
+    return { verdict: t("Time per booked trip: " + one(o.tripTime) + " s orchestrated, " + one(c.tripTime) + " s choreographed. Finding a trip in progress: 1 look at the checklist vs " + one(c.findAsks) + " counters asked on average, and " + pct(c.findMissed) + " of the time the folder was between counters, so nobody had it.",
+        "Tiempo por viaje reservado: " + one(o.tripTime) + " s orquestado, " + one(c.tripTime) + " s coreografiado. Encontrar un viaje en curso: 1 vistazo a la lista de control vs " + one(c.findAsks) + " mostradores consultados en promedio, y el " + pct(c.findMissed) + " de las veces la carpeta estaba entre mostradores, así que nadie la tenía."),
+      bars: [[t("Trip time, orchestrator", "Tiempo del viaje, orquestador"), o.tripTime / top, one(o.tripTime) + " s"], [t("Trip time, choreography", "Tiempo del viaje, coreografía"), c.tripTime / top, one(c.tripTime) + " s", true], [t("Counters asked to find a trip", "Mostradores consultados por viaje"), c.findAsks / 5, t(one(c.findAsks) + " of 5", one(c.findAsks) + " de 5"), true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -108,7 +146,7 @@ export default defineLesson({
       { actions: [["decline", t("Decline the next card", "Rechazar la próxima tarjeta")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: three minutes of customers, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina: tres minutos de clientes, promediados sobre ocho ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: three minutes of customers, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina: tres minutos de clientes, promediados sobre ocho ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .stamp{fill:none;stroke:var(--anatomy-lo);stroke-width:.6}
@@ -128,7 +166,5 @@ body.lit-fill .wb-lit-group:has(.iso-solid[data-lit]:not([data-lit-outline])) .s
     HOOKS,
     FOLDER_SVG: folderSvg(),
     PUCK_SVG: puckSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

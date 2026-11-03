@@ -1,12 +1,47 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 25 · Idempotency keys: a payment counter that remembers each key's receipt.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, tokenSvgs, P, GEOMETRY } from "./figure";
 import { experimentResults } from "./sim";
+import { n0, pct } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran them on click).
 const RESULTS = experimentResults();
+
+// What each card shows after a run.
+const RUNS = {
+  lost: () => {
+    const r = RESULTS.lost;
+    return { verdict: t("Of " + n0(r.purchases) + " orders, " + n0(r.doubled) + " were charged twice (" + pct(r.doubled / r.purchases) + "), against " + n0(r.lost) + " lost replies. Every charge was a real request; the duplicates came from correct retries.",
+        "De " + n0(r.purchases) + " pedidos, a " + n0(r.doubled) + " se les cobró dos veces (" + pct(r.doubled / r.purchases) + "), frente a " + n0(r.lost) + " respuestas perdidas. Cada cobro fue una solicitud real; los duplicados vinieron de reintentos correctos."),
+      bars: [[t("Orders", "Pedidos"), 1, n0(r.purchases)], [t("Replies lost", "Respuestas perdidas"), r.lost / r.purchases, n0(r.lost)], [t("Charged twice", "Cobrados dos veces"), r.doubled / r.purchases, n0(r.doubled), true]] };
+  },
+  keys: () => {
+    const { off, on } = RESULTS.keys, top = Math.max(off.doubled, on.replays, 1);
+    return { verdict: t("With keys, " + n0(on.doubled) + " orders were charged twice (" + n0(off.doubled) + " without). " + n0(on.replays) + " retries were answered from the rack with the original receipt.",
+        "Con claves, a " + n0(on.doubled) + " pedidos se les cobró dos veces (" + n0(off.doubled) + " sin claves). " + n0(on.replays) + " reintentos se respondieron desde el casillero con el recibo original."),
+      bars: [[t("Charged twice, no keys", "Cobrados dos veces, sin claves"), off.doubled / top, n0(off.doubled)], [t("Charged twice, with keys", "Cobrados dos veces, con claves"), on.doubled / top, n0(on.doubled), true], [t("Answered from the rack", "Respondidos del casillero"), on.replays / top, n0(on.replays), true]] };
+  },
+  race: () => {
+    const { late, claim } = RESULTS.race;
+    return { verdict: t("Filing the key after charging: " + n0(late.doubled) + " of " + n0(late.purchases) + " orders charged twice (" + pct(late.doubled / late.purchases) + "), with no reply ever lost. Claiming the key first: " + n0(claim.doubled) + " charged twice, and " + n0(claim.conflicts) + " early retries told \"still in progress\" (409).",
+        "Guardando la clave después de cobrar: " + n0(late.doubled) + " de " + n0(late.purchases) + " pedidos cobrados dos veces (" + pct(late.doubled / late.purchases) + "), sin que se perdiera ninguna respuesta. Reservando la clave primero: " + n0(claim.doubled) + " cobrados dos veces, y a " + n0(claim.conflicts) + " reintentos tempranos se les respondió \"todavía en curso\" (409)."),
+      bars: [[t("Charged twice, filed after", "Cobrados dos veces, guardada después"), late.doubled / late.purchases, pct(late.doubled / late.purchases), true], [t("Charged twice, claimed first", "Cobrados dos veces, reservada primero"), claim.doubled / claim.purchases, pct(claim.doubled / claim.purchases), true]] };
+  },
+  ttl: () => {
+    const { long, short } = RESULTS.ttl, top = Math.max(short.doubled, short.expiredHits, 1);
+    return { verdict: t("Keys kept 1 day: " + n0(long.doubled) + " orders charged twice. Kept 8 s: " + n0(short.doubled) + " of " + n0(short.purchases) + " charged twice; " + n0(short.expiredHits) + " retries arrived after their key was gone.",
+        "Claves guardadas 1 día: " + n0(long.doubled) + " pedidos cobrados dos veces. Guardadas 8 s: " + n0(short.doubled) + " de " + n0(short.purchases) + " cobrados dos veces; " + n0(short.expiredHits) + " reintentos llegaron cuando su clave ya no estaba."),
+      bars: [[t("Charged twice, 1 day", "Cobrados dos veces, 1 día"), long.doubled / top, n0(long.doubled)], [t("Charged twice, 8 s", "Cobrados dos veces, 8 s"), short.doubled / top, n0(short.doubled), true], [t("Retries after expiry", "Reintentos tras vencer"), short.expiredHits / top, n0(short.expiredHits)]] };
+  },
+  drift: () => {
+    const { on, off } = RESULTS.drift, top = Math.max(on.rejected, off.wrongAmount, 1);
+    return { verdict: t("With keys: " + n0(on.rejected) + " retries with a changed amount were rejected (422) and " + n0(on.extra) + " extra charges were made. Without keys, " + n0(off.wrongAmount) + " orders were charged a second time at a different amount.",
+        "Con claves: " + n0(on.rejected) + " reintentos con un monto cambiado se rechazaron (422) y se hicieron " + n0(on.extra) + " cobros extra. Sin claves, a " + n0(off.wrongAmount) + " pedidos se les cobró una segunda vez con otro monto."),
+      bars: [[t("Rejected (422), with keys", "Rechazados (422), con claves"), on.rejected / top, n0(on.rejected), true], [t("Wrong second charges, with keys", "Segundos cobros erróneos, con claves"), on.wrongAmount / top, n0(on.wrongAmount)], [t("Wrong second charges, no keys", "Segundos cobros erróneos, sin claves"), off.wrongAmount / top, n0(off.wrongAmount)]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -150,7 +185,7 @@ export default defineLesson({
     ),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded three-minute runs.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho corridas con semilla de tres minutos."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho corridas con semilla de tres minutos."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .iso-stage .iso-face-text[data-tone="lit"]{fill:var(--anatomy-lit)}
@@ -161,7 +196,5 @@ body.lit-fill [data-hole]:has(> [data-card-lit]:not([style*="none"])) [data-hole
     P,
     G: GEOMETRY,
     TOKENS: tokenSvgs(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

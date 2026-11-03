@@ -1,12 +1,50 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 24 · Outbox pattern: an order office where the ledger and the letter must agree.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, railLetterSvg, droppedLetterSvg, P, GEOMETRY } from "./figure";
 import { experimentResults } from "./sim";
+import { one, n0 } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran them on click).
 const RESULTS = experimentResults();
+
+// What each card shows after a run.
+const RUNS = {
+  lost: () => {
+    const r = RESULTS.lost;
+    return { verdict: t("The ledger took " + n0(r.orders) + " orders; the warehouse shipped " + n0(r.shipped) + ". " + one(r.lost) + " orders were committed and never shipped, and nothing reported an error.",
+        "El libro recibió " + n0(r.orders) + " pedidos; el almacén envió " + n0(r.shipped) + ". " + one(r.lost) + " pedidos se confirmaron y nunca se enviaron, y nada reportó un error."),
+      bars: [[t("In the ledger", "En el libro"), 1, n0(r.orders)], [t("Shipped", "Enviados"), r.shipped / r.orders, n0(r.shipped)], [t("Lost", "Perdidos"), r.lost / r.orders, one(r.lost), true]] };
+  },
+  phantom: () => {
+    const r = RESULTS.phantom, top = Math.max(r.orders, r.shipped);
+    return { verdict: t("Nothing lost, but the warehouse shipped " + n0(r.shipped) + " orders against " + n0(r.orders) + " in the ledger: " + one(r.phantom) + " phantom orders whose ledger write failed after the letter had gone.",
+        "No se perdió nada, pero el almacén envió " + n0(r.shipped) + " pedidos frente a " + n0(r.orders) + " en el libro: " + one(r.phantom) + " pedidos fantasma cuya escritura en el libro falló después de que la carta ya había salido."),
+      bars: [[t("In the ledger", "En el libro"), r.orders / top, n0(r.orders)], [t("Shipped", "Enviados"), r.shipped / top, n0(r.shipped)], [t("Phantom", "Fantasma"), r.phantom / top, one(r.phantom), true]] };
+  },
+  outbox: () => {
+    const r = RESULTS.outbox;
+    return { verdict: t("Lost " + one(r.lost) + ", phantom " + one(r.phantom) + ". " + one(r.failed) + " orders failed as a whole (the customer got an error, nothing was kept). The relay failed " + one(r.relayCrashes) + " times and posted " + one(r.caught) + " letters a second time.",
+        "Perdidos " + one(r.lost) + ", fantasma " + one(r.phantom) + ". " + one(r.failed) + " pedidos fallaron por completo (el cliente recibió un error, no quedó nada). El relé falló " + one(r.relayCrashes) + " veces y despachó " + one(r.caught) + " cartas por segunda vez."),
+      bars: [[t("Lost or phantom", "Perdidos o fantasma"), (r.lost + r.phantom) / Math.max(1, r.caught), one(r.lost + r.phantom)], [t("Letters that arrived twice", "Cartas que llegaron dos veces"), 1, one(r.caught), true]] };
+  },
+  dedupe: () => {
+    const { off, on } = RESULTS.dedupe;
+    const top = Math.max(off.dupShipped, on.caught, 1);
+    return { verdict: t("Dedupe off: " + one(off.dupShipped) + " of " + n0(off.orders) + " orders shipped twice. Dedupe on: " + one(on.caught) + " repeats caught on the spike, " + one(on.dupShipped) + " shipped twice.",
+        "Deduplicación apagada: " + one(off.dupShipped) + " de " + n0(off.orders) + " pedidos enviados dos veces. Deduplicación encendida: " + one(on.caught) + " repeticiones detectadas en el pincho, " + one(on.dupShipped) + " enviados dos veces."),
+      bars: [[t("Shipped twice, dedupe off", "Enviados dos veces, dedup. apagada"), off.dupShipped / top, one(off.dupShipped), true], [t("Shipped twice, dedupe on", "Enviados dos veces, dedup. encendida"), on.dupShipped / top, one(on.dupShipped)], [t("Repeats caught, dedupe on", "Repeticiones detectadas, dedup. encendida"), on.caught / top, one(on.caught)]] };
+  },
+  poll: () => {
+    const { rows, dual } = RESULTS.poll;
+    const top = Math.max(...rows.map(([, r]) => r.p95));
+    const lost = one(rows.reduce((s, [, r]) => s + r.lost, 0));
+    return { verdict: t("Typical delay from commit to warehouse: " + rows.map(([p, r]) => one(r.median) + " s at " + p + " s").join(", ") + " (slowest 5%: " + rows.map(([, r]) => one(r.p95) + " s").join(", ") + "). Walking it over directly: " + one(dual.median) + " s. Lost: " + lost + ".",
+        "Demora típica desde el commit hasta el almacén: " + rows.map(([p, r]) => one(r.median) + " s con " + p + " s").join(", ") + " (el 5% más lento: " + rows.map(([, r]) => one(r.p95) + " s").join(", ") + "). Llevándola directamente: " + one(dual.median) + " s. Perdidos: " + lost + "."),
+      bars: [[t("Walk it over (no outbox)", "Llevarla directo (sin outbox)"), dual.median / top, one(dual.median) + " s"], ...rows.map(([p, r]) => [t("Relay every " + p + " s, typical", "Relé cada " + p + " s, típica"), r.median / top, one(r.median) + " s", p === 5]), [t("Relay every 5 s, slowest 5%", "Relé cada 5 s, el 5% más lento"), rows[2][1].p95 / top, one(rows[2][1].p95) + " s", true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -150,7 +188,7 @@ export default defineLesson({
     ),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: 10 minutes of orders, averaged over eight seeded runs.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina: 10 minutos de pedidos, promediados sobre ocho corridas con semilla."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina: 10 minutos de pedidos, promediados sobre ocho corridas con semilla."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .cw{fill:var(--anatomy-page);stroke:var(--anatomy-lo);stroke-width:.7}
@@ -162,7 +200,5 @@ export default defineLesson({
     G: GEOMETRY,
     RAIL_SVG: railLetterSvg(),
     DROP_SVG: droppedLetterSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

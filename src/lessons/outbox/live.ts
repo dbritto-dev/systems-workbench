@@ -1,23 +1,21 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The order office in the browser: runs the model, moves the clerk and the relay, the letters on the rail and the
-// floor, the trays and the counter wheels, and wires the controls and the experiment cards. mount() gets the
-// build-time data from page.ts (geometry, letter drawings, results).
+// floor, the trays and the counter wheels, and answers the controls. mount() gets the build-time data from page.ts
+// (geometry, letter drawings) and root, the <wb-lesson>.
 import { iso, translateAlong, depthOf, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
-import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { L } from "../../runtime/wb";
+import { playPause } from "../../runtime/dom";
 import { lerpVec } from "../../lib/tween";
-import { one, n0 } from "../../lib/format";
 import { rankQuantileSorted } from "../../lib/stats";
 import { makeSim } from "./sim";
 
-export default function mount({ P, G, RAIL_SVG, DROP_SVG, RESULTS, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, RAIL_SVG, DROP_SVG }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
 
   function counter(name, c) { const cells = counterCells(c); return { c, cells, els: cells.map((_, j) => q('[data-digit="' + name + '-' + j + '"]')), shown: [] }; }
@@ -158,64 +156,28 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG, RESULTS, EXPERIMENTS }
     if (cfg.mode === "outbox") return L(p + " letter" + (p === 1 ? "" : "s") + " pending in the outbox", p + " carta" + (p === 1 ? "" : "s") + " pendiente" + (p === 1 ? "" : "s") + " en el outbox");
     return n ? L(n + " order" + (n === 1 ? "" : "s") + " waiting", n + " pedido" + (n === 1 ? "" : "s") + " en espera") : L("waiting for an order", "esperando un pedido");
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     if (name === "mode" || name === "dedupe") cfg[name] = raw; else cfg[name] = Number(raw);
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("crash").addEventListener("click", () => { model.crashNext(); if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = { crash: () => { model.crashNext(); if (loop.paused) loop.setPaused(false); }, reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (numbers computed at build time from the same model, 8 seeds each) ----------
-  const RUNS = {
-    lost: () => {
-      const r = RESULTS.lost;
-      return { verdict: T("The ledger took " + n0(r.orders) + " orders; the warehouse shipped " + n0(r.shipped) + ". " + one(r.lost) + " orders were committed and never shipped, and nothing reported an error.",
-          "El libro recibió " + n0(r.orders) + " pedidos; el almacén envió " + n0(r.shipped) + ". " + one(r.lost) + " pedidos se confirmaron y nunca se enviaron, y nada reportó un error."),
-        bars: [[T("In the ledger", "En el libro"), 1, n0(r.orders)], [T("Shipped", "Enviados"), r.shipped / r.orders, n0(r.shipped)], [T("Lost", "Perdidos"), r.lost / r.orders, one(r.lost), true]] };
-    },
-    phantom: () => {
-      const r = RESULTS.phantom, top = Math.max(r.orders, r.shipped);
-      return { verdict: T("Nothing lost, but the warehouse shipped " + n0(r.shipped) + " orders against " + n0(r.orders) + " in the ledger: " + one(r.phantom) + " phantom orders whose ledger write failed after the letter had gone.",
-          "No se perdió nada, pero el almacén envió " + n0(r.shipped) + " pedidos frente a " + n0(r.orders) + " en el libro: " + one(r.phantom) + " pedidos fantasma cuya escritura en el libro falló después de que la carta ya había salido."),
-        bars: [[T("In the ledger", "En el libro"), r.orders / top, n0(r.orders)], [T("Shipped", "Enviados"), r.shipped / top, n0(r.shipped)], [T("Phantom", "Fantasma"), r.phantom / top, one(r.phantom), true]] };
-    },
-    outbox: () => {
-      const r = RESULTS.outbox;
-      return { verdict: T("Lost " + one(r.lost) + ", phantom " + one(r.phantom) + ". " + one(r.failed) + " orders failed as a whole (the customer got an error, nothing was kept). The relay failed " + one(r.relayCrashes) + " times and posted " + one(r.caught) + " letters a second time.",
-          "Perdidos " + one(r.lost) + ", fantasma " + one(r.phantom) + ". " + one(r.failed) + " pedidos fallaron por completo (el cliente recibió un error, no quedó nada). El relé falló " + one(r.relayCrashes) + " veces y despachó " + one(r.caught) + " cartas por segunda vez."),
-        bars: [[T("Lost or phantom", "Perdidos o fantasma"), (r.lost + r.phantom) / Math.max(1, r.caught), one(r.lost + r.phantom)], [T("Letters that arrived twice", "Cartas que llegaron dos veces"), 1, one(r.caught), true]] };
-    },
-    dedupe: () => {
-      const { off, on } = RESULTS.dedupe;
-      const top = Math.max(off.dupShipped, on.caught, 1);
-      return { verdict: T("Dedupe off: " + one(off.dupShipped) + " of " + n0(off.orders) + " orders shipped twice. Dedupe on: " + one(on.caught) + " repeats caught on the spike, " + one(on.dupShipped) + " shipped twice.",
-          "Deduplicación apagada: " + one(off.dupShipped) + " de " + n0(off.orders) + " pedidos enviados dos veces. Deduplicación encendida: " + one(on.caught) + " repeticiones detectadas en el pincho, " + one(on.dupShipped) + " enviados dos veces."),
-        bars: [[T("Shipped twice, dedupe off", "Enviados dos veces, dedup. apagada"), off.dupShipped / top, one(off.dupShipped), true], [T("Shipped twice, dedupe on", "Enviados dos veces, dedup. encendida"), on.dupShipped / top, one(on.dupShipped)], [T("Repeats caught, dedupe on", "Repeticiones detectadas, dedup. encendida"), on.caught / top, one(on.caught)]] };
-    },
-    poll: () => {
-      const { rows, dual } = RESULTS.poll;
-      const top = Math.max(...rows.map(([, r]) => r.p95));
-      const lost = one(rows.reduce((s, [, r]) => s + r.lost, 0));
-      return { verdict: T("Typical delay from commit to warehouse: " + rows.map(([p, r]) => one(r.median) + " s at " + p + " s").join(", ") + " (slowest 5%: " + rows.map(([, r]) => one(r.p95) + " s").join(", ") + "). Walking it over directly: " + one(dual.median) + " s. Lost: " + lost + ".",
-          "Demora típica desde el commit hasta el almacén: " + rows.map(([p, r]) => one(r.median) + " s con " + p + " s").join(", ") + " (el 5% más lento: " + rows.map(([, r]) => one(r.p95) + " s").join(", ") + "). Llevándola directamente: " + one(dual.median) + " s. Perdidos: " + lost + "."),
-        bars: [[T("Walk it over (no outbox)", "Llevarla directo (sin outbox)"), dual.median / top, one(dual.median) + " s"], ...rows.map(([p, r]) => [T("Relay every " + p + " s, typical", "Relé cada " + p + " s, típica"), r.median / top, one(r.median) + " s", p === 5]), [T("Relay every 5 s, slowest 5%", "Relé cada 5 s, el 5% más lento"), rows[2][1].p95 / top, one(rows[2][1].p95) + " s", true]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     for (const [key, v] of Object.entries(w)) set(key, String(v), true);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();
