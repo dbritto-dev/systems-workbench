@@ -1,7 +1,12 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a workshop that runs one job at a time.
 // The foreman hands out chunks of the job one by one, workers at benches (cores) work on them at the
 // same time, and the packing station merges every chunk and does the serial part of the job alone.
 // Times are seconds of figure time; one worker alone needs about 16 s for a big job.
+// Shared by the page (experiment results at build time) and the live code (the speed-up stat).
+import { rng } from "../../lib/random";
+import { mean } from "../../lib/stats";
+
 export const PAR = {
   BIG: 16, TINY: 0.3,
   DISPATCH: 0.02,     // foreman's time to hand out one chunk
@@ -13,8 +18,6 @@ export const PAR = {
   DT: 0.005,
   SEEDS: [3, 5, 7, 11, 13, 17],
 };
-
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 export function jobWork(cfg) { return cfg.job === "tiny" ? PAR.TINY : PAR.BIG; }
 
@@ -120,13 +123,22 @@ export function makeShop(cfg, seed = 1) {
 
 // Time for one job, averaged over the seeds.
 export function jobTime(cfg) {
-  let sum = 0;
-  for (const seed of PAR.SEEDS) {
+  return mean(PAR.SEEDS.map((seed) => {
     const shop = makeShop(cfg, seed);
     while (shop.jobsDone < 1 && shop.t < 200) shop.step(PAR.DT);
-    sum += shop.times[0];
-  }
-  return sum / PAR.SEEDS.length;
+    return shop.times[0];
+  }));
 }
 
 export function speedup(cfg) { return jobTime({ ...cfg, workers: 1 }) / jobTime(cfg); }
+
+// ---------- experiments: computed once at build time from the same model (the original ran them in the browser) ----------
+export const BASE = { workers: 8, cores: 8, serial: 0.1, chunks: 8, tool: false, job: "big", data: "even" };
+export function amdahlRun() {
+  const t1 = jobTime({ ...BASE, workers: 1 });
+  return { list: [1, 2, 4, 8].map((w) => [w, t1 / jobTime({ ...BASE, workers: w })]), limit: amdahl(0.1, 8, 8) };
+}
+export const oversubRun = () => ({ a: jobTime({ ...BASE, chunks: 16 }), b: jobTime({ ...BASE, chunks: 16, workers: 16 }) });
+export const toolRun = () => ({ off: speedup(BASE), on: speedup({ ...BASE, tool: true }) });
+export const tinyRun = () => ({ one: jobTime({ ...BASE, job: "tiny", workers: 1, chunks: 1 }), eight: jobTime({ ...BASE, job: "tiny" }), more: jobTime({ ...BASE, job: "tiny", chunks: 32 }) });
+export const unevenRun = () => ({ even: jobTime(BASE), u8: jobTime({ ...BASE, data: "uneven" }), u32: jobTime({ ...BASE, data: "uneven", chunks: 32 }) });

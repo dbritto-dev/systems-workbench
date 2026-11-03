@@ -1,9 +1,12 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // A workshop: up to eight workbenches (cores) in two rows, a foreman's desk with a pallet of chunks
 // waiting to be picked up, one shared tool on a rack, and one packing station everything passes through.
+// The parts that move every frame (crates, the press ram and rod, the desk clock's hand) are drawn by live.ts.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) through the workbench layer.
-import * as k from "../../workbench/kit.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+import * as k from "../../../workbench/kit.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -42,10 +45,7 @@ export const P = k.fitProjection(
   { pad: 22, azimuth: 52 },
 );
 
-const at = (point) => k.iso(point, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
+const { S, L, D, at } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -86,10 +86,6 @@ export function toolSvg() {
   return S(k.slabOf({ x: -4.5, y: -4.5, w: 9, d: 9, r: 1 }, 0, 2.4, P, 2, 0.3), { tone: "mid" })
     + S(k.cylinder(0, 0, 1.3, 2.4, 9, P, 14), { tone: "mid", crease: "none" })
     + S(k.slabOf({ x: -6.5, y: -1.4, w: 13, d: 2.8, r: 1.2 }, 11.4, 2.6, P, 2, 0.3), { tone: "hi", crease: "lo" });
-}
-
-export function crateSvg(x0, y0, w, h, lit) {
-  return S(k.slabOf({ x: x0, y: y0, w, d: CRATE.d, r: 0.6 }, CRATE.z, h, P, 2, 0.3), { tone: "hi", crease: "lo", lit });
 }
 
 function foreman() {
@@ -156,18 +152,6 @@ function packing() {
   out.push(S(k.slabOf(head, PRESS.top, 6, P, 3, 0.6), { tone: "mid" }));
   out.push(D([[head.x + 3, head.y + 3], [head.x + head.w - 3, head.y + 3], [head.x + 3, head.y + head.d - 3], [head.x + head.w - 3, head.y + head.d - 3]].map(([x, y]) => at([x, y, PRESS.top + 6])), { size: 0.45 }));
   return out.join("");
-}
-
-export function ramSvg(z, lit) {
-  return S(k.slabOf({ x: PRESS.cx - 5.5, y: PRESS.cy - 5.5, w: 11, d: 11, r: 0.8 }, z, 4, P, 2, 0.4), { tone: "hi", crease: "lo", lit });
-}
-export function rodSvg(z) {
-  return S(k.cylinder(PRESS.cx, PRESS.cy, 1.8, z + 4, PRESS.top - z - 4, P, 14), { tone: "mid", crease: "none" });
-}
-
-export function needleAt(turn) {
-  const a = turn * Math.PI * 2, x = -131, y = -84;
-  return k.lineOnTop([x, y], [x + Math.sin(a) * 2.9, y - Math.cos(a) * 2.9], 16.2, P);
 }
 
 export function buildFigure() {
