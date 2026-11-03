@@ -1,22 +1,21 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The triage room in the browser: runs the clinic, replays each heap operation on the figure one move at a time,
-// wires the controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, results).
+// and answers the controls. mount() gets the build-time data from page.ts (geometry) and root, the <wb-lesson>.
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls, setText, setLit } from "../../runtime/dom";
+import { show, playPause, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
-import { pct, int, secs1 } from "../../lib/format";
+import { secs1 } from "../../lib/format";
 import { makeClinic } from "./sim";
 
-export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOTS, FIRST, RAIL_Y, R, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-heap]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOTS, FIRST, RAIL_Y }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const ease = smoothstep;
 
   const dials = Object.fromEntries(Object.keys(COUNTERS).map((n) => [n, WB.counter(svg, n, P)]));
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
   const nodes = Array.from({ length: SLOTS }, (_, i) => ({ g: q('[data-node="' + i + '"]'), label: q('[data-node-label="' + i + '"]') }));
   const cells = Array.from({ length: SLOTS }, (_, i) => ({ g: q('[data-cell="' + i + '"]'), label: q('[data-cell-label="' + i + '"]') }));
@@ -123,7 +122,7 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
     stat("oldest", c.oldest(2).toFixed(0) + " s");
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({
     stage,
     step: (dt) => {
@@ -149,59 +148,25 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     if (name === "load") cfg.load = Number(raw); else cfg[name] = raw;
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("urgent").addEventListener("click", () => { enqueue(c.add(0, 1)); if (loop.paused) loop.setPaused(false); });
-  act("routine").addEventListener("click", () => { enqueue(c.add(2, 9)); if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", restart);
-
-  // ---------- experiments ----------
-  const RUNS = {
-    order: () => {
-      const f = R.order.fifo, p = R.order.prio, top = Math.max(f.routine, p.routine);
-      return { verdict: T("Arrival order: urgent " + secs1(f.urgent) + ", routine " + secs1(f.routine) + ", all jobs " + secs1(f.all) + ". Priority: urgent " + secs1(p.urgent) + ", routine " + secs1(p.routine) + ", all jobs " + secs1(p.all) + ".",
-          "Por llegada: urgentes " + secs1(f.urgent) + ", de rutina " + secs1(f.routine) + ", todos " + secs1(f.all) + ". Por prioridad: urgentes " + secs1(p.urgent) + ", de rutina " + secs1(p.routine) + ", todos " + secs1(p.all) + "."),
-        bars: [[T("Urgent, arrival order", "Urgentes, por llegada"), f.urgent / top, secs1(f.urgent)], [T("Urgent, priority", "Urgentes, por prioridad"), p.urgent / top, secs1(p.urgent), true],
-          [T("Routine, arrival order", "De rutina, por llegada"), f.routine / top, secs1(f.routine)], [T("Routine, priority", "De rutina, por prioridad"), p.routine / top, secs1(p.routine), true],
-          [T("All jobs, arrival order", "Todos, por llegada"), f.all / top, secs1(f.all)], [T("All jobs, priority", "Todos, por prioridad"), p.all / top, secs1(p.all), true]] };
-    },
-    starve: () => {
-      const p = R.starve.prio, a = R.starve.aging;
-      return { verdict: T("Strict priority: the oldest routine job waited " + int(p.oldestRoutine) + " s of the 600, and only " + pct(p.routineServed) + " of routine jobs were served. Aging: oldest " + int(a.oldestRoutine) + " s, " + pct(a.routineServed) + " served; urgent jobs' average wait went from " + secs1(p.urgent) + " to " + secs1(a.urgent) + ".",
-          "Prioridad estricta: el trabajo de rutina más antiguo esperó " + int(p.oldestRoutine) + " s de los 600, y solo se atendió el " + pct(p.routineServed) + " de los de rutina. Aging: el más antiguo, " + int(a.oldestRoutine) + " s, y se atendió el " + pct(a.routineServed) + "; la espera promedio de los urgentes pasó de " + secs1(p.urgent) + " a " + secs1(a.urgent) + "."),
-        bars: [[T("Oldest routine wait, strict", "Rutina más antigua, estricta"), p.oldestRoutine / 600, int(p.oldestRoutine) + " s"], [T("Oldest routine wait, aging", "Rutina más antigua, aging"), a.oldestRoutine / 600, int(a.oldestRoutine) + " s", true],
-          [T("Urgent average wait, strict", "Urgentes en promedio, estricta"), p.urgent / 600, secs1(p.urgent)], [T("Urgent average wait, aging", "Urgentes en promedio, aging"), a.urgent / 600, secs1(a.urgent), true]] };
-    },
-    grow: () => {
-      const a = R.grow.small, b = R.grow.big;
-      return { verdict: T("Serving the top: " + a.pop.toFixed(1) + " swaps at 1,000 jobs (" + a.levels + " levels), " + b.pop.toFixed(1) + " at 1,000,000 (" + b.levels + " levels). A new job climbed " + a.push.toFixed(1) + " and " + b.push.toFixed(1) + " levels on average. A sorted list shifts " + int(a.shifts) + " and " + int(b.shifts) + " items per insert.",
-          "Atender el de arriba: " + a.pop.toFixed(1) + " intercambios con 1,000 trabajos (" + a.levels + " niveles), " + b.pop.toFixed(1) + " con 1,000,000 (" + b.levels + " niveles). Un trabajo nuevo subió " + a.push.toFixed(1) + " y " + b.push.toFixed(1) + " niveles en promedio. Una lista ordenada desplaza " + int(a.shifts) + " y " + int(b.shifts) + " elementos por inserción."),
-        bars: [[T("Heap, serve, 1,000", "Heap, atender, 1,000"), a.pop / b.levels, a.pop.toFixed(1)], [T("Heap, serve, 1,000,000", "Heap, atender, 1,000,000"), b.pop / b.levels, b.pop.toFixed(1), true],
-          [T("Sorted list, insert, 1,000", "Lista ordenada, insertar, 1,000"), a.shifts / b.shifts, int(a.shifts)], [T("Sorted list, insert, 1,000,000", "Lista ordenada, insertar, 1,000,000"), 1, int(b.shifts), true]] };
-    },
-    topk: () => {
-      const r = R.topk;
-      return { verdict: T("A min-heap of " + r.k + " kept the ten best of " + int(r.n) + " scores: the root was replaced " + r.replaced + " times, about " + int(r.comparisons) + " comparisons in all, same top ten as sorting everything (about " + int(r.sortComparisons) + " comparisons, and all " + int(r.n) + " scores in memory).",
-          "Un min-heap de " + r.k + " guardó los diez mejores de " + int(r.n) + " puntajes: la raíz se reemplazó " + r.replaced + " veces, unas " + int(r.comparisons) + " comparaciones en total, los mismos diez que ordenando todo (unas " + int(r.sortComparisons) + " comparaciones, y los " + int(r.n) + " puntajes en memoria)."),
-        bars: [[T("Comparisons, min-heap of 10", "Comparaciones, min-heap de 10"), r.comparisons / r.sortComparisons, int(r.comparisons), true], [T("Comparisons, sort all", "Comparaciones, ordenar todo"), 1, int(r.sortComparisons)],
-          [T("Items kept, min-heap", "Elementos guardados, min-heap"), r.k / r.n, String(r.k), true], [T("Items kept, sort all", "Elementos guardados, ordenar todo"), 1, int(r.n)]] };
-    },
-    ties: () => {
-      const a = R.ties.plain.join(", "), b = R.ties.seq.join(", ");
-      return { verdict: T("Priority only: " + a + ". Priority, then arrival number: " + b + ".", "Solo prioridad: " + a + ". Prioridad y después número de llegada: " + b + "."),
-        bars: [[T("Priority only", "Solo prioridad"), 1, a], [T("Priority + arrival number", "Prioridad + número de llegada"), 1, b, true]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    urgent: () => { enqueue(c.add(0, 1)); if (loop.paused) loop.setPaused(false); },
+    routine: () => { enqueue(c.add(2, 9)); if (loop.paused) loop.setPaused(false); },
+    reset: () => restart(),
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     set("policy", w.policy, true); set("ties", w.ties, true); set("load", String(w.load), true);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

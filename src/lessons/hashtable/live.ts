@@ -1,25 +1,23 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The pigeonhole rack in the browser: inserts keys and looks some up on the same table model the experiments use,
-// animating each trace (stamp, shuttle, compares or probes, the card dropping in, the rack doubling), and wires the
-// controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, results).
+// animating each trace (stamp, shuttle, compares or probes, the card dropping in, the rack doubling), and answers
+// the controls. mount() gets the build-time data from page.ts (geometry) and root, the <wb-lesson>.
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats as statsStrip, show, act, pauseControls, setText, setLit } from "../../runtime/dom";
+import { show, playPause, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
-import { n0, int } from "../../lib/format";
 import { rngMixed as rng } from "../../lib/random";
 import { makeTable, hashOf, userKeys, attackKeys } from "./sim";
 
-export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, COUNTERS }, root) {
   const TRAY_CX = G.CX;
-  const stage = document.querySelector("[data-hashtable]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const ease = smoothstep;
   const dials = Object.fromEntries(Object.keys(COUNTERS).map((n) => [n, WB.counter(svg, n, P)]));
   const gauge = WB.meter(svg, "load", P);
-  const stat = statsStrip();
+  const stat = (key, value) => root.stat(key, value);
 
   const cards = Array.from({ length: G.SLOTS }, (_, i) => Array.from({ length: G.PILE }, (_, s) => q('[data-c="' + i + "-" + s + '"]')));
   const more = Array.from({ length: G.SLOTS }, (_, i) => ({ g: q('[data-more="' + i + '"]'), label: q('[data-more-label="' + i + '"]') }));
@@ -194,7 +192,7 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
     stat("longest", s.longest); stat("moved", s.moved);
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({
     stage,
     step: (dt) => { step(dt * cfg.speed); stats(); say(holding > 0 ? L("full for this figure · starting over", "llena para esta figura · se empieza de nuevo") : msg ? L(msg) : L("starting", "iniciando")); },
@@ -203,56 +201,21 @@ export default function mount({ P, G, COUNTERS, RESULTS, EXPERIMENTS }) {
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = raw;
     if (!quiet) { cycle = 0; reset(); }
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("reset").addEventListener("click", () => { cycle = 0; reset(); });
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: () => { cycle = 0; reset(); } };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (numbers computed from the same model at build time, six seeds where keys are random) ----------
-  const n2 = (x) => x.toFixed(x < 10 ? 1 : 0);
-  const RUNS = {
-    nogrow: () => {
-      const { a, b, c } = RESULTS.nogrow;
-      const top = Math.max(b.worst, 1);
-      return { verdict: T("64 keys in 64 buckets: " + n2(a.avg) + " compares per lookup on average. 1,024 keys in the same 64 buckets: " + n2(b.avg) + " on average, " + n2(b.worst) + " for the unluckiest key (" + n2(b.avg / a.avg) + "× slower). Growing at 75% instead: " + n2(c.avg) + ".",
-          "64 claves en 64 cubetas: " + n2(a.avg) + " comparaciones por búsqueda en promedio. 1,024 claves en las mismas 64 cubetas: " + n2(b.avg) + " en promedio y " + n2(b.worst) + " para la clave más desafortunada (" + n2(b.avg / a.avg) + " veces más lento). Creciendo al 75% en su lugar: " + n2(c.avg) + "."),
-        bars: [[T("64 keys, load 1", "64 claves, carga 1"), a.avg / top, n2(a.avg)], [T("1,024 keys, load 16", "1,024 claves, carga 16"), b.avg / top, n2(b.avg), true], [T("Worst key, load 16", "Peor clave, carga 16"), b.worst / top, n2(b.worst), true], [T("1,024 keys, doubling", "1,024 claves, duplicando"), c.avg / top, n2(c.avg)]] };
-    },
-    weak: () => {
-      const { g, w } = RESULTS.weak;
-      return { verdict: T("Good hash: " + int(g.used) + " of " + int(g.m) + " buckets in use, longest chain " + n0(g.longest) + ", " + n2(g.avg) + " compares per lookup. First 4 characters: " + int(w.used) + " bucket in use, one chain of " + int(w.longest) + " keys, " + n2(w.avg) + " compares per lookup, in a table that still doubled to " + int(w.m) + " buckets.",
-          "Buen hash: " + int(g.used) + " de " + int(g.m) + " cubetas en uso, cadena más larga de " + n0(g.longest) + ", " + n2(g.avg) + " comparaciones por búsqueda. Primeros 4 caracteres: " + int(w.used) + " cubeta en uso, una cadena de " + int(w.longest) + " claves, " + n2(w.avg) + " comparaciones por búsqueda, en una tabla que igual se duplicó a " + int(w.m) + " cubetas."),
-        bars: [[T("Compares per lookup, good hash", "Comparaciones por búsqueda, buen hash"), g.avg / w.avg, n2(g.avg)], [T("Compares per lookup, weak hash", "Comparaciones por búsqueda, hash débil"), 1, n2(w.avg), true], [T("Buckets in use, good hash", "Cubetas en uso, buen hash"), g.used / g.m, int(g.used)], [T("Buckets in use, weak hash", "Cubetas en uso, hash débil"), w.used / w.m, int(w.used), true]] };
-    },
-    resize: () => {
-      const { d, a } = RESULTS.resize;
-      const per = d.moved / 1000, perA = a.moved / 1000;
-      return { verdict: T("Doubling: " + d.resizes + " resizes, " + int(d.moved) + " keys moved in all, " + per.toFixed(2) + " moves per insert; the biggest single insert moved " + int(d.biggest) + " keys. Adding 8 buckets: " + int(a.resizes) + " resizes, " + int(a.moved) + " moves, " + perA.toFixed(0) + " per insert.",
-          "Duplicando: " + d.resizes + " redimensionamientos, " + int(d.moved) + " claves movidas en total, " + per.toFixed(2) + " movimientos por inserción; la inserción individual más cara movió " + int(d.biggest) + " claves. Sumando 8 cubetas: " + int(a.resizes) + " redimensionamientos, " + int(a.moved) + " movimientos, " + perA.toFixed(0) + " por inserción."),
-        bars: [[T("Moves per insert, doubling", "Movimientos por inserción, duplicando"), per / perA, per.toFixed(2), true], [T("Moves per insert, +8 buckets", "Movimientos por inserción, +8 cubetas"), 1, perA.toFixed(0)], [T("Biggest single insert, doubling", "Inserción más cara, duplicando"), d.biggest / 1000, int(d.biggest)]] };
-    },
-    probe: () => {
-      const { c5, p5, c9, p9 } = RESULTS.probe;
-      const top = p9.miss;
-      return { verdict: T("50% full: finding a key takes " + n2(c5.avg) + " checks with chaining, " + n2(p5.avg) + " with linear probing. 90% full: chaining " + n2(c9.avg) + ", probing " + n2(p9.avg) + "; a missing key costs " + n2(c9.miss) + " vs " + n2(p9.miss) + ", and the longest run of full slots is " + int(p9.longest) + " (longest chain: " + n0(c9.longest) + ").",
-          "Al 50%: encontrar una clave cuesta " + n2(c5.avg) + " revisiones con encadenamiento y " + n2(p5.avg) + " con sondeo lineal. Al 90%: encadenamiento " + n2(c9.avg) + ", sondeo " + n2(p9.avg) + "; una clave que no está cuesta " + n2(c9.miss) + " contra " + n2(p9.miss) + ", y el tramo más largo de casillas llenas es de " + int(p9.longest) + " (cadena más larga: " + n0(c9.longest) + ")."),
-        bars: [[T("Find a key, chaining, 90%", "Encontrar, encadenamiento, 90%"), c9.avg / top, n2(c9.avg)], [T("Find a key, probing, 90%", "Encontrar, sondeo, 90%"), p9.avg / top, n2(p9.avg), true], [T("Missing key, chaining, 90%", "No está, encadenamiento, 90%"), c9.miss / top, n2(c9.miss)], [T("Missing key, probing, 90%", "No está, sondeo, 90%"), 1, n2(p9.miss), true]] };
-    },
-    flood: () => {
-      const { fx, sd, nm } = RESULTS.flood;
-      return { verdict: T("Crafted keys, fixed hash: " + int(fx.work) + " compares and moves to insert 1,000 keys, all in one bucket. Ordinary ids, same hash: " + int(nm.work) + " (" + Math.round(fx.work / nm.work) + "× less). The crafted keys against the seeded hash: " + int(sd.work) + ", longest chain " + n0(sd.longest) + ".",
-          "Claves fabricadas, hash fijo: " + int(fx.work) + " comparaciones y movimientos para insertar 1,000 claves, todas en una cubeta. IDs normales, mismo hash: " + int(nm.work) + " (" + Math.round(fx.work / nm.work) + " veces menos). Las claves fabricadas contra el hash con semilla: " + int(sd.work) + ", cadena más larga de " + n0(sd.longest) + "."),
-        bars: [[T("Ordinary ids, fixed hash", "IDs normales, hash fijo"), nm.work / fx.work, int(nm.work)], [T("Crafted keys, fixed hash", "Claves fabricadas, hash fijo"), 1, int(fx.work), true], [T("Crafted keys, seeded hash", "Claves fabricadas, hash con semilla"), sd.work / fx.work, int(sd.work)]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    for (const [name, value] of Object.entries(exp.watch)) set(name, value, true);
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
+    for (const [name, value] of Object.entries(w)) set(name, value, true);
     cycle = 0; reset();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   reset();

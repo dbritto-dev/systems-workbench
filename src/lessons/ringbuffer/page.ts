@@ -1,12 +1,48 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 42 · Ring buffers: a round table with 16 pockets as a ring buffer.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { one, int } from "../../lib/format";
 import { buildFigure, tokenSvg, P, GEOMETRY } from "./figure";
 import { burstRun, lapRun, sizeRun, blockRun, batchRun } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
 const RESULTS = { burst: burstRun(), lap: lapRun(), size: sizeRun(), block: blockRun(), batch: batchRun() };
+
+// What each card shows after a run.
+// Whole numbers with thousands separators (3,600, int), as the original page printed them; n0 has none.
+const RUNS = {
+  burst: () => {
+    const { overwrite: o, drop: d, block: b } = RESULTS.burst;
+    return { verdict: t("Overwrite: " + int(o.lost) + " lost, items " + o.lostFrom + " to " + o.lostTo + " of the burst; the reader got the newest 16. Drop: " + int(d.lost) + " lost, items " + d.lostFrom + " to " + d.lostTo + ". Block: " + int(b.lost) + " lost; the producer held up to " + int(b.held) + " items and stood still for " + one(b.stall) + " s, and the ring took " + one(b.empty) + " s to empty instead of " + one(o.empty) + " s.",
+        "Sobrescribir: " + int(o.lost) + " perdidos, los elementos " + o.lostFrom + " a " + o.lostTo + " de la ráfaga; el lector recibió los 16 más nuevos. Descartar: " + int(d.lost) + " perdidos, los elementos " + d.lostFrom + " a " + d.lostTo + ". Frenar: " + int(b.lost) + " perdidos; el productor llegó a sostener " + int(b.held) + " elementos y estuvo quieto " + one(b.stall) + " s, y el anillo tardó " + one(b.empty) + " s en vaciarse en lugar de " + one(o.empty) + " s."),
+      bars: [[t("Lost, overwrite", "Perdidos, sobrescribir"), o.lost / 40, t("#" + o.lostFrom + "–" + o.lostTo, "n.º " + o.lostFrom + "–" + o.lostTo), true], [t("Lost, drop", "Perdidos, descartar"), d.lost / 40, t("#" + d.lostFrom + "–" + d.lostTo, "n.º " + d.lostFrom + "–" + d.lostTo), true], [t("Lost, block", "Perdidos, frenar"), b.lost / 40, "0"], [t("Producer stalled, block (of 20 s)", "Productor quieto, frenar (de 20 s)"), Math.min(1, b.stall / 20), one(b.stall) + " s"]] };
+  },
+  lap: () => {
+    const { naive: a, checked: c } = RESULTS.lap, top = Math.max(a.written, 1);
+    return { verdict: t("In both runs about " + int(a.written) + " were written and " + int(a.read) + " read. Overwritten before being read: " + int(a.lost) + " without checks, " + int(c.lost) + " with them. The checking reader counted " + int(c.seen) + " skipped; the other counted 0, and " + int(a.silent) + " of its " + int(a.read) + " reads were not the item it thought it was reading.",
+        "En las dos ejecuciones se escribieron cerca de " + int(a.written) + " y se leyeron " + int(a.read) + ". Sobrescritos antes de leerse: " + int(a.lost) + " sin revisar, " + int(c.lost) + " revisando. El lector que revisa contó " + int(c.seen) + " saltados; el otro contó 0, y " + int(a.silent) + " de sus " + int(a.read) + " lecturas no eran el elemento que creía estar leyendo."),
+      bars: [[t("Lost, no checks", "Perdidos, sin revisar"), a.lost / top, int(a.lost), true], [t("Noticed, no checks", "Notados, sin revisar"), 0, "0", true], [t("Lost, with checks", "Perdidos, revisando"), c.lost / top, int(c.lost)], [t("Noticed, with checks", "Notados, revisando"), c.seen / top, int(c.seen)]] };
+  },
+  size: () => {
+    const { c64, c128, c256 } = RESULTS.size;
+    return { verdict: t("64 slots: filled up, " + int(c64.lost) + " dropped. 128 slots: peaked at " + int(c128.peak) + ", nothing dropped. 256 slots: peaked at " + int(c256.peak) + ", nothing dropped, " + int(256 - c256.peak) + " slots never used.",
+        "64 huecos: se llenó y se descartaron " + int(c64.lost) + ". 128 huecos: llegó a " + int(c128.peak) + ", no se descartó nada. 256 huecos: llegó a " + int(c256.peak) + ", no se descartó nada y " + int(256 - c256.peak) + " huecos nunca se usaron."),
+      bars: [[t("Peak fill, 64 slots", "Máximo ocupado, 64 huecos"), c64.peak / 256, int(c64.peak)], [t("Dropped, 64 slots", "Descartados, 64 huecos"), c64.lost / 200, int(c64.lost), true], [t("Peak fill, 128 slots", "Máximo ocupado, 128 huecos"), c128.peak / 256, int(c128.peak)], [t("Peak fill, 256 slots", "Máximo ocupado, 256 huecos"), c256.peak / 256, int(c256.peak)]] };
+  },
+  block: () => {
+    const { block: b, overwrite: o } = RESULTS.block;
+    return { verdict: t("Block: " + int(b.lost) + " lost, " + int(b.read) + " read; the producer was stalled " + int(b.stall) + " of the 60 s and " + int(b.backlog) + " items were waiting in front of it at the end, the oldest for " + int(b.wait) + " s. Overwrite: the same " + int(o.read) + " read, nothing waiting, " + int(o.lost) + " lost.",
+        "Frenar: " + int(b.lost) + " perdidos, " + int(b.read) + " leídos; el productor estuvo frenado " + int(b.stall) + " de los 60 s y al final había " + int(b.backlog) + " elementos esperando delante de él, el más viejo desde hacía " + int(b.wait) + " s. Sobrescribir: los mismos " + int(o.read) + " leídos, nada esperando, " + int(o.lost) + " perdidos."),
+      bars: [[t("Producer stalled, block", "Productor frenado, frenar"), b.stall / 60, int(b.stall) + " s", true], [t("Waiting upstream, block", "Esperando antes, frenar"), b.backlog / 200, int(b.backlog), true], [t("Lost, overwrite", "Perdidos, sobrescribir"), o.lost / 200, int(o.lost)], [t("Read, either way", "Leídos, en ambos casos"), b.read / 480, int(b.read)]] };
+  },
+  batch: () => {
+    const { one: a, batch: b } = RESULTS.batch;
+    return { verdict: t("One at a time: " + int(a.read) + " of " + int(a.arrived) + " read, " + int(a.lost) + " dropped, average wait " + one(a.wait) + " s. Batches: " + int(b.read) + " read, " + int(b.lost) + " dropped, " + one(b.perOp) + " items per read on average, average wait " + int(b.wait * 1000) + " ms, reader busy " + Math.round(b.busy * 100) + "% of the time.",
+        "De a uno: " + int(a.read) + " de " + int(a.arrived) + " leídos, " + int(a.lost) + " descartados, espera media " + one(a.wait) + " s. Por lotes: " + int(b.read) + " leídos, " + int(b.lost) + " descartados, " + one(b.perOp) + " elementos por lectura en promedio, espera media " + int(b.wait * 1000) + " ms, lector ocupado el " + Math.round(b.busy * 100) + "% del tiempo."),
+      bars: [[t("Dropped, one at a time", "Descartados, de a uno"), a.lost / a.arrived, int(a.lost), true], [t("Dropped, batches", "Descartados, por lotes"), b.lost / b.arrived, int(b.lost)], [t("Items per read, batches (of 4)", "Elementos por lectura, lotes (de 4)"), b.perOp / 4, one(b.perOp)], [t("Average wait, one at a time (of 2 s)", "Espera media, de a uno (de 2 s)"), Math.min(1, a.wait / 2), one(a.wait) + " s", true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -151,7 +187,7 @@ export default defineLesson({
       { actions: [["burst", t("40 at once", "40 de golpe")], ["stop", t("Stop the reader 5 s", "Detener al lector 5 s")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine; runs with random arrivals are averaged over eight seeds.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina; las ejecuciones con llegadas aleatorias se promedian sobre ocho semillas."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine; runs with random arrivals are averaged over eight seeds.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina; las ejecuciones con llegadas aleatorias se promedian sobre ocho semillas."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .iso-stage [data-layer] text{pointer-events:none}
@@ -160,7 +196,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     TOKEN_SVG: tokenSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

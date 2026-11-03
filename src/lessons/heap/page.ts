@@ -1,7 +1,8 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 41 · Heaps and priority queues: a triage room built around a binary heap.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct, int, secs1 } from "../../lib/format";
 import { buildFigure, P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOTS, FIRST, RAIL } from "./figure";
 import { clinicAverage, growth, topK, tieOrder } from "./sim";
 
@@ -15,6 +16,44 @@ const R = {
   grow: { small: growth(1000), big: growth(1000000) },
   topk: topK(100000, 10),
   ties: { plain: tieOrder(false), seq: tieOrder(true) },
+};
+
+// What each card shows after a run.
+const RUNS = {
+  order: () => {
+    const f = R.order.fifo, p = R.order.prio, top = Math.max(f.routine, p.routine);
+    return { verdict: t("Arrival order: urgent " + secs1(f.urgent) + ", routine " + secs1(f.routine) + ", all jobs " + secs1(f.all) + ". Priority: urgent " + secs1(p.urgent) + ", routine " + secs1(p.routine) + ", all jobs " + secs1(p.all) + ".",
+        "Por llegada: urgentes " + secs1(f.urgent) + ", de rutina " + secs1(f.routine) + ", todos " + secs1(f.all) + ". Por prioridad: urgentes " + secs1(p.urgent) + ", de rutina " + secs1(p.routine) + ", todos " + secs1(p.all) + "."),
+      bars: [[t("Urgent, arrival order", "Urgentes, por llegada"), f.urgent / top, secs1(f.urgent)], [t("Urgent, priority", "Urgentes, por prioridad"), p.urgent / top, secs1(p.urgent), true],
+        [t("Routine, arrival order", "De rutina, por llegada"), f.routine / top, secs1(f.routine)], [t("Routine, priority", "De rutina, por prioridad"), p.routine / top, secs1(p.routine), true],
+        [t("All jobs, arrival order", "Todos, por llegada"), f.all / top, secs1(f.all)], [t("All jobs, priority", "Todos, por prioridad"), p.all / top, secs1(p.all), true]] };
+  },
+  starve: () => {
+    const p = R.starve.prio, a = R.starve.aging;
+    return { verdict: t("Strict priority: the oldest routine job waited " + int(p.oldestRoutine) + " s of the 600, and only " + pct(p.routineServed) + " of routine jobs were served. Aging: oldest " + int(a.oldestRoutine) + " s, " + pct(a.routineServed) + " served; urgent jobs' average wait went from " + secs1(p.urgent) + " to " + secs1(a.urgent) + ".",
+        "Prioridad estricta: el trabajo de rutina más antiguo esperó " + int(p.oldestRoutine) + " s de los 600, y solo se atendió el " + pct(p.routineServed) + " de los de rutina. Aging: el más antiguo, " + int(a.oldestRoutine) + " s, y se atendió el " + pct(a.routineServed) + "; la espera promedio de los urgentes pasó de " + secs1(p.urgent) + " a " + secs1(a.urgent) + "."),
+      bars: [[t("Oldest routine wait, strict", "Rutina más antigua, estricta"), p.oldestRoutine / 600, int(p.oldestRoutine) + " s"], [t("Oldest routine wait, aging", "Rutina más antigua, aging"), a.oldestRoutine / 600, int(a.oldestRoutine) + " s", true],
+        [t("Urgent average wait, strict", "Urgentes en promedio, estricta"), p.urgent / 600, secs1(p.urgent)], [t("Urgent average wait, aging", "Urgentes en promedio, aging"), a.urgent / 600, secs1(a.urgent), true]] };
+  },
+  grow: () => {
+    const a = R.grow.small, b = R.grow.big;
+    return { verdict: t("Serving the top: " + a.pop.toFixed(1) + " swaps at 1,000 jobs (" + a.levels + " levels), " + b.pop.toFixed(1) + " at 1,000,000 (" + b.levels + " levels). A new job climbed " + a.push.toFixed(1) + " and " + b.push.toFixed(1) + " levels on average. A sorted list shifts " + int(a.shifts) + " and " + int(b.shifts) + " items per insert.",
+        "Atender el de arriba: " + a.pop.toFixed(1) + " intercambios con 1,000 trabajos (" + a.levels + " niveles), " + b.pop.toFixed(1) + " con 1,000,000 (" + b.levels + " niveles). Un trabajo nuevo subió " + a.push.toFixed(1) + " y " + b.push.toFixed(1) + " niveles en promedio. Una lista ordenada desplaza " + int(a.shifts) + " y " + int(b.shifts) + " elementos por inserción."),
+      bars: [[t("Heap, serve, 1,000", "Heap, atender, 1,000"), a.pop / b.levels, a.pop.toFixed(1)], [t("Heap, serve, 1,000,000", "Heap, atender, 1,000,000"), b.pop / b.levels, b.pop.toFixed(1), true],
+        [t("Sorted list, insert, 1,000", "Lista ordenada, insertar, 1,000"), a.shifts / b.shifts, int(a.shifts)], [t("Sorted list, insert, 1,000,000", "Lista ordenada, insertar, 1,000,000"), 1, int(b.shifts), true]] };
+  },
+  topk: () => {
+    const r = R.topk;
+    return { verdict: t("A min-heap of " + r.k + " kept the ten best of " + int(r.n) + " scores: the root was replaced " + r.replaced + " times, about " + int(r.comparisons) + " comparisons in all, same top ten as sorting everything (about " + int(r.sortComparisons) + " comparisons, and all " + int(r.n) + " scores in memory).",
+        "Un min-heap de " + r.k + " guardó los diez mejores de " + int(r.n) + " puntajes: la raíz se reemplazó " + r.replaced + " veces, unas " + int(r.comparisons) + " comparaciones en total, los mismos diez que ordenando todo (unas " + int(r.sortComparisons) + " comparaciones, y los " + int(r.n) + " puntajes en memoria)."),
+      bars: [[t("Comparisons, min-heap of 10", "Comparaciones, min-heap de 10"), r.comparisons / r.sortComparisons, int(r.comparisons), true], [t("Comparisons, sort all", "Comparaciones, ordenar todo"), 1, int(r.sortComparisons)],
+        [t("Items kept, min-heap", "Elementos guardados, min-heap"), r.k / r.n, String(r.k), true], [t("Items kept, sort all", "Elementos guardados, ordenar todo"), 1, int(r.n)]] };
+  },
+  ties: () => {
+    const a = R.ties.plain.join(", "), b = R.ties.seq.join(", ");
+    return { verdict: t("Priority only: " + a + ". Priority, then arrival number: " + b + ".", "Solo prioridad: " + a + ". Prioridad y después número de llegada: " + b + "."),
+      bars: [[t("Priority only", "Solo prioridad"), 1, a], [t("Priority + arrival number", "Prioridad + número de llegada"), 1, b, true]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -161,12 +200,10 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine; the clinic experiments are averaged over six seeded runs.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina; los experimentos de la clínica se promedian sobre seis ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina; los experimentos de la clínica se promedian sobre seis ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOTS, FIRST,
     RAIL_Y: RAIL.y,
-    R,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

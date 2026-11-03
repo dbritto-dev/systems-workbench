@@ -1,19 +1,17 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The ring table in the browser: runs the model, eases items toward where it has them, wires the controls and the
-// experiment cards. mount() gets the build-time data from page.ts (geometry, token drawing, results).
+// The ring table in the browser: runs the model, eases items toward where it has them, and answers the controls.
+// mount() gets the build-time data from page.ts (geometry, token drawing) and root, the <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls } from "../../runtime/dom";
+import { show, playPause } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
-import { one, int } from "../../lib/format";
 import { makeRing } from "./sim";
 
-export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-ring]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, TOKEN_SVG }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   const layers = Object.fromEntries(["ring", "prod", "desk", "tray", "bin", "fly"].map((n) => [n, q('[data-layer="' + n + '"]')]));
   const handEls = { w: [], r: [] };
@@ -154,14 +152,14 @@ export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
     say(L("written " + m.w + " · read " + m.st.read + " · " + m.fill() + " of " + G.CAP + " in use" + (lag > G.CAP ? " · lapped by " + (lag - G.CAP) : ""),
       "escritos " + m.w + " · leídos " + m.st.read + " · " + m.fill() + " de " + G.CAP + " ocupados" + (lag > G.CAP ? " · le sacó " + (lag - G.CAP) + " de ventaja" : "")));
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(dt); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = name === "rate" ? Number(raw) : raw;
     if (quiet) return;
@@ -171,53 +169,22 @@ export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
     else if (name === "check") model.cfg.check = cfg.check === "yes";
     else restart();
   }
-  WB.onSegments((name, value) => set(name, value));
+  root.on("change", (name, value) => set(name, value));
   const burst = () => { model.inject(clock, 40); note = { t: clock, text: T("40 items arrive at once", "llegan 40 elementos de golpe") }; };
-  act("burst").addEventListener("click", () => { burst(); if (loop.paused) loop.setPaused(false); });
-  act("stop").addEventListener("click", () => { model.pauseReader(clock, 5); note = { t: clock, text: T("the reader stops for 5 s", "el lector se detiene 5 s") }; if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", () => restart());
-
-  // ---------- experiments (numbers computed from the same model) ----------
-  // Whole numbers with thousands separators (3,600), as the original page printed them; src/lib/format's n0 has none.
-  const RUNS = {
-    burst: () => {
-      const { overwrite: o, drop: d, block: b } = RESULTS.burst;
-      return { verdict: T("Overwrite: " + int(o.lost) + " lost, items " + o.lostFrom + " to " + o.lostTo + " of the burst; the reader got the newest 16. Drop: " + int(d.lost) + " lost, items " + d.lostFrom + " to " + d.lostTo + ". Block: " + int(b.lost) + " lost; the producer held up to " + int(b.held) + " items and stood still for " + one(b.stall) + " s, and the ring took " + one(b.empty) + " s to empty instead of " + one(o.empty) + " s.",
-          "Sobrescribir: " + int(o.lost) + " perdidos, los elementos " + o.lostFrom + " a " + o.lostTo + " de la ráfaga; el lector recibió los 16 más nuevos. Descartar: " + int(d.lost) + " perdidos, los elementos " + d.lostFrom + " a " + d.lostTo + ". Frenar: " + int(b.lost) + " perdidos; el productor llegó a sostener " + int(b.held) + " elementos y estuvo quieto " + one(b.stall) + " s, y el anillo tardó " + one(b.empty) + " s en vaciarse en lugar de " + one(o.empty) + " s."),
-        bars: [[T("Lost, overwrite", "Perdidos, sobrescribir"), o.lost / 40, T("#" + o.lostFrom + "–" + o.lostTo, "n.º " + o.lostFrom + "–" + o.lostTo), true], [T("Lost, drop", "Perdidos, descartar"), d.lost / 40, T("#" + d.lostFrom + "–" + d.lostTo, "n.º " + d.lostFrom + "–" + d.lostTo), true], [T("Lost, block", "Perdidos, frenar"), b.lost / 40, "0"], [T("Producer stalled, block (of 20 s)", "Productor quieto, frenar (de 20 s)"), Math.min(1, b.stall / 20), one(b.stall) + " s"]] };
-    },
-    lap: () => {
-      const { naive: a, checked: c } = RESULTS.lap, top = Math.max(a.written, 1);
-      return { verdict: T("In both runs about " + int(a.written) + " were written and " + int(a.read) + " read. Overwritten before being read: " + int(a.lost) + " without checks, " + int(c.lost) + " with them. The checking reader counted " + int(c.seen) + " skipped; the other counted 0, and " + int(a.silent) + " of its " + int(a.read) + " reads were not the item it thought it was reading.",
-          "En las dos ejecuciones se escribieron cerca de " + int(a.written) + " y se leyeron " + int(a.read) + ". Sobrescritos antes de leerse: " + int(a.lost) + " sin revisar, " + int(c.lost) + " revisando. El lector que revisa contó " + int(c.seen) + " saltados; el otro contó 0, y " + int(a.silent) + " de sus " + int(a.read) + " lecturas no eran el elemento que creía estar leyendo."),
-        bars: [[T("Lost, no checks", "Perdidos, sin revisar"), a.lost / top, int(a.lost), true], [T("Noticed, no checks", "Notados, sin revisar"), 0, "0", true], [T("Lost, with checks", "Perdidos, revisando"), c.lost / top, int(c.lost)], [T("Noticed, with checks", "Notados, revisando"), c.seen / top, int(c.seen)]] };
-    },
-    size: () => {
-      const { c64, c128, c256 } = RESULTS.size;
-      return { verdict: T("64 slots: filled up, " + int(c64.lost) + " dropped. 128 slots: peaked at " + int(c128.peak) + ", nothing dropped. 256 slots: peaked at " + int(c256.peak) + ", nothing dropped, " + int(256 - c256.peak) + " slots never used.",
-          "64 huecos: se llenó y se descartaron " + int(c64.lost) + ". 128 huecos: llegó a " + int(c128.peak) + ", no se descartó nada. 256 huecos: llegó a " + int(c256.peak) + ", no se descartó nada y " + int(256 - c256.peak) + " huecos nunca se usaron."),
-        bars: [[T("Peak fill, 64 slots", "Máximo ocupado, 64 huecos"), c64.peak / 256, int(c64.peak)], [T("Dropped, 64 slots", "Descartados, 64 huecos"), c64.lost / 200, int(c64.lost), true], [T("Peak fill, 128 slots", "Máximo ocupado, 128 huecos"), c128.peak / 256, int(c128.peak)], [T("Peak fill, 256 slots", "Máximo ocupado, 256 huecos"), c256.peak / 256, int(c256.peak)]] };
-    },
-    block: () => {
-      const { block: b, overwrite: o } = RESULTS.block;
-      return { verdict: T("Block: " + int(b.lost) + " lost, " + int(b.read) + " read; the producer was stalled " + int(b.stall) + " of the 60 s and " + int(b.backlog) + " items were waiting in front of it at the end, the oldest for " + int(b.wait) + " s. Overwrite: the same " + int(o.read) + " read, nothing waiting, " + int(o.lost) + " lost.",
-          "Frenar: " + int(b.lost) + " perdidos, " + int(b.read) + " leídos; el productor estuvo frenado " + int(b.stall) + " de los 60 s y al final había " + int(b.backlog) + " elementos esperando delante de él, el más viejo desde hacía " + int(b.wait) + " s. Sobrescribir: los mismos " + int(o.read) + " leídos, nada esperando, " + int(o.lost) + " perdidos."),
-        bars: [[T("Producer stalled, block", "Productor frenado, frenar"), b.stall / 60, int(b.stall) + " s", true], [T("Waiting upstream, block", "Esperando antes, frenar"), b.backlog / 200, int(b.backlog), true], [T("Lost, overwrite", "Perdidos, sobrescribir"), o.lost / 200, int(o.lost)], [T("Read, either way", "Leídos, en ambos casos"), b.read / 480, int(b.read)]] };
-    },
-    batch: () => {
-      const { one: a, batch: b } = RESULTS.batch;
-      return { verdict: T("One at a time: " + int(a.read) + " of " + int(a.arrived) + " read, " + int(a.lost) + " dropped, average wait " + one(a.wait) + " s. Batches: " + int(b.read) + " read, " + int(b.lost) + " dropped, " + one(b.perOp) + " items per read on average, average wait " + int(b.wait * 1000) + " ms, reader busy " + Math.round(b.busy * 100) + "% of the time.",
-          "De a uno: " + int(a.read) + " de " + int(a.arrived) + " leídos, " + int(a.lost) + " descartados, espera media " + one(a.wait) + " s. Por lotes: " + int(b.read) + " leídos, " + int(b.lost) + " descartados, " + one(b.perOp) + " elementos por lectura en promedio, espera media " + int(b.wait * 1000) + " ms, lector ocupado el " + Math.round(b.busy * 100) + "% del tiempo."),
-        bars: [[T("Dropped, one at a time", "Descartados, de a uno"), a.lost / a.arrived, int(a.lost), true], [T("Dropped, batches", "Descartados, por lotes"), b.lost / b.arrived, int(b.lost)], [T("Items per read, batches (of 4)", "Elementos por lectura, lotes (de 4)"), b.perOp / 4, one(b.perOp)], [T("Average wait, one at a time (of 2 s)", "Espera media, de a uno (de 2 s)"), Math.min(1, a.wait / 2), one(a.wait) + " s", true]] };
-    },
+  const actions = {
+    burst: () => { burst(); if (loop.paused) loop.setPaused(false); },
+    stop: () => { model.pauseReader(clock, 5); note = { t: clock, text: T("the reader stops for 5 s", "el lector se detiene 5 s") }; if (loop.paused) loop.setPaused(false); },
+    reset: () => restart(),
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     set("rate", String(w.rate), true); set("policy", w.policy, true); set("reader", w.reader, true); set("check", w.check, true);
     restart(w.burst ? 4 : WARM);
     if (loop.paused) loop.setPaused(false);
     if (w.burst) setTimeout(burst, 1200);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();
