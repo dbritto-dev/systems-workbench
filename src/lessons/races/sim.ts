@@ -1,4 +1,8 @@
+// @ts-nocheck: model ported as-is; random numbers and averages come from src/lib.
 // Shared model for the figure and the experiments: clerks updating one shared record. Times in seconds.
+import { rng, exponential } from "../../lib/random";
+import { meanBy } from "../../lib/stats";
+
 export const WALK = 0.45;      // stand ↔ desk
 export const READ = 0.25;      // reading the card / checking the board
 export const WRITE = 0.25;     // writing the card / pinning a seat
@@ -6,7 +10,6 @@ export const SEATS = 24;       // 4 rows × 6 on the booking board
 export const PICK = 4;
 export const BUSY_GAP = 1.5;   // mean seconds between a clerk's customers when the office is busy
 export const QUIET_GAP = 30;   // … and when it is quiet (a test run, a dev laptop)         // customers pick among the first few free seats (the front rows go first)
-export function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 
 // cfg: { clerks, think, protection: "none"|"lock"|"cas"|"atomic", scenario: "deposits"|"booking", traffic: "busy"|"quiet", quota }
 // Each clerk walks through phases; every phase has a start t0 and an end t1. "queue" waits for the key (t1 = Infinity).
@@ -23,7 +26,7 @@ export function makeSim(cfg, seed = 7) {
   };
   const booking = cfg.scenario === "booking";
   const thinkTime = () => cfg.think * (0.6 + 0.8 * random());
-  const gap = () => -Math.log(1 - random()) * (cfg.traffic === "quiet" ? QUIET_GAP : BUSY_GAP);
+  const gap = () => exponential(random, cfg.traffic === "quiet" ? QUIET_GAP : BUSY_GAP);
   const say = (t, clerk, kind, extra = {}) => sim.events.push({ t, clerk, kind, ...extra });
 
   for (let i = 0; i < cfg.clerks; i++) {
@@ -145,6 +148,6 @@ export function runQuota(cfg, seed) {
 
 export function average(cfg, seeds = [3, 5, 7, 11, 13, 17, 19, 23]) {
   const runs = seeds.map((seed) => runQuota(cfg, seed));
-  const mean = (k) => runs.reduce((a, r) => a + r[k], 0) / runs.length;
+  const mean = (k) => meanBy(runs, (r) => r[k]);
   return { done: mean("done"), lost: mean("lost"), retries: mean("retries"), perMinute: mean("perMinute"), wait: mean("wait"), doubleSeats: mean("doubleSeats"), booked: mean("booked"), runs };
 }
