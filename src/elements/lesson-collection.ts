@@ -1,8 +1,10 @@
 // <lesson-collection index="…/search-index.json" locale="en">: the collection page's area filters, search and
 // cards (components/collection/Toolbar.astro and the card grid, in pages/[...lang]/index.astro). The search engine
-// and the index load only when someone searches or arrives with ?q=. A card's Preview button sends a
+// and the index load only when someone searches or arrives with ?q=. Typing is debounced (results follow 150 ms
+// after the last key, and at least every 500 ms while typing), and a render only touches what changed. A card's Preview button sends a
 // "lesson-preview" event, which <lesson-preview> opens on.
 import type { SearchRun } from "../lib/search";
+import { debounce } from "../lib/timing";
 import { loadIndex, picker, PREVIEW_EVENT, type Locale, type PreviewDetail } from "./lesson-index";
 
 export class LessonCollection extends HTMLElement {
@@ -66,8 +68,16 @@ function init(root: HTMLElement) {
   const input = root.querySelector<HTMLInputElement>("input[type=search]")!;
   let starting: Promise<unknown> | null = null;
   const ensureSearch = () => (starting ??= startSearch().then((s) => { search = s; s.render(); }));
+  // Results follow the typing without re-rendering on every key: 150 ms after the last key, at least every 500 ms
+  // during a long burst. Clearing the box shows every lesson again at once.
+  const typed = debounce(() => search?.render(), 150, { maxWait: 500 });
   input.addEventListener("focus", () => void ensureSearch(), { once: true });
-  input.addEventListener("input", () => (search ? search.render() : void ensureSearch()));
+  input.addEventListener("input", (e) => {
+    if ((e as InputEvent).isComposing) return;   // an accent or IME still being composed: wait for compositionend
+    if (!search) return void ensureSearch();
+    if (!input.value.trim()) { typed.cancel(); search.render(); } else typed();
+  });
+  input.addEventListener("compositionend", () => { if (search) typed(); });
   try { const q = new URLSearchParams(location.search).get("q"); if (q) { input.value = q; void ensureSearch(); } } catch {}
   document.addEventListener("keydown", (e) => {
     const el = document.activeElement as HTMLElement | null;
@@ -88,6 +98,12 @@ function init(root: HTMLElement) {
     cards.forEach((c) => c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => shown.set(e, e.textContent ?? "")));
     const areaName = (a: string) => filters.find((b) => b.dataset.filter === a)?.firstChild?.textContent?.trim() ?? a;
 
+    // What each element last showed, so a render leaves unchanged cards alone.
+    const marked = new Map<HTMLElement, string>();
+    const hitKey = new Map<HTMLElement, string>();
+    const keyOf = (set?: Set<string>) => (set && set.size ? [...set].sort().join(" ") : "");
+    const setText = (el: Element, text: string) => { if (el.textContent !== text) el.textContent = text; };
+
     const mark = (el: HTMLElement, text: string, set?: Set<string>) => {
       el.textContent = "";
       if (!set || !set.size) { el.textContent = text; return; }
@@ -106,6 +122,9 @@ function init(root: HTMLElement) {
 
     // "In Experiment 3 · Thundering herd" under a card whose match isn't in its title or blurb.
     const hitLine = (card: HTMLElement, r?: { terms: Set<string> }) => {
+      const key = r ? keyOf(r.terms) || " " : "";
+      if (hitKey.get(card) === key) return;
+      hitKey.set(card, key);
       const line = card.querySelector<HTMLElement>(".hit")!;
       line.hidden = true;
       if (!r) return;
@@ -128,25 +147,35 @@ function init(root: HTMLElement) {
     };
 
     const quote = (q: string) => `“${q}”`;
+    let last = "\u0000";
     const render = () => {
+      typed.cancel();
       const q = input.value.trim();
+      const key = q.replace(/\s+/g, " ") + "\u0000" + area;
+      if (key === last) return;   // the same words (spacing aside) in the same area: nothing to redo
+      last = key;
       const res: SearchRun | null = q ? engine.run(q) : null;
       const hits = res ? new Map(res.results.map((x, i) => [x.lesson.slug, { ...x, rank: i }])) : null;
-      // Ranked order while searching, lesson order otherwise. Moving nodes keeps tab order matching what you see.
+      // Ranked order while searching, lesson order otherwise. Moving nodes keeps tab order matching what you see;
+      // they move only when the order changes.
       const rank = (c: HTMLElement) => (hits?.get(c.dataset.slug!)?.rank ?? 1e6 + cards.indexOf(c));
-      [...cards].sort((a, b) => rank(a) - rank(b)).forEach((c) => grid.insertBefore(c, empty));
+      const order = [...cards].sort((a, b) => rank(a) - rank(b));
+      const now = [...grid.querySelectorAll<HTMLElement>(":scope > .card")];
+      if (order.some((c, i) => now[i] !== c)) order.forEach((c) => grid.insertBefore(c, empty));
       const per: Record<string, number> = { all: 0 };
       let visible = 0;
       for (const c of cards) {
         const r = hits?.get(c.dataset.slug!);
         const match = !hits || !!r;
         if (match) { per.all++; per[c.dataset.area!] = (per[c.dataset.area!] ?? 0) + 1; }
-        c.hidden = !match || (area !== "all" && c.dataset.area !== area);
-        if (!c.hidden) visible++;
-        c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => mark(e, shown.get(e)!, r?.terms));
+        const hide = !match || (area !== "all" && c.dataset.area !== area);
+        if (c.hidden !== hide) c.hidden = hide;
+        if (!hide) visible++;
+        const k = keyOf(r?.terms);
+        c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => { if (marked.get(e) !== k) { marked.set(e, k); mark(e, shown.get(e)!, r?.terms); } });
         hitLine(c, r);
       }
-      filters.forEach((b) => { const n = per[b.dataset.filter!] ?? 0; b.querySelector("b")!.textContent = String(n); b.toggleAttribute("data-zero", n === 0); });
+      filters.forEach((b) => { const n = per[b.dataset.filter!] ?? 0; setText(b.querySelector("b")!, String(n)); if (b.hasAttribute("data-zero") !== (n === 0)) b.toggleAttribute("data-zero", n === 0); });
 
       const inArea = area === "all" ? "" : areaName(area);
       let msg = "";
@@ -157,14 +186,14 @@ function init(root: HTMLElement) {
         else msg = T(`${n} ${n === 1 ? "lesson matches" : "lessons match"} ${quote(q)}`, `${n} ${n === 1 ? "lección coincide" : "lecciones coinciden"} con ${quote(q)}`);
         if (inArea && n) msg += T(` · ${visible} in ${inArea}`, ` · ${visible} en ${inArea}`);
       }
-      status.textContent = msg;
+      setText(status, msg);
       const nothing = !!res && visible === 0;
-      empty.hidden = !nothing;
+      if (empty.hidden !== !nothing) empty.hidden = !nothing;
       if (nothing) {
         const elsewhere = per.all > 0;
-        empty.querySelector("p")!.textContent = elsewhere
+        setText(empty.querySelector("p")!, elsewhere
           ? T(`None in ${inArea}. The other matches are in other areas.`, `Ninguna en ${inArea}. Las demás coincidencias están en otras áreas.`)
-          : T("Try another word, in English or Spanish, or clear the search.", "Prueba otra palabra, en inglés o en español, o borra la búsqueda.");
+          : T("Try another word, in English or Spanish, or clear the search.", "Prueba otra palabra, en inglés o en español, o borra la búsqueda."));
         empty.querySelector<HTMLElement>("[data-all]")!.hidden = !elsewhere;
       }
       try {
@@ -177,7 +206,7 @@ function init(root: HTMLElement) {
     const clear = () => { input.value = ""; render(); input.focus(); };
     input.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { if (input.value) { e.preventDefault(); clear(); } else input.blur(); }
-      if (e.key === "Enter") { const first = cards.find((c) => !c.hidden); if (first) { e.preventDefault(); first.querySelector<HTMLElement>(".btn.primary")!.focus(); } }
+      if (e.key === "Enter") { render(); const first = grid.querySelector<HTMLElement>(":scope > .card:not([hidden])"); if (first) { e.preventDefault(); first.querySelector<HTMLElement>(".btn.primary")!.focus(); } }
     });
     empty.querySelector("[data-clear]")!.addEventListener("click", clear);
     empty.querySelector("[data-all]")!.addEventListener("click", () => filters.find((b) => b.dataset.filter === "all")!.click());
