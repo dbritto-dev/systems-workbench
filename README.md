@@ -1,7 +1,7 @@
 # Systems Workbench
 
-Interactive lessons that teach systems concepts, one small machine per idea. Each lesson is a single self-contained
-HTML page with three parts:
+Interactive lessons that teach systems concepts, one small machine per idea. Each lesson is one page with three
+parts:
 
 1. **The machine**: an isometric figure driven by a seeded simulation. Watch it, change the controls, pause it.
 2. **Predict, then run**: five experiments. Pick what you think will happen, then run the same model and compare.
@@ -65,6 +65,11 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 43 | [Latency Numbers](https://dbritto-dev.github.io/systems-workbench/lessons/latency/) | Fundamentals | Courier depot | Each step out from the CPU costs 10 to 1,000 times more. Where data lives often matters more than the code. |
 | 44 | [Tail Latency](https://dbritto-dev.github.io/systems-workbench/lessons/percentiles/) | Fundamentals | Timing hall | Most requests are fast; users remember the slow ones. Percentiles show the tail, and fan-out multiplies it. |
 | 45 | [Big-O](https://dbritto-dev.github.io/systems-workbench/lessons/bigo/) | Fundamentals | Race track | Big-O is how work grows with input size. Five real algorithms race on the same data: doubling, constants, worst case. |
+| 46 | [Timeouts & Deadlines](https://dbritto-dev.github.io/systems-workbench/lessons/deadlines/) | Traffic | Relay desks | Fixed timeouts leave inner services working after the caller quits. One deadline, passed on, tells each when to stop. |
+| 47 | [Load Shedding](https://dbritto-dev.github.io/systems-workbench/lessons/shedding/) | Traffic | Takeaway kitchen | Past capacity, a server that takes everything stays busy serving clients who left. Saying no early saves goodput. |
+| 48 | [Hedged Requests](https://dbritto-dev.github.io/systems-workbench/lessons/hedging/) | Traffic | Kitchen pass | Slow answer? Send a copy to another replica and keep the first reply. It cuts the tail, as long as copies stay rare. |
+| 49 | [HTTP/1.1 vs HTTP/2](https://dbritto-dev.github.io/systems-workbench/lessons/http2/) | Traffic | Order depot | HTTP/1.1 waits a round trip per request on each connection; HTTP/2 sends all at once, but a lost packet stalls them all. |
+| 50 | [Fair Queueing](https://dbritto-dev.github.io/systems-workbench/lessons/fairqueue/) | Traffic | Dispatch desk | In one shared line a batch job makes everyone wait. A lane per tenant, served in turn, keeps each wait its own. |
 
 The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and deployed to
 GitHub Pages: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
