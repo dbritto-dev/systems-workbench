@@ -1,24 +1,22 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The lighting console in the browser: runs the flag model, sends request tokens along the rail, turns each stage's
-// refresh dial and cue card, and wires the controls and the experiment cards. mount() gets the build-time data from
-// page.ts (geometry, cable routes, the token drawing, experiment results).
+// refresh dial and cue card, and answers the controls. mount() gets the build-time data from page.ts (geometry,
+// cable routes, the token drawing) and root, the <wb-lesson>.
 import { iso, lineOnTop, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
-import { secs } from "../../lib/format";
 import { polylineLength } from "../../lib/geometry";
 import { makeSim, setFlag, rollback, step, flippers } from "./sim";
 
-export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, CABLES, TOKEN_SVG }, root) {
   const SPEED = 150, FADE = 0.35, PULSE_TIME = 0.6, POOL = 48, NS = "http://www.w3.org/2000/svg";
 
-  const stage = document.querySelector("[data-console]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const tokensBox = q("[data-tokens]"), pulsesBox = q("[data-pulses]");
   const lampNew = G.STAGES.map((_, i) => q('[data-lamp="' + i + '-new"] .iso-solid:last-of-type'));
   const dials = G.STAGES.map((_, i) => q('[data-dial="' + i + '"]'));
@@ -139,10 +137,10 @@ export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS })
   }
 
   let statClock = 0;
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { step(sim, dt * speed); paint(); statClock += dt; if (statClock > 0.2) { statClock = 0; showStats(); } }, onPause: pause.onPause });
   pause.bind(loop);
-  const killBtn = act("kill");
+  const killBtn = root.button("kill");
   const killLabel = () => { killBtn.textContent = sim.flag.on ? "Kill switch" : L("Turn back on", "Volver a encender"); };
 
   function set(name, raw, quiet) {
@@ -153,61 +151,31 @@ export default function mount({ P, G, CABLES, TOKEN_SVG, RESULTS, EXPERIMENTS })
     else if (name === "ttl") { cfg.ttl = Number(raw); sim.ttl = cfg.ttl; sim.servers.forEach((s) => { s.nextFetch = Math.min(s.nextFetch, sim.t + sim.ttl); }); }
     else if (name === "buggy") { cfg.buggy = raw === "true"; sim.buggy = cfg.buggy; }
     else if (name === "flags") { cfg.flags = Number(raw); sim.flags = cfg.flags; sim.combos.clear(); }
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (!quiet) { paint(); showStats(); }
   }
-  WB.onSegments((name, value) => set(name, value));
+  root.on("change", (name, value) => set(name, value));
   function toggleKill() {
     setFlag(sim, { on: !sim.flag.on });
     cfg.on = sim.flag.on;
     killLabel();
     paint(); showStats();
   }
-  killBtn.addEventListener("click", toggleKill);
-  act("rollback").addEventListener("click", () => { if (!rolledBack) { rollback(sim); rolledBack = true; showStats(); } });
-  act("reset").addEventListener("click", () => { cfg.on = true; restart(); killLabel(); });
-
-  // ---------- experiments (numbers computed at build time from the same model, 8 seeds each) ----------
-  const RUNS = {
-    kill: () => {
-      const r = RESULTS.kill, top = Math.max(r.kill.stop, r.rollback.stop);
-      return { verdict: T("Kill switch: the last bad request came " + secs(r.kill.stop) + " after the decision, " + r.kill.errors.toFixed(1) + " errors on average. Redeploy: " + secs(r.rollback.stop) + ", " + Math.round(r.rollback.errors) + " errors.",
-          "Kill switch: la última solicitud mala llegó " + secs(r.kill.stop) + " después de la decisión, con " + r.kill.errors.toFixed(1) + " errores en promedio. Redespliegue: " + secs(r.rollback.stop) + ", " + Math.round(r.rollback.errors) + " errores."),
-        bars: [["Kill switch", r.kill.stop / top, secs(r.kill.stop), true], [T("Redeploy", "Redespliegue"), r.rollback.stop / top, secs(r.rollback.stop)]] };
-    },
-    sticky: () => {
-      const r = RESULTS.sticky;
-      return { verdict: T("Of about " + Math.round(r.users) + " users, " + Math.round(r.random) + " saw both versions with a random roll per request; " + Math.round(r.sticky) + " with sticky bucketing.",
-          "De unos " + Math.round(r.users) + " usuarios, " + Math.round(r.random) + " vieron ambas versiones con un sorteo por solicitud; " + Math.round(r.sticky) + " con asignación fija."),
-        bars: [[T("Random", "Aleatoria"), r.random / r.users, T(Math.round(r.random) + " users", Math.round(r.random) + " usuarios"), true], [T("Sticky", "Fija"), r.sticky / r.users, T(Math.round(r.sticky) + " users", Math.round(r.sticky) + " usuarios")]] };
-    },
-    ttl: () => {
-      const { a, b } = RESULTS.ttl;
-      return { verdict: T("After the flip, servers kept showing the feature for up to " + secs(a.worst) + " with a 5 s refresh and up to " + secs(b.worst) + " with a 60 s refresh (" + Math.round(b.served) + " requests on average).",
-          "Después del cambio, los servidores siguieron mostrando la funcionalidad hasta " + secs(a.worst) + " con actualización cada 5 s y hasta " + secs(b.worst) + " con actualización cada 60 s (" + Math.round(b.served) + " solicitudes en promedio)."),
-        bars: [[T("Refresh 5 s", "Cada 5 s"), a.worst / 60, secs(a.worst)], [T("Refresh 60 s", "Cada 60 s"), b.worst / 60, secs(b.worst), true]] };
-    },
-    debt: () => {
-      const { a, b } = RESULTS.debt;
-      return { verdict: T("Live combinations: " + Math.round(a.live) + " of " + a.possible + " possible with 3 flags; " + Math.round(b.live) + " of " + b.possible + " possible with 10 flags, among " + Math.round(b.users) + " active users.",
-          "Combinaciones en vivo: " + Math.round(a.live) + " de " + a.possible + " posibles con 3 flags; " + Math.round(b.live) + " de " + b.possible + " posibles con 10 flags, entre " + Math.round(b.users) + " usuarios activos."),
-        bars: [["3 flags", a.live / b.users, T(Math.round(a.live) + " versions", Math.round(a.live) + " versiones")], ["10 flags", b.live / b.users, T(Math.round(b.live) + " versions", Math.round(b.live) + " versiones"), true]] };
-    },
-    target: () => {
-      const r = RESULTS.target, top = Math.max(r.everyone.customers, r.staff.customers, 1);
-      return { verdict: T("Customers who hit the bug in 60 s: " + r.staff.customers.toFixed(0) + " with staff only (staff met it " + r.staff.staff.toFixed(0) + " times); " + r.everyone.customers.toFixed(0) + " with 10% of everyone.",
-          "Clientes que se toparon con el bug en 60 s: " + r.staff.customers.toFixed(0) + " con solo personal (el personal lo encontró " + r.staff.staff.toFixed(0) + " veces); " + r.everyone.customers.toFixed(0) + " con el 10% de todos."),
-        bars: [[T("Staff only", "Solo personal"), r.staff.customers / top, T(r.staff.customers.toFixed(0) + " customers", r.staff.customers.toFixed(0) + " clientes")], [T("10% of everyone", "10% de todos"), r.everyone.customers / top, T(r.everyone.customers.toFixed(0) + " customers", r.everyone.customers.toFixed(0) + " clientes"), true]] };
-    },
+  const actions = {
+    kill: toggleKill,
+    rollback: () => { if (!rolledBack) { rollback(sim); rolledBack = true; showStats(); } },
+    reset: () => { cfg.on = true; restart(); killLabel(); },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     for (const name of ["pct", "sticky", "staffFirst", "ttl", "buggy", "flags"]) set(name, String(w[name]), true);
     cfg.on = true;
     restart(); killLabel();
     if (loop.paused) loop.setPaused(false);
     if (w.then === "kill") setTimeout(() => { if (sim.flag.on) toggleKill(); }, 4000);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

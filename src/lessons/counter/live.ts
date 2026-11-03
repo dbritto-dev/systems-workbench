@@ -1,22 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The branch tally in the browser: runs the model, moves couriers along the tracks, turns the counter wheels,
-// presses the plungers and the stamp, drops the barrier, and wires the controls and the experiment cards.
-// mount() gets the build-time data from page.ts (geometry, the courier drawing, experiment results).
+// presses the plungers and the stamp, drops the barrier, and answers the controls. mount() gets the build-time data
+// from page.ts (geometry, the courier drawing) and root, the <wb-lesson>.
 import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L, T } from "../../runtime/wb";
-import { readout, stats, show as display, act, pauseControls } from "../../runtime/dom";
-import { pct, one } from "../../lib/format";
+import { L } from "../../runtime/wb";
+import { show as display, playPause } from "../../runtime/dom";
 import { makeSim } from "./sim";
 
-export default function mount({ P, G, PUCK_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, PUCK_SVG }, root) {
   const POOL = 48;
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const NS = "http://www.w3.org/2000/svg";
   const layer = q("[data-couriers]");
   const branches = [0, 1, 2].map((i) => q('[data-branch="' + i + '"]'));
@@ -43,7 +41,7 @@ export default function mount({ P, G, PUCK_SVG, RESULTS, EXPERIMENTS }) {
     model = makeSim({ approach: cfg.approach, nodes: cfg.nodes, rate: cfg.rate, partitions: [] }, seed++);
     clock = cfg.rate > 0 ? WARM : 0; tripAt = 0; logAt = 0; stampAt = 0; active = []; lastAdd = [-9, -9, -9]; lastStamp = { t: -9, ok: true }; cut = false; tallies = [0, 0, 0];
     model.runTo(clock);
-    WB.pressSeg("partition", "off");
+    root.press("partition", "off");
     branches.forEach((el, i) => el.toggleAttribute("data-off", i >= cfg.nodes));
     routes.forEach((el, i) => el.toggleAttribute("data-off", i >= cfg.nodes));
     barriers.forEach((b, i) => display(b.g, i === cfg.nodes - 1));
@@ -57,7 +55,7 @@ export default function mount({ P, G, PUCK_SVG, RESULTS, EXPERIMENTS }) {
     if (on === cut) return;
     cut = on;
     if (on) model.cut(clock); else model.healAt(clock);
-    WB.pressSeg("partition", on ? "on" : "off");
+    root.press("partition", on ? "on" : "off");
   }
 
   function lastValue(key) { const h = model.history[key]; return h[h.length - 1][1]; }
@@ -119,67 +117,31 @@ export default function mount({ P, G, PUCK_SVG, RESULTS, EXPERIMENTS }) {
     stat("agree", behind === 0 ? L("yes", "sí") : L("behind " + behind, "faltan " + behind));
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(dt * cfg.speed); }, onPause: pause.onPause });
 
   function set(name, raw, quiet) {
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     if (name === "partition") { setCut(raw === "on"); return; }
     if (name === "approach") cfg.approach = raw;
     if (name === "nodes") cfg.nodes = Number(raw);
     if (name === "rate") cfg.rate = Number(raw);
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("addA").addEventListener("click", () => { model.add(clock, 0); if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = { addA: () => { model.add(clock, 0); if (loop.paused) loop.setPaused(false); }, reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
   pause.bind(loop);
 
-  // ---------- experiments (numbers computed from the same model at build time) ----------
-  const RUNS = {
-    lost: () => {
-      const r = RESULTS.lost;
-      const A = Math.round(r.added), S = Math.round(r.stored);
-      return { verdict: T("Of " + A + " adds, the register ended at " + S + ": " + pct(r.lost) + " were lost, with no error anywhere.",
-          "De " + A + " sumas, el registro terminó en " + S + ": se perdió el " + pct(r.lost) + ", sin ningún error en ninguna parte."),
-        bars: [[T("Adds made", "Sumas hechas"), 1, String(A)], [T("In the register", "En el registro"), r.stored / r.added, String(S), true], [T("Lost", "Perdidas"), r.lost, pct(r.lost), true]] };
-    },
-    cas: () => {
-      const { slow, heavy } = RESULTS.cas, top = Math.max(slow.retries, heavy.retries);
-      const a = Math.round(slow.stored), b = Math.round(slow.added), c = Math.round(heavy.stored), d = Math.round(heavy.added);
-      return { verdict: T("Exact both times (" + a + " of " + b + ", " + c + " of " + d + "). Retries per add: " + one(slow.retries) + " at 0.1/s, " + one(heavy.retries) + " at 0.6/s; courier trips per add: " + one(slow.msgs) + " → " + one(heavy.msgs) + ".",
-          "Exacto las dos veces (" + a + " de " + b + ", " + c + " de " + d + "). Reintentos por suma: " + one(slow.retries) + " a 0.1/s, " + one(heavy.retries) + " a 0.6/s; viajes de mensajero por suma: " + one(slow.msgs) + " → " + one(heavy.msgs) + "."),
-        bars: [[T("Retries, 0.1/s", "Reintentos, 0.1/s"), slow.retries / top, one(slow.retries)], [T("Retries, 0.6/s", "Reintentos, 0.6/s"), heavy.retries / top, one(heavy.retries), true]] };
-    },
-    slots: () => {
-      const { g, c } = RESULTS.slots, top = Math.max(g.msgs, c.msgs);
-      const a = Math.round(g.stored), b = Math.round(g.added);
-      return { verdict: T("One slot each: " + a + " of " + b + " counted, " + one(g.retries) + " retries, " + one(g.msgs) + " courier trips per add. Compare-and-swap at the same rate: " + one(c.retries) + " retries and " + one(c.msgs) + " trips per add.",
-          "Una casilla cada una: " + a + " de " + b + " contadas, " + one(g.retries) + " reintentos, " + one(g.msgs) + " viajes de mensajero por suma. Compare-and-swap al mismo ritmo: " + one(c.retries) + " reintentos y " + one(c.msgs) + " viajes por suma."),
-        bars: [[T("Trips per add, CAS", "Viajes por suma, CAS"), c.msgs / top, one(c.msgs)], [T("Trips per add, slots", "Viajes por suma, casillas"), g.msgs / top, one(g.msgs), true]] };
-    },
-    partition: () => {
-      const r = RESULTS.partition, top = Math.max(r.farBehind, r.nearBehind, 1);
-      return { verdict: T("During the 15 s cut, C's total was up to " + one(r.farBehind) + " adds behind and A and B's up to " + one(r.nearBehind) + ". " + one(r.converge) + " s after healing, every branch agreed on the exact total" + (r.exact === 1 ? "; nothing was lost." : "."),
-          "Durante el corte de 15 s, el total de C llegó a estar " + one(r.farBehind) + " sumas atrasado y el de A y B hasta " + one(r.nearBehind) + ". " + one(r.converge) + " s después de restablecerse, todas las sucursales coincidían en el total exacto" + (r.exact === 1 ? "; no se perdió nada." : ".")),
-        bars: [[T("C behind, at worst", "C atrasada, en el peor caso"), r.farBehind / top, T(one(r.farBehind) + " adds", one(r.farBehind) + " sumas"), true], [T("A, B behind, at worst", "A, B atrasadas, en el peor caso"), r.nearBehind / top, T(one(r.nearBehind) + " adds", one(r.nearBehind) + " sumas")], [T("Agree after healing (of the 15 s cut)", "Coinciden tras restablecerse (del corte de 15 s)"), Math.min(1, r.converge / 15), one(r.converge) + " s"]] };
-    },
-    seq: () => {
-      const r = RESULTS.seq;
-      return { verdict: T("B's own read showed its add " + pct(r.own) + " of the time; A's read showed it " + pct(r.other) + " of the time.",
-          "La propia lectura de B mostró su suma el " + pct(r.own) + " de las veces; la lectura de A la mostró el " + pct(r.other) + " de las veces."),
-        bars: [[T("B reads its own add", "B lee su propia suma"), r.own, pct(r.own)], [T("A reads B's add", "A lee la suma de B"), r.other, pct(r.other), true]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w, id) => {
     set("approach", w.approach, true); set("nodes", String(w.nodes), true); set("rate", String(w.rate), true);
     restart();
     if (loop.paused) loop.setPaused(false);
     if (w.partition) { setTimeout(() => setCut(true), 3000); setTimeout(() => setCut(false), 18000); }
-    if (exp.id === "seq") say(L("watch A's display lag B's for a moment after each add", "mira cómo la pantalla de A se atrasa respecto de la de B un momento después de cada suma"));
-  } });
+    if (id === "seq") say(L("watch A's display lag B's for a moment after each add", "mira cómo la pantalla de A se atrasa respecto de la de B un momento después de cada suma"));
+  });
 
   loop.setPaused(loop.paused);
   restart();

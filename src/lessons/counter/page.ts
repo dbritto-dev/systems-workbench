@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 21 · Distributed counters: three branches count adds into one register by courier.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, puckSvg, P, GEOMETRY } from "./figure";
 import { lostAdds, casCost, slotCost, partitionRun, readAfterAdd } from "./sim";
+import { pct, one } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the original page ran these
 // same seeded runs in the browser when a card was run).
@@ -13,6 +14,43 @@ const RESULTS = {
   slots: { g: slotCost(0.6), c: casCost(0.6) },
   partition: partitionRun(),
   seq: readAfterAdd(),
+};
+
+// What each card shows after a run.
+const RUNS = {
+  lost: () => {
+    const r = RESULTS.lost;
+    const A = Math.round(r.added), S = Math.round(r.stored);
+    return { verdict: t("Of " + A + " adds, the register ended at " + S + ": " + pct(r.lost) + " were lost, with no error anywhere.",
+        "De " + A + " sumas, el registro terminó en " + S + ": se perdió el " + pct(r.lost) + ", sin ningún error en ninguna parte."),
+      bars: [[t("Adds made", "Sumas hechas"), 1, String(A)], [t("In the register", "En el registro"), r.stored / r.added, String(S), true], [t("Lost", "Perdidas"), r.lost, pct(r.lost), true]] };
+  },
+  cas: () => {
+    const { slow, heavy } = RESULTS.cas, top = Math.max(slow.retries, heavy.retries);
+    const a = Math.round(slow.stored), b = Math.round(slow.added), c = Math.round(heavy.stored), d = Math.round(heavy.added);
+    return { verdict: t("Exact both times (" + a + " of " + b + ", " + c + " of " + d + "). Retries per add: " + one(slow.retries) + " at 0.1/s, " + one(heavy.retries) + " at 0.6/s; courier trips per add: " + one(slow.msgs) + " → " + one(heavy.msgs) + ".",
+        "Exacto las dos veces (" + a + " de " + b + ", " + c + " de " + d + "). Reintentos por suma: " + one(slow.retries) + " a 0.1/s, " + one(heavy.retries) + " a 0.6/s; viajes de mensajero por suma: " + one(slow.msgs) + " → " + one(heavy.msgs) + "."),
+      bars: [[t("Retries, 0.1/s", "Reintentos, 0.1/s"), slow.retries / top, one(slow.retries)], [t("Retries, 0.6/s", "Reintentos, 0.6/s"), heavy.retries / top, one(heavy.retries), true]] };
+  },
+  slots: () => {
+    const { g, c } = RESULTS.slots, top = Math.max(g.msgs, c.msgs);
+    const a = Math.round(g.stored), b = Math.round(g.added);
+    return { verdict: t("One slot each: " + a + " of " + b + " counted, " + one(g.retries) + " retries, " + one(g.msgs) + " courier trips per add. Compare-and-swap at the same rate: " + one(c.retries) + " retries and " + one(c.msgs) + " trips per add.",
+        "Una casilla cada una: " + a + " de " + b + " contadas, " + one(g.retries) + " reintentos, " + one(g.msgs) + " viajes de mensajero por suma. Compare-and-swap al mismo ritmo: " + one(c.retries) + " reintentos y " + one(c.msgs) + " viajes por suma."),
+      bars: [[t("Trips per add, CAS", "Viajes por suma, CAS"), c.msgs / top, one(c.msgs)], [t("Trips per add, slots", "Viajes por suma, casillas"), g.msgs / top, one(g.msgs), true]] };
+  },
+  partition: () => {
+    const r = RESULTS.partition, top = Math.max(r.farBehind, r.nearBehind, 1);
+    return { verdict: t("During the 15 s cut, C's total was up to " + one(r.farBehind) + " adds behind and A and B's up to " + one(r.nearBehind) + ". " + one(r.converge) + " s after healing, every branch agreed on the exact total" + (r.exact === 1 ? "; nothing was lost." : "."),
+        "Durante el corte de 15 s, el total de C llegó a estar " + one(r.farBehind) + " sumas atrasado y el de A y B hasta " + one(r.nearBehind) + ". " + one(r.converge) + " s después de restablecerse, todas las sucursales coincidían en el total exacto" + (r.exact === 1 ? "; no se perdió nada." : ".")),
+      bars: [[t("C behind, at worst", "C atrasada, en el peor caso"), r.farBehind / top, t(one(r.farBehind) + " adds", one(r.farBehind) + " sumas"), true], [t("A, B behind, at worst", "A, B atrasadas, en el peor caso"), r.nearBehind / top, t(one(r.nearBehind) + " adds", one(r.nearBehind) + " sumas")], [t("Agree after healing (of the 15 s cut)", "Coinciden tras restablecerse (del corte de 15 s)"), Math.min(1, r.converge / 15), one(r.converge) + " s"]] };
+  },
+  seq: () => {
+    const r = RESULTS.seq;
+    return { verdict: t("B's own read showed its add " + pct(r.own) + " of the time; A's read showed it " + pct(r.other) + " of the time.",
+        "La propia lectura de B mostró su suma el " + pct(r.own) + " de las veces; la lectura de A la mostró el " + pct(r.other) + " de las veces."),
+      bars: [[t("B reads its own add", "B lee su propia suma"), r.own, pct(r.own)], [t("A reads B's add", "A lee la suma de B"), r.other, pct(r.other), true]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -156,7 +194,7 @@ export default defineLesson({
     ),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho corridas con semilla."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho corridas con semilla."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). The setup follows Fly.io's <a href="https://fly.io/dist-sys/4/" target="_blank" rel="noopener">Gossip Glomers grow-only counter</a> challenge. Simulation written for this lesson.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). El planteo sigue el desafío <a href="https://fly.io/dist-sys/4/" target="_blank" rel="noopener">Gossip Glomers grow-only counter</a> de Fly.io. Simulación escrita para esta lección.`),
@@ -167,7 +205,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     PUCK_SVG: puckSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

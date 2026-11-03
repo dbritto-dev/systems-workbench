@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 22 · Feature flags: a theatre lighting console decides who sees a show that is already on every stage.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, tokenSvg, cablePoints, P, GEOMETRY } from "./figure";
 import { killVsRollback, stickiness, staleness, combos, targeting } from "./sim";
+import { secs } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran these
 // eight-seed averages in the browser when a card was run; they are deterministic, so the numbers are the same).
@@ -13,6 +14,40 @@ const RESULTS = {
   ttl: { a: staleness(5), b: staleness(60) },
   debt: { a: combos(3), b: combos(10) },
   target: targeting(),
+};
+
+// What each card shows after a run.
+const RUNS = {
+  kill: () => {
+    const r = RESULTS.kill, top = Math.max(r.kill.stop, r.rollback.stop);
+    return { verdict: t("Kill switch: the last bad request came " + secs(r.kill.stop) + " after the decision, " + r.kill.errors.toFixed(1) + " errors on average. Redeploy: " + secs(r.rollback.stop) + ", " + Math.round(r.rollback.errors) + " errors.",
+        "Kill switch: la última solicitud mala llegó " + secs(r.kill.stop) + " después de la decisión, con " + r.kill.errors.toFixed(1) + " errores en promedio. Redespliegue: " + secs(r.rollback.stop) + ", " + Math.round(r.rollback.errors) + " errores."),
+      bars: [["Kill switch", r.kill.stop / top, secs(r.kill.stop), true], [t("Redeploy", "Redespliegue"), r.rollback.stop / top, secs(r.rollback.stop)]] };
+  },
+  sticky: () => {
+    const r = RESULTS.sticky;
+    return { verdict: t("Of about " + Math.round(r.users) + " users, " + Math.round(r.random) + " saw both versions with a random roll per request; " + Math.round(r.sticky) + " with sticky bucketing.",
+        "De unos " + Math.round(r.users) + " usuarios, " + Math.round(r.random) + " vieron ambas versiones con un sorteo por solicitud; " + Math.round(r.sticky) + " con asignación fija."),
+      bars: [[t("Random", "Aleatoria"), r.random / r.users, t(Math.round(r.random) + " users", Math.round(r.random) + " usuarios"), true], [t("Sticky", "Fija"), r.sticky / r.users, t(Math.round(r.sticky) + " users", Math.round(r.sticky) + " usuarios")]] };
+  },
+  ttl: () => {
+    const { a, b } = RESULTS.ttl;
+    return { verdict: t("After the flip, servers kept showing the feature for up to " + secs(a.worst) + " with a 5 s refresh and up to " + secs(b.worst) + " with a 60 s refresh (" + Math.round(b.served) + " requests on average).",
+        "Después del cambio, los servidores siguieron mostrando la funcionalidad hasta " + secs(a.worst) + " con actualización cada 5 s y hasta " + secs(b.worst) + " con actualización cada 60 s (" + Math.round(b.served) + " solicitudes en promedio)."),
+      bars: [[t("Refresh 5 s", "Cada 5 s"), a.worst / 60, secs(a.worst)], [t("Refresh 60 s", "Cada 60 s"), b.worst / 60, secs(b.worst), true]] };
+  },
+  debt: () => {
+    const { a, b } = RESULTS.debt;
+    return { verdict: t("Live combinations: " + Math.round(a.live) + " of " + a.possible + " possible with 3 flags; " + Math.round(b.live) + " of " + b.possible + " possible with 10 flags, among " + Math.round(b.users) + " active users.",
+        "Combinaciones en vivo: " + Math.round(a.live) + " de " + a.possible + " posibles con 3 flags; " + Math.round(b.live) + " de " + b.possible + " posibles con 10 flags, entre " + Math.round(b.users) + " usuarios activos."),
+      bars: [["3 flags", a.live / b.users, t(Math.round(a.live) + " versions", Math.round(a.live) + " versiones")], ["10 flags", b.live / b.users, t(Math.round(b.live) + " versions", Math.round(b.live) + " versiones"), true]] };
+  },
+  target: () => {
+    const r = RESULTS.target, top = Math.max(r.everyone.customers, r.staff.customers, 1);
+    return { verdict: t("Customers who hit the bug in 60 s: " + r.staff.customers.toFixed(0) + " with staff only (staff met it " + r.staff.staff.toFixed(0) + " times); " + r.everyone.customers.toFixed(0) + " with 10% of everyone.",
+        "Clientes que se toparon con el bug en 60 s: " + r.staff.customers.toFixed(0) + " con solo personal (el personal lo encontró " + r.staff.staff.toFixed(0) + " veces); " + r.everyone.customers.toFixed(0) + " con el 10% de todos."),
+      bars: [[t("Staff only", "Solo personal"), r.staff.customers / top, t(r.staff.customers.toFixed(0) + " customers", r.staff.customers.toFixed(0) + " clientes")], [t("10% of everyone", "10% de todos"), r.everyone.customers / top, t(r.everyone.customers.toFixed(0) + " customers", r.everyone.customers.toFixed(0) + " clientes"), true]] };
+  },
 };
 
 // ---------- content ----------
@@ -115,7 +150,7 @@ export default defineLesson({
       { actions: [["kill", "Kill switch"], ["rollback", t("Redeploy old build", "Redesplegar build anterior")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs at 8 requests per second from 200 users.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados en ocho corridas con semilla, a 8 solicitudes por segundo de 200 usuarios."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs at 8 requests per second from 200 users.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados en ocho corridas con semilla, a 8 solicitudes por segundo de 200 usuarios."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .cue-fill{fill:var(--anatomy-mid);stroke:none}
@@ -127,7 +162,5 @@ export default defineLesson({
     G: GEOMETRY,
     CABLES: GEOMETRY.STAGES.map((_, i) => cablePoints(i)),
     TOKEN_SVG: tokenSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

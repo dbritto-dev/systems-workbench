@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 23 · Health checks: a shopping street where readiness opens a shop's sign and liveness rebuilds it.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, tokenSvg, P, GEOMETRY } from "./figure";
 import { scenario, average } from "./sim";
+import { n0 } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran these
 // four-seed averages in the browser when a card was run; they are deterministic, so the numbers are the same).
@@ -19,6 +20,44 @@ const RESULTS = {
   timeout: { loose: timeoutRun(5), tight: timeoutRun(1) },
   startup: { none: startupRun(false), probe: startupRun(true) },
   deadlock: { neither: deadlockRun("off", "off"), ready: deadlockRun("off", "shop"), both: deadlockRun("shop", "shop") },
+};
+
+// What each card shows after a run.
+const r = n0;
+const top = (...xs) => Math.max(1, ...xs);
+const RUNS = {
+  readiness: () => {
+    const { off, on } = RESULTS.readiness, m = top(off.errors, on.errors);
+    return { verdict: t("Errors over the 70 s after the deploy: " + r(off.errors) + " of about " + r(off.arrived * 70 / 90) + " customers without a readiness probe, " + r(on.errors) + " with one.",
+        "Errores en los 70 s después del despliegue: " + r(off.errors) + " de unos " + r(off.arrived * 70 / 90) + " clientes sin sonda de readiness, " + r(on.errors) + " con una."),
+      bars: [[t("No readiness", "Sin readiness"), off.errors / m, String(r(off.errors)), true], [t("Readiness", "Con readiness"), on.errors / m, String(r(on.errors))]] };
+  },
+  deps: () => {
+    const { live, ready } = RESULTS.deps, m = top(live.back, ready.back);
+    return { verdict: t("All five shops open again " + live.back.toFixed(0) + " s after the warehouse is back when liveness checks it (" + r(live.restarts) + " restarts), " + ready.back.toFixed(0) + " s when only readiness does (" + r(ready.restarts) + " restarts).",
+        "Las cinco tiendas vuelven a abrir " + live.back.toFixed(0) + " s después de que vuelve el almacén cuando lo revisa liveness (" + r(live.restarts) + " reinicios), y " + ready.back.toFixed(0) + " s cuando solo lo revisa readiness (" + r(ready.restarts) + " reinicios)."),
+      bars: [[t("Liveness: warehouse", "Liveness: almacén"), live.back / m, live.back.toFixed(0) + " s", true], [t("Readiness: warehouse", "Readiness: almacén"), ready.back / m, ready.back.toFixed(0) + " s"], [t("Errors, liveness", "Errores, liveness"), live.errors / top(live.errors, ready.errors), String(r(live.errors)), true], [t("Errors, readiness", "Errores, readiness"), ready.errors / top(live.errors, ready.errors), String(r(ready.errors))]] };
+  },
+  timeout: () => {
+    const { loose, tight } = RESULTS.timeout, m = top(loose.restarts, tight.restarts), e = top(loose.errors, tight.errors);
+    return { verdict: t("In 5 minutes at 90% traffic: " + tight.restarts.toFixed(1) + " restarts and " + r(tight.errors) + " errors with a 1 s timeout, " + loose.restarts.toFixed(1) + " restarts and " + r(loose.errors) + " errors with 5 s.",
+        "En 5 minutos con tráfico al 90%: " + tight.restarts.toFixed(1) + " reinicios y " + r(tight.errors) + " errores con un timeout de 1 s, " + loose.restarts.toFixed(1) + " reinicios y " + r(loose.errors) + " errores con 5 s."),
+      bars: [[t("Restarts, 1 s", "Reinicios, 1 s"), tight.restarts / m, tight.restarts.toFixed(1), true], [t("Restarts, 5 s", "Reinicios, 5 s"), loose.restarts / m, loose.restarts.toFixed(1)], [t("Errors, 1 s", "Errores, 1 s"), tight.errors / e, String(r(tight.errors)), true], [t("Errors, 5 s", "Errores, 5 s"), loose.errors / e, String(r(loose.errors))]] };
+  },
+  startup: () => {
+    const { none, probe } = RESULTS.startup, m = top(none.back, probe.back);
+    const never = none.back >= 295;
+    return { verdict: t("Without a startup probe the shop was restarted " + none.restarts.toFixed(0) + " times and " + (never ? "never opened in 5 minutes" : "opened after " + none.back.toFixed(0) + " s") + ". With one it opened after " + probe.back.toFixed(0) + " s, with " + probe.restarts.toFixed(0) + " restarts.",
+        "Sin sonda de arranque la tienda se reinició " + none.restarts.toFixed(0) + " veces y " + (never ? "nunca abrió en 5 minutos" : "abrió después de " + none.back.toFixed(0) + " s") + ". Con una abrió después de " + probe.back.toFixed(0) + " s, con " + probe.restarts.toFixed(0) + " reinicios."),
+      bars: [[t("No startup probe", "Sin sonda de arranque"), none.back / m, never ? t("never", "nunca") : none.back.toFixed(0) + " s", true], [t("Startup probe", "Con sonda de arranque"), probe.back / m, probe.back.toFixed(0) + " s"]] };
+  },
+  deadlock: () => {
+    const { neither, ready, both } = RESULTS.deadlock, m = 160, e = top(neither.errors, ready.errors, both.errors);
+    const label = (x) => (x >= 159 ? t("never", "nunca") : t(x.toFixed(0) + " s", x.toFixed(0) + " s"));
+    return { verdict: t("Over 160 s: no probes, " + r(neither.errors) + " errors and shop 3 never recovers; readiness only, " + r(ready.errors) + " errors and it never recovers; readiness and liveness, " + r(both.errors) + " errors and it is back after " + label(both.back).en + ".",
+        "En 160 s: sin sondas, " + r(neither.errors) + " errores y la tienda 3 nunca se recupera; solo readiness, " + r(ready.errors) + " errores y nunca se recupera; readiness y liveness, " + r(both.errors) + " errores y vuelve después de " + label(both.back).es + "."),
+      bars: [[t("Back: readiness only", "Vuelve: solo readiness"), ready.back / m, label(ready.back), true], [t("Back: + liveness", "Vuelve: + liveness"), both.back / m, label(both.back)], [t("Errors: no probes", "Errores: sin sondas"), neither.errors / e, String(r(neither.errors))], [t("Errors: readiness", "Errores: readiness"), ready.errors / e, String(r(ready.errors)), true]] };
+  },
 };
 
 // ---------- content ----------
@@ -122,16 +161,15 @@ export default defineLesson({
       { actions: [["blip", t("Warehouse down 30 s", "Almacén caído 30 s")], ["jam", t("Jam shop 3", "Atascar tienda 3")], ["restart", t("Redeploy shops 4, 5", "Redesplegar tiendas 4 y 5")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over four seeded runs; probes run every 3 s.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados en cuatro corridas con semilla; las sondas corren cada 3 s."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over four seeded runs; probes run every 3 s.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados en cuatro corridas con semilla; las sondas corren cada 3 s."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .tally-fill{fill:var(--anatomy-hi);stroke:none}
 `,
   data: {
+    TITLES: Object.fromEntries(EXPERIMENTS.map(({ id, title }) => [id, title])),
     P,
     G: GEOMETRY,
     TOKEN_SVG: tokenSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, title, answer, watch })),
   },
 });
