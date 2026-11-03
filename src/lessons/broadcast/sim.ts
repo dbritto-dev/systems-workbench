@@ -5,6 +5,7 @@
 // Shared by the figure, the page (the still frame and the experiments, at build time) and the live code.
 import { rng } from "../../lib/random";
 import { meanBy, rankQuantileSorted } from "../../lib/stats";
+import { minHeap } from "../../lib/events";
 
 export const COLS = 5;
 export const N = COLS * COLS;
@@ -50,26 +51,13 @@ export function neighborsOf(topology) {
 }
 export const hubsOf = (topology) => (topology === "hubs" ? HUBS : topology === "star" ? [CENTER] : []);
 
-// A min-heap of timed events.
-function heap() {
-  const a = [];
-  const up = (i) => { while (i > 0) { const p = (i - 1) >> 1; if (a[p].t <= a[i].t) break; [a[p], a[i]] = [a[i], a[p]]; i = p; } };
-  const down = (i) => { for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < a.length && a[l].t < a[m].t) m = l; if (r < a.length && a[r].t < a[m].t) m = r; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } };
-  return {
-    push(e) { a.push(e); up(a.length - 1); },
-    pop() { const top = a[0], last = a.pop(); if (a.length) { a[0] = last; down(0); } return top; },
-    peek() { return a[0]; },
-    get size() { return a.length; },
-  };
-}
-
 // cfg: { topology, batch (s, 0 = off), retries, forward: "new" | "every", rate (values/s), seed, maxInFlight }
 // hooks: { send(msg), deliver(msg), drop(msg), learn(node, value) } for the figure.
 export function createNet(cfg, hooks = {}) {
   const random = rng(cfg.seed || 1);
   const nb = neighborsOf(cfg.topology);
   const relay = cfg.topology !== "direct";
-  const q = heap();
+  const q = minHeap((a, b) => a.t < b.t);   // timed events, earliest first
   const seen = Array.from({ length: N }, () => new Set());
   const pending = Array.from({ length: N }, () => new Map());
   const dead = new Set();

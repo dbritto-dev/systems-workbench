@@ -3,6 +3,7 @@
 // One request = one transaction: get a connection, (maybe call an external API), run its queries, give the connection back.
 // Shared by the page (experiment results at build time) and the live code.
 import { rng } from "../../lib/random";
+import { minHeap } from "../../lib/events";
 import { mean, rankQuantile } from "../../lib/stats";
 
 export const DB = {
@@ -45,10 +46,9 @@ export function makeSim(cfg, seed = 7) {
     refusals: [],       // [t, inst] connection attempts the database turned away
   };
   let nextId = 1, seq = 0;
-  const heap = [];
-  const push = (t, fn) => { heap.push([t, seq++, fn]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (less(heap[i], heap[p])) { [heap[i], heap[p]] = [heap[p], heap[i]]; i = p; } else break; } };
-  const less = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
-  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && less(heap[l], heap[m])) m = l; if (r < heap.length && less(heap[r], heap[m])) m = r; if (m === i) break; [heap[i], heap[m]] = [heap[m], heap[i]]; i = m; } } return top; };
+  // Events as [t, seq, fn]: earliest first, and first in, first out at the same t.
+  const heap = minHeap((a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]));
+  const push = (t, fn) => heap.push([t, seq++, fn]);
 
   // The database: processor sharing between active jobs, slower past the knee.
   const jobs = [];
@@ -220,13 +220,13 @@ export function makeSim(cfg, seed = 7) {
 
   sim.runTo = (t) => {
     for (;;) {
-      const te = heap.length ? heap[0][0] : Infinity;
+      const te = heap.size ? heap.peek()[0] : Infinity;
       const td = nextDbDone();
       const next = Math.min(te, td);
       if (next > t) { advanceDb(t - sim.now); sim.now = t; break; }
       advanceDb(next - sim.now); sim.now = next;
       if (td <= te) { for (const j of jobs) if (j.rem < 1e-7) j.rem = 0; finishDbJobs(); }
-      else pop()[2]();
+      else heap.pop()[2]();
     }
     // keep the event lists short in long live runs
     if (!cfg.live) return;
