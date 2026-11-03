@@ -1,7 +1,7 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 20 · Logs and offsets: a rail yard where tracks are partitions and cars are records.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { pct, n0 } from "../../lib/format";
 import { buildFigure, carSvg, P, GEOMETRY } from "./figure";
 import { orderRun, crashRun, groupRun, hotRun, replayRun } from "./sim";
@@ -117,6 +117,8 @@ const RESULTS = {
     bars: [[t("Keep everything", "Guardar todo"), replay.all.correct / 6, t(n0(replay.all.correct) + " of 6", n0(replay.all.correct) + " de 6"), true], [t("Keep 20 s", "Guardar 20 s"), replay.short.correct / 6, t(n0(replay.short.correct) + " of 6", n0(replay.short.correct) + " de 6")]],
   },
 };
+// What each card shows after a run: the result above.
+const RUNS = Object.fromEntries(Object.keys(RESULTS).map((id) => [id, () => RESULTS[id]]));
 
 export default defineLesson({
   title: t("Kafka Log Workbench", "Banco de trabajo: log de Kafka"),
@@ -150,7 +152,7 @@ export default defineLesson({
     ],
     note: t("Changing a setting starts the run again with empty tracks. Consumer 1 is the leftmost cabin.", "Cambiar un ajuste reinicia la ejecución con las vías vacías. El consumidor 1 es la cabina de más a la izquierda."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over six seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre seis ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over six seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre seis ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .door{fill:var(--anatomy-shade-0);stroke:none}
@@ -163,7 +165,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     CAR_SVG: carSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

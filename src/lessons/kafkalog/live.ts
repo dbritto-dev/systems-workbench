@@ -1,19 +1,18 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The rail yard in the browser: runs the log model, slides cars along their tracks, moves the bookmark gantries and
-// the cabins' wires, and wires the controls and the experiment cards. mount() gets the build-time data from page.ts
-// (projection, geometry, the car drawing, experiment results).
+// the cabins' wires, and answers the controls. mount() gets the build-time data from page.ts (projection, geometry,
+// the car drawing) and root, the <wb-lesson>.
 import { iso, translateAlong, wireSvg } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, setText, act, pauseControls } from "../../runtime/dom";
+import { setText, playPause } from "../../runtime/dom";
 import { makeSim } from "./sim";
 
-export default function mount({ P, G, CAR_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, CAR_SVG }, root) {
   const NS = "http://www.w3.org/2000/svg";
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const sayText = readout();
+  const sayText = (text) => root.figure.say(text);
   const say = (v) => sayText(L(v));
   const tracks = G.TRACK_Y.map((_, i) => q('[data-track="' + i + '"]'));
   const carLayers = G.TRACK_Y.map((_, i) => q('[data-cars="' + i + '"]'));
@@ -105,7 +104,7 @@ export default function mount({ P, G, CAR_SVG, RESULTS, EXPERIMENTS }) {
     traverser.setAttribute("transform", translateAlong(P, [0, travY, 0]));
   }
 
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
   function showStats() {
     stat("produced", sim.produced);
     stat("processed", sim.processed);
@@ -143,31 +142,32 @@ export default function mount({ P, G, CAR_SVG, RESULTS, EXPERIMENTS }) {
     }
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { advance(dt * cfg.speed); paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     if (name in cfg) cfg[name] = ["keying", "commit"].includes(name) ? raw : Number(raw);
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("crash").addEventListener("click", () => { sim.requestCrash(0); if (loop.paused) loop.setPaused(false); });
-  act("rewind").addEventListener("click", () => { sim.rewind(); if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    crash: () => { sim.requestCrash(0); if (loop.paused) loop.setPaused(false); },
+    rewind: () => { sim.rewind(); if (loop.paused) loop.setPaused(false); },
+    reset: () => restart(),
+  };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (results computed at build time from the same model) ----------
-  const RUNS = Object.fromEntries(Object.keys(RESULTS).map((id) => [id, () => RESULTS[id]]));
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     for (const name of ["partitions", "consumers", "keying", "commit", "rate", "retention"]) set(name, String(w[name]), true);
     restart();
     if (w.crashes) for (let t = sim.t + 3; t < sim.t + 600; t += 10) script.push({ at: t, run: () => sim.requestCrash(0) });
     if (w.rewindAt) script.push({ at: sim.t + w.rewindAt, run: () => sim.rewind() });
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();
