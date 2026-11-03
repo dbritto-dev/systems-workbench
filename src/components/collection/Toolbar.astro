@@ -1,6 +1,9 @@
 ---
-// The search box and the area filters (a strip that scrolls sideways on narrow screens, with ‹ › buttons).
+// The power search (text plus filters as tokens: area, title, machine, experiments, questions, lesson number) and the
+// area filters (a strip that scrolls sideways on narrow screens, with ‹ › buttons), kept in step with the Area token.
+import PowerSearch from "../PowerSearch.astro";
 import { useUi, AREAS, AREA_NAMES } from "../../i18n/ui";
+import { lessonFilters, lessonFilterStrings } from "../../lib/lesson-filters";
 import type { Locale } from "../../i18n";
 import type { Lesson } from "../../lib/lessons";
 
@@ -12,9 +15,7 @@ const areas = AREAS.filter((a) => counts[a] > 0);
 ---
 <div class="tools">
   <div class="search" role="search">
-    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3.5 3.5"></path></svg>
-    <input type="search" id="q" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label={ui("search.label")} aria-controls="lessons" aria-describedby="search-status" placeholder={ui("search.placeholder")} />
-    <kbd aria-hidden="true">/</kbd>
+    <PowerSearch config={lessonFilters(locale, areas, lessons.length)} strings={lessonFilterStrings(locale)} label={ui("search.label")} placeholder={ui("search.placeholder")} shortcut="/" />
   </div>
   <div class="filters-wrap">
     <button type="button" class="scroll-btn" data-scroll="-1" aria-label={ui("filters.left")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg></button>

@@ -1,10 +1,15 @@
-// <lesson-collection index="…/search-index.json" locale="en">: the collection page's area filters, search and
-// cards (components/collection/Toolbar.astro and the card grid, in pages/[...lang]/index.astro). The search engine
-// and the index load only when someone searches or arrives with ?q=. Typing is debounced (results follow 150 ms
-// after the last key, and at least every 500 ms while typing), and a render only touches what changed. A card's Preview button sends a
+// <lesson-collection index="…/search-index.json" locale="en">: the collection page's search, area filters and cards
+// (components/collection/Toolbar.astro and the card grid, in pages/[...lang]/index.astro).
+//
+// Search is a <power-search>: tokens filter (Area is Data or Search, Experiments mention "retry", Lesson from 40, …;
+// the fields are in src/lib/lesson-filters.ts) and the text being typed previews a free-text search, debounced by the
+// element. The area chips are a shortcut for the Area token. Every filter goes in the URL (?f=area.is.Data&q=retry),
+// so a search can be shared. The search engine and the index load only when someone searches, arrives with a
+// search in the URL, or opens a preview. A render only touches what changed. A card's Preview button sends a
 // "lesson-preview" event, which <lesson-preview> opens on.
-import type { SearchRun } from "../lib/search";
-import { debounce } from "../lib/timing";
+import type { Scope, SearchRun } from "../lib/search";
+import type { SearchDoc } from "../lib/search-index";
+import type { ChangeDetail, Filter, PowerSearch } from "./power-search";
 import { loadIndex, picker, PREVIEW_EVENT, type Locale, type PreviewDetail } from "./lesson-index";
 
 export class LessonCollection extends HTMLElement {
@@ -15,24 +20,56 @@ export class LessonCollection extends HTMLElement {
   }
 }
 
+/** Text fields and the part of a lesson each one searches. */
+const SCOPE_OF: Record<string, Scope> = { text: "all", title: "title", machine: "machine", experiments: "experiments", questions: "questions" };
+
+// ---- the URL: ?f=area.is.Data,Search&f=experiments.contains.retry&q=storm ----
+const encode = (f: Filter) => {
+  const v = f.value;
+  const val = v.type === "enum_list" ? v.value.join(",") : v.type === "empty" ? "" : String(v.value);
+  return `${f.field}.${f.operator}.${val}`;
+};
+const decode = (s: string): Filter | null => {
+  const m = /^([a-z]+)\.([a-z]+)\.(.*)$/s.exec(s);
+  if (!m) return null;
+  const [, field, operator, raw] = m;
+  if (field === "area") return { field, operator, value: { type: "enum_list", value: raw.split(",").filter(Boolean) } };
+  if (field === "lesson") return { field, operator, value: { type: "integer", value: Number(raw) } };
+  return raw ? { field, operator, value: { type: "string", value: raw } } : null;
+};
+
 function init(root: HTMLElement) {
   const grid = root.querySelector<HTMLElement>("main.grid")!;
   const locale = (root.getAttribute("locale") === "es" ? "es" : "en") as Locale;
   const { L, T } = picker(locale);
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const index = () => loadIndex(root.getAttribute("index")!);
+  const ps = root.querySelector<PowerSearch>("power-search")!;
+  const chips = [...root.querySelectorAll<HTMLButtonElement>("[data-filter]")];
 
-  // ---- area filters ----
-  const filters = [...root.querySelectorAll<HTMLButtonElement>("[data-filter]")];
-  let area = "all";
+  // What's asked for: the tokens, and the text being typed (a preview of a Text search).
+  let filters: Filter[] = [];
+  let typed = "";
   let search: Awaited<ReturnType<typeof startSearch>> | null = null;
-  const setFilter = (a: string) => {
-    area = a;
-    filters.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === a)));
-    if (search) search.render();
-    else grid.querySelectorAll<HTMLElement>(".card").forEach((c) => { c.hidden = a !== "all" && c.dataset.area !== a; });
+  let starting: Promise<unknown> | null = null;
+  const ensureSearch = () => (starting ??= startSearch().then((s) => { search = s; s.render(); }));
+  const update = () => { syncChips(); writeUrl(); if (search) search.render(); else void ensureSearch(); };
+
+  // ---- area chips: a shortcut for one "Area is …" token ----
+  const areaTokens = () => filters.filter((f) => f.field === "area");
+  const syncChips = () => {
+    const a = areaTokens();
+    const one = a.length === 1 && a[0].operator === "is" && a[0].value.type === "enum_list" && a[0].value.value.length === 1 ? a[0].value.value[0] : null;
+    const pressed = a.length === 0 ? "all" : one;
+    chips.forEach((b) => { const on = String(b.dataset.filter === pressed); if (b.getAttribute("aria-pressed") !== on) b.setAttribute("aria-pressed", on); });
   };
-  filters.forEach((b) => b.addEventListener("click", () => { setFilter(b.dataset.filter!); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" }); }));
+  const setArea = (area: string) => {
+    filters = filters.filter((f) => f.field !== "area");
+    if (area !== "all") filters.push({ field: "area", operator: "is", value: { type: "enum_list", value: [area] } });
+    ps.filters = filters;
+    update();
+  };
+  chips.forEach((b) => b.addEventListener("click", () => { setArea(b.dataset.filter!); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" }); }));
 
   const strip = root.querySelector<HTMLElement>(".filters")!, wrap = root.querySelector<HTMLElement>(".filters-wrap")!;
   const arrows = wrap.querySelectorAll<HTMLButtonElement>("[data-scroll]");
@@ -64,39 +101,50 @@ function init(root: HTMLElement) {
     b.addEventListener("pointerenter", () => void index(), { once: true });
   });
 
-  // ---- search: the engine and the index load on first use ----
-  const input = root.querySelector<HTMLInputElement>("input[type=search]")!;
-  let starting: Promise<unknown> | null = null;
-  const ensureSearch = () => (starting ??= startSearch().then((s) => { search = s; s.render(); }));
-  // Results follow the typing without re-rendering on every key: 150 ms after the last key, at least every 500 ms
-  // during a long burst. Clearing the box shows every lesson again at once.
-  const typed = debounce(() => search?.render(), 150, { maxWait: 500 });
-  input.addEventListener("focus", () => void ensureSearch(), { once: true });
-  input.addEventListener("input", (e) => {
-    if ((e as InputEvent).isComposing) return;   // an accent or IME still being composed: wait for compositionend
-    if (!search) return void ensureSearch();
-    if (!input.value.trim()) { typed.cancel(); search.render(); } else typed();
-  });
-  input.addEventListener("compositionend", () => { if (search) typed(); });
-  try { const q = new URLSearchParams(location.search).get("q"); if (q) { input.value = q; void ensureSearch(); } } catch {}
+  // ---- the power search ----
+  ps.input.addEventListener("focus", () => void ensureSearch(), { once: true });
+  ps.addEventListener("ps-change", (e) => { filters = (e as CustomEvent<ChangeDetail>).detail.filters; update(); });
+  // The text being typed previews a search only while it reads as free text, not while a filter is being typed.
+  ps.addEventListener("ps-input", (e) => { const d = (e as CustomEvent<{ text: string; free: boolean }>).detail; typed = d.free ? d.text.trim() : ""; update(); });
+  ps.addEventListener("ps-submit", () => grid.querySelector<HTMLElement>(":scope > .card:not([hidden]) .btn.primary")?.focus());
   document.addEventListener("keydown", (e) => {
     const el = document.activeElement as HTMLElement | null;
     const typing = !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
     if (((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) && !document.querySelector("dialog[open]")) {
-      e.preventDefault(); input.focus(); input.select();
+      e.preventDefault(); ps.focusInput(); ps.input.select();
     }
   });
 
+  const writeUrl = () => {
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete("f");
+      u.searchParams.delete("q");
+      filters.forEach((f) => u.searchParams.append("f", encode(f)));
+      if (typed) u.searchParams.set("q", typed);
+      if (u.href !== location.href) history.replaceState(null, "", u);
+    } catch {}
+  };
+  // Arriving with a search: ?f= tokens and ?q= text (older links have only ?q=).
+  try {
+    const p = new URLSearchParams(location.search);
+    const fromUrl = p.getAll("f").map(decode).filter((f): f is Filter => f !== null);
+    const q = p.get("q")?.trim() ?? "";
+    if (fromUrl.length) { ps.filters = fromUrl; filters = ps.filters; }
+    if (q) { ps.input.value = q; typed = q; }
+    if (filters.length || typed) { syncChips(); void ensureSearch(); }
+  } catch {}
+
   async function startSearch() {
     const [{ createSearch, fold, stem, terms, WORD }, docs] = await Promise.all([import("../lib/search"), index()]);
-    const engine = createSearch(docs);
-    const bySlug = new Map(docs.map((l) => [l.slug, l]));
+    const engines = new Map<Scope, ReturnType<typeof createSearch>>();
+    const engine = (scope: Scope) => { let e = engines.get(scope); if (!e) engines.set(scope, (e = createSearch(docs, { scope }))); return e; };
+    const bySlug = new Map<string, SearchDoc>(docs.map((l) => [l.slug, l]));
     const status = root.querySelector<HTMLElement>("[data-status]")!;
     const empty = root.querySelector<HTMLElement>("[data-empty]")!;
     const cards = [...grid.querySelectorAll<HTMLElement>(".card")];
     const shown = new Map<HTMLElement, string>();
     cards.forEach((c) => c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => shown.set(e, e.textContent ?? "")));
-    const areaName = (a: string) => filters.find((b) => b.dataset.filter === a)?.firstChild?.textContent?.trim() ?? a;
 
     // What each element last showed, so a render leaves unchanged cards alone.
     const marked = new Map<HTMLElement, string>();
@@ -120,20 +168,22 @@ function init(root: HTMLElement) {
       el.append(text.slice(at));
     };
 
-    // "In Experiment 3 · Thundering herd" under a card whose match isn't in its title or blurb.
-    const hitLine = (card: HTMLElement, r?: { terms: Set<string> }) => {
-      const key = r ? keyOf(r.terms) || " " : "";
+    // "In Experiment 3 · Thundering herd" under a card whose match isn't in its title or blurb (or is asked for
+    // in experiments or questions).
+    const hitLine = (card: HTMLElement, r: { terms: Set<string>; where: Set<Scope> } | undefined) => {
+      const key = r ? keyOf(r.terms) + "|" + [...r.where].sort().join(",") || " " : "";
       if (hitKey.get(card) === key) return;
       hitKey.set(card, key);
       const line = card.querySelector<HTMLElement>(".hit")!;
       line.hidden = true;
-      if (!r) return;
+      if (!r || !r.terms.size) return;
       const l = bySlug.get(card.dataset.slug!)!;
       const count = (s: string) => terms(s).filter((t) => r.terms.has(t)).length;
-      if (count([l.title, l.blurb, l.concept, l.machine, l.area].map(L).join(" "))) return;
+      const onlyIn = r.where.has("experiments") || r.where.has("questions");
+      if (!onlyIn && count([l.title, l.blurb, l.concept, l.machine, l.area].map(L).join(" "))) return;
       const spots = [
-        ...l.exps.map((e, i) => ({ kind: "exp", i, text: [L(e.title), L(e.question), L(e.change)].find((x) => count(x)) ?? L(e.title), n: count(L(e.title)) * 2 + count(`${L(e.change)} ${L(e.question)}`) })),
-        ...l.qs.map((q, i) => ({ kind: "q", i, text: L(q), n: count(L(q)) })),
+        ...(r.where.has("questions") && !r.where.has("experiments") ? [] : l.exps.map((e, i) => ({ kind: "exp", i, text: [L(e.title), L(e.question), L(e.change)].find((x) => count(x)) ?? L(e.title), n: count(L(e.title)) * 2 + count(`${L(e.change)} ${L(e.question)}`) }))),
+        ...(r.where.has("experiments") && !r.where.has("questions") ? [] : l.qs.map((q, i) => ({ kind: "q", i, text: L(q), n: count(L(q)) }))),
       ].filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
       const hit = spots[0];
       if (!hit) return;
@@ -146,70 +196,102 @@ function init(root: HTMLElement) {
       line.hidden = false;
     };
 
+    // Does a lesson pass the non-text filters (area, number)?
+    const passes = (l: SearchDoc, area: string, fs: Filter[]) => fs.every((f) => {
+      if (f.field === "area" && f.value.type === "enum_list") return f.operator === "not" ? !f.value.value.includes(area) : f.value.value.includes(area);
+      if (f.field === "lesson" && f.value.type === "integer") return f.operator === "from" ? l.n >= f.value.value : f.operator === "to" ? l.n <= f.value.value : l.n === f.value.value;
+      return true;
+    });
+
     const quote = (q: string) => `“${q}”`;
+    const plural = (n: number) => T(`${n} ${n === 1 ? "lesson" : "lessons"}`, `${n} ${n === 1 ? "lección" : "lecciones"}`);
     let last = "\u0000";
     const render = () => {
-      typed.cancel();
-      const q = input.value.trim();
-      const key = q.replace(/\s+/g, " ") + "\u0000" + area;
-      if (key === last) return;   // the same words (spacing aside) in the same area: nothing to redo
+      const key = JSON.stringify(filters) + "\u0000" + typed.replace(/\s+/g, " ");
+      if (key === last) return;   // the same search (spacing aside): nothing to redo
       last = key;
-      const res: SearchRun | null = q ? engine.run(q) : null;
-      const hits = res ? new Map(res.results.map((x, i) => [x.lesson.slug, { ...x, rank: i }])) : null;
-      // Ranked order while searching, lesson order otherwise. Moving nodes keeps tab order matching what you see;
-      // they move only when the order changes.
-      const rank = (c: HTMLElement) => (hits?.get(c.dataset.slug!)?.rank ?? 1e6 + cards.indexOf(c));
+
+      // Text searches: every text token, and the text being typed. A lesson must match all of them.
+      const runs = [
+        ...filters.filter((f) => f.field in SCOPE_OF && f.value.type === "string").map((f) => ({ scope: SCOPE_OF[f.field], q: (f.value as { value: string }).value })),
+        ...(typed ? [{ scope: "all" as Scope, q: typed }] : []),
+      ].map((r) => ({ ...r, res: engine(r.scope).run(r.q) as SearchRun }));
+      const rest = filters.filter((f) => !(f.field in SCOPE_OF));
+      const hits = new Map<string, { score: number; terms: Set<string>; where: Set<Scope> }>();
+      if (runs.length) {
+        for (const l of docs) {
+          let score = 0;
+          const t = new Set<string>(), where = new Set<Scope>();
+          let ok = true;
+          for (const r of runs) {
+            const found = r.res.results.find((x) => x.lesson.slug === l.slug);
+            if (!found) { ok = false; break; }
+            score += found.score;
+            found.terms.forEach((x) => t.add(x));
+            where.add(r.scope);
+          }
+          if (ok) hits.set(l.slug, { score, terms: t, where });
+        }
+      }
+      const searching = runs.length > 0;
+      // Ranked by score while searching, lesson order otherwise. Cards move only when the order changes.
+      const rank = (c: HTMLElement) => {
+        const h = hits.get(c.dataset.slug!);
+        return searching && h ? -h.score : 1e6 + cards.indexOf(c);
+      };
       const order = [...cards].sort((a, b) => rank(a) - rank(b));
       const now = [...grid.querySelectorAll<HTMLElement>(":scope > .card")];
       if (order.some((c, i) => now[i] !== c)) order.forEach((c) => grid.insertBefore(c, empty));
+
+      // Chip counts: lessons that pass everything except the area filters.
       const per: Record<string, number> = { all: 0 };
+      const noArea = rest.filter((f) => f.field !== "area");
       let visible = 0;
       for (const c of cards) {
-        const r = hits?.get(c.dataset.slug!);
-        const match = !hits || !!r;
-        if (match) { per.all++; per[c.dataset.area!] = (per[c.dataset.area!] ?? 0) + 1; }
-        const hide = !match || (area !== "all" && c.dataset.area !== area);
+        const l = bySlug.get(c.dataset.slug!)!;
+        const h = hits.get(c.dataset.slug!);
+        const textOk = !searching || !!h;
+        if (textOk && passes(l, c.dataset.area!, noArea)) { per.all++; per[c.dataset.area!] = (per[c.dataset.area!] ?? 0) + 1; }
+        const hide = !textOk || !passes(l, c.dataset.area!, rest);
         if (c.hidden !== hide) c.hidden = hide;
         if (!hide) visible++;
-        const k = keyOf(r?.terms);
-        c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => { if (marked.get(e) !== k) { marked.set(e, k); mark(e, shown.get(e)!, r?.terms); } });
-        hitLine(c, r);
+        // Highlight in the title and blurb only what a whole-lesson or title search found.
+        const showTerms = h && runs.some((r) => r.scope === "all" || r.scope === "title") ? h.terms : undefined;
+        const k = keyOf(showTerms);
+        c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => { if (marked.get(e) !== k) { marked.set(e, k); mark(e, shown.get(e)!, showTerms); } });
+        hitLine(c, h);
       }
-      filters.forEach((b) => { const n = per[b.dataset.filter!] ?? 0; setText(b.querySelector("b")!, String(n)); if (b.hasAttribute("data-zero") !== (n === 0)) b.toggleAttribute("data-zero", n === 0); });
+      chips.forEach((b) => { const n = per[b.dataset.filter!] ?? 0; setText(b.querySelector("b")!, String(n)); if (b.hasAttribute("data-zero") !== (n === 0)) b.toggleAttribute("data-zero", n === 0); });
 
-      const inArea = area === "all" ? "" : areaName(area);
+      const active = searching || rest.length > 0;
+      ps.resultCount = active ? plural(visible) : "";
+      // The status line explains the special cases; the count is in the bar.
       let msg = "";
-      if (res) {
-        const n = per.all;
-        if (res.mode === "none") msg = T(`No lesson matches ${quote(q)}.`, `Ninguna lección coincide con ${quote(q)}.`);
-        else if (res.mode === "some") msg = T(`No lesson has every word; ${n} ${n === 1 ? "has" : "have"} some of them.`, `Ninguna lección tiene todas las palabras; ${n} ${n === 1 ? "tiene" : "tienen"} alguna.`);
-        else msg = T(`${n} ${n === 1 ? "lesson matches" : "lessons match"} ${quote(q)}`, `${n} ${n === 1 ? "lección coincide" : "lecciones coinciden"} con ${quote(q)}`);
-        if (inArea && n) msg += T(` · ${visible} in ${inArea}`, ` · ${visible} en ${inArea}`);
-      }
+      const none = runs.find((r) => r.res.mode === "none");
+      const some = runs.find((r) => r.res.mode === "some");
+      if (none) msg = T(`Nothing matches ${quote(none.q)}.`, `Nada coincide con ${quote(none.q)}.`);
+      else if (some) msg = T(`No lesson has every word of ${quote(some.q)}; showing lessons with some of them.`, `Ninguna lección tiene todas las palabras de ${quote(some.q)}; se muestran las que tienen alguna.`);
       setText(status, msg);
-      const nothing = !!res && visible === 0;
+      const nothing = active && visible === 0;
       if (empty.hidden !== !nothing) empty.hidden = !nothing;
       if (nothing) {
-        const elsewhere = per.all > 0;
+        const elsewhere = per.all > 0 && areaTokens().length > 0;
         setText(empty.querySelector("p")!, elsewhere
-          ? T(`None in ${inArea}. The other matches are in other areas.`, `Ninguna en ${inArea}. Las demás coincidencias están en otras áreas.`)
-          : T("Try another word, in English or Spanish, or clear the search.", "Prueba otra palabra, en inglés o en español, o borra la búsqueda."));
+          ? T("None in these areas. The other matches are in other areas.", "Ninguna en estas áreas. Las demás coincidencias están en otras áreas.")
+          : T("Try another word, in English or Spanish, or remove a filter.", "Prueba otra palabra, en inglés o en español, o quita un filtro."));
         empty.querySelector<HTMLElement>("[data-all]")!.hidden = !elsewhere;
       }
-      try {
-        const u = new URL(location.href);
-        if (q) u.searchParams.set("q", q); else u.searchParams.delete("q");
-        if (u.href !== location.href) history.replaceState(null, "", u);
-      } catch {}
     };
 
-    const clear = () => { input.value = ""; render(); input.focus(); };
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { if (input.value) { e.preventDefault(); clear(); } else input.blur(); }
-      if (e.key === "Enter") { render(); const first = grid.querySelector<HTMLElement>(":scope > .card:not([hidden])"); if (first) { e.preventDefault(); first.querySelector<HTMLElement>(".btn.primary")!.focus(); } }
+    empty.querySelector("[data-clear]")!.addEventListener("click", () => {
+      filters = [];
+      ps.filters = [];
+      ps.input.value = "";
+      typed = "";
+      update();
+      ps.focusInput();
     });
-    empty.querySelector("[data-clear]")!.addEventListener("click", clear);
-    empty.querySelector("[data-all]")!.addEventListener("click", () => filters.find((b) => b.dataset.filter === "all")!.click());
+    empty.querySelector("[data-all]")!.addEventListener("click", () => setArea("all"));
     return { render };
   }
 }

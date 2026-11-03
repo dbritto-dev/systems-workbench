@@ -57,11 +57,23 @@ function oneEdit(a: string, b: string) {
   return edits + (a.length - i) + (b.length - j) <= 1;
 }
 
-export function createSearch(lessons: SearchDoc[]) {
+/** The field groups a search can be limited to (createSearch(docs, { scope })). */
+export const SCOPES = {
+  all: null,
+  title: ["title", "concept"],
+  machine: ["machine"],
+  experiments: ["exp", "expText"],
+  questions: ["question"],
+} as const satisfies Record<string, readonly string[] | null>;
+export type Scope = keyof typeof SCOPES;
+
+export function createSearch(lessons: SearchDoc[], { scope = "all" }: { scope?: Scope } = {}) {
+  const only: readonly string[] | null = SCOPES[scope];
+  const fields = only ? FIELDS.filter(([name]) => only.includes(name)) : FIELDS;
   const docs = lessons.map((lesson) => {
     const tf = new Map<string, number>();
     let len = 0, flat = " ";
-    for (const [, w, get] of FIELDS) {
+    for (const [, w, get] of fields) {
       const text = get(lesson);
       flat += words(text).join(" ") + " | ";
       const ts = terms(text);
@@ -70,7 +82,7 @@ export function createSearch(lessons: SearchDoc[]) {
     }
     return { lesson, tf, len, flat };
   });
-  const avg = docs.reduce((s, d) => s + d.len, 0) / docs.length;
+  const avg = docs.reduce((s, d) => s + d.len, 0) / docs.length || 1;
   const df = new Map<string, number>();
   for (const d of docs) for (const t of d.tf.keys()) df.set(t, (df.get(t) ?? 0) + 1);
   const vocab = [...df.keys()];

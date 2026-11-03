@@ -66,16 +66,27 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       await page.goto(BASE + path);
       const cards = await page.$$eval(".card", (c) => c.length);
       if (cards !== lessons.length) fail(`collection ${lang}`, `${cards} cards`);
-      await page.fill("#q", lang === "es" ? "reintento" : "retry");
+      // Power search: free text previews results; "area traffic" + Enter makes an Area token.
+      await page.click(".ps-input");
+      await page.keyboard.type(lang === "es" ? "reintento" : "retry");
       await page.waitForTimeout(800);
-      const status = await page.textContent("[data-status]");
-      if (!/\d/.test(status || "")) fail(`collection ${lang}`, `search status "${status}"`);
+      const status = await page.textContent(".ps-count");
+      if (!/\d/.test(status || "")) fail(`collection ${lang}`, `search count "${status}"`);
+      await page.fill(".ps-input", "");
+      await page.keyboard.type(lang === "es" ? "área tráfico" : "area traffic");
+      await page.waitForTimeout(300);
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(300);
+      const token = await page.textContent(".ps-token-edit").catch(() => "");
+      const areas = await page.$$eval(".card:not([hidden])", (c) => [...new Set(c.map((x) => x.dataset.area))]);
+      if (!token || areas.length !== 1 || areas[0] !== "Traffic") fail(`collection ${lang}`, `area token "${token}" → ${areas.join(",")}`);
+      await page.keyboard.press("Escape");
       await page.locator(".card:not([hidden]) [data-preview]").first().click();
       await page.waitForTimeout(500);
       const dlg = await page.evaluate(() => document.querySelector("dialog")?.open && document.querySelector("[data-d=title]").textContent);
       if (!dlg) fail(`collection ${lang}`, "preview dialog empty");
       if (errors.length) fail(`collection ${lang}`, errors.join(" | "));
-      console.log(`collection ${lang}: ${cards} cards, search "${status}", dialog "${dlg}"`);
+      console.log(`collection ${lang}: ${cards} cards, search "${status}", token "${token}", dialog "${dlg}"`);
       await page.close();
     }
     const page = await ctx.newPage();

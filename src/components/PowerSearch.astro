@@ -1,0 +1,41 @@
+---
+// A structured filter bar: tokens (field + operator + value), a typeahead and a token editor. The behaviour is the
+// <power-search> element (src/elements/power-search.ts); this renders its markup, config and interface words.
+// Reusable: pass any config; listen for "ps-change" (filters) and "ps-input" (debounced typing).
+import type { Config, Filter, Strings } from "../elements/power-search";
+import "../styles/power-search.css";
+
+interface Props {
+  config: Config;
+  strings: Strings;
+  filters?: Filter[];
+  /** Accessible name of the box (visually hidden). */
+  label: string;
+  placeholder?: string;
+  /** Shown as a hint at the right of the empty box, e.g. "/". */
+  shortcut?: string;
+  class?: string;
+}
+const { config, strings, filters = [], label, placeholder = "", shortcut, class: className } = Astro.props;
+const data = JSON.stringify({ config, strings, filters }).replace(/</g, "\\u003c");
+---
+<power-search class:list={["ps", className]}>
+  <div class="ps-bar">
+    <svg class="ps-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3.5 3.5"></path></svg>
+    <div class="ps-field">
+      <ul class="ps-tokens" aria-label={label}></ul>
+      <input class="ps-input" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-label={label} placeholder={placeholder} autocomplete="off" spellcheck="false" enterkeyhint="search" />
+    </div>
+    <div class="ps-end">
+      {shortcut && <kbd class="ps-kbd" aria-hidden="true">{shortcut}</kbd>}
+      <span class="ps-count" aria-live="polite"></span>
+      <button type="button" class="ps-clear" hidden aria-label={strings.clearAll} title={strings.clearAll}>×</button>
+    </div>
+  </div>
+  <div class="ps-menu" role="listbox" aria-label={label} hidden></div>
+  <div class="ps-editor" role="dialog" hidden></div>
+  <script type="application/json" data-ps set:html={data} />
+</power-search>
+<script>
+  import "../elements/power-search";
+</script>
