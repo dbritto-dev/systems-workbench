@@ -1,7 +1,8 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 10 · Rolling deploys: a module yard where a gantry crane swaps one module at a time.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { secs as secsOf } from "../../lib/format";
 import { buildFigure, tokenSvg, P, GEOMETRY } from "./figure";
 import { averageRollout } from "./sim";
 
@@ -18,6 +19,63 @@ const RESULTS = {
   bad: { a: run8({ load: "normal", quality: "bad", full: true }), b: run8({ load: "normal", quality: "bad", probe: false, full: true }) },
   format: { a: run8({ load: "normal" }), b: run8({ load: "normal", quality: "incompatible" }) },
 };
+
+// What each card shows after a run (8 seeds each).
+const pct = (x) => (100 * x < 1 && x > 0 ? (100 * x).toFixed(1) : Math.round(100 * x)) + "%";
+const secs = (x, l) => (x === null ? (l === "es" ? "nunca" : "never") : secsOf(x));
+const secsT = (x) => t(secs(x, "en"), secs(x, "es"));
+// A verdict built once per language from the same numbers: f(lang) returns the sentence.
+const both = (f) => t(f("en"), f("es"));
+const group = (title, rows) => ({ title, rows });
+const RUNS_RAW = {
+  unavail: () => {
+    const { base, a, b } = RESULTS.unavail;
+    return { verdict: both((l) => l === "es"
+        ? "Duración del despliegue " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". Espera p95 durante el despliegue " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (sin despliegue: " + secs(base.p95, l) + ")."
+        : "Rollout time " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". p95 wait during it " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (no rollout: " + secs(base.p95, l) + ")."),
+      groups: [group(t("Rollout time", "Duración del despliegue"), [["maxUnavailable 1", a.rolloutTime, secsT(a.rolloutTime)], ["maxUnavailable 3", b.rolloutTime, secsT(b.rolloutTime), true]]),
+        group(t("p95 wait during the rollout", "Espera p95 durante el despliegue"), [[t("No rollout", "Sin despliegue"), base.p95, secsT(base.p95)], ["maxUnavailable 1", a.p95, secsT(a.p95)], ["maxUnavailable 3", b.p95, secsT(b.p95), true]])] };
+  },
+  surge: () => {
+    const { base, a, b } = RESULTS.surge;
+    return { verdict: both((l) => l === "es"
+        ? "Espera p95 durante el despliegue " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (sin despliegue: " + secs(base.p95, l) + "). Duración del despliegue " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". Bahías en uso en el pico: " + a.peakBays + " → " + b.peakBays + "."
+        : "p95 wait during the rollout " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (no rollout: " + secs(base.p95, l) + "). Rollout time " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". Bays in use at the peak: " + a.peakBays + " → " + b.peakBays + "."),
+      groups: [group(t("p95 wait during the rollout", "Espera p95 durante el despliegue"), [[t("No rollout", "Sin despliegue"), base.p95, secsT(base.p95)], [t("Unavailable 1", "maxUnavailable 1"), a.p95, secsT(a.p95)], [t("Surge 1", "maxSurge 1"), b.p95, secsT(b.p95), true]]),
+        group(t("Bays in use at the peak", "Bahías en uso en el pico"), [[t("Unavailable 1", "maxUnavailable 1"), a.peakBays, String(a.peakBays)], [t("Surge 1", "maxSurge 1"), b.peakBays, String(b.peakBays), true]]),
+        group(t("Rollout time", "Duración del despliegue"), [[t("Unavailable 1", "maxUnavailable 1"), a.rolloutTime, secsT(a.rolloutTime)], [t("Surge 1", "maxSurge 1"), b.rolloutTime, secsT(b.rolloutTime), true]])] };
+  },
+  probe: () => {
+    const { a, b } = RESULTS.probe;
+    return { verdict: both((l) => l === "es"
+        ? "Sin la sonda, falló el " + pct(b.errorRate) + " de las solicitudes durante el despliegue (con ella: " + pct(a.errorRate) + "). Además \"terminó\" en " + secs(b.rolloutTime, l) + " en vez de " + secs(a.rolloutTime, l) + ", porque nada esperó el calentamiento."
+        : "Without the probe, " + pct(b.errorRate) + " of requests failed during the rollout (with it: " + pct(a.errorRate) + "). It also \"finished\" in " + secs(b.rolloutTime, l) + " instead of " + secs(a.rolloutTime, l) + ", because nothing waited for warm-up."),
+      groups: [group(t("Requests that failed", "Solicitudes que fallaron"), [[t("Probe on", "Con sonda"), a.errorRate, pct(a.errorRate)], [t("Probe off", "Sin sonda"), b.errorRate, pct(b.errorRate), true]]),
+        group(t("Rollout time", "Duración del despliegue"), [[t("Probe on", "Con sonda"), a.rolloutTime, secsT(a.rolloutTime)], [t("Probe off", "Sin sonda"), b.rolloutTime, secsT(b.rolloutTime), true]])] };
+  },
+  bad: () => {
+    const { a, b } = RESULTS.bad;
+    return { verdict: both((l) => l === "es"
+        ? "Con la sonda: " + a.newBays.toFixed(0) + " bahía reemplazada, " + a.oldServing.toFixed(0) + " bahías viejas todavía atendiendo y falló el " + pct(a.errorRate) + " de las solicitudes; el despliegue solo espera. Sin ella: " + b.newBays.toFixed(0) + " de 6 reemplazadas y falló el " + pct(b.errorRate) + "."
+        : "With the probe: " + a.newBays.toFixed(0) + " bay replaced, " + a.oldServing.toFixed(0) + " old bays still serving, " + pct(a.errorRate) + " of requests failed; the rollout just waits. Without it: " + b.newBays.toFixed(0) + " of 6 replaced and " + pct(b.errorRate) + " failed."),
+      groups: [group(t("Requests that failed (110 s)", "Solicitudes que fallaron (110 s)"), [[t("Probe on", "Con sonda"), a.errorRate, pct(a.errorRate)], [t("Probe off", "Sin sonda"), b.errorRate, pct(b.errorRate), true]]),
+        group(t("Bays running the broken version", "Bahías con la versión rota"), [[t("Probe on", "Con sonda"), a.newBays, t(a.newBays.toFixed(0) + " of 6", a.newBays.toFixed(0) + " de 6")], [t("Probe off", "Sin sonda"), b.newBays, t(b.newBays.toFixed(0) + " of 6", b.newBays.toFixed(0) + " de 6"), true]])] };
+  },
+  format: () => {
+    const { a, b } = RESULTS.format;
+    return { verdict: t(pct(b.errorRate) + " of requests failed during the rollout, every one from a user sent back to an old bay after a new one had saved their data. A compatible change: " + pct(a.errorRate) + ". After the last old bay is gone, the errors stop.",
+        "Falló el " + pct(b.errorRate) + " de las solicitudes durante el despliegue, todas de usuarios que volvieron a una bahía vieja después de que una nueva guardara sus datos. Con un cambio compatible: " + pct(a.errorRate) + ". Cuando se va la última bahía vieja, los errores paran."),
+      groups: [group(t("Requests that failed during the rollout", "Solicitudes que fallaron durante el despliegue"), [[t("Compatible change", "Cambio compatible"), a.errorRate, pct(a.errorRate)], [t("New data format", "Formato de datos nuevo"), b.errorRate, pct(b.errorRate), true]])] };
+  },
+};
+// Results come in titled groups of bars; each group's bars are scaled to its largest value.
+const RUNS = Object.fromEntries(Object.entries(RUNS_RAW).map(([id, run]) => [id, () => {
+  const out = run();
+  return { verdict: out.verdict, groups: out.groups.map((g) => {
+    const top = Math.max(...g.rows.map((r) => r[1] || 0)) * 1.1 || 1;
+    return { title: g.title, bars: g.rows.map(([label, value, text, after]) => [label, Math.max(0.01, (value || 0) / top), text, after]) };
+  }) };
+}]));
 
 const EXPERIMENTS = [
   {
@@ -118,7 +176,7 @@ export default defineLesson({
     ],
     note: t("Kubernetes does not allow maxUnavailable and maxSurge to both be 0; choosing that sets maxSurge to 1.", "Kubernetes no permite que maxUnavailable y maxSurge sean 0 a la vez; si eliges eso, maxSurge pasa a 1."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over eight simulated rollouts of the same yard: six bays, 6 s warm-up, 2.4 s per crane move.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados son el promedio de ocho despliegues simulados del mismo patio: seis bahías, 6 s de calentamiento, 2.4 s por movimiento de la grúa."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over eight simulated rollouts of the same yard: six bays, 6 s warm-up, 2.4 s per crane move.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados son el promedio de ocho despliegues simulados del mismo patio: seis bahías, 6 s de calentamiento, 2.4 s por movimiento de la grúa."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   // Warm-up strip, the darker old modules and headed groups of result bars.
   css: `
@@ -131,7 +189,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     TOKEN_SVG: tokenSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

@@ -1,20 +1,17 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The ticket office in the browser: steps the model, walks the pawns to the line, the windows, the garden and the
-// plaza, swings the load gauge, wires the controls and the experiment cards. mount() gets the build-time data from
-// page.ts (geometry, the pawn and ticket drawings, results).
+// plaza, swings the load gauge, and answers the controls. mount() gets the build-time data from page.ts (geometry,
+// the pawn and ticket drawings) and root, the <wb-lesson>.
 import { lineOnTop, translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls, setLit } from "../../runtime/dom";
-import { pct } from "../../lib/format";
+import { playPause, setLit } from "../../runtime/dom";
 import { createOffice } from "./sim";
 
-export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET, RESULTS, EXPERIMENTS }, root) {
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const sayText = readout();
-  const say = (v) => sayText(L(v));
+  const say = (v) => root.figure.say(L(v));
   const people = q("[data-people]"), ticketsLayer = q("[data-tickets]"), ledgeLayer = q("[data-ledge]"), needle = q("[data-needle]");
   const still = WB.still;
   const NS = "http://www.w3.org/2000/svg";
@@ -105,7 +102,7 @@ export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET, RESULTS, EXPER
     if (bins[now - 1] && rushAt !== null && now - 1 > rushAt + 1) peak = Math.max(peak, bins[now - 1].attempts);
   }
 
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
   function showStats() {
     if (!office) return;
     const c = office.counts;
@@ -146,72 +143,27 @@ export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET, RESULTS, EXPER
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, sayText);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(loop);
-  const pressSeg = WB.pressSeg;
   function set(name, raw) {
-    if (name === "speed") { speed = Number(raw); pressSeg(name, raw); return; }
+    if (name === "speed") { speed = Number(raw); root.press(name, raw); return; }
     const value = name === "jitter" || name === "budget" ? String(raw) === "true" : name === "backoff" ? raw : Number(raw);
     settings[name] = value;
     office.setConfig({ [name]: value });
-    pressSeg(name, raw);
+    root.press(name, raw);
   }
   function rush() { office.trigger(); rushAt = office.t; peak = 0; office.clients.forEach((c) => { if (!homeOf.has(c.id)) homeOf.set(c.id, -1); }); }
-  WB.onSegments((name, value) => set(name, value));
-  act("rush").addEventListener("click", () => { rush(); if (loop.paused) loop.setPaused(false); });
-  act("restart").addEventListener("click", () => { start(); paintPeople(0); });
-
-  // ---------- experiments (results computed at build time from the same model, 16 seeds each) ----------
-  const storm = (r) => r.recoveredShare === 0 ? "2 min+" : Math.round(r.recovery) + " s";
-  const stormEs = (r) => r.recoveredShare === 0 ? "más de 2 min" : Math.round(r.recovery) + " s";
-  const stormT = (r) => T(storm(r), stormEs(r));
-  const stormShare = (r) => Math.min(1, r.recovery / 120);
-  const perSec = (x) => x.toFixed(1) + "/s";
-  const RUNS = {
-    retry: () => {
-      const { a, b } = RESULTS.retry;
-      return { verdict: T("Without retries the trouble was over " + storm(a) + " after the rush. With three immediate retries it had not ended after 2 minutes in " + pct(1 - b.recoveredShare) + " of runs: " + b.attemptsPerRequest.toFixed(1) + " attempts per request, and only " + perSec(b.goodputRate) + " answered instead of " + perSec(a.goodputRate) + ".",
-          "Sin reintentos, el problema terminó " + stormEs(a) + " después de la avalancha. Con tres reintentos inmediatos no había terminado después de 2 minutos en el " + pct(1 - b.recoveredShare) + " de las ejecuciones: " + b.attemptsPerRequest.toFixed(1) + " intentos por solicitud, y solo " + perSec(b.goodputRate) + " respondidos en lugar de " + perSec(a.goodputRate) + "."),
-        groups: [[T("Trouble lasted", "El problema duró"), [[T("No retries", "Sin reintentos"), stormShare(a), stormT(a)], [T("3 immediate retries", "3 reintentos inmediatos"), stormShare(b), stormT(b), true]]],
-          [T("Answered per second", "Respondidos por segundo"), [[T("No retries", "Sin reintentos"), a.goodputRate / 3, perSec(a.goodputRate)], [T("3 immediate retries", "3 reintentos inmediatos"), b.goodputRate / 3, perSec(b.goodputRate), true]]]] };
-    },
-    backoff: () => {
-      const { a, b } = RESULTS.backoff;
-      return { verdict: T("With backoff the storm ended " + (b.recoveredShare === 1 ? "in every run" : "in " + pct(b.recoveredShare) + " of runs") + ", after " + storm(b) + " on average. The tallest wave of attempts after the rush was still " + perSec(b.peak) + " (immediate retries: " + perSec(a.peak) + "), against a capacity of 3/s.",
-          "Con espera exponencial, la tormenta terminó " + (b.recoveredShare === 1 ? "en todas las ejecuciones" : "en el " + pct(b.recoveredShare) + " de las ejecuciones") + ", después de " + stormEs(b) + " en promedio. La ola de intentos más alta después de la avalancha seguía siendo de " + perSec(b.peak) + " (reintentos inmediatos: " + perSec(a.peak) + "), frente a una capacidad de 3/s."),
-        groups: [[T("Trouble lasted", "El problema duró"), [[T("Immediate retries", "Reintentos inmediatos"), stormShare(a), stormT(a)], [T("Backoff 2 · 4 · 8 s", "Espera 2 · 4 · 8 s"), stormShare(b), stormT(b), true]]],
-          [T("Tallest wave", "Ola más alta"), [[T("Immediate retries", "Reintentos inmediatos"), a.peak / 20, perSec(a.peak)], [T("Backoff 2 · 4 · 8 s", "Espera 2 · 4 · 8 s"), b.peak / 20, perSec(b.peak), true]]]] };
-    },
-    jitter: () => {
-      const { a, b } = RESULTS.jitter;
-      return { verdict: T("The tallest wave fell from " + perSec(a.peak) + " to " + perSec(b.peak) + " (" + Math.round(100 * (1 - b.peak / a.peak)) + "% lower). The storm lasted " + storm(a) + " without jitter and " + storm(b) + " with it.",
-          "La ola más alta bajó de " + perSec(a.peak) + " a " + perSec(b.peak) + " (" + Math.round(100 * (1 - b.peak / a.peak)) + "% menos). La tormenta duró " + stormEs(a) + " sin jitter y " + stormEs(b) + " con jitter."),
-        groups: [[T("Tallest wave", "Ola más alta"), [[T("Backoff", "Espera"), a.peak / 20, perSec(a.peak)], [T("Backoff + jitter", "Espera + jitter"), b.peak / 20, perSec(b.peak), true]]],
-          [T("Trouble lasted", "El problema duró"), [[T("Backoff", "Espera"), stormShare(a), stormT(a)], [T("Backoff + jitter", "Espera + jitter"), stormShare(b), stormT(b), true]]]] };
-    },
-    timeout: () => {
-      const { a, b } = RESULTS.timeout;
-      return { verdict: T(pct(b.goodputShare) + " of the window's work reached a waiting client with a 0.8 s timeout (" + pct(a.goodputShare) + " with 3 s), while attempts rose from " + perSec(a.load) + " to " + perSec(b.load) + ".",
-          "El " + pct(b.goodputShare) + " del trabajo de la ventanilla llegó a un cliente que esperaba con un tiempo límite de 0.8 s (" + pct(a.goodputShare) + " con 3 s), mientras los intentos subieron de " + perSec(a.load) + " a " + perSec(b.load) + "."),
-        groups: [[T("Work that reached a client", "Trabajo que llegó a un cliente"), [[T("Timeout 3 s", "Tiempo límite 3 s"), a.goodputShare, pct(a.goodputShare)], [T("Timeout 0.8 s", "Tiempo límite 0.8 s"), b.goodputShare, pct(b.goodputShare), true]]],
-          [T("Attempts per second", "Intentos por segundo"), [[T("Timeout 3 s", "Tiempo límite 3 s"), a.load / 10, perSec(a.load)], [T("Timeout 0.8 s", "Tiempo límite 0.8 s"), b.load / 10, perSec(b.load), true]]]] };
-    },
-    layers: () => {
-      const { a, b, c } = RESULTS.layers;
-      const top = Math.max(a.attemptsPerRequest, b.attemptsPerRequest);
-      return { verdict: T("The worst case is 64. During the storm the office measured " + b.attemptsPerRequest.toFixed(1) + " attempts per request with three layers retrying, " + a.attemptsPerRequest.toFixed(1) + " with one, and " + c.attemptsPerRequest.toFixed(2) + " with three layers and a 10% retry budget, which also ended the trouble in " + storm(c) + ".",
-          "El peor caso es 64. Durante la tormenta, la taquilla midió " + b.attemptsPerRequest.toFixed(1) + " intentos por solicitud con tres capas reintentando, " + a.attemptsPerRequest.toFixed(1) + " con una, y " + c.attemptsPerRequest.toFixed(2) + " con tres capas y un presupuesto de reintentos del 10%, que además terminó el problema en " + stormEs(c) + "."),
-        groups: [[T("Attempts per request", "Intentos por solicitud"), [[T("1 layer", "1 capa"), a.attemptsPerRequest / top, a.attemptsPerRequest.toFixed(1)], [T("3 layers", "3 capas"), b.attemptsPerRequest / top, b.attemptsPerRequest.toFixed(1), true], [T("3 layers + budget", "3 capas + presupuesto"), c.attemptsPerRequest / top, c.attemptsPerRequest.toFixed(2)]]]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    rush: () => { rush(); if (loop.paused) loop.setPaused(false); },
+    restart: () => { start(); paintPeople(0); },
   };
-  // Results come in titled groups of bars.
-  root.on("run", (id, respond) => {
-    const out = RUNS[id]();
-    respond({ verdict: L(out.verdict), groups: out.groups.map(([title, bars]) => ({ title: L(title), bars: bars.map(([label, share, text, after]) => [L(label), Math.max(0.01, Math.min(1, share)), L(text), after]) })) });
-  });
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (w) => {
-    for (const name of ["retries", "backoff", "jitter", "timeout", "layers", "budget"]) { settings[name] = w[name]; pressSeg(name, w[name]); }
+    for (const name of ["retries", "backoff", "jitter", "timeout", "layers", "budget"]) { settings[name] = w[name]; root.press(name, w[name]); }
     start();
     if (w.rush) pendingRush = office.t + 6;
     if (loop.paused) loop.setPaused(false);

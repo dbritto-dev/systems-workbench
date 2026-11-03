@@ -1,22 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The module yard in the browser: runs the rollout model, moves the crane, modules, flags and request tokens to
-// match it, and wires the controls and the experiment cards. mount() gets the build-time data from page.ts
-// (geometry, the token drawing, experiment results).
+// match it, and answers the controls. mount() gets the build-time data from page.ts (geometry, the token drawing)
+// and root, the <wb-lesson>.
 import { iso, lineOnTop, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp, easeInOutCubic } from "../../lib/tween";
 import { clamp, percentile } from "../../lib/stats";
-import { secs as secsOf } from "../../lib/format";
 import { RD, createSim } from "./sim";
 
-export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }, root) {
-  const stage = document.querySelector("[data-yard]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, TOKEN_SVG }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const still = WB.still;
   const slotEls = Array.from({ length: RD.SLOTS }, (_, i) => {
     const el = q('[data-slot="' + i + '"]');
@@ -202,15 +200,14 @@ export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }, root) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: frameStep, onPause: pause.onPause });
   pause.bind(clock);
-  const pressSeg = WB.pressSeg;
   function set(name, raw) {
     if (name === "unavail" || name === "surge" || name === "speed") cfg[name] = Number(raw); else cfg[name] = raw;
-    if (cfg.unavail === 0 && cfg.surge === 0) { cfg.surge = 1; pressSeg("surge", 1); }
+    if (cfg.unavail === 0 && cfg.surge === 0) { cfg.surge = 1; root.press("surge", 1); }
     sim.S.cfg.unavail = cfg.unavail; sim.S.cfg.surge = cfg.surge; sim.S.cfg.probe = cfg.probe === "on"; sim.S.cfg.load = cfg.load;
-    pressSeg(name, raw);
+    root.press(name, raw);
   }
   function startRollout() {
     auto = false;
@@ -218,71 +215,15 @@ export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }, root) {
     if (clock.paused) clock.setPaused(false);
   }
   function reset() { auto = false; newSim(); paintAll(); showStats(); }
-  WB.onSegments((name, value) => { if (name !== "speed") auto = false; set(name, value); });
-  act("rollout").addEventListener("click", startRollout);
-  act("reset").addEventListener("click", reset);
+  root.on("change", (name, value) => { if (name !== "speed") auto = false; set(name, value); });
+  const actions = { rollout: startRollout, reset };
+  root.on("action", (name) => actions[name]?.());
   function paintAll() { const inflight = paintTokens(); const hide = paintCrane(); paintBays(inflight, hide, 1); say(describe()); }
 
-  // ---------- experiments (numbers computed at build time from the same model, 8 seeds each) ----------
-  // Lesson-local wiring: results come as groups of bars with a heading each, which WB.experiments does not draw.
-  const pct = (x) => (100 * x < 1 && x > 0 ? (100 * x).toFixed(1) : Math.round(100 * x)) + "%";
-  const secs = (x, l) => (x === null ? (l === "es" ? "nunca" : "never") : secsOf(x));
-  const secsT = (x) => T(secs(x, "en"), secs(x, "es"));
-  // A verdict built once per language from the same numbers: f(lang) returns the sentence.
-  const both = (f) => T(f("en"), f("es"));
-  const group = (title, rows) => ({ title, rows });
-  const RUNS = {
-    unavail: () => {
-      const { base, a, b } = RESULTS.unavail;
-      return { verdict: both((l) => l === "es"
-          ? "Duración del despliegue " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". Espera p95 durante el despliegue " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (sin despliegue: " + secs(base.p95, l) + ")."
-          : "Rollout time " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". p95 wait during it " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (no rollout: " + secs(base.p95, l) + ")."),
-        groups: [group(T("Rollout time", "Duración del despliegue"), [["maxUnavailable 1", a.rolloutTime, secsT(a.rolloutTime)], ["maxUnavailable 3", b.rolloutTime, secsT(b.rolloutTime), true]]),
-          group(T("p95 wait during the rollout", "Espera p95 durante el despliegue"), [[T("No rollout", "Sin despliegue"), base.p95, secsT(base.p95)], ["maxUnavailable 1", a.p95, secsT(a.p95)], ["maxUnavailable 3", b.p95, secsT(b.p95), true]])] };
-    },
-    surge: () => {
-      const { base, a, b } = RESULTS.surge;
-      return { verdict: both((l) => l === "es"
-          ? "Espera p95 durante el despliegue " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (sin despliegue: " + secs(base.p95, l) + "). Duración del despliegue " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". Bahías en uso en el pico: " + a.peakBays + " → " + b.peakBays + "."
-          : "p95 wait during the rollout " + secs(a.p95, l) + " → " + secs(b.p95, l) + " (no rollout: " + secs(base.p95, l) + "). Rollout time " + secs(a.rolloutTime, l) + " → " + secs(b.rolloutTime, l) + ". Bays in use at the peak: " + a.peakBays + " → " + b.peakBays + "."),
-        groups: [group(T("p95 wait during the rollout", "Espera p95 durante el despliegue"), [[T("No rollout", "Sin despliegue"), base.p95, secsT(base.p95)], [T("Unavailable 1", "maxUnavailable 1"), a.p95, secsT(a.p95)], [T("Surge 1", "maxSurge 1"), b.p95, secsT(b.p95), true]]),
-          group(T("Bays in use at the peak", "Bahías en uso en el pico"), [[T("Unavailable 1", "maxUnavailable 1"), a.peakBays, String(a.peakBays)], [T("Surge 1", "maxSurge 1"), b.peakBays, String(b.peakBays), true]]),
-          group(T("Rollout time", "Duración del despliegue"), [[T("Unavailable 1", "maxUnavailable 1"), a.rolloutTime, secsT(a.rolloutTime)], [T("Surge 1", "maxSurge 1"), b.rolloutTime, secsT(b.rolloutTime), true]])] };
-    },
-    probe: () => {
-      const { a, b } = RESULTS.probe;
-      return { verdict: both((l) => l === "es"
-          ? "Sin la sonda, falló el " + pct(b.errorRate) + " de las solicitudes durante el despliegue (con ella: " + pct(a.errorRate) + "). Además \"terminó\" en " + secs(b.rolloutTime, l) + " en vez de " + secs(a.rolloutTime, l) + ", porque nada esperó el calentamiento."
-          : "Without the probe, " + pct(b.errorRate) + " of requests failed during the rollout (with it: " + pct(a.errorRate) + "). It also \"finished\" in " + secs(b.rolloutTime, l) + " instead of " + secs(a.rolloutTime, l) + ", because nothing waited for warm-up."),
-        groups: [group(T("Requests that failed", "Solicitudes que fallaron"), [[T("Probe on", "Con sonda"), a.errorRate, pct(a.errorRate)], [T("Probe off", "Sin sonda"), b.errorRate, pct(b.errorRate), true]]),
-          group(T("Rollout time", "Duración del despliegue"), [[T("Probe on", "Con sonda"), a.rolloutTime, secsT(a.rolloutTime)], [T("Probe off", "Sin sonda"), b.rolloutTime, secsT(b.rolloutTime), true]])] };
-    },
-    bad: () => {
-      const { a, b } = RESULTS.bad;
-      return { verdict: both((l) => l === "es"
-          ? "Con la sonda: " + a.newBays.toFixed(0) + " bahía reemplazada, " + a.oldServing.toFixed(0) + " bahías viejas todavía atendiendo y falló el " + pct(a.errorRate) + " de las solicitudes; el despliegue solo espera. Sin ella: " + b.newBays.toFixed(0) + " de 6 reemplazadas y falló el " + pct(b.errorRate) + "."
-          : "With the probe: " + a.newBays.toFixed(0) + " bay replaced, " + a.oldServing.toFixed(0) + " old bays still serving, " + pct(a.errorRate) + " of requests failed; the rollout just waits. Without it: " + b.newBays.toFixed(0) + " of 6 replaced and " + pct(b.errorRate) + " failed."),
-        groups: [group(T("Requests that failed (110 s)", "Solicitudes que fallaron (110 s)"), [[T("Probe on", "Con sonda"), a.errorRate, pct(a.errorRate)], [T("Probe off", "Sin sonda"), b.errorRate, pct(b.errorRate), true]]),
-          group(T("Bays running the broken version", "Bahías con la versión rota"), [[T("Probe on", "Con sonda"), a.newBays, T(a.newBays.toFixed(0) + " of 6", a.newBays.toFixed(0) + " de 6")], [T("Probe off", "Sin sonda"), b.newBays, T(b.newBays.toFixed(0) + " of 6", b.newBays.toFixed(0) + " de 6"), true]])] };
-    },
-    format: () => {
-      const { a, b } = RESULTS.format;
-      return { verdict: T(pct(b.errorRate) + " of requests failed during the rollout, every one from a user sent back to an old bay after a new one had saved their data. A compatible change: " + pct(a.errorRate) + ". After the last old bay is gone, the errors stop.",
-          "Falló el " + pct(b.errorRate) + " de las solicitudes durante el despliegue, todas de usuarios que volvieron a una bahía vieja después de que una nueva guardara sus datos. Con un cambio compatible: " + pct(a.errorRate) + ". Cuando se va la última bahía vieja, los errores paran."),
-        groups: [group(T("Requests that failed during the rollout", "Solicitudes que fallaron durante el despliegue"), [[T("Compatible change", "Cambio compatible"), a.errorRate, pct(a.errorRate)], [T("New data format", "Formato de datos nuevo"), b.errorRate, pct(b.errorRate), true]])] };
-    },
-  };
-  // Results come in titled groups of bars; each group's bars are scaled to its largest value.
-  root.on("run", (id, respond) => {
-    const out = RUNS[id]();
-    respond({ verdict: L(out.verdict), groups: out.groups.map((g) => {
-      const top = Math.max(...g.rows.map((r) => r[1] || 0)) * 1.1 || 1;
-      return { title: L(g.title), bars: g.rows.map(([label, value, text, after]) => [L(label), Math.max(0.01, (value || 0) / top), L(text), after]) };
-    }) });
-  });
+  // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (w) => {
     auto = false;
-    ["unavail", "surge", "probe", "next", "load"].forEach((n) => { cfg[n] = n === "unavail" || n === "surge" ? Number(w[n]) : w[n]; pressSeg(n, w[n]); });
+    ["unavail", "surge", "probe", "next", "load"].forEach((n) => { cfg[n] = n === "unavail" || n === "surge" ? Number(w[n]) : w[n]; root.press(n, w[n]); });
     newSim(); paintAll(); showStats();
     if (clock.paused) clock.setPaused(false);
     setTimeout(() => { sim.startRollout(cfg.next); }, 1500);

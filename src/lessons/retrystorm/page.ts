@@ -1,12 +1,62 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 06 · Retry storms: a ticket office with one window.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct } from "../../lib/format";
 import { buildFigure, P, GEOMETRY, pawnSvg, ticketSvg } from "./figure";
 import { experimentResults } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
 const RESULTS = experimentResults();
+
+// What each card shows after a run (16 seeds each).
+const storm = (r) => r.recoveredShare === 0 ? "2 min+" : Math.round(r.recovery) + " s";
+const stormEs = (r) => r.recoveredShare === 0 ? "más de 2 min" : Math.round(r.recovery) + " s";
+const stormT = (r) => t(storm(r), stormEs(r));
+const stormShare = (r) => Math.min(1, r.recovery / 120);
+const perSec = (x) => x.toFixed(1) + "/s";
+const RUNS_RAW = {
+  retry: () => {
+    const { a, b } = RESULTS.retry;
+    return { verdict: t("Without retries the trouble was over " + storm(a) + " after the rush. With three immediate retries it had not ended after 2 minutes in " + pct(1 - b.recoveredShare) + " of runs: " + b.attemptsPerRequest.toFixed(1) + " attempts per request, and only " + perSec(b.goodputRate) + " answered instead of " + perSec(a.goodputRate) + ".",
+        "Sin reintentos, el problema terminó " + stormEs(a) + " después de la avalancha. Con tres reintentos inmediatos no había terminado después de 2 minutos en el " + pct(1 - b.recoveredShare) + " de las ejecuciones: " + b.attemptsPerRequest.toFixed(1) + " intentos por solicitud, y solo " + perSec(b.goodputRate) + " respondidos en lugar de " + perSec(a.goodputRate) + "."),
+      groups: [[t("Trouble lasted", "El problema duró"), [[t("No retries", "Sin reintentos"), stormShare(a), stormT(a)], [t("3 immediate retries", "3 reintentos inmediatos"), stormShare(b), stormT(b), true]]],
+        [t("Answered per second", "Respondidos por segundo"), [[t("No retries", "Sin reintentos"), a.goodputRate / 3, perSec(a.goodputRate)], [t("3 immediate retries", "3 reintentos inmediatos"), b.goodputRate / 3, perSec(b.goodputRate), true]]]] };
+  },
+  backoff: () => {
+    const { a, b } = RESULTS.backoff;
+    return { verdict: t("With backoff the storm ended " + (b.recoveredShare === 1 ? "in every run" : "in " + pct(b.recoveredShare) + " of runs") + ", after " + storm(b) + " on average. The tallest wave of attempts after the rush was still " + perSec(b.peak) + " (immediate retries: " + perSec(a.peak) + "), against a capacity of 3/s.",
+        "Con espera exponencial, la tormenta terminó " + (b.recoveredShare === 1 ? "en todas las ejecuciones" : "en el " + pct(b.recoveredShare) + " de las ejecuciones") + ", después de " + stormEs(b) + " en promedio. La ola de intentos más alta después de la avalancha seguía siendo de " + perSec(b.peak) + " (reintentos inmediatos: " + perSec(a.peak) + "), frente a una capacidad de 3/s."),
+      groups: [[t("Trouble lasted", "El problema duró"), [[t("Immediate retries", "Reintentos inmediatos"), stormShare(a), stormT(a)], [t("Backoff 2 · 4 · 8 s", "Espera 2 · 4 · 8 s"), stormShare(b), stormT(b), true]]],
+        [t("Tallest wave", "Ola más alta"), [[t("Immediate retries", "Reintentos inmediatos"), a.peak / 20, perSec(a.peak)], [t("Backoff 2 · 4 · 8 s", "Espera 2 · 4 · 8 s"), b.peak / 20, perSec(b.peak), true]]]] };
+  },
+  jitter: () => {
+    const { a, b } = RESULTS.jitter;
+    return { verdict: t("The tallest wave fell from " + perSec(a.peak) + " to " + perSec(b.peak) + " (" + Math.round(100 * (1 - b.peak / a.peak)) + "% lower). The storm lasted " + storm(a) + " without jitter and " + storm(b) + " with it.",
+        "La ola más alta bajó de " + perSec(a.peak) + " a " + perSec(b.peak) + " (" + Math.round(100 * (1 - b.peak / a.peak)) + "% menos). La tormenta duró " + stormEs(a) + " sin jitter y " + stormEs(b) + " con jitter."),
+      groups: [[t("Tallest wave", "Ola más alta"), [[t("Backoff", "Espera"), a.peak / 20, perSec(a.peak)], [t("Backoff + jitter", "Espera + jitter"), b.peak / 20, perSec(b.peak), true]]],
+        [t("Trouble lasted", "El problema duró"), [[t("Backoff", "Espera"), stormShare(a), stormT(a)], [t("Backoff + jitter", "Espera + jitter"), stormShare(b), stormT(b), true]]]] };
+  },
+  timeout: () => {
+    const { a, b } = RESULTS.timeout;
+    return { verdict: t(pct(b.goodputShare) + " of the window's work reached a waiting client with a 0.8 s timeout (" + pct(a.goodputShare) + " with 3 s), while attempts rose from " + perSec(a.load) + " to " + perSec(b.load) + ".",
+        "El " + pct(b.goodputShare) + " del trabajo de la ventanilla llegó a un cliente que esperaba con un tiempo límite de 0.8 s (" + pct(a.goodputShare) + " con 3 s), mientras los intentos subieron de " + perSec(a.load) + " a " + perSec(b.load) + "."),
+      groups: [[t("Work that reached a client", "Trabajo que llegó a un cliente"), [[t("Timeout 3 s", "Tiempo límite 3 s"), a.goodputShare, pct(a.goodputShare)], [t("Timeout 0.8 s", "Tiempo límite 0.8 s"), b.goodputShare, pct(b.goodputShare), true]]],
+        [t("Attempts per second", "Intentos por segundo"), [[t("Timeout 3 s", "Tiempo límite 3 s"), a.load / 10, perSec(a.load)], [t("Timeout 0.8 s", "Tiempo límite 0.8 s"), b.load / 10, perSec(b.load), true]]]] };
+  },
+  layers: () => {
+    const { a, b, c } = RESULTS.layers;
+    const top = Math.max(a.attemptsPerRequest, b.attemptsPerRequest);
+    return { verdict: t("The worst case is 64. During the storm the office measured " + b.attemptsPerRequest.toFixed(1) + " attempts per request with three layers retrying, " + a.attemptsPerRequest.toFixed(1) + " with one, and " + c.attemptsPerRequest.toFixed(2) + " with three layers and a 10% retry budget, which also ended the trouble in " + storm(c) + ".",
+        "El peor caso es 64. Durante la tormenta, la taquilla midió " + b.attemptsPerRequest.toFixed(1) + " intentos por solicitud con tres capas reintentando, " + a.attemptsPerRequest.toFixed(1) + " con una, y " + c.attemptsPerRequest.toFixed(2) + " con tres capas y un presupuesto de reintentos del 10%, que además terminó el problema en " + stormEs(c) + "."),
+      groups: [[t("Attempts per request", "Intentos por solicitud"), [[t("1 layer", "1 capa"), a.attemptsPerRequest / top, a.attemptsPerRequest.toFixed(1)], [t("3 layers", "3 capas"), b.attemptsPerRequest / top, b.attemptsPerRequest.toFixed(1), true], [t("3 layers + budget", "3 capas + presupuesto"), c.attemptsPerRequest / top, c.attemptsPerRequest.toFixed(2)]]]] };
+  },
+};
+// Results come in titled groups of bars.
+const RUNS = Object.fromEntries(Object.entries(RUNS_RAW).map(([id, run]) => [id, () => {
+  const out = run();
+  return { verdict: out.verdict, groups: out.groups.map(([title, bars]) => ({ title, bars: bars.map(([label, share, text, after]) => [label, Math.max(0.01, Math.min(1, share)), text, after]) })) };
+}]));
 
 const EXPERIMENTS = [
   {
@@ -174,7 +224,7 @@ export default defineLesson({
     ],
   },
   predict: { intro: t('Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same office, averaged over 16 two-minute runs after a rush of 16 visitors.',
-    'Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen de la misma taquilla, promediados sobre 16 ejecuciones de dos minutos después de una avalancha de 16 visitantes.'), experiments: EXPERIMENTS },
+    'Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen de la misma taquilla, promediados sobre 16 ejecuciones de dos minutos después de una avalancha de 16 visitantes.'), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   // Experiment results here come in titled groups of bars.
   css: `
@@ -185,7 +235,5 @@ export default defineLesson({
     PAWN: pawnSvg(),
     TICKET: ticketSvg(0),
     LEDGE_TICKET: ticketSvg(GEOMETRY.LEDGE_Z),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
