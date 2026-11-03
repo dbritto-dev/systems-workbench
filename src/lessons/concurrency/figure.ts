@@ -1,29 +1,26 @@
+// @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
 // One cook, one stove: a range with eight burners, a simmer-timer knob per burner, and a single
-// stirring head on a gantry behind it. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
-import * as k from "../../workbench/kit.mjs";
-import { t } from "../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../workbench/parts.mjs";
+// stirring head on a gantry behind it. The parts that move (rig, plates, knob pointers) are drawn by parts.ts,
+// which the live code shares. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
+import * as k from "../../../workbench/kit.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { shorthand } from "../../lib/draw";
+import { TOP, KNOB_R, KNOB_TOP, RAIL, RAIL_TOP, PASS_TOP, PLATE_AT, movingParts } from "./parts";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
 
 const PLATE = { x: -175, y: -104, w: 350, d: 204, r: 8 };
 const STOVE = { x: -116, y: -62, w: 232, d: 124, r: 4 };
-export const TOP = 34;
 const COLS = [-81, -27, 27, 81];
 const ROWS = [-30, 14];
 export const PAN_R = 16;
 export const PAN_TOP = TOP + 9;
 export const POT_TOP = TOP + 24;
 const KNOB_Y = 46;
-export const KNOB_R = 5.5;
-export const KNOB_TOP = TOP + 4;
-const RAIL = { x: -138, y: -92, w: 276, d: 8, r: 1.5 };
-export const RAIL_TOP = 102;
 const POSTS = [[-132, -88], [132, -88]];
 const PASS = { x: 128, y: 6, w: 36, d: 56, r: 3 };
-export const PASS_TOP = 6;
-export const PLATE_AT = [146, 34];
 
 export const PANS = Array.from({ length: 8 }, (_, i) => ({ x: COLS[i % 4], y: ROWS[i < 4 ? 0 : 1], knob: [COLS[i % 4], KNOB_Y] }));
 export const PARK = [0, -52];
@@ -35,10 +32,8 @@ export const P = k.fitProjection(
   { pad: 22, azimuth: 52 },
 );
 
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
-const at = (p) => k.iso(p, P);
+const { S, L, D, at } = shorthand(P);
+const { rigSvg, plateStack } = movingParts(P);
 
 function plate() {
   return basePlate(P, PLATE)
@@ -80,11 +75,6 @@ export function knob(x, y) {
     + S(k.cylinder(x, y, KNOB_R, TOP + 1.2, KNOB_TOP - TOP - 1.2, P, 32, 0.3), { tone: "mid" })
     + L(k.knurl(x, y, KNOB_R, TOP + 1.4, KNOB_TOP, 30, P), { tone: "lo" });
 }
-
-export const knobPointer = (x, y, share) => {
-  const a = share * Math.PI * 2;
-  return k.lineOnTop([x, y], [x + Math.sin(a) * (KNOB_R - 1), y - Math.cos(a) * (KNOB_R - 1)], KNOB_TOP + 0.1, P);
-};
 
 function panBody(pan, pot) {
   const { x, y } = pan;
@@ -138,33 +128,6 @@ function pass() {
   return S(k.slabOf(PASS, 0, PASS_TOP, P, 4, 0.5), { tone: "mid" })
     + L(k.planOutline(k.insetPlan(PASS, 3), PASS_TOP, P), { tone: "faint" })
     + L(k.ring(PLATE_AT[0], PLATE_AT[1], 11, PASS_TOP, P, 32), { tone: "lo" });
-}
-
-export function plateStack(count) {
-  const out = [];
-  for (let i = 0; i < count; i++) {
-    const z = PASS_TOP + i * 1.6;
-    out.push(S(k.cylinder(PLATE_AT[0], PLATE_AT[1], 10, z, 1.6, P, 36, 0.2), { tone: "hi", crease: "lo" }));
-  }
-  if (count) out.push(L(k.ring(PLATE_AT[0], PLATE_AT[1], 6.5, PASS_TOP + count * 1.6, P, 28), { tone: "faint" }));
-  return out.join("");
-}
-
-// The moving rig, rebuilt every frame: carriage on the rail, arm out to the head, spoon below it.
-export function rigSvg(hx, hy, tipZ, lit, stir = [0, 0]) {
-  const out = [];
-  out.push(S(k.slabOf({ x: hx - 12, y: RAIL.y - 4, w: 24, d: RAIL.d + 8, r: 2 }, RAIL_TOP, 8, P, 3, 0.5), { tone: "mid" }));
-  out.push(D([at([hx - 8, RAIL.y + RAIL.d + 2, RAIL_TOP + 8]), at([hx + 8, RAIL.y + RAIL.d + 2, RAIL_TOP + 8])], { size: 0.45 }));
-  const armFrom = RAIL.y + RAIL.d + 4;
-  const armTo = hy - 6;
-  if (armTo > armFrom + 1) out.push(S(k.slabOf({ x: hx - 3.5, y: armFrom, w: 7, d: armTo - armFrom, r: 1 }, RAIL_TOP + 1, 4, P, 2, 0.3), { tone: "mid" }));
-  const sx = hx + stir[0], sy = hy + stir[1];
-  const headZ = RAIL_TOP - 4;
-  out.push(S(k.cylinder(sx, sy, 1.2, tipZ + 1.4, headZ - tipZ - 1.4, P, 12), { tone: "hi", crease: "none", lit }));
-  out.push(S(k.cylinder(sx, sy, 3.2, tipZ, 1.4, P, 18), { tone: "hi", lit }));
-  out.push(S(k.slabOf({ x: hx - 7, y: hy - 7, w: 14, d: 14, r: 2 }, headZ, 14, P, 3, 0.5), { tone: "hi", crease: "lo", lit }));
-  out.push(L(k.planOutline({ x: hx - 4, y: hy - 4, w: 8, d: 8, r: 1 }, headZ + 14, P, 2), { tone: "faint" }));
-  return out.join("");
 }
 
 export function buildFigure() {

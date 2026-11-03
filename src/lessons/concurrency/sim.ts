@@ -1,12 +1,12 @@
+// @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // One cook, several pans. Each dish alternates active steps (stirring: the cook must be there)
 // and waits (simmering: the pan needs nobody). The figure and the experiments both run this model.
+// Shared by the page (experiment results at build time) and the live code.
+import { rng } from "../../lib/random";
+import { mean, meanBy } from "../../lib/stats";
+
 export const DT = 0.01;
 export const STEPS = 3;
-
-export function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
-}
 
 // A dish of `active` seconds of cook time, split into STEPS stirring steps with simmers between them.
 // waitShare is the share of the dish's own time spent simmering.
@@ -147,7 +147,7 @@ export function stats(K) {
   return {
     done: K.done.length,
     perMinute: K.now > 0 ? (60 * K.done.length) / K.now : 0,
-    avgTime: times.length ? times.reduce((a, b) => a + b, 0) / times.length : 0,
+    avgTime: mean(times),
     cooking: K.time.cooking / total,
     switching: K.time.switching / total,
     idle: K.time.idle / total,
@@ -169,6 +169,19 @@ export function runSteady(options, seconds = 600, seeds = [1, 2, 3, 4]) {
     while (K.now < seconds) step(K);
     return stats(K);
   });
-  const mean = (f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
-  return { perMinute: mean((r) => r.perMinute), avgTime: mean((r) => r.avgTime), cooking: mean((r) => r.cooking), switching: mean((r) => r.switching), idle: mean((r) => r.idle) };
+  return { perMinute: meanBy(runs, (r) => r.perMinute), avgTime: meanBy(runs, (r) => r.avgTime), cooking: meanBy(runs, (r) => r.cooking), switching: meanBy(runs, (r) => r.switching), idle: meanBy(runs, (r) => r.idle) };
+}
+
+// ---------- experiments: computed once at build time from the same model (the original ran them in the browser) ----------
+const four = (active, waitShare) => Array.from({ length: 4 }, () => ({ active, waitShare }));
+export const waitingRun = () => ({ a: runBatch({ dishes: four(3, 0.7), policy: "seq", switchCost: 0.3 }), b: runBatch({ dishes: four(3, 0.7), policy: "wait", switchCost: 0.3 }) });
+export const busyRun = () => ({ a: runBatch({ dishes: four(3, 0), policy: "seq", switchCost: 0.3 }), b: runBatch({ dishes: four(3, 0), policy: "rr", slice: 1, switchCost: 0.3 }) });
+export const sliceRun = () => ({ a: runBatch({ dishes: four(3, 0), policy: "rr", slice: 3, switchCost: 0.3 }), b: runBatch({ dishes: four(3, 0), policy: "rr", slice: 0.3, switchCost: 0.3 }) });
+export function fairRun() {
+  const mix = [{ active: 12, waitShare: 0 }, ...Array.from({ length: 4 }, () => ({ active: 1, waitShare: 0 }))];
+  return { a: runBatch({ dishes: mix, policy: "wait", switchCost: 0.3 }), b: runBatch({ dishes: mix, policy: "rr", slice: 1, switchCost: 0.3 }) };
+}
+export function pansRun() {
+  const base = { waitShare: 0.7, active: 3, policy: "wait", switchCost: 0.3 };
+  return { r2: runSteady({ ...base, pans: 2 }), r4: runSteady({ ...base, pans: 4 }), r8: runSteady({ ...base, pans: 8 }) };
 }
