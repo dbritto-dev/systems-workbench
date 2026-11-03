@@ -13,8 +13,8 @@ const ui = useUi(locale);
 const counts = Object.fromEntries(AREAS.map((a) => [a, lessons.filter((l) => l.area === a).length]));
 const areas = AREAS.filter((a) => counts[a] > 0);
 ---
-<div class="tools">
-  <div class="search" role="search">
+<div class="tools" role="search">
+  <div class="search">
     <PowerSearch config={lessonFilters(locale, areas, lessons.length)} strings={lessonFilterStrings(locale)} label={ui("search.label")} placeholder={ui("search.placeholder")} shortcut="/" />
   </div>
   <div class="filters-wrap">

@@ -4,9 +4,18 @@
 //   import * as k from "../../../workbench/kit.mjs";   // from src/lessons/<slug>/: iso-kit plus the helpers below
 //   import * as G from "../../workbench/vendor-anatomy/kit/lathe.mjs";   // round parts, when needed
 //   import { tubePieces, tubeSvg } from "../../workbench/vendor-anatomy/kit/tube.mjs";
-import { iso, pathOf } from "./vendor-anatomy/kit/iso-kit.mjs";
+import { iso, pathOf, ISO_CSS as KIT_CSS } from "./vendor-anatomy/kit/iso-kit.mjs";
 
 export * from "./vendor-anatomy/kit/iso-kit.mjs";
+
+// The kit's palette with one change: the muted grey (captions, eyebrows, labels, plate corners, legends) reaches
+// WCAG AA contrast for small text, 4.5:1, on every surface it sits on: light #8c8c90 → #656569 (5.2:1 on the page,
+// 5.6:1 on cards), dark #6e6e6e → #8d8d91 (5.6:1 on cards). Only interface text uses it; the drawings don't.
+const MUTED = [["--anatomy-muted:#8c8c90", "--anatomy-muted:#656569"], ["--anatomy-muted:#6e6e6e", "--anatomy-muted:#8d8d91"]];
+export const ISO_CSS = MUTED.reduce((css, [from, to]) => {
+  if (!css.includes(from)) throw new Error(`kit.mjs: the kit's palette changed, ${from} not found`);
+  return css.replace(from, to);
+}, KIT_CSS);
 // Round parts: a shaded sphere (heads, bulbs, knobs) from the kit's lathe module.
 export { sphereOf } from "./vendor-anatomy/kit/lathe.mjs";
 

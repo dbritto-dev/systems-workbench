@@ -25,8 +25,9 @@ const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json
     <meta name="claude:viewport-fit-sides" content="cover" />
   </Fragment>
   <div class="wrap">
+    <header class="masthead">
     <div class="top"><span>{ui("site.tagline")}</span><Switches locale={locale} path="" /></div>
-    <header class="head">
+    <div class="head">
       <div>
         <h1>{ui("site.name")}</h1>
         <p class="intro">{ui("site.intro")}</p>
@@ -36,6 +37,7 @@ const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json
         <div><b>{experiments}</b><span>{ui("stats.experiments")}</span></div>
         <div><b>{questions}</b><span>{ui("stats.questions")}</span></div>
       </div>
+    </div>
     </header>
     <lesson-collection index={INDEX} locale={locale}>
     <Toolbar locale={locale} lessons={lessons} />

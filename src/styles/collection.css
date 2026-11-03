@@ -17,7 +17,7 @@ body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body
 .seg button:hover,.btn:hover,.filters button:hover{border-color:var(--anatomy-hi);color:var(--ink);position:relative;z-index:2}
 .seg button[aria-pressed="true"]:hover,.filters button[aria-pressed="true"]:hover,.btn.primary:hover{color:var(--plate)}
 button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-header.head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 40px;align-items:end;margin:40px 0 28px;padding-bottom:28px;border-bottom:1px solid var(--rule)}
+.head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 40px;align-items:end;margin:40px 0 28px;padding-bottom:28px;border-bottom:1px solid var(--rule)}
 h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
 .intro{max-width:60ch;margin:16px 0 0;font-size:16px}
 .stats{display:grid;grid-template-columns:repeat(3,auto);gap:0;border:1px solid var(--rule);background:var(--plate)}
@@ -88,7 +88,7 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
 .dlg-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:auto}
 .close{position:absolute;top:8px;right:8px}
 @media (max-width:760px){
-  header.head{grid-template-columns:1fr}
+  .head{grid-template-columns:1fr}
   .grid{grid-template-columns:1fr}
   .tools{grid-template-columns:1fr}
   .search .ps-kbd{display:none}
