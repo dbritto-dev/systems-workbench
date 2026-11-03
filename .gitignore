@@ -5,5 +5,3 @@ audit.txt
 _site/
 dist/
 .astro/
-src/generated/
-public/workbench/parts-gallery.html

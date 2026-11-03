@@ -1,13 +1,12 @@
 // The one place lessons get the Anatomy kit from (vendored, MIT: vendor-anatomy/LICENSE),
 // plus faceRectY/faceRectX (closed rectangles on vertical faces), which the kit doesn't have yet.
 //
-//   import * as k from "../../workbench/kit.mjs";      // everything in iso-kit, plus the helpers below
+//   import * as k from "../../../workbench/kit.mjs";   // from src/lessons/<slug>/: iso-kit plus the helpers below
 //   import * as G from "../../workbench/vendor-anatomy/kit/lathe.mjs";   // round parts, when needed
 //   import { tubePieces, tubeSvg } from "../../workbench/vendor-anatomy/kit/tube.mjs";
 import { iso, pathOf } from "./vendor-anatomy/kit/iso-kit.mjs";
 
 export * from "./vendor-anatomy/kit/iso-kit.mjs";
-export { kitScript } from "./vendor-anatomy/scripts/inline-kit.mjs";
 // Round parts: a shaded sphere (heads, bulbs, knobs) from the kit's lathe module.
 export { sphereOf } from "./vendor-anatomy/kit/lathe.mjs";
 

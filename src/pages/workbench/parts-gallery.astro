@@ -1,9 +1,8 @@
-// Builds parts-gallery.html: every shared part from parts.mjs, in light and dark, at two sizes,
-// with the live helpers (WB.counter, WB.dial, WB.meter, WB.pose) running.  node parts-gallery.mjs
-import { writeFileSync } from "node:fs";
-import * as k from "./kit.mjs";
-import * as p from "./parts.mjs";
-import { clientScript, esc } from "./page.mjs";
+---
+// Every shared part from workbench/parts.mjs, in light and dark, at two sizes, with the live helpers
+// (counter, dial, meter, pose) running. A reference for building figures.
+import * as k from "../../../workbench/kit.mjs";
+import * as p from "../../../workbench/parts.mjs";
 
 const W = 420, H = 260;
 const S = (paths, style) => k.solidSvg(paths, style);
@@ -114,11 +113,8 @@ const SCENES = [
   },
 ];
 
-const plate = (s, theme) => `<div class="iso shot" ${theme ? `data-theme="${theme}"` : ""} data-scene="${s.id}"><span class="corner">${theme === "light" ? "Light" : "Dark"}</span>${s.svg}</div>`;
 const projections = Object.fromEntries(SCENES.map((s) => [s.id, s.P]));
-
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Workbench Parts</title>
-<style>${k.ISO_CSS}${p.PARTS_CSS}${p.LIT_FILL_CSS}
+const css = `${k.ISO_CSS}${p.PARTS_CSS}${p.LIT_FILL_CSS}
 *{box-sizing:border-box}
 body{margin:0;background:#e9e9e6;color:#222;font:14px/1.55 ui-sans-serif,system-ui,sans-serif}
 main{width:min(1100px,100% - 32px);margin:40px auto 80px}
@@ -135,28 +131,59 @@ h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;margin:0 0 4px}
 .small{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .small .shot{padding:14px 4px 4px}
 @media (max-width:700px){.pair{grid-template-columns:1fr}.small{grid-template-columns:repeat(2,1fr)}}
-</style></head><body><main>
-<h1>Workbench parts</h1>
-<p class="intro">The shared parts in <code>workbench/parts.mjs</code>, drawn with the Anatomy kit. Each part takes the projection first and world units, and returns SVG. The live ones (counters, dials, meters, variants) are updated here by the browser helpers in <code>client.js</code>. Bottom row: every scene again at a quarter of the width, to check the parts still read small.</p>
-${SCENES.map((s) => `<section><h2>${esc(s.name)}</h2><p class="api">${esc(s.api)}</p>${s.live ? `<p class="live">live: ${esc(s.live)}</p>` : ""}<p class="note">${esc(s.note)}</p><div class="pair">${plate(s, "light")}${plate(s, "")}</div></section>`).join("")}
-<section><h2>Small</h2><div class="small">${SCENES.flatMap((s) => [plate(s, "light"), plate(s, "")]).join("")}</div></section>
-</main>
-<script type="module">${clientScript().replace(/<\/(script)/gi, "<\\/$1")}
-const P = ${JSON.stringify(projections)};
-const each = (id, fn) => document.querySelectorAll('[data-scene="' + id + '"] svg').forEach((svg) => fn(svg, P[id]));
-const parts = [];
-each("counter", (svg, Pr) => parts.push({ big: WB.counter(svg, "big", Pr), side: WB.counter(svg, "side", Pr) }));
-const dials = []; each("dials", (svg, Pr) => dials.push({ sw: WB.dial(svg, "stopwatch", Pr), sm: WB.dial(svg, "small", Pr), load: WB.meter(svg, "load", Pr) }));
-const waiters = []; each("variants", (svg) => waiters.push(svg));
-let t = 0, n = 2047, pose = 0, still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-function frame() {
-  t += 1 / 60;
-  if (Math.floor(t * 4) !== Math.floor((t - 1 / 60) * 4)) { n++; parts.forEach((c) => { c.big.set(n); c.side.set(n % 1000); }); }
-  dials.forEach((d) => { d.sw.set((t / 6) % 1); d.sm.set(0.5 + 0.5 * Math.sin(t)); d.load.set(0.55 + 0.4 * Math.sin(t * 0.8)); });
-  const pz = Math.floor(t / 1.5) % 3; if (pz !== pose) { pose = pz; waiters.forEach((svg) => WB.pose(svg, "waiter", ["idle", "tray", "clipboard"][pz])); }
-  requestAnimationFrame(frame);
-}
-if (!still) requestAnimationFrame(frame);
-</script></body></html>`;
-writeFileSync(new URL("./parts-gallery.html", import.meta.url), html);
-console.log("wrote parts-gallery.html", Math.round(html.length / 1024), "KB");
+`;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workbench Parts</title>
+    <Fragment set:html={`<style>${css}</style>`} />
+  </head>
+  <body>
+    <main data-projections={JSON.stringify(projections)}>
+      <h1>Workbench parts</h1>
+      <p class="intro">The shared parts in <code>workbench/parts.mjs</code>, drawn with the Anatomy kit. Each part takes the projection first and world units, and returns SVG. The live ones (counters, dials, meters, variants) are updated here by the browser helpers in <code>src/runtime/wb.ts</code>. Bottom row: every scene again at a quarter of the width, to check the parts still read small.</p>
+      {SCENES.map((s) => (
+        <section>
+          <h2>{s.name}</h2>
+          <p class="api">{s.api}</p>
+          {s.live && <p class="live">live: {s.live}</p>}
+          <p class="note">{s.note}</p>
+          <div class="pair">
+            <div class="iso shot" data-theme="light" data-scene={s.id}><span class="corner">Light</span><Fragment set:html={s.svg} /></div>
+            <div class="iso shot" data-scene={s.id}><span class="corner">Dark</span><Fragment set:html={s.svg} /></div>
+          </div>
+        </section>
+      ))}
+      <section>
+        <h2>Small</h2>
+        <div class="small">
+          {SCENES.flatMap((s) => [
+            <div class="iso shot" data-theme="light" data-scene={s.id}><span class="corner">Light</span><Fragment set:html={s.svg} /></div>,
+            <div class="iso shot" data-scene={s.id}><span class="corner">Dark</span><Fragment set:html={s.svg} /></div>,
+          ])}
+        </div>
+      </section>
+    </main>
+    <script>
+      import * as WB from "../../runtime/wb";
+      const P = JSON.parse(document.querySelector("main")!.dataset.projections!);
+      const each = (id, fn) => document.querySelectorAll('[data-scene="' + id + '"] svg').forEach((svg) => fn(svg, P[id]));
+      const parts = [];
+      each("counter", (svg, Pr) => parts.push({ big: WB.counter(svg, "big", Pr), side: WB.counter(svg, "side", Pr) }));
+      const dials = []; each("dials", (svg, Pr) => dials.push({ sw: WB.dial(svg, "stopwatch", Pr), sm: WB.dial(svg, "small", Pr), load: WB.meter(svg, "load", Pr) }));
+      const waiters = []; each("variants", (svg) => waiters.push(svg));
+      let t = 0, n = 2047, pose = 0, still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      function frame() {
+        t += 1 / 60;
+        if (Math.floor(t * 4) !== Math.floor((t - 1 / 60) * 4)) { n++; parts.forEach((c) => { c.big.set(n); c.side.set(n % 1000); }); }
+        dials.forEach((d) => { d.sw.set((t / 6) % 1); d.sm.set(0.5 + 0.5 * Math.sin(t)); d.load.set(0.55 + 0.4 * Math.sin(t * 0.8)); });
+        const pz = Math.floor(t / 1.5) % 3; if (pz !== pose) { pose = pz; waiters.forEach((svg) => WB.pose(svg, "waiter", ["idle", "tray", "clipboard"][pz])); }
+        requestAnimationFrame(frame);
+      }
+      if (!still) requestAnimationFrame(frame);
+    </script>
+  </body>
+</html>

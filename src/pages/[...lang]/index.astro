@@ -8,7 +8,7 @@ import PreviewDialog from "../../components/collection/PreviewDialog.astro";
 import { langParams, type Locale } from "../../i18n";
 import { useUi } from "../../i18n/ui";
 import { allLessons } from "../../lib/lessons";
-import "../../generated/tokens.css";
+import "virtual:tokens.css";
 import "../../styles/collection.css";
 
 export const getStaticPaths = () => langParams().map((params) => ({ params }));

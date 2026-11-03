@@ -4,38 +4,22 @@ Shared pieces for the systems lessons, on top of the Anatomy isometric kit (vend
 
 ```
 workbench/
-  kit.mjs        Anatomy iso-kit re-exported + kitScript + sphereOf + faceRectY, faceRectX
+  kit.mjs        Anatomy iso-kit re-exported + sphereOf + faceRectY, faceRectX
   parts.mjs      basePlate, rulerStrip, labelPlate, and the shared machine parts (below)
-  digits.mjs     the stroke font for counter wheels (used by parts.mjs and, inlined, by client.js)
-  parts-gallery.mjs → parts-gallery.html   every part in light and dark, live
-  page.mjs       the page template: CSS, theme switch, seg/speedSeg/actions/panel, figurePlate,
-                 experiments + questions markup, renderPage/writePage, inlineModule
-  client.js      browser helpers under one global, WB: loop, pressSeg, onSegments, experiments,
-                 counter, dial, meter, pose, digitsOf, faceRectY, faceRectX, still
+  digits.mjs     the stroke font for counter wheels (used by parts.mjs and by src/runtime/wb.ts)
+  styles.mjs     the lesson page stylesheet (served to the site as virtual:workbench.css)
+  i18n.mjs       t(en, es) for words painted on the machine
+  collection/    lessons.json (the registry), card images, the card-image script
   vendor-anatomy/  the kit (lathe.mjs and tube.mjs import from here too)
+
+The parts gallery (every part in light and dark, live) is an Astro page: src/pages/workbench/parts-gallery.astro.
 ```
 
 ## A lesson
 
-```
-<lesson>/
-  sim.js       the model, shared by the figure and the experiments (seeded)
-  figure.mjs   geometry; import * as k from "<rel>/workbench/kit.mjs"; parts from parts.mjs
-  build.mjs    content + live script; writePage({...})
-```
-
-`build.mjs` supplies: `title`, `eyebrow`, `lede`, `machine: { intro, figure, panel }`, `predict: { intro, experiments }`,
-`explain: { questions }`, `css` (figure-specific only) and `script` (live code). Everything else comes from the template.
-
-Experiments are `{ id, title, change, question, options, answer, why, watch? }`. In the live script:
-
-```js
-const clock = WB.loop({ stage, step: (dt) => { advance(dt * speed); paint(); }, onPause: (on) => { … } });
-WB.onSegments((name, value) => { … WB.pressSeg(name, value); });
-WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => { … } });
-```
-
-`RUNS[id]()` returns `{ verdict, bars: [[label, share 0..1, text, isAfter?], …] }`.
+Lessons live in `src/lessons/<slug>/`; see `src/lessons/README.md` for the four files and the shared helpers. A
+figure (`figure.ts`) builds on this layer: `import * as k from "../../../workbench/kit.mjs"` and parts from
+`parts.mjs`.
 
 ## Parts
 
@@ -76,9 +60,8 @@ on small tokens. `litFill(svg)` marks lit solids to fill with the lit colour (bl
 
 ## Checking a change
 
-`compare.js` (scratchpad) diffs a rebuilt page against `workbench-baseline/`: figure SVG, full-page screenshots
-in light and dark (pixel count), page text, experiment results, console errors, and that the theme switch,
-×0.5 speed and animation still work.
+Build and serve the site, then `node tools/site-check.cjs` (every lesson in both languages) and look at
+`/systems-workbench/workbench/parts-gallery/` for the parts themselves.
 
 ## The collection page
 

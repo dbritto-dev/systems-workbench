@@ -10,19 +10,18 @@ import Questions from "../components/lesson/Questions.astro";
 import FigurePlate from "../components/lesson/FigurePlate.astro";
 import Panel from "../components/lesson/Panel.astro";
 import { pick, type Locale } from "../i18n";
-import { localize } from "../i18n/localize";
 import { useUi } from "../i18n/ui";
 import { plain, type Lesson } from "../lib/lessons";
-import "../generated/workbench.css";
+import "virtual:workbench.css";
 import "../styles/lesson.css";
 
 interface Props { lesson: Lesson; locale: Locale }
 const { lesson, locale } = Astro.props;
 const p = lesson.page;
+const def = lesson.def;
 const ui = useUi(locale);
 const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const path = `lessons/${lesson.slug}/`;
-const native = p.native;
 ---
 <Base locale={locale} title={plain(p.title, locale)} description={plain(p.lede, locale).slice(0, 300)} path={path} bodyClass={p.litFill ? "iso lit-fill" : "iso"}>
   <Fragment slot="head">{p.css && <Fragment set:html={`<style>${p.css}</style>`} />}</Fragment>
@@ -44,17 +43,8 @@ const native = p.native;
 
     <section id="machine">
       <div class="section-head"><span class="eyebrow">01</span><h2>{ui("lesson.machine")}</h2><p set:html={L(p.machine.intro)} /></div>
-      {native ? (
-        <>
-          <FigurePlate plate={native.machine.plate} svg={native.machine.svg} locale={locale} />
-          <Panel stats={native.machine.stats} controls={native.machine.controls} note={native.machine.note} locale={locale} />
-        </>
-      ) : (
-        <>
-          <Fragment set:html={localize(p.machine.figure, locale)} />
-          <Fragment set:html={localize(p.machine.panel, locale)} />
-        </>
-      )}
+          <FigurePlate plate={def.machine.plate} svg={def.machine.svg} locale={locale} />
+          <Panel stats={def.machine.stats} controls={def.machine.controls} note={def.machine.note} locale={locale} />
     </section>
 
     <section id="predict">
@@ -70,7 +60,7 @@ const native = p.native;
     <footer set:html={p.footer ? L(p.footer) : ui("lesson.footer")} />
   </main>
   <div hidden data-live={lesson.slug}></div>
-  {native && <script type="application/json" data-lesson-data set:html={JSON.stringify(native.data).replace(/</g, "\\u003c")} />}
+  <script type="application/json" data-lesson-data set:html={JSON.stringify(def.data).replace(/</g, "\\u003c")} />
   <script>
     import { loadLive } from "../scripts/live-loader";
     loadLive();
