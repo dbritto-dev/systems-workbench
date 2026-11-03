@@ -47,7 +47,7 @@ const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json
     </main>
     </lesson-collection>
     <footer>
-      <Fragment set:html={ui("footer.collection")} /> · <a href={`${import.meta.env.BASE_URL}workbench/parts-gallery.html`}>{ui("footer.gallery")}</a> · <a href={REPO}>{ui("footer.source")}</a>
+      <Fragment set:html={ui("footer.collection")} /> · <a href={`${import.meta.env.BASE_URL}workbench/parts-gallery/`}>{ui("footer.gallery")}</a> · <a href={REPO}>{ui("footer.source")}</a>
     </footer>
   </div>
   <PreviewDialog locale={locale} index={INDEX} />

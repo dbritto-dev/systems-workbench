@@ -1,5 +1,5 @@
 // One collection, "lessons": the registry (workbench/collection/lessons.json): number, slug, area, the card blurbs,
-// and `html`, the lesson's old standalone URL (kept so it redirects). Each lesson's page is defined in
+// and, for lessons that started as standalone pages, `html`, the old URL (kept so it redirects). Each lesson's page is defined in
 // src/lessons/<slug>/page.ts; lib/lessons.ts joins the two.
 import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
@@ -13,7 +13,7 @@ const lessons = defineCollection({
     n: z.number().int().positive(),
     slug: z.string(),
     area: z.enum(AREAS),
-    html: z.string(),
+    html: z.string().optional(),
     blurb: z.string().optional(),
     blurb_es: z.string(),
   }),

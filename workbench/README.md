@@ -23,8 +23,8 @@ figure (`figure.ts`) builds on this layer: `import * as k from "../../../workben
 
 ## Parts
 
-Before drawing something a lesson needs, check `parts.mjs` (and `node parts-gallery.mjs`, then open
-`parts-gallery.html`). If a part is missing and another lesson could use it, add it here rather than in the lesson,
+Before drawing something a lesson needs, check `parts.mjs` and the parts gallery (build and serve the site, then
+open `/systems-workbench/workbench/parts-gallery/`). If a part is missing and another lesson could use it, add it here rather than in the lesson,
 with an example in the gallery. Every part takes the projection first and world units, and returns SVG;
 the caller keeps the painter's order. Faces: `"y"` is the face of constant y (text reads along +x), `"x"` the face
 of constant x (reads along -y), `"top"` lies on a top face.
@@ -67,6 +67,6 @@ Build and serve the site, then `node tools/site-check.cjs` (every lesson in both
 
 The collection is an Astro page (`src/pages/[...lang]/index.astro`); it reads `collection/lessons.json`:
 
-1. Add the lesson to `collection/lessons.json` (number, slug, area, `blurb` and `blurb_es`: the card subtitles, at most about 120 characters so they fit three lines on a phone).
-2. Shoot the running machine into `collection/previews/<slug>-light.webp` and `-dark.webp`: build and serve the site (`pnpm build && pnpm preview`), then `pnpm previews <slug>`. `normalize.cjs` fits every shot onto the same 1200×800 canvas, trimmed and centred, so all cards share one 3:2 image.
+1. Add the lesson to `collection/lessons.json` (number, slug, area, `blurb` and `blurb_es`: the card subtitles, at most about 120 characters so they fit three lines on a phone). New lessons have no `html` (that field is the old standalone URL some lessons redirect from).
+2. Shoot the running machine into `collection/previews/<slug>-light.webp` and `-dark.webp`: build and serve the site (`pnpm build && pnpm preview`), then `CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm previews <slug>` (`SITE=` for another address). `normalize.cjs` fits every shot onto the same 1200×800 canvas, trimmed and centred, so all cards share one 3:2 image.
 3. `pnpm build`: the card, search and both languages pick it up.

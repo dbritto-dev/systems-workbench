@@ -33,7 +33,7 @@ export default defineConfig({
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
   // Old standalone lesson URLs (lessons/cache/cache-workbench.html) forward to the lesson's page.
   redirects: {
-    ...Object.fromEntries(lessons.map((l) => [`/${l.html}`, `${base}/lessons/${l.slug}/`])),
+    ...Object.fromEntries(lessons.filter((l) => l.html).map((l) => [`/${l.html}`, `${base}/lessons/${l.slug}/`])),
     "/workbench/parts-gallery.html": `${base}/workbench/parts-gallery/`,
   },
   integrations: [sitemap({ i18n: { defaultLocale: "en", locales: { en: "en", es: "es" } } })],
