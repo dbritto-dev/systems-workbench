@@ -7,7 +7,8 @@
 //   root.figure                  <wb-figure>: .stage, .svg, .say(text)
 //   root.stat(key, value)        a stat in the strip under the figure
 //   root.seg(name)               a <wb-seg>: .value to read or press an option
-//   root.press(name, value)      press an option of the segment(s) called name, without a "change" event
+//   root.press(name, value)      press an option of the segment(s) called name, without a "change" event (for a
+//                                multi-select segment, a list or space-separated values: the options to have on)
 //   root.button(name)            an action button <button data-act="name">, e.g. to relabel it
 //   root.on(type, fn)            "change" (name, value, detail) from a segment, "action" (name, detail) from a
 //                                button or Space on the figure, "watch" (watch, id) from an experiment card,
@@ -48,7 +49,7 @@ export class WbLesson extends HTMLElement {
   $$<E extends Element = HTMLElement>(sel: string) { return [...this.querySelectorAll<E>(sel)]; }
   stat(key: string, value: unknown) { this.stats?.set(key, value); }
   seg(name: string) { return this.querySelector<WbSeg>(`wb-seg[name="${name}"]`); }
-  press(name: string, value: string | number | boolean) { this.querySelectorAll<WbSeg>(`wb-seg[name="${name}"]`).forEach((s) => { s.value = String(value); }); }
+  press(name: string, value: string | number | boolean | string[]) { this.querySelectorAll<WbSeg>(`wb-seg[name="${name}"]`).forEach((s) => { s.value = Array.isArray(value) ? value : String(value); }); }
   button(name: string) { return this.querySelector<WbActions>("wb-actions")?.button(name) ?? this.querySelector<HTMLButtonElement>(`button[data-act="${name}"]`); }
 
   on<K extends keyof Handlers>(type: K, fn: Handlers[K]) {

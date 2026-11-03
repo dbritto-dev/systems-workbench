@@ -3,15 +3,21 @@
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY } from "./figure";
-import { choose, levels, scanCost, insertCost, insertReads } from "./sim";
+import { int } from "../../lib/format";
+import { choose, plans, levels, scanCost, insertCost, insertReads } from "./sim";
 
-// What each card shows after a run, worked out from the same cost model as the machine (sim.ts). "selective" is
-// still answered by live.ts: its verdict formats a count with toLocaleString() and no locale, i.e. in the reader's
-// locale, which the build can't reproduce.
+// What each card shows after a run, worked out from the same cost model as the machine (sim.ts). Counts use int()
+// ("40,000"), like the rest of the site, in both languages.
 const fmtMs = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + " s" : ms >= 10 ? ms.toFixed(0) + " ms" : ms.toFixed(1) + " ms");
 const planNameT = (p) => (p.kind === "scan" ? t("Full scan", "Escaneo completo") : p.kind === "covering" ? t("Index only", "Solo índice") : t("Index + lookups", "Índice + búsquedas"));
 const share = (v, top) => Math.max(0.01, Math.min(1, v / top));
 const RUNS = {
+  selective: () => {
+    const all = plans("loan", 100000, ["loan"]), scan = all.find((p) => p.kind === "scan"), index = all.find((p) => p.kind !== "scan");
+    return { verdict: t("The planner picks the scan: " + fmtMs(scan.cost) + " against " + fmtMs(index.cost) + " through the catalogue (" + int(index.shelfTrips) + " shelf trips).",
+        "El planificador elige el escaneo: " + fmtMs(scan.cost) + " contra " + fmtMs(index.cost) + " con el catálogo (" + int(index.shelfTrips) + " viajes a estantes)."),
+      bars: [[t("Full scan (chosen)", "Escaneo completo (elegido)"), share(scan.cost, index.cost), fmtMs(scan.cost), true], [t("Via the catalogue", "Con el catálogo"), 1, fmtMs(index.cost)]] };
+  },
   grow: () => {
     const s1 = scanCost(10000), s2 = scanCost(100000), i1 = choose("isbn", 10000, ["isbn"]).cost, i2 = choose("isbn", 100000, ["isbn"]).cost;
     return { verdict: t("Scan " + fmtMs(s1) + " → " + fmtMs(s2) + " (×" + (s2 / s1).toFixed(0) + "). Catalogue " + fmtMs(i1) + " → " + fmtMs(i2) + ": " + levels(10000) + " → " + levels(100000) + " drawer levels.",

@@ -8,7 +8,8 @@ import { L, T } from "../../runtime/wb";
 import { playPause } from "../../runtime/dom";
 import { lerp, easeInOutQuad as ease } from "../../lib/tween";
 import { rng } from "../../lib/random";
-import { INDEXES, QUERIES, RAND, choose, plans, levels, insertCost, insertReads, needlePath } from "./sim";
+import { int } from "../../lib/format";
+import { INDEXES, QUERIES, RAND, choose, levels, insertCost, insertReads, needlePath } from "./sim";
 
 export default function mount({ P, G }, root) {
   const needleAt = (turn) => needlePath(G.DIAL, P, turn);
@@ -138,8 +139,8 @@ export default function mount({ P, G }, root) {
         const n = xs.length, at = Math.min(n - 1, Math.floor(t * n)), f = t * n - at;
         setTrolley([lerp(at === 0 ? x0 : xs[at - 1], xs[at], ease(Math.min(1, f / 0.3))), G.SHELF_LANE_Y]);
         G.CASES.forEach((_, c) => setTag(c, c === at && t < 1));
-        setCount(COUNT.books, Math.round(cfg.rows * t).toLocaleString());
-      }, () => say(T(ql.en + " · checking every book on every shelf · " + plan.reads.toLocaleString() + " pages", ql.es + " · revisando cada libro de cada estante · " + plan.reads.toLocaleString() + " páginas")), () => { clearTags(); carrying = true; flyAt(basket()); });
+        setCount(COUNT.books, int(cfg.rows * t));
+      }, () => say(T(ql.en + " · checking every book on every shelf · " + int(plan.reads) + " pages", ql.es + " · revisando cada libro de cada estante · " + int(plan.reads) + " páginas")), () => { clearTags(); carrying = true; flyAt(basket()); });
     } else {
       const i = G.CABS.findIndex((c) => c.id === plan.index), cab = G.CABS[i];
       const covering = plan.kind === "covering";
@@ -170,7 +171,7 @@ export default function mount({ P, G }, root) {
       }
     }
     travel([G.HOME[0], G.HOME[1]]);
-    call(() => { lastQuery = { plan, ms: plan.cost }; carrying = false; fly.style.opacity = "0"; clearScene(); showStats(); say(T(ql.en + " · " + fmtMs(plan.cost) + " · " + plan.reads.toLocaleString() + " pages", ql.es + " · " + fmtMs(plan.cost) + " · " + plan.reads.toLocaleString() + " páginas")); });
+    call(() => { lastQuery = { plan, ms: plan.cost }; carrying = false; fly.style.opacity = "0"; clearScene(); showStats(); say(T(ql.en + " · " + fmtMs(plan.cost) + " · " + int(plan.reads) + " pages", ql.es + " · " + fmtMs(plan.cost) + " · " + int(plan.reads) + " páginas")); });
     steps.push({ dur: 0.6 });
   }
 
@@ -216,14 +217,14 @@ export default function mount({ P, G }, root) {
 
   function showLive() {
     stat("time", fmtMs(watchMs));
-    stat("reads", readsShown.toLocaleString());
+    stat("reads", int(readsShown));
   }
   function showStats() {
-    stat("rows", cfg.rows.toLocaleString());
+    stat("rows", int(cfg.rows));
     stat("cats", cfg.on.length);
     const plan = choose(cfg.query, cfg.rows, cfg.on);
     stat("plan", planName(plan));
-    if (lastQuery) { stat("time", fmtMs(lastQuery.ms)); stat("reads", lastQuery.plan.reads.toLocaleString()); }
+    if (lastQuery) { stat("time", fmtMs(lastQuery.ms)); stat("reads", int(lastQuery.plan.reads)); }
     stat("insert", cfg.writes ? fmtMs(insertCost(cfg.rows, cfg.on.length)) : "–");
   }
 
@@ -257,20 +258,7 @@ export default function mount({ P, G }, root) {
   const actions = { restart };
   root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments: "selective" is worked out here (see page.ts); the others come with the page ----------
-  const share = (v, top) => Math.max(0.01, Math.min(1, v / top));
-  const RUNS = {
-    selective: () => {
-      const all = plans("loan", 100000, ["loan"]), scan = all.find((p) => p.kind === "scan"), index = all.find((p) => p.kind !== "scan");
-      return { verdict: T("The planner picks the scan: " + fmtMs(scan.cost) + " against " + fmtMs(index.cost) + " through the catalogue (" + index.shelfTrips.toLocaleString() + " shelf trips).",
-          "El planificador elige el escaneo: " + fmtMs(scan.cost) + " contra " + fmtMs(index.cost) + " con el catálogo (" + index.shelfTrips.toLocaleString() + " viajes a estantes)."),
-        bars: [[T("Full scan (chosen)", "Escaneo completo (elegido)"), share(scan.cost, index.cost), fmtMs(scan.cost), true], [T("Via the catalogue", "Con el catálogo"), 1, fmtMs(index.cost)]] };
-    },
-  };
-  root.on("run", (id, respond) => {
-    const out = RUNS[id]?.();
-    if (out) respond({ verdict: L(out.verdict), bars: out.bars.map(([label, share, text, after]) => [L(label), share, L(text), after]) });
-  });
+  // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (w) => {
     cfg.rows = w.rows; cfg.query = w.query; cfg.on = [...(w.then || w.on)]; cfg.writes = w.writes;
     root.press("rows", cfg.rows); root.press("query", cfg.query); root.press("writes", String(cfg.writes));

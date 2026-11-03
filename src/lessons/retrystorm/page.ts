@@ -226,9 +226,6 @@ export default defineLesson({
   predict: { intro: t('Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same office, averaged over 16 two-minute runs after a rush of 16 visitors.',
     'Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen de la misma taquilla, promediados sobre 16 ejecuciones de dos minutos después de una avalancha de 16 visitantes.'), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
-  // Experiment results here come in titled groups of bars.
-  css: `
-`,
   data: {
     P,
     G: GEOMETRY,
