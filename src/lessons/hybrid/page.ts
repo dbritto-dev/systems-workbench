@@ -1,7 +1,7 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 38 · Hybrid search: a two-lane sorting plant.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { experimentResults, LATENCY } from "./sim";
 
@@ -11,6 +11,32 @@ const by = (o) => `exact IDs ${o.exact}%, paraphrases ${o.paraphrase}%, mixed ${
 const byEs = (o) => `IDs exactos ${o.exact}%, paráfrasis ${o.paraphrase}%, mixtas ${o.mixed}%`;
 const best = (key) => R.alpha.reduce((b, a) => (a[key] > b[key] ? a : b));
 const bestAlphas = (key, to = " to ") => { const top = Math.max(...R.alpha.map((a) => a[key])); const hit = R.alpha.filter((a) => a[key] === top).map((a) => a.alpha); return hit.length > 1 ? hit[0] + to + hit[hit.length - 1] : String(hit[0]); };
+
+// What each card shows after a run (the same model: 90 labelled queries on each of five generated help centres).
+const RUNS = {
+  lanes: () => { const { lexical, semantic, hybrid } = R.three;
+    const trio = (o) => o.exact + " / " + o.paraphrase + " / " + o.mixed + "%";
+    return { verdict: t("Keyword lane: " + trio(lexical) + " (exact / paraphrase / mixed). Meaning lane: " + trio(semantic) + ". Both, merged: " + trio(hybrid) + ".",
+        "Carril de palabras clave: " + trio(lexical) + " (exactas / paráfrasis / mixtas). Carril de significado: " + trio(semantic) + ". Los dos, fusionados: " + trio(hybrid) + "."),
+      bars: [[t("Keywords: exact IDs", "Palabras clave: IDs exactos"), lexical.exact / 100, lexical.exact + "%"], [t("Keywords: paraphrases", "Palabras clave: paráfrasis"), lexical.paraphrase / 100, lexical.paraphrase + "%"], [t("Meaning: exact IDs", "Significado: IDs exactos"), semantic.exact / 100, semantic.exact + "%"], [t("Meaning: paraphrases", "Significado: paráfrasis"), semantic.paraphrase / 100, semantic.paraphrase + "%"], [t("Both: exact IDs", "Ambos: IDs exactos"), hybrid.exact / 100, hybrid.exact + "%", true], [t("Both: paraphrases", "Ambos: paráfrasis"), hybrid.paraphrase / 100, hybrid.paraphrase + "%", true], [t("Both: mixed (keywords " + lexical.mixed + "%, meaning " + semantic.mixed + "%)", "Ambos: mixtas (palabras clave " + lexical.mixed + "%, significado " + semantic.mixed + "%)"), hybrid.mixed / 100, hybrid.mixed + "%", true]] }; },
+  fusion: () => { const { raw, minmax, rrf } = R.fusion;
+    return { verdict: t("Paraphrases in the top 10: raw sum " + raw.paraphrase + "%, scaled sum " + minmax.paraphrase + "%, RRF " + rrf.paraphrase + "%. Over all 90 queries: " + raw.all + "%, " + minmax.all + "%, " + rrf.all + "%. The keyword lane alone gets " + R.three.lexical.paraphrase + "% of paraphrases.",
+        "Paráfrasis en el top 10: suma cruda " + raw.paraphrase + "%, suma escalada " + minmax.paraphrase + "%, RRF " + rrf.paraphrase + "%. Sobre las 90 consultas: " + raw.all + "%, " + minmax.all + "%, " + rrf.all + "%. El carril de palabras clave solo consigue el " + R.three.lexical.paraphrase + "% de las paráfrasis."),
+      bars: [[t("Paraphrases, raw sum", "Paráfrasis, suma cruda"), raw.paraphrase / 100, raw.paraphrase + "%", true], [t("Paraphrases, scaled sum", "Paráfrasis, suma escalada"), minmax.paraphrase / 100, minmax.paraphrase + "%"], [t("Paraphrases, RRF", "Paráfrasis, RRF"), rrf.paraphrase / 100, rrf.paraphrase + "%"], [t("All queries, raw sum", "Todas las consultas, suma cruda"), raw.all / 100, raw.all + "%", true], [t("All queries, scaled sum", "Todas las consultas, suma escalada"), minmax.all / 100, minmax.all + "%"], [t("All queries, RRF", "Todas las consultas, RRF"), rrf.all / 100, rrf.all + "%"]] }; },
+  alpha: () => { const A = R.alpha; const top = (k) => A.reduce((b, a) => (a[k] > b[k] ? a : b));
+    const span = (k, to = " to ") => { const m = top(k)[k]; const h = A.filter((a) => a[k] === m).map((a) => a.alpha); return h.length > 1 ? h[0] + to + h[h.length - 1] : String(h[0]); };
+    return { verdict: t("Best α for exact IDs " + span("exact") + ", for paraphrases " + span("paraphrase") + ", for mixed " + span("mixed") + "; over all 90 queries α " + span("all") + " (" + top("all").all + "%). α 0 and α 1 are just the two lanes alone.",
+        "Mejor α para IDs exactos " + span("exact", " a ") + ", para paráfrasis " + span("paraphrase", " a ") + ", para mixtas " + span("mixed", " a ") + "; sobre las 90 consultas, α " + span("all", " a ") + " (" + top("all").all + "%). α 0 y α 1 son solo los dos carriles por separado."),
+      bars: A.map((a) => [t("α " + a.alpha + ": exact " + a.exact + " · para " + a.paraphrase + " · mixed " + a.mixed, "α " + a.alpha + ": exactas " + a.exact + " · paráf. " + a.paraphrase + " · mixtas " + a.mixed), a.all / 100, a.all + "%", a.alpha === top("all").alpha]) }; },
+  depth: () => { const D = R.depth;
+    return { verdict: t(D.map((d) => "Depth " + d.depth + ": " + d.pool + "% reach the merge, " + d.all + "% in the top 10, " + d.ms + " ms").join(". ") + ".",
+        D.map((d) => "Profundidad " + d.depth + ": el " + d.pool + "% llega a la fusión, el " + d.all + "% al top 10, " + d.ms + " ms").join(". ") + "."),
+      bars: D.flatMap((d) => [[t("Depth " + d.depth + ": in the top 10", "Profundidad " + d.depth + ": en el top 10"), d.all / 100, d.all + "%", d.depth !== 10], [t("Depth " + d.depth + ": time (of 300 ms)", "Profundidad " + d.depth + ": tiempo (de 300 ms)"), Math.min(1, d.ms / 300), d.ms + " ms"]]) }; },
+  rerank: () => { const { off, on } = R.rerank;
+    return { verdict: t("In the top 5 without reranking: " + off.all + "% (" + off.exact + " / " + off.paraphrase + " / " + off.mixed + "), " + off.ms + " ms. With the reranker over the top 100: " + on.all + "% (" + on.exact + " / " + on.paraphrase + " / " + on.mixed + "), " + on.ms + " ms.",
+        "En el top 5 sin reranking: " + off.all + "% (" + off.exact + " / " + off.paraphrase + " / " + off.mixed + "), " + off.ms + " ms. Con el reranker sobre los primeros 100: " + on.all + "% (" + on.exact + " / " + on.paraphrase + " / " + on.mixed + "), " + on.ms + " ms."),
+      bars: [[t("Top 5, no rerank", "Top 5, sin reranking"), off.all / 100, off.all + "%"], [t("Top 5, reranked", "Top 5, con reranking"), on.all / 100, on.all + "%", true], [t("Time, no rerank (of 300 ms)", "Tiempo, sin reranking (de 300 ms)"), off.ms / 300, off.ms + " ms"], [t("Time, reranked (of 300 ms)", "Tiempo, con reranking (de 300 ms)"), on.ms / 300, on.ms + " ms", true]] }; },
+};
 
 const EXPERIMENTS = [
   {
@@ -116,7 +142,7 @@ export default defineLesson({
     ],
     note: t(`A help centre of 240 articles (16 products × 15 topics) and 90 labelled queries. Times are a model: BM25 ${LATENCY.lexical} ms and the vector search ${LATENCY.semantic} ms, run side by side, ${LATENCY.fuse} ms to merge, ${LATENCY.perRerank} ms per candidate the reranker reads. α only applies to the weighted sums.`, `Un centro de ayuda de 240 artículos (16 productos × 15 temas) y 90 consultas etiquetadas. Los tiempos son un modelo: BM25 ${LATENCY.lexical} ms y la búsqueda vectorial ${LATENCY.semantic} ms, en paralelo, ${LATENCY.fuse} ms para fusionar, ${LATENCY.perRerank} ms por cada candidato que lee el reranker. α solo se aplica a las sumas ponderadas.`),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: 90 labelled queries on each of five generated help centres, averaged.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina: 90 consultas etiquetadas sobre cada uno de cinco centros de ayuda generados, en promedio."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: 90 labelled queries on each of five generated help centres, averaged.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina: 90 consultas etiquetadas sobre cada uno de cinco centros de ayuda generados, en promedio."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson: real BM25, a toy embedding and a modelled reranker over a made-up help centre.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección: BM25 real, un embedding de juguete y un reranker modelado sobre un centro de ayuda inventado.`),
@@ -126,7 +152,5 @@ export default defineLesson({
   data: {
     P,
     G: GEOMETRY,
-    RESULTS: R,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, title, answer, watch })),
   },
 });

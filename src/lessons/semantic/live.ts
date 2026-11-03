@@ -1,23 +1,21 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The star-map table in the browser: chunks the help centre at the chosen size, lays it out, runs each query's
-// search (an exact sweep or graph hops) step by step, and wires the controls and the experiment cards. mount() gets
-// the build-time data from page.ts (geometry, part drawings, results).
+// search (an exact sweep or graph hops) step by step, and answers the controls. mount() gets the build-time data
+// from page.ts (geometry, part drawings) and root, the <wb-lesson>.
 import { translateAlong, depthOf, segment, lineSvg, ring } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L as tr, T } from "../../runtime/wb";   // L is taken by the layers below
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { L as tr } from "../../runtime/wb";   // L is taken by the layers below
+import { playPause } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
-import { n0, pct, int } from "../../lib/format";
 import { CONCEPTS, embed, chunk, exact, makeGraph, graphSearch, layout, QUERIES } from "./sim";
 
-export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_SVG }, root) {
   const CONCEPTS_ES = ["PAGOS", "DUPLICADOS", "REEMBOLSOS", "TIEMPO", "ACCESO", "SEGURIDAD", "ENVÍOS", "ERRORES", "API", "EXPORTACIÓN", "PLANES", "FACTURAS", "CUENTA", "MÓVIL", "ALERTAS", "SOPORTE"];
   const conceptName = (i) => tr(CONCEPTS[i], CONCEPTS_ES[i]);
-  const stage = document.querySelector("[data-starmap]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const NS = "http://www.w3.org/2000/svg";
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const layer = (n) => q('[data-layer="' + n + '"]');
   const L = { links: layer("links"), labels: layer("labels"), rings: layer("rings"), pins: layer("pins"), probe: layer("probe"), strings: layer("strings") };
   const make = (html) => { const g = document.createElementNS(NS, "g"); g.innerHTML = html; return g; };
@@ -205,73 +203,37 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
       "primero " + COL.ch[best.i].id + " \u00b7 " + best.s.toFixed(2) + " \u00b7 " + n + " comparados" + (found < cfg.k ? (miss > 1 ? " \u00b7 se le escaparon " + miss + " vecinos reales" : " \u00b7 se le escapó 1 vecino real") : "")));
     if (t > run.searchEnd + HOLD) { next(); }
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
   function next() {
     const i = QUERIES.findIndex((x) => x.id === cfg.q);
-    cfg.q = QUERIES[(i + 1) % QUERIES.length].id; WB.pressSeg("q", cfg.q);
+    cfg.q = QUERIES[(i + 1) % QUERIES.length].id; root.press("q", cfg.q);
     start(false);
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = name === "k" || name === "cut" ? Number(raw) : raw;
     if (quiet) return;
     start(name === "size");
     if (loop.paused) { clock = run.t0 + run.searchEnd + 0.01; paint(); }
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("next").addEventListener("click", () => { next(); if (loop.paused) { clock = run.t0 + run.searchEnd + 0.01; paint(); } });
+  root.on("change", (name, value) => set(name, value));
+  const actions = { next: () => { next(); if (loop.paused) { clock = run.t0 + run.searchEnd + 0.01; paint(); } } };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (computed from the same model) ----------
-  const RUNS = {
-    para: () => {
-      const p = RESULTS.para;
-      const nextIds = p.hits.slice(1, 4).map((h) => h.id + " " + h.s.toFixed(2)).join(", ");
-      return { verdict: T("Rank " + p.rank + ": \u201c" + p.text + "\u201d at " + p.sim.toFixed(2) + ", with " + p.shared + " words in common. Next: " + nextIds + ", other payment sentences.",
-          "Puesto " + p.rank + ": \u201c" + p.text + "\u201d con " + p.sim.toFixed(2) + ", y " + p.shared + " palabras en común. Siguen: " + nextIds + ", otras oraciones sobre pagos."),
-        bars: p.hits.slice(0, 4).map((h, i) => [i === 0 ? T(h.id + " (duplicate charges)", h.id + " (cobros duplicados)") : h.id, h.s, h.s.toFixed(2), i === 0]) };
-    },
-    code: () => {
-      const c = RESULTS.code;
-      const above = (and) => c.hits.slice(0, 2).map((h) => "\u201c" + h.text + "\u201d " + h.s.toFixed(2)).join(and);
-      return { verdict: T("The sentence that explains ERR-4012 came " + c.rank + "th at " + c.targetSim.toFixed(2) + ". Above it: " + above(" and ") + ".",
-          "La oración que explica ERR-4012 quedó en el puesto " + c.rank + " con " + c.targetSim.toFixed(2) + ". Por encima: " + above(" y ") + "."),
-        bars: c.hits.map((h) => [h.id === "E3.1" ? T(h.id + " (the ERR-4012 sentence)", h.id + " (la oración de ERR-4012)") : h.id, h.s, h.s.toFixed(2), h.id === "E3.1"]) };
-    },
-    chunk: () => {
-      const c = RESULTS.chunk, s = c.sentence, m = c.section, d = c.doc;
-      return { verdict: T("Sentences: " + s.found + " of " + s.of + " usable (" + s.ctxLost + " found without the sentence that says what it's about), " + n0(s.words) + " words handed over. Sections: " + m.found + " of " + m.of + ", " + n0(m.words) + " words. Whole documents: " + d.found + " of " + d.of + ", but " + n0(d.words) + " words, " + pct(d.share) + " of the whole help centre, every time.",
-          "Oraciones: " + s.found + " de " + s.of + " útiles (" + s.ctxLost + " encontradas sin la oración que dice de qué tratan), " + n0(s.words) + " palabras entregadas. Secciones: " + m.found + " de " + m.of + ", " + n0(m.words) + " palabras. Documentos completos: " + d.found + " de " + d.of + ", pero " + n0(d.words) + " palabras, el " + pct(d.share) + " de todo el centro de ayuda, cada vez."),
-        bars: [[T("Usable answers, sentence", "Respuestas útiles, oración"), s.found / s.of, s.found + "/" + s.of], [T("Usable answers, section", "Respuestas útiles, sección"), m.found / m.of, m.found + "/" + m.of, true], [T("Usable answers, whole doc", "Respuestas útiles, documento"), d.found / d.of, d.found + "/" + d.of],
-          [T("Words handed over, sentence", "Palabras entregadas, oración"), s.words / 160, n0(s.words)], [T("Words handed over, section", "Palabras entregadas, sección"), m.words / 160, n0(m.words), true], [T("Words handed over, whole doc", "Palabras entregadas, documento"), d.words / 160, n0(d.words)]] };
-    },
-    ann: () => {
-      const a = RESULTS.ann, N = a.N;
-      return { verdict: T("Every chunk: " + int(N) + " comparisons, all 10 found. Graph, beam 10: " + n0(a.ef10.compared) + " comparisons, " + pct(a.ef10.recall) + " of the true 10. Beam 40: " + n0(a.ef40.compared) + ", " + pct(a.ef40.recall) + ". Beam 160: " + n0(a.ef160.compared) + ", " + pct(a.ef160.recall) + ".",
-          "Cada fragmento: " + int(N) + " comparaciones, los 10 encontrados. Grafo, haz 10: " + n0(a.ef10.compared) + " comparaciones, el " + pct(a.ef10.recall) + " de los 10 reales. Haz 40: " + n0(a.ef40.compared) + ", " + pct(a.ef40.recall) + ". Haz 160: " + n0(a.ef160.compared) + ", " + pct(a.ef160.recall) + "."),
-        bars: [[T("Recall@10, beam 10", "Recall@10, haz 10"), a.ef10.recall, pct(a.ef10.recall), true], [T("Recall@10, beam 40", "Recall@10, haz 40"), a.ef40.recall, pct(a.ef40.recall)], [T("Recall@10, beam 160", "Recall@10, haz 160"), a.ef160.recall, pct(a.ef160.recall)],
-          [T("Comparisons, beam 10", "Comparaciones, haz 10"), a.ef10.compared / N, n0(a.ef10.compared)], [T("Comparisons, beam 160", "Comparaciones, haz 160"), a.ef160.compared / N, n0(a.ef160.compared)], [T("Comparisons, every chunk", "Comparaciones, cada fragmento"), 1, int(N)]] };
-    },
-    thr: () => {
-      const rows = RESULTS.thr;
-      const line = (r) => "\u201c" + r.text + "\u201d: " + r.kept + " kept" + (r.kept ? " (" + r.good + " relevant)" : "") + ", best " + r.top.toFixed(2);
-      const lineEs = (r) => "\u201c" + r.text + "\u201d: " + r.kept + (r.kept === 1 ? " conservado" : " conservados") + (r.kept ? " (" + r.good + (r.good === 1 ? " relevante)" : " relevantes)") : "") + ", mejor " + r.top.toFixed(2);
-      return { verdict: T(rows.map(line).join(" \u00b7 ") + ".", rows.map(lineEs).join(" \u00b7 ") + "."),
-        bars: rows.map((r) => [r.text.length > 34 ? r.text.slice(0, 32) + "\u2026" : r.text, Math.min(1, r.kept / 5), T(r.kept + " kept, " + r.junk + " junk" + (r.gold && !r.good ? ", answer dropped" : ""), r.kept + (r.kept === 1 ? " conservado, " : " conservados, ") + r.junk + " de basura" + (r.gold && !r.good ? ", respuesta descartada" : "")), r.junk > 0 || (r.gold > 0 && r.good === 0)]) };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch, sizeChanged = w.size !== cfg.size;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
+    const sizeChanged = w.size !== cfg.size;
     set("q", w.q, true); set("k", w.k, true); set("size", w.size, true); set("search", w.search, true); set("cut", w.cut, true);
     start(sizeChanged || !COL);
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   // first frame: the first query already answered, so a still page shows a finished search
   build(cfg.size);

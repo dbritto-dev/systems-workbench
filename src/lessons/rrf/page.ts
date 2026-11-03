@@ -1,12 +1,47 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 37 · Reciprocal rank fusion: a count room for ranked ballots.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, clerkSvg, flightSvg, P, GEOMETRY } from "./figure";
 import { QUERY, expScales, expAgreement, expK, expNoisy, expDepth } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
 const R = { scales: expScales(), agree: expAgreement(), k: expK(), noisy: expNoisy(), depth: expDepth() };
+
+// What each card shows after a run.
+const f1 = (x) => x.toFixed(1), f5 = (x) => x.toFixed(5);
+const RUNS = {
+  scales: () => {
+    const s = R.scales;
+    return { verdict: t("Relevant documents in the top 10, averaged over 40 queries: raw sum " + f1(s.raw) + ", keyword alone " + f1(s.kwOnly) + ", meaning alone " + f1(s.meOnly) + ", RRF " + f1(s.rrf) + ". " + f1(s.sameAsKeyword) + " of the raw sum's top 10 were simply the keyword top 10. On the figure's query the raw sum's top 5 is " + s.figure.raw.join(" ") + " (" + s.figure.rawHits + " relevant); RRF's is " + s.figure.rrf.join(" ") + " (" + s.figure.rrfHits + " relevant).",
+        "Documentos relevantes en el top 10, en promedio sobre 40 consultas: suma cruda " + f1(s.raw) + ", solo palabras clave " + f1(s.kwOnly) + ", solo significado " + f1(s.meOnly) + ", RRF " + f1(s.rrf) + ". " + f1(s.sameAsKeyword) + " de los 10 primeros de la suma cruda eran simplemente los 10 primeros de palabras clave. En la consulta de la figura, el top 5 de la suma cruda es " + s.figure.raw.join(" ") + " (" + s.figure.rawHits + " relevantes); el de RRF es " + s.figure.rrf.join(" ") + " (" + s.figure.rrfHits + " relevantes)."),
+      bars: [[t("Keyword alone", "Solo palabras clave"), s.kwOnly / 10, f1(s.kwOnly)], [t("Meaning alone", "Solo significado"), s.meOnly / 10, f1(s.meOnly)], [t("Raw score sum", "Suma de puntajes crudos"), s.raw / 10, f1(s.raw), true], ["RRF, k = 60", s.rrf / 10, f1(s.rrf), true]] };
+  },
+  agree: () => {
+    const a = R.agree;
+    return { verdict: t("D1 (3rd and 4th): 1/63 + 1/64 = " + f5(a.d1) + ", 1st place. D2 (1st, one ballot only): 1/61 = " + f5(a.d2) + ", " + a.d2Place + "th place, tied with D5, the meaning ballot's first. D1 scores " + a.ratio.toFixed(2) + "× D2.",
+        "D1 (puestos 3 y 4): 1/63 + 1/64 = " + f5(a.d1) + ", primer lugar. D2 (puesto 1, en una sola boleta): 1/61 = " + f5(a.d2) + ", puesto " + a.d2Place + ", empatado con D5, el primero de la boleta de significado. D1 suma " + a.ratio.toFixed(2) + "× lo de D2."),
+      bars: [[t("D1: 3rd + 4th", "D1: puestos 3 + 4"), a.d1 / 0.0328, f5(a.d1), true], [t("D2: 1st on one ballot", "D2: puesto 1 en una boleta"), a.d2 / 0.0328, f5(a.d2)], [t("Most possible from two ballots (2 × 1/61)", "Máximo posible con dos boletas (2 × 1/61)"), 2 / 61 / 0.0328, f5(2 / 61)]] };
+  },
+  k: () => {
+    const K = R.k;
+    return { verdict: t("Top 5 at k = 1: " + K.fig[1].top.join(" ") + " (" + K.fig[1].hits + " relevant). At k = 60: " + K.fig[60].top.join(" ") + " (" + K.fig[60].hits + "). At k = 1000: " + K.fig[1000].top.join(" ") + " (" + K.fig[1000].hits + "). Over 40 queries, relevant in the top 10: " + f1(K.avg[1]) + " / " + f1(K.avg[60]) + " / " + f1(K.avg[1000]) + ". A first place is worth " + K.firstVsTenth[1].toFixed(1) + "× a 10th at k = 1, " + K.firstVsTenth[60].toFixed(2) + "× at 60 and " + K.firstVsTenth[1000].toFixed(3) + "× at 1000.",
+        "Top 5 con k = 1: " + K.fig[1].top.join(" ") + " (" + K.fig[1].hits + " relevantes). Con k = 60: " + K.fig[60].top.join(" ") + " (" + K.fig[60].hits + "). Con k = 1000: " + K.fig[1000].top.join(" ") + " (" + K.fig[1000].hits + "). En 40 consultas, relevantes en el top 10: " + f1(K.avg[1]) + " / " + f1(K.avg[60]) + " / " + f1(K.avg[1000]) + ". Un primer lugar vale " + K.firstVsTenth[1].toFixed(1) + "× un décimo puesto con k = 1, " + K.firstVsTenth[60].toFixed(2) + "× con 60 y " + K.firstVsTenth[1000].toFixed(3) + "× con 1000."),
+      bars: [[t("k = 1, relevant in top 10", "k = 1, relevantes en el top 10"), K.avg[1] / 10, f1(K.avg[1]), true], ["k = 60", K.avg[60] / 10, f1(K.avg[60])], ["k = 1000", K.avg[1000] / 10, f1(K.avg[1000])]] };
+  },
+  noisy: () => {
+    const n = R.noisy;
+    return { verdict: t("Relevant documents in the top 10, over 40 queries: two judges " + f1(n.two) + ", plus clicks at full weight " + f1(n.three) + ", plus clicks at 0.3 " + f1(n.weighted) + ". On the figure's query the top 5 goes from " + n.fig.two + " relevant to " + n.fig.three.hits + " (" + n.fig.three.top.join(" ") + ") with clicks at full weight, and back to " + n.fig.weighted.hits + " (" + n.fig.weighted.top.join(" ") + ") at 0.3.",
+        "Documentos relevantes en el top 10, en 40 consultas: dos jueces " + f1(n.two) + ", más clics a peso completo " + f1(n.three) + ", más clics con 0.3 " + f1(n.weighted) + ". En la consulta de la figura, el top 5 pasa de " + n.fig.two + " relevantes a " + n.fig.three.hits + " (" + n.fig.three.top.join(" ") + ") con clics a peso completo, y vuelve a " + n.fig.weighted.hits + " (" + n.fig.weighted.top.join(" ") + ") con 0.3."),
+      bars: [[t("Keyword + meaning", "Palabras clave + significado"), n.two / 10, f1(n.two)], [t("+ clicks, weight 1", "+ clics, peso 1"), n.three / 10, f1(n.three), true], [t("+ clicks, weight 0.3", "+ clics, peso 0.3"), n.weighted / 10, f1(n.weighted), true]] };
+  },
+  depth: () => {
+    const d = R.depth, ex = d.example;
+    return { verdict: t("Relevant documents in the fused top 10: " + f1(d.shallow) + " with top-10 lists, " + f1(d.deep) + " with top-100 lists; " + f1(d.rescued) + " per query were on neither top-10 list. For example, a document ranked " + ex.ranks.join(" and ") + " scored " + f5(ex.score) + " and finished " + ex.place + (ex.place === 1 ? "st" : ex.place === 2 ? "nd" : ex.place === 3 ? "rd" : "th") + ", ahead of any single first place (" + f5(d.single1) + "). A lone 40th place is worth " + f5(d.single40) + ".",
+        "Documentos relevantes en el top 10 fusionado: " + f1(d.shallow) + " con listas de 10, " + f1(d.deep) + " con listas de 100; " + f1(d.rescued) + " por consulta no estaban en ninguna de las dos listas de 10. Por ejemplo, un documento en los puestos " + ex.ranks.join(" y ") + " sumó " + f5(ex.score) + " y terminó en el puesto " + ex.place + ", por delante de cualquier primer lugar solitario (" + f5(d.single1) + "). Un puesto 40 solitario vale " + f5(d.single40) + "."),
+      bars: [[t("Top 10 from each", "Los 10 primeros de cada una"), d.shallow / 10, f1(d.shallow)], [t("Top 100 from each", "Los 100 primeros de cada una"), d.deep / 10, f1(d.deep), true], [t("Two votes in the teens (example)", "Dos votos cerca del puesto 15 (ejemplo)"), ex.score / 0.0328, f5(ex.score), true], [t("One first place", "Un primer lugar"), d.single1 / 0.0328, f5(d.single1)]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -111,7 +146,7 @@ export default defineLesson({
     ],
     note: t(`Query: “${QUERY.text}”. Changing a setting starts the count again.`, `Consulta: “${QUERY.text}”. Cambiar un ajuste vuelve a empezar el conteo.`),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same fusion code as the machine: the figure's query, and an average over 40 seeded queries with 300 documents each.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo código de fusión que la máquina: la consulta de la figura y un promedio sobre 40 consultas con semilla fija, de 300 documentos cada una."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same fusion code as the machine: the figure's query, and an average over 40 seeded queries with 300 documents each.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo código de fusión que la máquina: la consulta de la figura y un promedio sobre 40 consultas con semilla fija, de 300 documentos cada una."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`RRF: Cormack, Clarke &amp; Büttcher, “Reciprocal rank fusion outperforms Condorcet and individual rank learning methods”, SIGIR 2009. Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson.`,
     `RRF: Cormack, Clarke &amp; Büttcher, “Reciprocal rank fusion outperforms Condorcet and individual rank learning methods”, SIGIR 2009. Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección.`),
@@ -126,7 +161,5 @@ export default defineLesson({
     G: GEOMETRY,
     CLERK_SVG: clerkSvg(),
     FLIGHT_SVG: flightSvg(),
-    RESULTS: R,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

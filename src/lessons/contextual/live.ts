@@ -1,18 +1,17 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The print shop in the browser: the indexing line runs for show, and each question replays where its answer chunk
-// landed under the current settings (ranks worked out at build time), with the controls and the experiment cards.
-// mount() gets the build-time data from page.ts (geometry, card drawing, ranks, questions, results).
+// landed under the current settings (ranks worked out at build time), and the controls. mount() gets the build-time
+// data from page.ts (geometry, card drawing, ranks, questions) and root, the <wb-lesson>.
 import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L as tr, T as BI } from "../../runtime/wb";   // T is the seconds per question below
-import { readout, stats, setText, act, pauseControls } from "../../runtime/dom";
+import { L as tr } from "../../runtime/wb";
+import { setText, playPause } from "../../runtime/dom";
 
-export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHUNKS, RESULTS, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-shop]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHUNKS }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   const layers = { belt: q('[data-layer="belt"]'), rack: q('[data-layer="rack"]'), tray: q('[data-layer="tray"]') };
   const counters = Object.fromEntries(["pooled", "rank", "k", "asked", "missed"].map((n) => [n, WB.counter(svg, n, P)]));
@@ -147,7 +146,7 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
       (o.rer ? "tras el reranking, en el puesto " + (o.finalRank + 1) : "en el puesto " + (o.first + 1)) + " · entre los " + k + " que se pasan al modelo");
     say(text);
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
   function nextQuestion() {
     const o = outcome(qi);
@@ -155,7 +154,7 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
     lastMissed = !o.found;
     qi++; phase = 0;
   }
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => {
     const d = dt * cfg.speed;
     stepBelt(d);
@@ -166,41 +165,25 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = raw;
     if (name === "cache") { paint(); return; }
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("next").addEventListener("click", () => { if (phase < 0.75) phase = 0.75; else nextQuestion(); paint(); });
-  act("reset").addEventListener("click", () => restart());
-
-  // ---------- experiments (computed at build time from the same model, 6 seeded corpora) ----------
-  const pc = (x) => x.toFixed(1) + "%";
-  const of30 = (x) => Math.min(1, x / 30);
-  const RUNS = {
-    emb: () => { const r = RESULTS.emb, fewer = Math.round(100 * (1 - r.ctx / r.plain)); return { verdict: BI("Plain chunks: " + pc(r.plain) + " of questions missed. With the context stamped on: " + pc(r.ctx) + ", " + fewer + "% fewer, but some are still missed.",
-        "Fragmentos sin contexto: " + pc(r.plain) + " de las preguntas falladas. Con el contexto estampado: " + pc(r.ctx) + ", un " + fewer + "% menos, pero todavía se fallan algunas."),
-      bars: [[BI("Missed, plain chunks", "Falladas, fragmentos sin contexto"), of30(r.plain), pc(r.plain)], [BI("Missed, chunks with context", "Falladas, fragmentos con contexto"), of30(r.ctx), pc(r.ctx), true]] }; },
-    bm25: () => { const r = RESULTS.bm25; return { verdict: BI("Meaning only, with context: " + pc(r.ctx) + " missed. Meaning + BM25 on the same stamped cards: " + pc(r.both) + ". The same two searches on plain cards: " + pc(r.plainBoth) + ".",
-        "Solo significado, con contexto: " + pc(r.ctx) + " falladas. Significado + BM25 sobre las mismas tarjetas estampadas: " + pc(r.both) + ". Las mismas dos búsquedas sobre tarjetas sin contexto: " + pc(r.plainBoth) + "."),
-      bars: [[BI("Meaning only, context", "Solo significado, con contexto"), of30(r.ctx), pc(r.ctx)], [BI("Meaning + BM25, context", "Significado + BM25, con contexto"), of30(r.both), pc(r.both), true], [BI("Meaning + BM25, plain", "Significado + BM25, sin contexto"), of30(r.plainBoth), pc(r.plainBoth)]] }; },
-    rerank: () => { const r = RESULTS.rerank; return { verdict: BI("Without reranking: " + pc(r.both) + " missed. Fetch 150, rerank, keep 20: " + pc(r.reranked) + ". Reranking plain cards instead: " + pc(r.plainReranked) + ": with nothing to tell the look-alikes apart, it only reshuffles them. Overall, from plain chunks: " + pc(r.plain) + " → " + pc(r.reranked) + ".",
-        "Sin reranking: " + pc(r.both) + " falladas. Traer 150, hacer reranking y quedarse con 20: " + pc(r.reranked) + ". Con reranking sobre tarjetas sin contexto: " + pc(r.plainReranked) + ": sin nada que distinga a los parecidos, solo los vuelve a mezclar. En total, desde fragmentos sin contexto: " + pc(r.plain) + " → " + pc(r.reranked) + "."),
-      bars: [[BI("Plain, meaning only", "Sin contexto, solo significado"), of30(r.plain), pc(r.plain)], [BI("Context, meaning + BM25", "Con contexto, significado + BM25"), of30(r.both), pc(r.both)], [BI("…and reranked", "…y con reranking"), of30(r.reranked), pc(r.reranked), true], [BI("Plain, meaning + BM25, reranked", "Sin contexto, significado + BM25, con reranking"), of30(r.plainReranked), pc(r.plainReranked)]] }; },
-    topk: () => { const r = RESULTS.topk, top = Math.max(r.k5, 0.1); return { verdict: BI("Passing on 5: " + pc(r.k5) + " missed. 10: " + pc(r.k10) + ". 20: " + pc(r.k20) + ".", "Pasando 5: " + pc(r.k5) + " falladas. 10: " + pc(r.k10) + ". 20: " + pc(r.k20) + "."),
-      bars: [[BI("Missed, top 5", "Falladas, top 5"), r.k5 / top, pc(r.k5)], [BI("Missed, top 10", "Falladas, top 10"), r.k10 / top, pc(r.k10)], [BI("Missed, top 20", "Falladas, top 20"), r.k20 / top, pc(r.k20), true]] }; },
-    cost: () => { const r = RESULTS.cost; return { verdict: BI("Without caching: $" + r.uncached.toFixed(2) + " per million document tokens. With caching: $" + r.cached.toFixed(2) + " (the post's estimate: $1.02). This corpus stands for " + Math.round(r.corpusTokens / 1000) + "k tokens, well over the ~200k you could just put in the prompt; one company's filings (" + Math.round(r.oneCompany / 1000) + "k) would fit.",
-        "Sin caché: $" + r.uncached.toFixed(2) + " por millón de tokens de documento. Con caché: $" + r.cached.toFixed(2) + " (la estimación del artículo: $1.02). Este corpus representa " + Math.round(r.corpusTokens / 1000) + "k tokens, mucho más que los ~200k que podrías poner directamente en el prompt; los informes de una sola empresa (" + Math.round(r.oneCompany / 1000) + "k) sí cabrían."),
-      bars: [[BI("Cost without caching ($0–4)", "Costo sin caché ($0–4)"), r.uncached / 4, "$" + r.uncached.toFixed(2)], [BI("Cost with caching ($0–4)", "Costo con caché ($0–4)"), r.cached / 4, "$" + r.cached.toFixed(2), true], [BI("This corpus (of 1.5M tokens)", "Este corpus (de 1.5M tokens)"), Math.min(1, r.corpusTokens / 1.5e6), Math.round(r.corpusTokens / 1000) + "k"], [BI("Prompt budget to skip retrieval", "Presupuesto del prompt para omitir la recuperación"), r.budget / 1.5e6, "200k"]] }; },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    next: () => { if (phase < 0.75) phase = 0.75; else nextQuestion(); paint(); },
+    reset: () => restart(),
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     for (const n of ["ctx", "search", "rerank", "k", "cache"]) set(n, w[n], true);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   for (let i = 0; i < 120; i++) stepBelt(0.1);
   loop.setPaused(loop.paused);

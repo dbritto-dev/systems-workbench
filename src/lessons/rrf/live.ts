@@ -1,21 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The count room in the browser: plans the clerk's walk over the ballots, flies a token per vote into its tube,
-// keeps the standings, and wires the controls and the experiment cards. mount() gets the build-time data from
-// page.ts (geometry, part drawings, results).
+// keeps the standings, and answers the controls. mount() gets the build-time data from page.ts (geometry, part
+// drawings) and root, the <wb-lesson>.
 import { translateAlong, solidSvg, cylinder } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L as tr, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { L as tr } from "../../runtime/wb";
+import { playPause } from "../../runtime/dom";
 import { lerpVec, smoothstep } from "../../lib/tween";
 import { QUERY, JUDGES, countOrder, pointsOf, rrfShare } from "./sim";
 
-export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG }, root) {
   const NAME_ES = { keyword: "PALABRAS", meaning: "SIGNIFICADO", clicks: "CLICS" };            // as on the ballot boards
   const LIST_ES = { keyword: "palabras clave", meaning: "significado", clicks: "clics" };
-  const stage = document.querySelector("[data-count]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
 
   // the clerk: a pooled group moved with translateAlong
@@ -166,62 +165,31 @@ export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG, RESULTS, EXPERIMENT
       "conteo terminado · " + (order[0] ? order[0].id + " lidera con " + fmtScore(order[0].score) : "") + " · se vuelve a contar en un momento"));
     else say(tr("walking to the " + cur.list + " ballot for rank " + cur.rank, "caminando a la boleta de " + LIST_ES[cur.list] + " para el puesto " + cur.rank));
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; if (clock > plan.end + HOLD) restart(0); else paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = ["k", "judges", "weight", "depth"].includes(name) ? Number(raw) : raw;
     if (!quiet) restart(0);
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("finish").addEventListener("click", () => { clock = plan.end; paint(); });
-  act("reset").addEventListener("click", () => { restart(0); if (loop.paused) loop.setPaused(false); });
-
-  // ---------- experiments (numbers computed from the same model at build time) ----------
-  const f1 = (x) => x.toFixed(1), f5 = (x) => x.toFixed(5);
-  const RUNS = {
-    scales: () => {
-      const s = RESULTS.scales;
-      return { verdict: T("Relevant documents in the top 10, averaged over 40 queries: raw sum " + f1(s.raw) + ", keyword alone " + f1(s.kwOnly) + ", meaning alone " + f1(s.meOnly) + ", RRF " + f1(s.rrf) + ". " + f1(s.sameAsKeyword) + " of the raw sum's top 10 were simply the keyword top 10. On the figure's query the raw sum's top 5 is " + s.figure.raw.join(" ") + " (" + s.figure.rawHits + " relevant); RRF's is " + s.figure.rrf.join(" ") + " (" + s.figure.rrfHits + " relevant).",
-          "Documentos relevantes en el top 10, en promedio sobre 40 consultas: suma cruda " + f1(s.raw) + ", solo palabras clave " + f1(s.kwOnly) + ", solo significado " + f1(s.meOnly) + ", RRF " + f1(s.rrf) + ". " + f1(s.sameAsKeyword) + " de los 10 primeros de la suma cruda eran simplemente los 10 primeros de palabras clave. En la consulta de la figura, el top 5 de la suma cruda es " + s.figure.raw.join(" ") + " (" + s.figure.rawHits + " relevantes); el de RRF es " + s.figure.rrf.join(" ") + " (" + s.figure.rrfHits + " relevantes)."),
-        bars: [[T("Keyword alone", "Solo palabras clave"), s.kwOnly / 10, f1(s.kwOnly)], [T("Meaning alone", "Solo significado"), s.meOnly / 10, f1(s.meOnly)], [T("Raw score sum", "Suma de puntajes crudos"), s.raw / 10, f1(s.raw), true], ["RRF, k = 60", s.rrf / 10, f1(s.rrf), true]] };
-    },
-    agree: () => {
-      const a = RESULTS.agree;
-      return { verdict: T("D1 (3rd and 4th): 1/63 + 1/64 = " + f5(a.d1) + ", 1st place. D2 (1st, one ballot only): 1/61 = " + f5(a.d2) + ", " + a.d2Place + "th place, tied with D5, the meaning ballot's first. D1 scores " + a.ratio.toFixed(2) + "× D2.",
-          "D1 (puestos 3 y 4): 1/63 + 1/64 = " + f5(a.d1) + ", primer lugar. D2 (puesto 1, en una sola boleta): 1/61 = " + f5(a.d2) + ", puesto " + a.d2Place + ", empatado con D5, el primero de la boleta de significado. D1 suma " + a.ratio.toFixed(2) + "× lo de D2."),
-        bars: [[T("D1: 3rd + 4th", "D1: puestos 3 + 4"), a.d1 / 0.0328, f5(a.d1), true], [T("D2: 1st on one ballot", "D2: puesto 1 en una boleta"), a.d2 / 0.0328, f5(a.d2)], [T("Most possible from two ballots (2 × 1/61)", "Máximo posible con dos boletas (2 × 1/61)"), 2 / 61 / 0.0328, f5(2 / 61)]] };
-    },
-    k: () => {
-      const K = RESULTS.k;
-      return { verdict: T("Top 5 at k = 1: " + K.fig[1].top.join(" ") + " (" + K.fig[1].hits + " relevant). At k = 60: " + K.fig[60].top.join(" ") + " (" + K.fig[60].hits + "). At k = 1000: " + K.fig[1000].top.join(" ") + " (" + K.fig[1000].hits + "). Over 40 queries, relevant in the top 10: " + f1(K.avg[1]) + " / " + f1(K.avg[60]) + " / " + f1(K.avg[1000]) + ". A first place is worth " + K.firstVsTenth[1].toFixed(1) + "× a 10th at k = 1, " + K.firstVsTenth[60].toFixed(2) + "× at 60 and " + K.firstVsTenth[1000].toFixed(3) + "× at 1000.",
-          "Top 5 con k = 1: " + K.fig[1].top.join(" ") + " (" + K.fig[1].hits + " relevantes). Con k = 60: " + K.fig[60].top.join(" ") + " (" + K.fig[60].hits + "). Con k = 1000: " + K.fig[1000].top.join(" ") + " (" + K.fig[1000].hits + "). En 40 consultas, relevantes en el top 10: " + f1(K.avg[1]) + " / " + f1(K.avg[60]) + " / " + f1(K.avg[1000]) + ". Un primer lugar vale " + K.firstVsTenth[1].toFixed(1) + "× un décimo puesto con k = 1, " + K.firstVsTenth[60].toFixed(2) + "× con 60 y " + K.firstVsTenth[1000].toFixed(3) + "× con 1000."),
-        bars: [[T("k = 1, relevant in top 10", "k = 1, relevantes en el top 10"), K.avg[1] / 10, f1(K.avg[1]), true], ["k = 60", K.avg[60] / 10, f1(K.avg[60])], ["k = 1000", K.avg[1000] / 10, f1(K.avg[1000])]] };
-    },
-    noisy: () => {
-      const n = RESULTS.noisy;
-      return { verdict: T("Relevant documents in the top 10, over 40 queries: two judges " + f1(n.two) + ", plus clicks at full weight " + f1(n.three) + ", plus clicks at 0.3 " + f1(n.weighted) + ". On the figure's query the top 5 goes from " + n.fig.two + " relevant to " + n.fig.three.hits + " (" + n.fig.three.top.join(" ") + ") with clicks at full weight, and back to " + n.fig.weighted.hits + " (" + n.fig.weighted.top.join(" ") + ") at 0.3.",
-          "Documentos relevantes en el top 10, en 40 consultas: dos jueces " + f1(n.two) + ", más clics a peso completo " + f1(n.three) + ", más clics con 0.3 " + f1(n.weighted) + ". En la consulta de la figura, el top 5 pasa de " + n.fig.two + " relevantes a " + n.fig.three.hits + " (" + n.fig.three.top.join(" ") + ") con clics a peso completo, y vuelve a " + n.fig.weighted.hits + " (" + n.fig.weighted.top.join(" ") + ") con 0.3."),
-        bars: [[T("Keyword + meaning", "Palabras clave + significado"), n.two / 10, f1(n.two)], [T("+ clicks, weight 1", "+ clics, peso 1"), n.three / 10, f1(n.three), true], [T("+ clicks, weight 0.3", "+ clics, peso 0.3"), n.weighted / 10, f1(n.weighted), true]] };
-    },
-    depth: () => {
-      const d = RESULTS.depth, ex = d.example;
-      return { verdict: T("Relevant documents in the fused top 10: " + f1(d.shallow) + " with top-10 lists, " + f1(d.deep) + " with top-100 lists; " + f1(d.rescued) + " per query were on neither top-10 list. For example, a document ranked " + ex.ranks.join(" and ") + " scored " + f5(ex.score) + " and finished " + ex.place + (ex.place === 1 ? "st" : ex.place === 2 ? "nd" : ex.place === 3 ? "rd" : "th") + ", ahead of any single first place (" + f5(d.single1) + "). A lone 40th place is worth " + f5(d.single40) + ".",
-          "Documentos relevantes en el top 10 fusionado: " + f1(d.shallow) + " con listas de 10, " + f1(d.deep) + " con listas de 100; " + f1(d.rescued) + " por consulta no estaban en ninguna de las dos listas de 10. Por ejemplo, un documento en los puestos " + ex.ranks.join(" y ") + " sumó " + f5(ex.score) + " y terminó en el puesto " + ex.place + ", por delante de cualquier primer lugar solitario (" + f5(d.single1) + "). Un puesto 40 solitario vale " + f5(d.single40) + "."),
-        bars: [[T("Top 10 from each", "Los 10 primeros de cada una"), d.shallow / 10, f1(d.shallow)], [T("Top 100 from each", "Los 100 primeros de cada una"), d.deep / 10, f1(d.deep), true], [T("Two votes in the teens (example)", "Dos votos cerca del puesto 15 (ejemplo)"), ex.score / 0.0328, f5(ex.score), true], [T("One first place", "Un primer lugar"), d.single1 / 0.0328, f5(d.single1)]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    finish: () => { clock = plan.end; paint(); },
+    reset: () => { restart(0); if (loop.paused) loop.setPaused(false); },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     for (const name of ["mode", "k", "judges", "weight", "depth"]) set(name, String(w[name]), true);
     restart(0);
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

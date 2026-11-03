@@ -1,7 +1,7 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 35 · BM25: documents weighed on an assay bench.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { rareRun, stuffRun, lengthRun, exactRun, stopRun } from "./sim";
 
@@ -10,6 +10,41 @@ const R = { rare: rareRun(), stuff: stuffRun(), length: lengthRun(), exact: exac
 // toFixed, not src/lib/format's one(): one() rounds first, which can differ on a half (the text must not change).
 const f2 = (x) => x.toFixed(2);
 const f1 = (x) => x.toFixed(1);
+
+// What each card shows after a run.
+const RUNS = {
+  rare: () => {
+    const r = R.rare, top = r.idfPrinter;
+    return { verdict: t("IDF of “the” (in all " + r.N + " documents): " + f2(r.idfThe) + ". IDF of “printer” (in " + r.dfPrinter + "): " + f2(r.idfPrinter) + ". D35 scored " + f2(r.guideScore) + " with " + r.guideThe + " matches and ranked " + r.guideRank + "th; D06 scored " + f2(r.d06Score) + " and ranked " + r.d06Rank + "rd.",
+        "IDF de “the” (en los " + r.N + " documentos): " + f2(r.idfThe) + ". IDF de “printer” (en " + r.dfPrinter + "): " + f2(r.idfPrinter) + ". D35 sumó " + f2(r.guideScore) + " con " + r.guideThe + " coincidencias y quedó en el puesto " + r.guideRank + "; D06 sumó " + f2(r.d06Score) + " y quedó en el puesto " + r.d06Rank + "."),
+      bars: [[t("IDF of “the”", "IDF de “the”"), r.idfThe / top, f2(r.idfThe)], [t("IDF of “printer”", "IDF de “printer”"), 1, f2(r.idfPrinter), true], [t("D35 score (17 × “the”)", "Puntaje de D35 (17 × “the”)"), r.guideScore / r.d06Score, f2(r.guideScore)], [t("D06 score (1 × “printer”)", "Puntaje de D06 (1 × “printer”)"), 1, f2(r.d06Score), true]] };
+  },
+  stuff: () => {
+    const s = R.stuff, top = s.k3[5].s;
+    const at = (c, n) => c.find((p) => p.n === n).s;
+    return { verdict: t("With k1 = 1.2 the “cheap” part went " + f2(at(s.k12, 1)) + " (once) → " + f2(at(s.k12, 5)) + " (5 times) → " + f2(at(s.k12, 20)) + " (20 times): " + (at(s.k12, 20) / at(s.k12, 1)).toFixed(1) + "×, against a ceiling of " + f2(s.cap12) + ". With k1 = 0 it stayed " + f2(at(s.k0, 20)) + "; with k1 = 3 it reached " + f2(at(s.k3, 20)) + ".",
+        "Con k1 = 1.2 la parte de “cheap” pasó de " + f2(at(s.k12, 1)) + " (una vez) a " + f2(at(s.k12, 5)) + " (5 veces) y a " + f2(at(s.k12, 20)) + " (20 veces): " + (at(s.k12, 20) / at(s.k12, 1)).toFixed(1) + "×, frente a un techo de " + f2(s.cap12) + ". Con k1 = 0 se quedó en " + f2(at(s.k0, 20)) + "; con k1 = 3 llegó a " + f2(at(s.k3, 20)) + "."),
+      bars: [[t("k1 1.2, once", "k1 1.2, una vez"), at(s.k12, 1) / top, f2(at(s.k12, 1))], [t("k1 1.2, 5 times", "k1 1.2, 5 veces"), at(s.k12, 5) / top, f2(at(s.k12, 5))], [t("k1 1.2, 20 times", "k1 1.2, 20 veces"), at(s.k12, 20) / top, f2(at(s.k12, 20)), true], [t("k1 0, 20 times", "k1 0, 20 veces"), at(s.k0, 20) / top, f2(at(s.k0, 20))], [t("k1 3, 20 times", "k1 3, 20 veces"), at(s.k3, 20) / top, f2(at(s.k3, 20))]] };
+  },
+  length: () => {
+    const l = R.length, top = l.b1.short;
+    return { verdict: t("b = 0: both " + f2(l.b0.short) + ". b = 0.75: D03 " + f2(l.b75.short) + ", D36 " + f2(l.b75.long) + " (" + l.b75.ratio.toFixed(1) + "×). b = 1: D03 " + f2(l.b1.short) + ", D36 " + f2(l.b1.long) + " (" + l.b1.ratio.toFixed(1) + "×).",
+        "b = 0: ambos " + f2(l.b0.short) + ". b = 0.75: D03 " + f2(l.b75.short) + ", D36 " + f2(l.b75.long) + " (" + l.b75.ratio.toFixed(1) + "×). b = 1: D03 " + f2(l.b1.short) + ", D36 " + f2(l.b1.long) + " (" + l.b1.ratio.toFixed(1) + "×)."),
+      bars: [[t("D03, " + l.lenShort + " words, b 0.75", "D03, " + l.lenShort + " palabras, b 0.75"), l.b75.short / top, f2(l.b75.short), true], [t("D36, " + l.lenLong + " words, b 0.75", "D36, " + l.lenLong + " palabras, b 0.75"), l.b75.long / top, f2(l.b75.long), true], [t("Either, b 0", "Cualquiera, b 0"), l.b0.short / top, f2(l.b0.short)], ["D36, b 1", l.b1.long / top, f2(l.b1.long)]] };
+  },
+  exact: () => {
+    const e = R.exact, top = Math.max(e.codeScore, e.paraTopScore);
+    return { verdict: t("“ERR_CONNECTION_RESET”: D08 ranked " + e.codeRank + "st with " + f2(e.codeScore) + "; the next document scored " + f2(e.codeNext) + ". The description: D08 ranked " + e.paraRank + "th with " + f2(e.paraScore) + " (it shares only “" + e.paraShared.join("”, “") + "”); " + e.paraTop + " came first with " + f2(e.paraTopScore) + ".",
+        "“ERR_CONNECTION_RESET”: D08 quedó en el puesto " + e.codeRank + " con " + f2(e.codeScore) + "; el documento siguiente sumó " + f2(e.codeNext) + ". La descripción: D08 quedó en el puesto " + e.paraRank + " con " + f2(e.paraScore) + " (solo comparte “" + e.paraShared.join("”, “") + "”); " + e.paraTop + " quedó primero con " + f2(e.paraTopScore) + "."),
+      bars: [[t("D08, error code query", "D08, consulta con el código de error"), e.codeScore / top, f2(e.codeScore), true], [t("D08, description query", "D08, consulta con la descripción"), e.paraScore / top, f2(e.paraScore), true], [t(e.paraTop + " (wrong), description query", e.paraTop + " (incorrecto), consulta con la descripción"), e.paraTopScore / top, f2(e.paraTopScore)]] };
+  },
+  stop: () => {
+    const s = R.stop;
+    return { verdict: t("Top five with and without “the”: " + (s.same ? "identical" : "different") + " (" + s.order.join(", ") + "). Top score " + f2(s.topA) + " → " + f2(s.topB) + ". IDF of “the”: " + f2(s.idfThe) + "; of “kernel”: " + f2(s.idfKernel) + ".",
+        "Los cinco primeros con y sin “the”: " + (s.same ? "idénticos" : "distintos") + " (" + s.order.join(", ") + "). Puntaje más alto " + f2(s.topA) + " → " + f2(s.topB) + ". IDF de “the”: " + f2(s.idfThe) + "; de “kernel”: " + f2(s.idfKernel) + "."),
+      bars: [[t("Top score, “kernel panic”", "Puntaje más alto, “kernel panic”"), s.topA / s.topB, f2(s.topA)], [t("Top score, “the kernel panic”", "Puntaje más alto, “the kernel panic”"), 1, f2(s.topB), true], [t("IDF of “the”", "IDF de “the”"), s.idfThe / s.idfKernel, f2(s.idfThe)], [t("IDF of “kernel”", "IDF de “kernel”"), 1, f2(s.idfKernel)]] };
+  },
+};
 
 // ---------- content ----------
 const EXPERIMENTS = [
@@ -122,7 +157,7 @@ export default defineLesson({
     ],
     // The top-five results list goes under the controls; Panel has no slot for it, so live.ts adds it.
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same BM25 code as the machine, on the same 36 documents.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo código BM25 que la máquina, sobre los mismos 36 documentos."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same BM25 code as the machine, on the same 36 documents.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo código BM25 que la máquina, sobre los mismos 36 documentos."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). BM25 as in Robertson and Zaragoza, “The Probabilistic Relevance Framework: BM25 and Beyond” (2009), with the IDF used by Lucene. Simulation written for this lesson.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). BM25 según Robertson y Zaragoza, “The Probabilistic Relevance Framework: BM25 and Beyond” (2009), con el IDF que usa Lucene. Simulación escrita para esta lección.`),
@@ -143,7 +178,5 @@ export default defineLesson({
   data: {
     P,
     G: GEOMETRY,
-    RESULTS: R,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

@@ -2,7 +2,7 @@
 // Systems lesson 39 · Contextual retrieval: a print shop that indexes reports and answers questions from the index.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { int } from "../../lib/format";
 import { buildFigure, cardSvg, P, GEOMETRY } from "./figure";
 import { makeCorpus, buildIndex, retrieve, contextCost, POOL, expEmbeddings, expBm25, expRerank, expTopK, expCost } from "./sim";
@@ -32,6 +32,26 @@ const COST = { on: contextCost({ caching: true }), off: contextCost({ caching: f
 
 const pct = (x) => (x < 10 ? x.toFixed(1) : x.toFixed(0)) + "%";
 const usd = (x) => "$" + x.toFixed(2);
+
+// What each card shows after a run.
+const pc = (x) => x.toFixed(1) + "%";
+const of30 = (x) => Math.min(1, x / 30);
+const RUNS = {
+  emb: () => { const r = R.emb, fewer = Math.round(100 * (1 - r.ctx / r.plain)); return { verdict: t("Plain chunks: " + pc(r.plain) + " of questions missed. With the context stamped on: " + pc(r.ctx) + ", " + fewer + "% fewer, but some are still missed.",
+      "Fragmentos sin contexto: " + pc(r.plain) + " de las preguntas falladas. Con el contexto estampado: " + pc(r.ctx) + ", un " + fewer + "% menos, pero todavía se fallan algunas."),
+    bars: [[t("Missed, plain chunks", "Falladas, fragmentos sin contexto"), of30(r.plain), pc(r.plain)], [t("Missed, chunks with context", "Falladas, fragmentos con contexto"), of30(r.ctx), pc(r.ctx), true]] }; },
+  bm25: () => { const r = R.bm25; return { verdict: t("Meaning only, with context: " + pc(r.ctx) + " missed. Meaning + BM25 on the same stamped cards: " + pc(r.both) + ". The same two searches on plain cards: " + pc(r.plainBoth) + ".",
+      "Solo significado, con contexto: " + pc(r.ctx) + " falladas. Significado + BM25 sobre las mismas tarjetas estampadas: " + pc(r.both) + ". Las mismas dos búsquedas sobre tarjetas sin contexto: " + pc(r.plainBoth) + "."),
+    bars: [[t("Meaning only, context", "Solo significado, con contexto"), of30(r.ctx), pc(r.ctx)], [t("Meaning + BM25, context", "Significado + BM25, con contexto"), of30(r.both), pc(r.both), true], [t("Meaning + BM25, plain", "Significado + BM25, sin contexto"), of30(r.plainBoth), pc(r.plainBoth)]] }; },
+  rerank: () => { const r = R.rerank; return { verdict: t("Without reranking: " + pc(r.both) + " missed. Fetch 150, rerank, keep 20: " + pc(r.reranked) + ". Reranking plain cards instead: " + pc(r.plainReranked) + ": with nothing to tell the look-alikes apart, it only reshuffles them. Overall, from plain chunks: " + pc(r.plain) + " → " + pc(r.reranked) + ".",
+      "Sin reranking: " + pc(r.both) + " falladas. Traer 150, hacer reranking y quedarse con 20: " + pc(r.reranked) + ". Con reranking sobre tarjetas sin contexto: " + pc(r.plainReranked) + ": sin nada que distinga a los parecidos, solo los vuelve a mezclar. En total, desde fragmentos sin contexto: " + pc(r.plain) + " → " + pc(r.reranked) + "."),
+    bars: [[t("Plain, meaning only", "Sin contexto, solo significado"), of30(r.plain), pc(r.plain)], [t("Context, meaning + BM25", "Con contexto, significado + BM25"), of30(r.both), pc(r.both)], [t("…and reranked", "…y con reranking"), of30(r.reranked), pc(r.reranked), true], [t("Plain, meaning + BM25, reranked", "Sin contexto, significado + BM25, con reranking"), of30(r.plainReranked), pc(r.plainReranked)]] }; },
+  topk: () => { const r = R.topk, top = Math.max(r.k5, 0.1); return { verdict: t("Passing on 5: " + pc(r.k5) + " missed. 10: " + pc(r.k10) + ". 20: " + pc(r.k20) + ".", "Pasando 5: " + pc(r.k5) + " falladas. 10: " + pc(r.k10) + ". 20: " + pc(r.k20) + "."),
+    bars: [[t("Missed, top 5", "Falladas, top 5"), r.k5 / top, pc(r.k5)], [t("Missed, top 10", "Falladas, top 10"), r.k10 / top, pc(r.k10)], [t("Missed, top 20", "Falladas, top 20"), r.k20 / top, pc(r.k20), true]] }; },
+  cost: () => { const r = R.cost; return { verdict: t("Without caching: $" + r.uncached.toFixed(2) + " per million document tokens. With caching: $" + r.cached.toFixed(2) + " (the post's estimate: $1.02). This corpus stands for " + Math.round(r.corpusTokens / 1000) + "k tokens, well over the ~200k you could just put in the prompt; one company's filings (" + Math.round(r.oneCompany / 1000) + "k) would fit.",
+      "Sin caché: $" + r.uncached.toFixed(2) + " por millón de tokens de documento. Con caché: $" + r.cached.toFixed(2) + " (la estimación del artículo: $1.02). Este corpus representa " + Math.round(r.corpusTokens / 1000) + "k tokens, mucho más que los ~200k que podrías poner directamente en el prompt; los informes de una sola empresa (" + Math.round(r.oneCompany / 1000) + "k) sí cabrían."),
+    bars: [[t("Cost without caching ($0–4)", "Costo sin caché ($0–4)"), r.uncached / 4, "$" + r.uncached.toFixed(2)], [t("Cost with caching ($0–4)", "Costo con caché ($0–4)"), r.cached / 4, "$" + r.cached.toFixed(2), true], [t("This corpus (of 1.5M tokens)", "Este corpus (de 1.5M tokens)"), Math.min(1, r.corpusTokens / 1.5e6), Math.round(r.corpusTokens / 1000) + "k"], [t("Prompt budget to skip retrieval", "Presupuesto del prompt para omitir la recuperación"), r.budget / 1.5e6, "200k"]] }; },
+};
 
 const EXPERIMENTS = [
   {
@@ -136,7 +156,7 @@ export default defineLesson({
     ],
     note: t(`The corpus is synthetic: 128 quarterly filings from 16 companies over two years and 8 product manuals, cut into ${int(corpus.chunks.length)} chunks. Only a filing's cover names its company and quarter; standard figures read alike across filings, events are rarer. One question per filing and four per manual (${corpus.questions.length} in all), some paraphrased, some using a ticker or "the second quarter". Compare the direction and size of each step, not the exact rates.`, `El corpus es sintético: 128 informes trimestrales de 16 empresas a lo largo de dos años y 8 manuales de producto, cortados en ${int(corpus.chunks.length)} fragmentos. Solo la portada de un informe nombra su empresa y su trimestre; las cifras estándar se leen igual en todos los informes, y los eventos son más raros. Una pregunta por informe y cuatro por manual (${corpus.questions.length} en total), algunas parafraseadas, otras con un ticker o "the second quarter". Compara la dirección y el tamaño de cada paso, no las tasas exactas.`),
   },
-  predict: { intro: t(`Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from this lesson's model (real BM25, a toy embedding, a simple reranker) over six seeded corpora; the post's measured numbers on real data are in each explanation.`, `Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del modelo de esta lección (BM25 real, un embedding de juguete, un reranker simple) sobre seis corpus con semilla fija; las cifras que midió el artículo con datos reales están en cada explicación.`), experiments: EXPERIMENTS },
+  predict: { intro: t(`Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from this lesson's model (real BM25, a toy embedding, a simple reranker) over six seeded corpora; the post's measured numbers on real data are in each explanation.`, `Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del modelo de esta lección (BM25 real, un embedding de juguete, un reranker simple) sobre seis corpus con semilla fija; las cifras que midió el artículo con datos reales están en cada explicación.`), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Technique and published results: ${POST}, Anthropic, 2024. Simulation written for this lesson.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Técnica y resultados publicados: ${POST}, Anthropic, 2024. Simulación escrita para esta lección.`),
@@ -154,7 +174,5 @@ export default defineLesson({
     COST,
     POOL,
     CHUNKS: corpus.chunks.length,
-    RESULTS: R,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

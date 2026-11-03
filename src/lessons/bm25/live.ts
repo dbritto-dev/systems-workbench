@@ -1,25 +1,24 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The assay bench in the browser: ranks the knowledge base for the chosen query, places the weights one term at a
-// time and drops each term's discs into the pans of the top five, wires the controls and the experiment cards.
-// mount() gets the build-time data from page.ts (geometry, experiment results).
+// time and drops each term's discs into the pans of the top five, and answers the controls. mount() gets the
+// build-time data from page.ts (geometry) and root, the <wb-lesson>.
 import { solidSvg, lineSvg, faceTextSvg, sideMatrix, ring, cylinder, segment, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L as tr, T } from "../../runtime/wb";   // L is taken by lineSvg below
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { L as tr } from "../../runtime/wb";   // L is taken by lineSvg below
+import { playPause } from "../../runtime/dom";
 import { clamp } from "../../lib/stats";
 import { DOCS, QUERIES, makeIndex, rank } from "./sim";
 
-export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-bench]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   // The top-five list under the controls: Panel has no slot for it, so it goes in here, at the end of the panel.
   const resultsEl = document.createElement("div");
   resultsEl.className = "bm-results";
   resultsEl.setAttribute("data-results", "");
   resultsEl.setAttribute("aria-live", "polite");
-  document.querySelector(".panel").append(resultsEl);
+  root.$(".panel").append(resultsEl);
   const weightsEl = q("[data-weights]"), assayer = q("[data-assayer]");
   const queryEl = q("[data-query]"), corpusEl = q("[data-corpus]");
   const stacks = [0, 1, 2, 3, 4].map((i) => q('[data-stack="' + i + '"]'));
@@ -174,10 +173,10 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
         "pesando “" + s.term + "” · idf " + s.idf.toFixed(2) + " · en " + all + " de " + ix.N + " documentos" + (hits ? " · " + hits + " de los cinco primeros" : "")));
     } else say(plan.top[0] ? tr("ranked · " + plan.top[0].id + " first with " + plan.top[0].score.toFixed(2), "ordenado · " + plan.top[0].id + " primero con " + plan.top[0].score.toFixed(2)) : tr("ranked · no document matched", "ordenado · ningún documento coincidió"));
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const stuffBtn = act("stuff");
-  const pause = pauseControls(stage, say);
+  const stuffBtn = root.button("stuff");
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => {
     t += dt * cfg.speed;
     if (t >= total) {
@@ -189,69 +188,37 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   function setQuery(id, fromTour) {
     cfg.qid = id; cfg.q = QUERY_OF[id] || id;
     if (!fromTour) cfg.tour = false;
-    WB.pressSeg("q", QUERY_OF[id] ? id : "");
+    root.press("q", QUERY_OF[id] ? id : "");
   }
   function set(name, raw) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     if (name === "q") { setQuery(raw); start(0); return; }
     cfg[name] = Number(raw);
     cfg.tour = false;
     start(0);
   }
-  WB.onSegments((name, value) => set(name, value));
+  root.on("change", (name, value) => set(name, value));
   function stuffLabel() { stuffBtn.textContent = cfg.stuff ? tr("Un-stuff D16", "Quitar el relleno de D16") : tr("Stuff “cheap” ×20 into D16", "Rellenar D16 con “cheap” ×20"); }
   function setStuff(on) { cfg.stuff = on; stuffLabel(); }
-  stuffBtn.addEventListener("click", () => { setStuff(!cfg.stuff); cfg.tour = false; if (!cfg.stuff || cfg.qid === "cheap") start(0); else { setQuery("cheap"); start(0); } if (loop.paused) loop.setPaused(false); });
-  act("again").addEventListener("click", () => { start(0); if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", () => { setStuff(false); cfg.k1 = 1.2; cfg.b = 0.75; WB.pressSeg("k1", "1.2"); WB.pressSeg("b", "0.75"); cfg.tour = true; setQuery("panic", true); start(WARM); });
+  const actions = {
+    stuff: () => { setStuff(!cfg.stuff); cfg.tour = false; if (!cfg.stuff || cfg.qid === "cheap") start(0); else { setQuery("cheap"); start(0); } if (loop.paused) loop.setPaused(false); },
+    again: () => { start(0); if (loop.paused) loop.setPaused(false); },
+    reset: () => { setStuff(false); cfg.k1 = 1.2; cfg.b = 0.75; root.press("k1", "1.2"); root.press("b", "0.75"); cfg.tour = true; setQuery("panic", true); start(WARM); },
+  };
+  root.on("action", (name) => actions[name]?.());
   pause.bind(loop);
 
-  // ---------- experiments (numbers computed at build time from the same model) ----------
-  const n2 = (x) => x.toFixed(2);
-  const RUNS = {
-    rare: () => {
-      const r = RESULTS.rare, top = r.idfPrinter;
-      return { verdict: T("IDF of “the” (in all " + r.N + " documents): " + n2(r.idfThe) + ". IDF of “printer” (in " + r.dfPrinter + "): " + n2(r.idfPrinter) + ". D35 scored " + n2(r.guideScore) + " with " + r.guideThe + " matches and ranked " + r.guideRank + "th; D06 scored " + n2(r.d06Score) + " and ranked " + r.d06Rank + "rd.",
-          "IDF de “the” (en los " + r.N + " documentos): " + n2(r.idfThe) + ". IDF de “printer” (en " + r.dfPrinter + "): " + n2(r.idfPrinter) + ". D35 sumó " + n2(r.guideScore) + " con " + r.guideThe + " coincidencias y quedó en el puesto " + r.guideRank + "; D06 sumó " + n2(r.d06Score) + " y quedó en el puesto " + r.d06Rank + "."),
-        bars: [[T("IDF of “the”", "IDF de “the”"), r.idfThe / top, n2(r.idfThe)], [T("IDF of “printer”", "IDF de “printer”"), 1, n2(r.idfPrinter), true], [T("D35 score (17 × “the”)", "Puntaje de D35 (17 × “the”)"), r.guideScore / r.d06Score, n2(r.guideScore)], [T("D06 score (1 × “printer”)", "Puntaje de D06 (1 × “printer”)"), 1, n2(r.d06Score), true]] };
-    },
-    stuff: () => {
-      const s = RESULTS.stuff, top = s.k3[5].s;
-      const at = (c, n) => c.find((p) => p.n === n).s;
-      return { verdict: T("With k1 = 1.2 the “cheap” part went " + n2(at(s.k12, 1)) + " (once) → " + n2(at(s.k12, 5)) + " (5 times) → " + n2(at(s.k12, 20)) + " (20 times): " + (at(s.k12, 20) / at(s.k12, 1)).toFixed(1) + "×, against a ceiling of " + n2(s.cap12) + ". With k1 = 0 it stayed " + n2(at(s.k0, 20)) + "; with k1 = 3 it reached " + n2(at(s.k3, 20)) + ".",
-          "Con k1 = 1.2 la parte de “cheap” pasó de " + n2(at(s.k12, 1)) + " (una vez) a " + n2(at(s.k12, 5)) + " (5 veces) y a " + n2(at(s.k12, 20)) + " (20 veces): " + (at(s.k12, 20) / at(s.k12, 1)).toFixed(1) + "×, frente a un techo de " + n2(s.cap12) + ". Con k1 = 0 se quedó en " + n2(at(s.k0, 20)) + "; con k1 = 3 llegó a " + n2(at(s.k3, 20)) + "."),
-        bars: [[T("k1 1.2, once", "k1 1.2, una vez"), at(s.k12, 1) / top, n2(at(s.k12, 1))], [T("k1 1.2, 5 times", "k1 1.2, 5 veces"), at(s.k12, 5) / top, n2(at(s.k12, 5))], [T("k1 1.2, 20 times", "k1 1.2, 20 veces"), at(s.k12, 20) / top, n2(at(s.k12, 20)), true], [T("k1 0, 20 times", "k1 0, 20 veces"), at(s.k0, 20) / top, n2(at(s.k0, 20))], [T("k1 3, 20 times", "k1 3, 20 veces"), at(s.k3, 20) / top, n2(at(s.k3, 20))]] };
-    },
-    length: () => {
-      const l = RESULTS.length, top = l.b1.short;
-      return { verdict: T("b = 0: both " + n2(l.b0.short) + ". b = 0.75: D03 " + n2(l.b75.short) + ", D36 " + n2(l.b75.long) + " (" + l.b75.ratio.toFixed(1) + "×). b = 1: D03 " + n2(l.b1.short) + ", D36 " + n2(l.b1.long) + " (" + l.b1.ratio.toFixed(1) + "×).",
-          "b = 0: ambos " + n2(l.b0.short) + ". b = 0.75: D03 " + n2(l.b75.short) + ", D36 " + n2(l.b75.long) + " (" + l.b75.ratio.toFixed(1) + "×). b = 1: D03 " + n2(l.b1.short) + ", D36 " + n2(l.b1.long) + " (" + l.b1.ratio.toFixed(1) + "×)."),
-        bars: [[T("D03, " + l.lenShort + " words, b 0.75", "D03, " + l.lenShort + " palabras, b 0.75"), l.b75.short / top, n2(l.b75.short), true], [T("D36, " + l.lenLong + " words, b 0.75", "D36, " + l.lenLong + " palabras, b 0.75"), l.b75.long / top, n2(l.b75.long), true], [T("Either, b 0", "Cualquiera, b 0"), l.b0.short / top, n2(l.b0.short)], ["D36, b 1", l.b1.long / top, n2(l.b1.long)]] };
-    },
-    exact: () => {
-      const e = RESULTS.exact, top = Math.max(e.codeScore, e.paraTopScore);
-      return { verdict: T("“ERR_CONNECTION_RESET”: D08 ranked " + e.codeRank + "st with " + n2(e.codeScore) + "; the next document scored " + n2(e.codeNext) + ". The description: D08 ranked " + e.paraRank + "th with " + n2(e.paraScore) + " (it shares only “" + e.paraShared.join("”, “") + "”); " + e.paraTop + " came first with " + n2(e.paraTopScore) + ".",
-          "“ERR_CONNECTION_RESET”: D08 quedó en el puesto " + e.codeRank + " con " + n2(e.codeScore) + "; el documento siguiente sumó " + n2(e.codeNext) + ". La descripción: D08 quedó en el puesto " + e.paraRank + " con " + n2(e.paraScore) + " (solo comparte “" + e.paraShared.join("”, “") + "”); " + e.paraTop + " quedó primero con " + n2(e.paraTopScore) + "."),
-        bars: [[T("D08, error code query", "D08, consulta con el código de error"), e.codeScore / top, n2(e.codeScore), true], [T("D08, description query", "D08, consulta con la descripción"), e.paraScore / top, n2(e.paraScore), true], [T(e.paraTop + " (wrong), description query", e.paraTop + " (incorrecto), consulta con la descripción"), e.paraTopScore / top, n2(e.paraTopScore)]] };
-    },
-    stop: () => {
-      const s = RESULTS.stop;
-      return { verdict: T("Top five with and without “the”: " + (s.same ? "identical" : "different") + " (" + s.order.join(", ") + "). Top score " + n2(s.topA) + " → " + n2(s.topB) + ". IDF of “the”: " + n2(s.idfThe) + "; of “kernel”: " + n2(s.idfKernel) + ".",
-          "Los cinco primeros con y sin “the”: " + (s.same ? "idénticos" : "distintos") + " (" + s.order.join(", ") + "). Puntaje más alto " + n2(s.topA) + " → " + n2(s.topB) + ". IDF de “the”: " + n2(s.idfThe) + "; de “kernel”: " + n2(s.idfKernel) + "."),
-        bars: [[T("Top score, “kernel panic”", "Puntaje más alto, “kernel panic”"), s.topA / s.topB, n2(s.topA)], [T("Top score, “the kernel panic”", "Puntaje más alto, “the kernel panic”"), 1, n2(s.topB), true], [T("IDF of “the”", "IDF de “the”"), s.idfThe / s.idfKernel, n2(s.idfThe)], [T("IDF of “kernel”", "IDF de “kernel”"), 1, n2(s.idfKernel)]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     cfg.tour = false;
     setStuff(!!w.stuff);
-    cfg.k1 = Number(w.k1); cfg.b = Number(w.b); WB.pressSeg("k1", w.k1); WB.pressSeg("b", w.b);
+    cfg.k1 = Number(w.k1); cfg.b = Number(w.b); root.press("k1", w.k1); root.press("b", w.b);
     const id = Object.keys(QUERY_OF).find((k) => QUERY_OF[k] === w.q);
-    if (id) setQuery(id); else { cfg.qid = w.q; cfg.q = w.q; WB.pressSeg("q", ""); }
+    if (id) setQuery(id); else { cfg.qid = w.q; cfg.q = w.q; root.press("q", ""); }
     start(0);
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   // the first frame: a minute's worth of weighing already under way, the third term falling into the pans
   const WARM = T_CLEAR + 2 * T_TERM + 0.85;

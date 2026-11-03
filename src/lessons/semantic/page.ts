@@ -1,13 +1,52 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 36 · Semantic search: a help centre laid out as a star map.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
-import { int } from "../../lib/format";
+import { defineLesson, withResults } from "../types";
+import { n0, pct, int } from "../../lib/format";
 import { buildFigure, studSvg, lampSvg, armSvg, beadSvg, labelSvg, P, GEOMETRY } from "./figure";
 import { paraphraseRun, codeRun, chunkRun, annRun, thresholdRun, QUERIES } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
 const R = { para: paraphraseRun(), code: codeRun(), chunk: chunkRun(), ann: annRun(), thr: thresholdRun() };
+
+// What each card shows after a run.
+const RUNS = {
+  para: () => {
+    const p = R.para;
+    const nextIds = p.hits.slice(1, 4).map((h) => h.id + " " + h.s.toFixed(2)).join(", ");
+    return { verdict: t("Rank " + p.rank + ": \u201c" + p.text + "\u201d at " + p.sim.toFixed(2) + ", with " + p.shared + " words in common. Next: " + nextIds + ", other payment sentences.",
+        "Puesto " + p.rank + ": \u201c" + p.text + "\u201d con " + p.sim.toFixed(2) + ", y " + p.shared + " palabras en común. Siguen: " + nextIds + ", otras oraciones sobre pagos."),
+      bars: p.hits.slice(0, 4).map((h, i) => [i === 0 ? t(h.id + " (duplicate charges)", h.id + " (cobros duplicados)") : h.id, h.s, h.s.toFixed(2), i === 0]) };
+  },
+  code: () => {
+    const c = R.code;
+    const above = (and) => c.hits.slice(0, 2).map((h) => "\u201c" + h.text + "\u201d " + h.s.toFixed(2)).join(and);
+    return { verdict: t("The sentence that explains ERR-4012 came " + c.rank + "th at " + c.targetSim.toFixed(2) + ". Above it: " + above(" and ") + ".",
+        "La oración que explica ERR-4012 quedó en el puesto " + c.rank + " con " + c.targetSim.toFixed(2) + ". Por encima: " + above(" y ") + "."),
+      bars: c.hits.map((h) => [h.id === "E3.1" ? t(h.id + " (the ERR-4012 sentence)", h.id + " (la oración de ERR-4012)") : h.id, h.s, h.s.toFixed(2), h.id === "E3.1"]) };
+  },
+  chunk: () => {
+    const c = R.chunk, s = c.sentence, m = c.section, d = c.doc;
+    return { verdict: t("Sentences: " + s.found + " of " + s.of + " usable (" + s.ctxLost + " found without the sentence that says what it's about), " + n0(s.words) + " words handed over. Sections: " + m.found + " of " + m.of + ", " + n0(m.words) + " words. Whole documents: " + d.found + " of " + d.of + ", but " + n0(d.words) + " words, " + pct(d.share) + " of the whole help centre, every time.",
+        "Oraciones: " + s.found + " de " + s.of + " útiles (" + s.ctxLost + " encontradas sin la oración que dice de qué tratan), " + n0(s.words) + " palabras entregadas. Secciones: " + m.found + " de " + m.of + ", " + n0(m.words) + " palabras. Documentos completos: " + d.found + " de " + d.of + ", pero " + n0(d.words) + " palabras, el " + pct(d.share) + " de todo el centro de ayuda, cada vez."),
+      bars: [[t("Usable answers, sentence", "Respuestas útiles, oración"), s.found / s.of, s.found + "/" + s.of], [t("Usable answers, section", "Respuestas útiles, sección"), m.found / m.of, m.found + "/" + m.of, true], [t("Usable answers, whole doc", "Respuestas útiles, documento"), d.found / d.of, d.found + "/" + d.of],
+        [t("Words handed over, sentence", "Palabras entregadas, oración"), s.words / 160, n0(s.words)], [t("Words handed over, section", "Palabras entregadas, sección"), m.words / 160, n0(m.words), true], [t("Words handed over, whole doc", "Palabras entregadas, documento"), d.words / 160, n0(d.words)]] };
+  },
+  ann: () => {
+    const a = R.ann, N = a.N;
+    return { verdict: t("Every chunk: " + int(N) + " comparisons, all 10 found. Graph, beam 10: " + n0(a.ef10.compared) + " comparisons, " + pct(a.ef10.recall) + " of the true 10. Beam 40: " + n0(a.ef40.compared) + ", " + pct(a.ef40.recall) + ". Beam 160: " + n0(a.ef160.compared) + ", " + pct(a.ef160.recall) + ".",
+        "Cada fragmento: " + int(N) + " comparaciones, los 10 encontrados. Grafo, haz 10: " + n0(a.ef10.compared) + " comparaciones, el " + pct(a.ef10.recall) + " de los 10 reales. Haz 40: " + n0(a.ef40.compared) + ", " + pct(a.ef40.recall) + ". Haz 160: " + n0(a.ef160.compared) + ", " + pct(a.ef160.recall) + "."),
+      bars: [[t("Recall@10, beam 10", "Recall@10, haz 10"), a.ef10.recall, pct(a.ef10.recall), true], [t("Recall@10, beam 40", "Recall@10, haz 40"), a.ef40.recall, pct(a.ef40.recall)], [t("Recall@10, beam 160", "Recall@10, haz 160"), a.ef160.recall, pct(a.ef160.recall)],
+        [t("Comparisons, beam 10", "Comparaciones, haz 10"), a.ef10.compared / N, n0(a.ef10.compared)], [t("Comparisons, beam 160", "Comparaciones, haz 160"), a.ef160.compared / N, n0(a.ef160.compared)], [t("Comparisons, every chunk", "Comparaciones, cada fragmento"), 1, int(N)]] };
+  },
+  thr: () => {
+    const rows = R.thr;
+    const line = (r) => "\u201c" + r.text + "\u201d: " + r.kept + " kept" + (r.kept ? " (" + r.good + " relevant)" : "") + ", best " + r.top.toFixed(2);
+    const lineEs = (r) => "\u201c" + r.text + "\u201d: " + r.kept + (r.kept === 1 ? " conservado" : " conservados") + (r.kept ? " (" + r.good + (r.good === 1 ? " relevante)" : " relevantes)") : "") + ", mejor " + r.top.toFixed(2);
+    return { verdict: t(rows.map(line).join(" \u00b7 ") + ".", rows.map(lineEs).join(" \u00b7 ") + "."),
+      bars: rows.map((r) => [r.text.length > 34 ? r.text.slice(0, 32) + "\u2026" : r.text, Math.min(1, r.kept / 5), t(r.kept + " kept, " + r.junk + " junk" + (r.gold && !r.good ? ", answer dropped" : ""), r.kept + (r.kept === 1 ? " conservado, " : " conservados, ") + r.junk + " de basura" + (r.gold && !r.good ? ", respuesta descartada" : "")), r.junk > 0 || (r.gold > 0 && r.good === 0)]) };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -112,7 +151,7 @@ export default defineLesson({
     ],
     note: t("The embedding here is a small hand-built model (16 meaning axes, hashed rare words) so every number on the page is computed, not scripted. Real models use hundreds of dimensions learned from text.", "El embedding de esta página es un modelo pequeño hecho a mano (16 ejes de significado, palabras raras con hash), así que cada número de la página se calcula, no está escrito a mano. Los modelos reales usan cientos de dimensiones aprendidas del texto."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same embedding and the same search as the machine.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo embedding y la misma búsqueda que la máquina."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same embedding and the same search as the machine.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo embedding y la misma búsqueda que la máquina."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Toy embedding model and help centre written for this lesson.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Modelo de embeddings de juguete y centro de ayuda escritos para esta lección.`),
@@ -125,7 +164,5 @@ export default defineLesson({
     G: GEOMETRY,
     STUD: { sentence: studSvg("sentence"), section: studSvg("section"), doc: studSvg("doc") },
     LAMP_SVG: lampSvg(), ARM_SVG: armSvg(), BEAD_SVG: beadSvg(), LABEL_SVG: labelSvg(),
-    RESULTS: R,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
