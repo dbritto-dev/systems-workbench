@@ -1,34 +1,26 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The courier depot in the browser: plans each job from the model, walks the courier along the road, wires the
-// controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, courier, results).
+// The courier depot in the browser: plans each job from the model, walks the courier along the road, and answers the
+// controls. mount() gets the build-time data from page.ts (geometry, courier) and root, the <wb-lesson>.
 import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { int, oneUnder10 } from "../../lib/format";
-import { STATIONS, runJob, human } from "./sim";
+import { STATIONS, runJob, human, fmt } from "./sim";
 
-export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT_HOW }) {
-  const stage = document.querySelector("[data-depot]");
-  const svg = stage.querySelector("svg");
-  const say = readout();
+export default function mount({ P, G, COURIER_SVG, DEFAULT_HOW }, root) {
+  const { stage, svg } = root.figure;
+  const say = (text) => root.figure.say(text);
   const layer = svg.querySelector('[data-layer="courier"]');
   layer.innerHTML = COURIER_SVG;
   const courier = layer.firstElementChild;
   const totalSign = svg.querySelector("[data-total]"), humanSign = svg.querySelector("[data-human]");
   const meters = Object.fromEntries(STATIONS.map((s) => [s.id, WB.meter(svg, "share-" + s.id, P)]));
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
   const NAME = { l1: T("L1 cache", "caché L1"), l2: T("L2 cache", "caché L2"), ram: T("memory", "memoria"), ssd: T("SSD", "SSD"), dc: T("same datacenter", "mismo centro de datos"), disk: T("disk", "disco"), wan: T("other continent", "otro continente") };
   const SHORT = { l1: "L1", l2: "L2", ram: "RAM", ssd: "SSD", dc: T("same DC", "mismo DC"), disk: T("disk", "disco"), wan: T("overseas", "lejos") };
   const UNITS = { s: T("S", "S"), min: T("MIN", "MIN"), h: T("H", "H"), d: T("DAYS", "DÍAS"), mo: T("MONTHS", "MESES"), y: T("YEARS", "AÑOS") };
-  const sig = (v) => (v === 0 ? "0" : v >= 100 ? String(Math.round(v)) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
-  function fmt(ns) {
-    if (ns < 999.5) return sig(ns) + " ns";
-    if (ns < 999.5e3) return sig(ns / 1e3) + " µs";
-    if (ns < 999.5e6) return sig(ns / 1e6) + " ms";
-    return sig(ns / 1e9) + " s";
-  }
   const humanText = (ns) => { const [v, u] = human(ns); return oneUnder10(v) + " " + L(UNITS[u]); };
 
   const cfg = { job: "lookups", how: { ...DEFAULT_HOW }, speed: 1 };
@@ -95,61 +87,28 @@ export default function mount({ P, G, COURIER_SVG, RESULTS, EXPERIMENTS, DEFAULT
     say(L("trip " + (idx + 1) + " of " + n + " · " + NAME[trip.station].en, "viaje " + (idx + 1) + " de " + n + " · " + NAME[trip.station].es) + wide + rep + " · " + fmt(total));
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(loop);
 
-  function showJob(job) { document.querySelectorAll("[data-for]").forEach((el) => { el.hidden = el.dataset.for !== job; }); }
+  function showJob(job) { root.$$("[data-for]").forEach((el) => { el.hidden = el.dataset.for !== job; }); }
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     if (name === "job") { cfg.job = raw; showJob(raw); }
     else if (name.startsWith("how-")) cfg.how[name.slice(4)] = raw;
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("reset").addEventListener("click", () => { restart(); if (loop.paused) loop.setPaused(false); });
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: () => { restart(); if (loop.paused) loop.setPaused(false); } };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (numbers computed from the same model, 8 seeds each) ----------
-  const x = (a, b) => int(a / b) + "×";
-  const RUNS = {
-    chatty: () => {
-      const { ram, dc } = RESULTS.chatty;
-      return { verdict: T("In memory: " + fmt(ram.total) + " for all 100. Over the network: " + fmt(dc.total) + ", about " + x(dc.total, ram.total) + " longer. The lookups are the same; the trips are not.",
-          "En memoria: " + fmt(ram.total) + " para las 100. Por la red: " + fmt(dc.total) + ", unas " + x(dc.total, ram.total) + " más. Las consultas son las mismas; los viajes no."),
-        bars: [[T("In memory", "En memoria"), ram.total / dc.total, fmt(ram.total)], [T("Cache service, same DC", "Servicio de caché, mismo DC"), 1, fmt(dc.total), true]] };
-    },
-    read: () => {
-      const r = RESULTS.read, top = r["ssd-rand"].total;
-      return { verdict: T("SSD at random: " + fmt(r["ssd-rand"].total) + ". Disk in order: " + fmt(r["disk-seq"].total) + ". SSD in order: " + fmt(r["ssd-seq"].total) + ". Disk at random: " + fmt(r["disk-rand"].total) + ", off the chart.",
-          "SSD al azar: " + fmt(r["ssd-rand"].total) + ". Disco en orden: " + fmt(r["disk-seq"].total) + ". SSD en orden: " + fmt(r["ssd-seq"].total) + ". Disco al azar: " + fmt(r["disk-rand"].total) + ", fuera de la escala."),
-        bars: [[T("SSD, random 4 KB", "SSD, 4 KB al azar"), r["ssd-rand"].total / top, fmt(r["ssd-rand"].total)], [T("Disk, in order", "Disco, en orden"), r["disk-seq"].total / top, fmt(r["disk-seq"].total), true], [T("SSD, in order", "SSD, en orden"), r["ssd-seq"].total / top, fmt(r["ssd-seq"].total)], [T("Disk, random 4 KB (off the chart)", "Disco, 4 KB al azar (fuera de escala)"), 1, fmt(r["disk-rand"].total)]] };
-    },
-    sum: () => {
-      const { array, list } = RESULTS.sum;
-      return { verdict: T("Array: " + fmt(array.total) + ". Linked list: " + fmt(list.total) + ", about " + x(list.total, array.total) + " slower for the same million additions.",
-          "Arreglo: " + fmt(array.total) + ". Lista enlazada: " + fmt(list.total) + ", unas " + x(list.total, array.total) + " más lenta para el mismo millón de sumas."),
-        bars: [[T("Array", "Arreglo"), array.total / list.total, fmt(array.total)], [T("Linked list", "Lista enlazada"), 1, fmt(list.total), true]] };
-    },
-    batch: () => {
-      const { one, ten, batch } = RESULTS.batch;
-      return { verdict: T("One at a time: " + fmt(one.total) + ". Ten at a time: " + fmt(ten.total) + ". One batch: " + fmt(batch.total) + ", about " + x(one.total, batch.total) + " faster than one at a time.",
-          "Una a la vez: " + fmt(one.total) + ". Diez a la vez: " + fmt(ten.total) + ". Un lote: " + fmt(batch.total) + ", unas " + x(one.total, batch.total) + " más rápido que de a una."),
-        bars: [[T("One at a time", "Una a la vez"), 1, fmt(one.total), true], [T("10 at a time", "10 a la vez"), ten.total / one.total, fmt(ten.total)], [T("One batch", "Un solo lote"), batch.total / one.total, fmt(batch.total)]] };
-    },
-    page: () => {
-      const { primary, replica, cache } = RESULTS.page;
-      return { verdict: T("Primary overseas: " + fmt(primary.total) + ". Replica in the same datacenter: " + fmt(replica.total) + ", about " + x(primary.total, replica.total) + " faster. Cache in memory: " + fmt(cache.total) + ".",
-          "Primaria lejana: " + fmt(primary.total) + ". Réplica en el mismo centro de datos: " + fmt(replica.total) + ", unas " + x(primary.total, replica.total) + " más rápida. Caché en memoria: " + fmt(cache.total) + "."),
-        bars: [[T("Primary, overseas", "Primaria, lejana"), 1, fmt(primary.total)], [T("Replica, same DC", "Réplica, mismo DC"), replica.total / primary.total, fmt(replica.total), true], [T("Cache in memory", "Caché en memoria"), cache.total / primary.total, fmt(cache.total)]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     set("job", w.job, true); set("how-" + w.job, w.how, true); set("speed", w.speed);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

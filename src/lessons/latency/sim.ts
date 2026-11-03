@@ -112,6 +112,15 @@ export function human(ns) {
   return [s, "s"];
 }
 
+// A duration in ns, with three significant figures in the unit that fits: 0.5 → "0.50 ns", 120000 → "120 µs".
+const sig = (v) => (v === 0 ? "0" : v >= 100 ? String(Math.round(v)) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
+export function fmt(ns) {
+  if (ns < 999.5) return sig(ns) + " ns";
+  if (ns < 999.5e3) return sig(ns / 1e3) + " µs";
+  if (ns < 999.5e6) return sig(ns / 1e6) + " ms";
+  return sig(ns / 1e9) + " s";
+}
+
 // ---------- experiments: computed once at build time from the same model ----------
 export function chattyRun() { return { ram: avgJob("lookups", "ram"), dc: avgJob("lookups", "dc"), wan: avgJob("lookups", "wan") }; }
 export function readRun() { return Object.fromEntries(JOBS.read.hows.map((h) => [h, avgJob("read", h)])); }

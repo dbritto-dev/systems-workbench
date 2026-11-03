@@ -54,6 +54,9 @@ export function summary(values) {
   return { n: values.length, mean: mean(values), p50: pct(s, 50), p90: pct(s, 90), p95: pct(s, 95), p99: pct(s, 99), p999: pct(s, 99.9), max: s[s.length - 1] || 0, slow: values.filter((v) => v > SLOW_MS).length / (values.length || 1) };
 }
 
+// A latency in ms for the readouts and the verdicts: 2.00 s, 340 ms, 12.5 ms.
+export const fmt = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(2) + " s" : ms >= 100 ? Math.round(ms) + " ms" : ms.toFixed(1) + " ms");
+
 // Histogram bins, ms (log-spaced, like most latency dashboards). Bin i holds edges[i] ≤ ms < edges[i + 1].
 export const EDGES = [0, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, Infinity];
 export function binOf(ms) { let i = 0; while (ms >= EDGES[i + 1]) i++; return i; }

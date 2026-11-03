@@ -1,7 +1,8 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 45 · Big-O in practice.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { int } from "../../lib/format";
 import { buildFigure, P, TRACK, DECADES, LANE_LABEL } from "./figure";
 import { laneSteps, sortCosts, makeData, includesInLoop, setLookups, lookupPlans, insertionSort, CALL_COST } from "./sim";
 
@@ -25,6 +26,45 @@ for (let q = 1; q <= 200 && AMORT.even == null; q++) { const r = lookupPlans(100
 const BEST = Object.fromEntries(["sorted", "random", "reversed"].map((s) => { const r = insertionSort(makeData(1000, 5, s)); return [s, r.cmp + r.move]; }));
 
 const RESULTS = { DOUBLE, SMALL, HIDDEN, AMORT, BEST, CALL_COST };
+
+// What each card shows after a run.
+const KEYS = ["1", "log", "n", "nlog", "n2"];
+const x2 = (v) => "×" + v.toFixed(2);
+const RUNS = {
+  double: () => {
+    const a = RESULTS.DOUBLE.a, b = RESULTS.DOUBLE.b;
+    const parts = KEYS.map((k, i) => LANE_LABEL[i] + " " + int(a[k]) + " → " + int(b[k]));
+    return { verdict: t("Steps at n = 1,000 → 2,000: " + parts.join(", ") + ".", "Pasos con n = 1,000 → 2,000: " + parts.join(", ") + "."),
+      bars: KEYS.map((k, i) => [LANE_LABEL[i], b[k] / a[k] / 4, x2(b[k] / a[k]), i === 4]) };
+  },
+  small: () => {
+    const s = RESULTS.SMALL, i16 = s.s16.insertion, m16 = s.s16.merge, i1k = s.s1000.insertion, m1k = s.s1000.merge;
+    return { verdict: t("n = 16: insertion sort " + int(i16) + " units, merge sort " + int(m16) + " (" + (m16 / i16).toFixed(1) + "× more). In this model they cross near n = " + s.cross + "; at n = 1,000 merge sort does " + (i1k / m1k).toFixed(0) + "× less work.",
+        "n = 16: insertion sort " + int(i16) + " unidades, merge sort " + int(m16) + " (" + (m16 / i16).toFixed(1) + "× más). En este modelo se cruzan cerca de n = " + s.cross + "; con n = 1,000 merge sort hace " + (i1k / m1k).toFixed(0) + "× menos trabajo."),
+      bars: [[t("n = 16, insertion sort", "n = 16, insertion sort"), i16 / Math.max(i16, m16), int(i16), true], [t("n = 16, merge sort", "n = 16, merge sort"), m16 / Math.max(i16, m16), int(m16)],
+        [t("n = 1,000, insertion sort", "n = 1,000, insertion sort"), i1k / Math.max(i1k, m1k), int(i1k)], [t("n = 1,000, merge sort", "n = 1,000, merge sort"), m1k / Math.max(i1k, m1k), int(m1k), true]] };
+  },
+  hidden: () => {
+    const h = RESULTS.HIDDEN, big = h[10000], small = h[1000];
+    return { verdict: t("10,000 orders: array " + int(big.arr) + " steps, Set " + int(big.set) + " (" + int(big.arr / big.set) + "× less). With 1,000 orders: " + int(small.arr) + " vs " + int(small.set) + ". Ten times the data made the array version " + Math.round(big.arr / small.arr) + "× slower and the Set version " + Math.round(big.set / small.set) + "×.",
+        "10,000 pedidos: array " + int(big.arr) + " pasos, Set " + int(big.set) + " (" + int(big.arr / big.set) + "× menos). Con 1,000 pedidos: " + int(small.arr) + " contra " + int(small.set) + ". Diez veces más datos volvieron la versión con array " + Math.round(big.arr / small.arr) + "× más lenta y la del Set " + Math.round(big.set / small.set) + "×."),
+      bars: [[t("10,000 · list.includes()", "10,000 · list.includes()"), 1, int(big.arr)], [t("10,000 · Set", "10,000 · Set"), big.set / big.arr, int(big.set), true], [t("1,000 · list.includes()", "1,000 · list.includes()"), small.arr / big.arr, int(small.arr)], [t("1,000 · Set", "1,000 · Set"), small.set / big.arr, int(small.set), true]] };
+  },
+  amortise: () => {
+    const a = RESULTS.AMORT;
+    const row = (q) => { const r = a.qs[q]; const m = Math.max(r.scan, r.sortThen); return [[t(int(q) + (q === 1 ? " lookup, scan" : " lookups, scan"), int(q) + (q === 1 ? " búsqueda, recorrer" : " búsquedas, recorrer")), r.scan / m, int(r.scan)], [t(int(q) + (q === 1 ? " lookup, sort first" : " lookups, sort first"), int(q) + (q === 1 ? " búsqueda, ordenar antes" : " búsquedas, ordenar antes")), r.sortThen / m, int(r.sortThen), true]]; };
+    const one = a.qs[1], k = a.qs[1000];
+    return { verdict: t("Sorting costs " + int(one.sortCost) + " steps up front. 1 lookup: scanning " + int(one.scan) + " vs " + int(one.sortThen) + ". Sorting first wins from " + a.even + " lookups on; at 1,000 lookups it's " + int(k.scan) + " vs " + int(k.sortThen) + ".",
+        "Ordenar cuesta " + int(one.sortCost) + " pasos de entrada. 1 búsqueda: recorrer " + int(one.scan) + " contra " + int(one.sortThen) + ". Ordenar primero gana desde " + a.even + " búsquedas; con 1,000 búsquedas son " + int(k.scan) + " contra " + int(k.sortThen) + "."),
+      bars: [...row(1), ...row(100), ...row(1000)] };
+  },
+  best: () => {
+    const b = RESULTS.BEST, m = b.reversed;
+    return { verdict: t("Already sorted: " + int(b.sorted) + " steps. Shuffled: " + int(b.random) + ". Reversed: " + int(b.reversed) + ". Same code, same n, a " + int(b.reversed / b.sorted) + "× spread.",
+        "Ya ordenados: " + int(b.sorted) + " pasos. Mezclados: " + int(b.random) + ". Invertidos: " + int(b.reversed) + ". El mismo código, el mismo n, una diferencia de " + int(b.reversed / b.sorted) + "×."),
+      bars: [[t("Already sorted", "Ya ordenados"), b.sorted / m, int(b.sorted), true], [t("Shuffled", "Mezclados"), b.random / m, int(b.random)], [t("Reversed", "Invertidos"), 1, int(b.reversed)]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -163,7 +203,7 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from running the algorithms in the model and counting their steps: comparisons, moves and set operations.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen de ejecutar los algoritmos del modelo y contar sus pasos: comparaciones, movimientos y operaciones de conjunto."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen de ejecutar los algoritmos del modelo y contar sus pasos: comparaciones, movimientos y operaciones de conjunto."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson: every count comes from running the algorithms. Timsort's use of insertion sort for short runs is described in CPython's <a href="https://github.com/python/cpython/blob/main/Objects/listsort.txt" target="_blank" rel="noopener">listsort.txt</a>.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección: cada cuenta sale de ejecutar los algoritmos. El uso de insertion sort para tramos cortos en Timsort se describe en <a href="https://github.com/python/cpython/blob/main/Objects/listsort.txt" target="_blank" rel="noopener">listsort.txt</a> de CPython.`),
@@ -176,8 +216,6 @@ export default defineLesson({
     DECADES,
     LANE_LABEL,
     STEPS,
-    R: RESULTS,
     FIRST_CLOCK,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

@@ -1,9 +1,9 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 44 · Percentiles and tail latency: a timing hall for request latency.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, chipSvg, heightOf, P, GEOMETRY, POINTERS } from "./figure";
-import { rng, userRequest, summary, binOf, binPos, tailRun, fanoutRun, mergeRun, hedgeRun, gcRun, hedgeAtP95 } from "./sim";
+import { rng, userRequest, summary, binOf, binPos, tailRun, fanoutRun, mergeRun, hedgeRun, gcRun, hedgeAtP95, fmt } from "./sim";
 
 // ---------- results (computed once here from the same model the page runs) ----------
 const R = { tail: tailRun(), fanout: fanoutRun(), merge: mergeRun(), hedge: hedgeRun(), gc: gcRun() };
@@ -23,6 +23,41 @@ const FIRST = (() => {
     lit: [6], out: 1, token: true, fanout: 10, s,
   };
 })();
+
+// ---------- what each card shows after a run ----------
+const pc = (x) => (100 * x).toFixed(1) + "%";
+const RUNS = {
+  tail: () => {
+    const { none, tail } = R.tail, top = tail.p99;
+    return { verdict: t("No stalls: mean " + fmt(none.mean) + ", p50 " + fmt(none.p50) + ", p99 " + fmt(none.p99) + ". One call in 50 stalled: mean " + fmt(tail.mean) + " (" + (tail.mean / none.mean).toFixed(1) + "×), p50 " + fmt(tail.p50) + ", p99 " + fmt(tail.p99) + " (" + Math.round(tail.p99 / none.p99) + "×).",
+        "Sin trabas: media " + fmt(none.mean) + ", p50 " + fmt(none.p50) + ", p99 " + fmt(none.p99) + ". Una llamada de cada 50 trabada: media " + fmt(tail.mean) + " (" + (tail.mean / none.mean).toFixed(1) + "×), p50 " + fmt(tail.p50) + ", p99 " + fmt(tail.p99) + " (" + Math.round(tail.p99 / none.p99) + "×)."),
+      bars: [[t("p50, with stalls", "p50, con trabas"), tail.p50 / top, fmt(tail.p50)], [t("Mean, with stalls", "Media, con trabas"), tail.mean / top, fmt(tail.mean)], [t("p99, no stalls", "p99, sin trabas"), none.p99 / top, fmt(none.p99)], [t("p99, with stalls", "p99, con trabas"), 1, fmt(tail.p99), true]] };
+  },
+  fanout: () => {
+    const { one, ten, hundred, formula } = R.fanout;
+    return { verdict: t("Requests that hit at least one stall: " + pc(one.anyStall) + " at 1, " + pc(ten.anyStall) + " at 10, " + pc(hundred.anyStall) + " at 100 (1 − 0.99^N predicts " + formula.map(pc).join(", ") + "). The user's p50: " + fmt(one.p50) + ", " + fmt(ten.p50) + ", " + fmt(hundred.p50) + ".",
+        "Solicitudes que tocaron al menos una traba: " + pc(one.anyStall) + " con 1, " + pc(ten.anyStall) + " con 10, " + pc(hundred.anyStall) + " con 100 (1 − 0.99^N predice " + formula.map(pc).join(", ") + "). El p50 del usuario: " + fmt(one.p50) + ", " + fmt(ten.p50) + ", " + fmt(hundred.p50) + "."),
+      bars: [[t("Hit a stall, fan-out 1", "Tocaron una traba, fan-out 1"), one.anyStall, pc(one.anyStall)], [t("Hit a stall, fan-out 10", "Tocaron una traba, fan-out 10"), ten.anyStall, pc(ten.anyStall)], [t("Hit a stall, fan-out 100", "Tocaron una traba, fan-out 100"), hundred.anyStall, pc(hundred.anyStall), true], [t("User p50, fan-out 100", "p50 del usuario, fan-out 100"), hundred.p50 / 1200, fmt(hundred.p50), true]] };
+  },
+  merge: () => {
+    const m = R.merge, top = m.maxP99;
+    return { verdict: t("Healthy hosts' p99: about " + fmt(m.goodP99) + "; the bad host's: " + fmt(m.maxP99) + ". Average of the ten p99s: " + fmt(m.avgP99) + ". The p99 of all 50,000 calls merged: " + fmt(m.fleetP99) + ".",
+        "p99 de los hosts sanos: cerca de " + fmt(m.goodP99) + "; el del host malo: " + fmt(m.maxP99) + ". Promedio de los diez p99: " + fmt(m.avgP99) + ". El p99 de las 50,000 llamadas combinadas: " + fmt(m.fleetP99) + "."),
+      bars: [[t("Average of ten p99s", "Promedio de diez p99"), m.avgP99 / top, fmt(m.avgP99)], [t("Real p99, merged", "p99 real, combinado"), m.fleetP99 / top, fmt(m.fleetP99), true], [t("Worst host's p99", "p99 del peor host"), 1, fmt(m.maxP99)]] };
+  },
+  hedge: () => {
+    const { plain, hedged, at } = R.hedge, top = plain.p99;
+    return { verdict: t("No hedge: p50 " + fmt(plain.p50) + ", p99 " + fmt(plain.p99) + ", p99.9 " + fmt(plain.p999) + ". Hedge after " + fmt(at) + ": p50 " + fmt(hedged.p50) + ", p99 " + fmt(hedged.p99) + ", p99.9 " + fmt(hedged.p999) + ", for " + pc(hedged.extraShare) + " more calls.",
+        "Sin respaldo: p50 " + fmt(plain.p50) + ", p99 " + fmt(plain.p99) + ", p99.9 " + fmt(plain.p999) + ". Respaldo después de " + fmt(at) + ": p50 " + fmt(hedged.p50) + ", p99 " + fmt(hedged.p99) + ", p99.9 " + fmt(hedged.p999) + ", con un " + pc(hedged.extraShare) + " más de llamadas."),
+      bars: [[t("p99, no hedge", "p99, sin respaldo"), 1, fmt(plain.p99), true], [t("p99, hedged", "p99, con respaldo"), hedged.p99 / top, fmt(hedged.p99)], [t("Extra calls, hedged", "Llamadas extra, con respaldo"), hedged.extraShare, pc(hedged.extraShare)]] };
+  },
+  gc: () => {
+    const { calm, pause } = R.gc, top = pause.max;
+    return { verdict: t("Calm minute: mean " + fmt(calm.mean) + ", p99 " + fmt(calm.p99) + ". With the pause: mean " + fmt(pause.mean) + ", p50 " + fmt(pause.p50) + ", but p99 " + fmt(pause.p99) + " and the slowest " + fmt(pause.max) + "; " + pc(pause.slow) + " of requests took over 100 ms.",
+        "Minuto tranquilo: media " + fmt(calm.mean) + ", p99 " + fmt(calm.p99) + ". Con la pausa: media " + fmt(pause.mean) + ", p50 " + fmt(pause.p50) + ", pero p99 " + fmt(pause.p99) + " y la más lenta " + fmt(pause.max) + "; el " + pc(pause.slow) + " de las solicitudes tardó más de 100 ms."),
+      bars: [[t("Mean, with the pause", "Media, con la pausa"), pause.mean / top, fmt(pause.mean)], [t("p99, with the pause", "p99, con la pausa"), pause.p99 / top, fmt(pause.p99), true], [t("Slowest request", "Solicitud más lenta"), 1, fmt(pause.max), true]] };
+  },
+};
 
 // ---------- content ----------
 const EXPERIMENTS = [
@@ -168,7 +203,7 @@ export default defineLesson({
     ],
     note: t("A backend call takes about 10 ms. A stalled one takes 0.4 to 1.2 s. The stream runs 100 user requests a second; the request on the rig plays slowed down. Changing a setting starts the histogram again.", "Una llamada a un backend tarda unos 10 ms. Una trabada tarda de 0.4 a 1.2 s. El flujo corre 100 solicitudes de usuario por segundo; la solicitud del mostrador se muestra en cámara lenta. Cambiar un ajuste reinicia el histograma."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson. The fan-out and hedging examples follow Jeffrey Dean and Luiz André Barroso, <a href="https://research.google/pubs/the-tail-at-scale/" target="_blank" rel="noopener">"The Tail at Scale"</a>, Communications of the ACM 56(2), 2013.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección. Los ejemplos de fan-out y de respaldos siguen a Jeffrey Dean y Luiz André Barroso, <a href="https://research.google/pubs/the-tail-at-scale/" target="_blank" rel="noopener">"The Tail at Scale"</a>, Communications of the ACM 56(2), 2013.`),
@@ -180,8 +215,6 @@ export default defineLesson({
     G: GEOMETRY,
     CHIP: { on: chipSvg(true), off: chipSvg(false) },
     POINTER_KEYS: POINTERS.map((p) => p.key),
-    RESULTS: R,
     HEDGE_AT,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

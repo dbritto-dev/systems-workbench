@@ -1,13 +1,49 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 43 · Latency numbers: a courier depot for where data lives.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, courierSvg, P, GEOMETRY } from "./figure";
-import { chattyRun, readRun, sumRun, batchRun, pageRun } from "./sim";
+import { chattyRun, readRun, sumRun, batchRun, pageRun, fmt } from "./sim";
+import { int } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs.
 const RESULTS = { chatty: chattyRun(), read: readRun(), sum: sumRun(), batch: batchRun(), page: pageRun() };
 const SOURCE = "https://gist.github.com/jboner/2841832";
+
+// What each card shows after a run.
+const x = (a, b) => int(a / b) + "×";
+const RUNS = {
+  chatty: () => {
+    const { ram, dc } = RESULTS.chatty;
+    return { verdict: t("In memory: " + fmt(ram.total) + " for all 100. Over the network: " + fmt(dc.total) + ", about " + x(dc.total, ram.total) + " longer. The lookups are the same; the trips are not.",
+        "En memoria: " + fmt(ram.total) + " para las 100. Por la red: " + fmt(dc.total) + ", unas " + x(dc.total, ram.total) + " más. Las consultas son las mismas; los viajes no."),
+      bars: [[t("In memory", "En memoria"), ram.total / dc.total, fmt(ram.total)], [t("Cache service, same DC", "Servicio de caché, mismo DC"), 1, fmt(dc.total), true]] };
+  },
+  read: () => {
+    const r = RESULTS.read, top = r["ssd-rand"].total;
+    return { verdict: t("SSD at random: " + fmt(r["ssd-rand"].total) + ". Disk in order: " + fmt(r["disk-seq"].total) + ". SSD in order: " + fmt(r["ssd-seq"].total) + ". Disk at random: " + fmt(r["disk-rand"].total) + ", off the chart.",
+        "SSD al azar: " + fmt(r["ssd-rand"].total) + ". Disco en orden: " + fmt(r["disk-seq"].total) + ". SSD en orden: " + fmt(r["ssd-seq"].total) + ". Disco al azar: " + fmt(r["disk-rand"].total) + ", fuera de la escala."),
+      bars: [[t("SSD, random 4 KB", "SSD, 4 KB al azar"), r["ssd-rand"].total / top, fmt(r["ssd-rand"].total)], [t("Disk, in order", "Disco, en orden"), r["disk-seq"].total / top, fmt(r["disk-seq"].total), true], [t("SSD, in order", "SSD, en orden"), r["ssd-seq"].total / top, fmt(r["ssd-seq"].total)], [t("Disk, random 4 KB (off the chart)", "Disco, 4 KB al azar (fuera de escala)"), 1, fmt(r["disk-rand"].total)]] };
+  },
+  sum: () => {
+    const { array, list } = RESULTS.sum;
+    return { verdict: t("Array: " + fmt(array.total) + ". Linked list: " + fmt(list.total) + ", about " + x(list.total, array.total) + " slower for the same million additions.",
+        "Arreglo: " + fmt(array.total) + ". Lista enlazada: " + fmt(list.total) + ", unas " + x(list.total, array.total) + " más lenta para el mismo millón de sumas."),
+      bars: [[t("Array", "Arreglo"), array.total / list.total, fmt(array.total)], [t("Linked list", "Lista enlazada"), 1, fmt(list.total), true]] };
+  },
+  batch: () => {
+    const { one, ten, batch } = RESULTS.batch;
+    return { verdict: t("One at a time: " + fmt(one.total) + ". Ten at a time: " + fmt(ten.total) + ". One batch: " + fmt(batch.total) + ", about " + x(one.total, batch.total) + " faster than one at a time.",
+        "Una a la vez: " + fmt(one.total) + ". Diez a la vez: " + fmt(ten.total) + ". Un lote: " + fmt(batch.total) + ", unas " + x(one.total, batch.total) + " más rápido que de a una."),
+      bars: [[t("One at a time", "Una a la vez"), 1, fmt(one.total), true], [t("10 at a time", "10 a la vez"), ten.total / one.total, fmt(ten.total)], [t("One batch", "Un solo lote"), batch.total / one.total, fmt(batch.total)]] };
+  },
+  page: () => {
+    const { primary, replica, cache } = RESULTS.page;
+    return { verdict: t("Primary overseas: " + fmt(primary.total) + ". Replica in the same datacenter: " + fmt(replica.total) + ", about " + x(primary.total, replica.total) + " faster. Cache in memory: " + fmt(cache.total) + ".",
+        "Primaria lejana: " + fmt(primary.total) + ". Réplica en el mismo centro de datos: " + fmt(replica.total) + ", unas " + x(primary.total, replica.total) + " más rápida. Caché en memoria: " + fmt(cache.total) + "."),
+      bars: [[t("Primary, overseas", "Primaria, lejana"), 1, fmt(primary.total)], [t("Replica, same DC", "Réplica, mismo DC"), replica.total / primary.total, fmt(replica.total), true], [t("Cache in memory", "Caché en memoria"), cache.total / primary.total, fmt(cache.total)]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -165,7 +201,7 @@ export default defineLesson({
       { actions: [["reset", t("Run again", "Ejecutar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Latencies from “Latency numbers every programmer should know” by Jeff Dean and Peter Norvig, as collected by Jonas Bonér (<a href="${SOURCE}" target="_blank" rel="noopener">gist</a>, ~2012 values): orders of magnitude, not measurements of your hardware. Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson.`,
     `Latencias de “Latency numbers every programmer should know” de Jeff Dean y Peter Norvig, recopiladas por Jonas Bonér (<a href="${SOURCE}" target="_blank" rel="noopener">gist</a>, valores de ~2012): órdenes de magnitud, no mediciones de tu hardware. Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección.`),
@@ -176,8 +212,6 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     COURIER_SVG: courierSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
     DEFAULT_HOW,
   },
 });

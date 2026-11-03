@@ -1,19 +1,18 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The timing hall in the browser: streams user requests through the model into the histogram, plays one request on
-// the rig in slow motion, moves the pointers, wires the controls and the experiment cards. mount() gets the
-// build-time data from page.ts (geometry, chip drawings, results).
+// the rig in slow motion, moves the pointers and answers the controls. mount() gets the build-time data from
+// page.ts (geometry, chip drawings) and root, the <wb-lesson>.
 import { translateAlong, solidSvg, slabOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { T as TT, L as tr } from "../../runtime/wb";   // this script already uses short names, so the language helpers get their own
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp, approach } from "../../lib/tween";
-import { rng, userRequest, summary, binOf, binPos, SLOW_MS } from "./sim";
+import { rng, userRequest, summary, binOf, binPos, SLOW_MS, fmt } from "./sim";
 
-export default function mount({ P, G, CHIP, POINTER_KEYS, RESULTS, HEDGE_AT, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-hall]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, CHIP, POINTER_KEYS, HEDGE_AT }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   const counters = Object.fromEntries(["mean", "p50", "p99", "slow", "out"].map((n) => [n, WB.counter(svg, n, P)]));
   const cols = [...Array(10).keys()].map((i) => q('[data-col="' + i + '"]'));
@@ -22,8 +21,7 @@ export default function mount({ P, G, CHIP, POINTER_KEYS, RESULTS, HEDGE_AT, EXP
   const chipsLayer = q("[data-chips]");
   const token = q("[data-token]");
   const each = q("[data-each]");
-  const stat = stats();
-  const fmt = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(2) + " s" : ms >= 100 ? Math.round(ms) + " ms" : ms.toFixed(1) + " ms");
+  const stat = (key, value) => root.stat(key, value);
 
   const cfg = { fanout: 10, share: 0.01, hedge: "off", speed: 1 };
   const RATE = 100, WINDOW = 3000, SLOWMO = 2.5, GC_HOST = 6;
@@ -162,67 +160,33 @@ export default function mount({ P, G, CHIP, POINTER_KEYS, RESULTS, HEDGE_AT, EXP
     words();
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { advance(dt * cfg.speed); stepFeatured(dt * Math.min(cfg.speed, 3)); paint(dt); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = name === "hedge" ? raw : Number(raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
+  root.on("change", (name, value) => set(name, value));
   function pauseHost() {
     gc = { host: GC_HOST, from: clock, until: clock + 1 };
     lamps[GC_HOST].gc.style.display = "";
     note = { until: clock + 1.6, text: TT("tower 7 stops for a 1-second GC pause", "la torre 7 se detiene por una pausa de GC de 1 segundo") };
     if (loop.paused) loop.setPaused(false);
   }
-  act("gc").addEventListener("click", pauseHost);
-  act("reset").addEventListener("click", () => restart());
+  const actions = { gc: () => pauseHost(), reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (numbers computed at build time from the same model, 8 seeds each) ----------
-  const pc = (x) => (100 * x).toFixed(1) + "%";
-  const RUNS = {
-    tail: () => {
-      const { none, tail } = RESULTS.tail, top = tail.p99;
-      return { verdict: TT("No stalls: mean " + fmt(none.mean) + ", p50 " + fmt(none.p50) + ", p99 " + fmt(none.p99) + ". One call in 50 stalled: mean " + fmt(tail.mean) + " (" + (tail.mean / none.mean).toFixed(1) + "×), p50 " + fmt(tail.p50) + ", p99 " + fmt(tail.p99) + " (" + Math.round(tail.p99 / none.p99) + "×).",
-          "Sin trabas: media " + fmt(none.mean) + ", p50 " + fmt(none.p50) + ", p99 " + fmt(none.p99) + ". Una llamada de cada 50 trabada: media " + fmt(tail.mean) + " (" + (tail.mean / none.mean).toFixed(1) + "×), p50 " + fmt(tail.p50) + ", p99 " + fmt(tail.p99) + " (" + Math.round(tail.p99 / none.p99) + "×)."),
-        bars: [[TT("p50, with stalls", "p50, con trabas"), tail.p50 / top, fmt(tail.p50)], [TT("Mean, with stalls", "Media, con trabas"), tail.mean / top, fmt(tail.mean)], [TT("p99, no stalls", "p99, sin trabas"), none.p99 / top, fmt(none.p99)], [TT("p99, with stalls", "p99, con trabas"), 1, fmt(tail.p99), true]] };
-    },
-    fanout: () => {
-      const { one, ten, hundred, formula } = RESULTS.fanout;
-      return { verdict: TT("Requests that hit at least one stall: " + pc(one.anyStall) + " at 1, " + pc(ten.anyStall) + " at 10, " + pc(hundred.anyStall) + " at 100 (1 − 0.99^N predicts " + formula.map(pc).join(", ") + "). The user's p50: " + fmt(one.p50) + ", " + fmt(ten.p50) + ", " + fmt(hundred.p50) + ".",
-          "Solicitudes que tocaron al menos una traba: " + pc(one.anyStall) + " con 1, " + pc(ten.anyStall) + " con 10, " + pc(hundred.anyStall) + " con 100 (1 − 0.99^N predice " + formula.map(pc).join(", ") + "). El p50 del usuario: " + fmt(one.p50) + ", " + fmt(ten.p50) + ", " + fmt(hundred.p50) + "."),
-        bars: [[TT("Hit a stall, fan-out 1", "Tocaron una traba, fan-out 1"), one.anyStall, pc(one.anyStall)], [TT("Hit a stall, fan-out 10", "Tocaron una traba, fan-out 10"), ten.anyStall, pc(ten.anyStall)], [TT("Hit a stall, fan-out 100", "Tocaron una traba, fan-out 100"), hundred.anyStall, pc(hundred.anyStall), true], [TT("User p50, fan-out 100", "p50 del usuario, fan-out 100"), hundred.p50 / 1200, fmt(hundred.p50), true]] };
-    },
-    merge: () => {
-      const m = RESULTS.merge, top = m.maxP99;
-      return { verdict: TT("Healthy hosts' p99: about " + fmt(m.goodP99) + "; the bad host's: " + fmt(m.maxP99) + ". Average of the ten p99s: " + fmt(m.avgP99) + ". The p99 of all 50,000 calls merged: " + fmt(m.fleetP99) + ".",
-          "p99 de los hosts sanos: cerca de " + fmt(m.goodP99) + "; el del host malo: " + fmt(m.maxP99) + ". Promedio de los diez p99: " + fmt(m.avgP99) + ". El p99 de las 50,000 llamadas combinadas: " + fmt(m.fleetP99) + "."),
-        bars: [[TT("Average of ten p99s", "Promedio de diez p99"), m.avgP99 / top, fmt(m.avgP99)], [TT("Real p99, merged", "p99 real, combinado"), m.fleetP99 / top, fmt(m.fleetP99), true], [TT("Worst host's p99", "p99 del peor host"), 1, fmt(m.maxP99)]] };
-    },
-    hedge: () => {
-      const { plain, hedged, at } = RESULTS.hedge, top = plain.p99;
-      return { verdict: TT("No hedge: p50 " + fmt(plain.p50) + ", p99 " + fmt(plain.p99) + ", p99.9 " + fmt(plain.p999) + ". Hedge after " + fmt(at) + ": p50 " + fmt(hedged.p50) + ", p99 " + fmt(hedged.p99) + ", p99.9 " + fmt(hedged.p999) + ", for " + pc(hedged.extraShare) + " more calls.",
-          "Sin respaldo: p50 " + fmt(plain.p50) + ", p99 " + fmt(plain.p99) + ", p99.9 " + fmt(plain.p999) + ". Respaldo después de " + fmt(at) + ": p50 " + fmt(hedged.p50) + ", p99 " + fmt(hedged.p99) + ", p99.9 " + fmt(hedged.p999) + ", con un " + pc(hedged.extraShare) + " más de llamadas."),
-        bars: [[TT("p99, no hedge", "p99, sin respaldo"), 1, fmt(plain.p99), true], [TT("p99, hedged", "p99, con respaldo"), hedged.p99 / top, fmt(hedged.p99)], [TT("Extra calls, hedged", "Llamadas extra, con respaldo"), hedged.extraShare, pc(hedged.extraShare)]] };
-    },
-    gc: () => {
-      const { calm, pause } = RESULTS.gc, top = pause.max;
-      return { verdict: TT("Calm minute: mean " + fmt(calm.mean) + ", p99 " + fmt(calm.p99) + ". With the pause: mean " + fmt(pause.mean) + ", p50 " + fmt(pause.p50) + ", but p99 " + fmt(pause.p99) + " and the slowest " + fmt(pause.max) + "; " + pc(pause.slow) + " of requests took over 100 ms.",
-          "Minuto tranquilo: media " + fmt(calm.mean) + ", p99 " + fmt(calm.p99) + ". Con la pausa: media " + fmt(pause.mean) + ", p50 " + fmt(pause.p50) + ", pero p99 " + fmt(pause.p99) + " y la más lenta " + fmt(pause.max) + "; el " + pc(pause.slow) + " de las solicitudes tardó más de 100 ms."),
-        bars: [[TT("Mean, with the pause", "Media, con la pausa"), pause.mean / top, fmt(pause.mean)], [TT("p99, with the pause", "p99, con la pausa"), pause.p99 / top, fmt(pause.p99), true], [TT("Slowest request", "Solicitud más lenta"), 1, fmt(pause.max), true]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     set("fanout", String(w.fanout), true); set("share", String(w.share), true); set("hedge", w.hedge, true);
     restart();
     if (loop.paused) loop.setPaused(false);
     if (w.gc) setTimeout(pauseHost, 1200);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();
