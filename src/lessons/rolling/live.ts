@@ -11,7 +11,7 @@ import { clamp, percentile } from "../../lib/stats";
 import { secs as secsOf } from "../../lib/format";
 import { RD, createSim } from "./sim";
 
-export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }, root) {
   const stage = document.querySelector("[data-yard]");
   const svg = stage.querySelector("svg");
   const q = (s) => svg.querySelector(s);
@@ -272,48 +272,20 @@ export default function mount({ P, G, TOKEN_SVG, RESULTS, EXPERIMENTS }) {
         groups: [group(T("Requests that failed during the rollout", "Solicitudes que fallaron durante el despliegue"), [[T("Compatible change", "Cambio compatible"), a.errorRate, pct(a.errorRate)], [T("New data format", "Formato de datos nuevo"), b.errorRate, pct(b.errorRate), true]])] };
     },
   };
-  function barsHtml(groups) {
-    return groups.map((g) => {
+  // Results come in titled groups of bars; each group's bars are scaled to its largest value.
+  root.on("run", (id, respond) => {
+    const out = RUNS[id]();
+    respond({ verdict: L(out.verdict), groups: out.groups.map((g) => {
       const top = Math.max(...g.rows.map((r) => r[1] || 0)) * 1.1 || 1;
-      return '<div class="bar-group" data-group-title></div>' + g.rows.map(([label, value, text, after]) => '<div class="bar"' + (after ? " data-after" : "") + ' data-share="' + Math.max(0.01, (value || 0) / top) + '"><span data-bar-label></span><span class="track"><span class="fill" style="width:0"></span></span><b data-bar-text></b></div>').join("");
-    }).join("");
-  }
-  document.querySelectorAll("[data-exp]").forEach((card) => {
-    const exp = EXPERIMENTS.find((e) => e.id === card.dataset.exp);
-    const runBtn = card.querySelector("[data-run]");
-    const choices = [...card.querySelectorAll("[data-choice]")];
-    let picked = null;
-    choices.forEach((c) => c.addEventListener("click", () => {
-      if (card.hasAttribute("data-done")) return;
-      picked = Number(c.dataset.choice);
-      choices.forEach((x) => x.setAttribute("aria-pressed", String(x === c)));
-      runBtn.disabled = false; runBtn.textContent = L("Run the experiment", "Ejecutar el experimento");
-    }));
-    runBtn.addEventListener("click", () => {
-      if (picked === null) return;
-      const out = RUNS[exp.id]();
-      const right = picked === exp.answer;
-      choices.forEach((x, j) => { x.disabled = true; if (j === exp.answer) x.dataset.verdict = "right"; else if (j === picked) x.dataset.verdict = "wrong"; });
-      card.querySelector("[data-bars]").innerHTML = barsHtml(out.groups);
-      const rows = out.groups.flatMap((g) => g.rows);
-      card.querySelector("[data-outcome]").textContent = (right ? L("Your prediction held. ", "Tu predicción se cumplió. ") : L("Not what you predicted. ", "No es lo que predijiste. ")) + L(out.verdict);
-      card.querySelectorAll("[data-group-title]").forEach((el, i) => { el.textContent = L(out.groups[i].title); });
-      card.querySelectorAll("[data-bar-label]").forEach((el, i) => { el.textContent = L(rows[i][0]); });
-      card.querySelectorAll("[data-bar-text]").forEach((el, i) => { el.textContent = L(rows[i][2]); });
-      runBtn.textContent = L("Done", "Listo");
-      card.setAttribute("data-done", "");
-      runBtn.disabled = true;
-      requestAnimationFrame(() => requestAnimationFrame(() => card.querySelectorAll(".bar").forEach((b) => { b.querySelector(".fill").style.width = Math.round(100 * Number(b.dataset.share)) + "%"; })));
-    });
-    card.querySelector("[data-watch]").addEventListener("click", () => {
-      const w = exp.watch;
-      auto = false;
-      ["unavail", "surge", "probe", "next", "load"].forEach((n) => { cfg[n] = n === "unavail" || n === "surge" ? Number(w[n]) : w[n]; pressSeg(n, w[n]); });
-      newSim(); paintAll(); showStats();
-      document.getElementById("machine").scrollIntoView({ behavior: still.matches ? "auto" : "smooth" });
-      if (clock.paused) clock.setPaused(false);
-      setTimeout(() => { sim.startRollout(cfg.next); }, 1500);
-    });
+      return { title: L(g.title), bars: g.rows.map(([label, value, text, after]) => [L(label), Math.max(0.01, (value || 0) / top), L(text), after]) };
+    }) });
+  });
+  root.on("watch", (w) => {
+    auto = false;
+    ["unavail", "surge", "probe", "next", "load"].forEach((n) => { cfg[n] = n === "unavail" || n === "surge" ? Number(w[n]) : w[n]; pressSeg(n, w[n]); });
+    newSim(); paintAll(); showStats();
+    if (clock.paused) clock.setPaused(false);
+    setTimeout(() => { sim.startRollout(cfg.next); }, 1500);
   });
 
   newSim();

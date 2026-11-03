@@ -1,12 +1,15 @@
 ---
 // A closer look at a lesson without leaving the collection: the machine large, the lede, the five experiments.
-// Filled in by scripts/collection.ts from the search index, which it fetches the first time a preview opens.
+// <lesson-preview> (src/elements/lesson-preview.ts) fills it in from the search index, fetched the first time a
+// preview opens.
 import { useUi } from "../../i18n/ui";
 import type { Locale } from "../../i18n";
 
-interface Props { locale: Locale }
-const ui = useUi(Astro.props.locale);
+interface Props { locale: Locale; index: string }
+const { locale, index } = Astro.props;
+const ui = useUi(locale);
 ---
+<lesson-preview index={index} locale={locale}>
 <dialog id="preview" aria-labelledby="dlg-title">
   <div class="dlg">
     <div class="dlg-shot"><span class="plate-corner tl" data-d="no"></span><span class="plate-corner tr" data-d="machine"></span><img class="on-light" data-d="light" alt="" /><img class="on-dark" data-d="dark" alt="" /></div>
@@ -19,3 +22,7 @@ const ui = useUi(Astro.props.locale);
     </div>
   </div>
 </dialog>
+</lesson-preview>
+<script>
+  import "../../elements/lesson-preview";
+</script>

@@ -21,3 +21,10 @@
 .back:hover {
   color: var(--anatomy-strong);
 }
+
+/* Lesson elements (src/elements): the wrappers take no box of their own; the card is a block like the article was. */
+wb-lesson, wb-figure { display: contents; }
+wb-experiment { display: block; }
+/* A result's bars in titled groups. */
+.bar-group { font-family: var(--anatomy-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--anatomy-muted); margin-top: 6px; }
+.bar-group:first-child { margin-top: 0; }

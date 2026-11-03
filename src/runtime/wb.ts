@@ -93,56 +93,25 @@ export function loop({ stage, step, paused = still.matches, maxDt = 1 / 20, onPa
   return api;
 }
 
-// ---------- segmented controls: <button data-set="name" data-value="v"> ----------
+// ---------- segmented controls and experiment cards ----------
+// Adapters over the lesson elements (src/elements) for live code written before them; new code uses root.seg(),
+// root.on("change" | "watch" | "run", …) from <wb-lesson> instead.
+type SegEl = HTMLElement & { value: string };
 export function pressSeg(name: string, value: string | number) {
-  document.querySelectorAll<HTMLElement>(`[data-set="${name}"]`).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.value === String(value))));
+  document.querySelectorAll<SegEl>(`wb-seg[name="${name}"]`).forEach((s) => { s.value = String(value); });
 }
 export function onSegments(handler: (name: string, value: string, button: HTMLElement) => void) {
-  document.querySelectorAll<HTMLElement>("[data-set]").forEach((b) => b.addEventListener("click", () => handler(b.dataset.set!, b.dataset.value!, b)));
+  document.addEventListener("wb-change", (e) => { const d = (e as CustomEvent).detail; handler(d.name, d.value, d.button); });
 }
 
-// ---------- experiment cards: pick a prediction, run, show the verdict and bars ----------
 export type Bar = [label: Bi, share: number, text: Bi, after?: boolean];
 export interface Outcome { verdict: Bi; bars: Bar[] }
 export interface ExperimentRef { id: string; answer: number; [k: string]: unknown }
-export function experiments<E extends ExperimentRef>({ list, runs, watch, scrollTo = "machine" }: { list: E[]; runs: Record<string, () => Outcome>; watch?: (exp: E) => void; scrollTo?: string }) {
-  document.querySelectorAll<HTMLElement>("[data-exp]").forEach((card) => {
-    const exp = list.find((e) => e.id === card.dataset.exp)!;
-    const runBtn = card.querySelector<HTMLButtonElement>("[data-run]")!;
-    const choices = [...card.querySelectorAll<HTMLButtonElement>("[data-choice]")];
-    let picked: number | null = null;
-    choices.forEach((c) => c.addEventListener("click", () => {
-      if (card.hasAttribute("data-done")) return;
-      picked = Number(c.dataset.choice);
-      choices.forEach((x) => x.setAttribute("aria-pressed", String(x === c)));
-      runBtn.disabled = false;
-      runBtn.textContent = L("Run the experiment", "Ejecutar el experimento");
-    }));
-    runBtn.addEventListener("click", () => {
-      if (picked === null) return;
-      const out = runs[exp.id]();
-      const right = picked === exp.answer;
-      choices.forEach((x, j) => { x.disabled = true; if (j === exp.answer) x.dataset.verdict = "right"; else if (j === picked) x.dataset.verdict = "wrong"; });
-      const bars = card.querySelector("[data-bars]")!;
-      bars.replaceChildren(...out.bars.map(([label, , text, after]) => {
-        const bar = document.createElement("div");
-        bar.className = "bar";
-        if (after) bar.setAttribute("data-after", "");
-        const l = document.createElement("span"), track = document.createElement("span"), fill = document.createElement("span"), t = document.createElement("b");
-        l.textContent = L(label); track.className = "track"; fill.className = "fill"; fill.style.width = "0"; t.textContent = L(text);
-        track.append(fill); bar.append(l, track, t);
-        return bar;
-      }));
-      card.querySelector("[data-outcome]")!.textContent = (right ? L("Your prediction held. ", "Tu predicción se cumplió. ") : L("Not what you predicted. ", "No es lo que predijiste. ")) + L(out.verdict);
-      runBtn.textContent = L("Done", "Listo");
-      card.setAttribute("data-done", "");
-      runBtn.disabled = true;
-      requestAnimationFrame(() => requestAnimationFrame(() => card.querySelectorAll<HTMLElement>(".fill").forEach((f, i) => { f.style.width = Math.max(1, Math.round(100 * out.bars[i][1])) + "%"; })));
-    });
-    const watchBtn = card.querySelector("[data-watch]");
-    if (watchBtn && watch) watchBtn.addEventListener("click", () => {
-      watch(exp);
-      document.getElementById(scrollTo)?.scrollIntoView({ behavior: still.matches ? "auto" : "smooth" });
-    });
+/** Answer the cards' "wb-run" and "wb-watch" events from runs[id]() and watch(exp). */
+export function experiments<E extends ExperimentRef>({ list, runs, watch }: { list: E[]; runs: Record<string, () => Outcome>; watch?: (exp: E) => void; scrollTo?: string }) {
+  document.addEventListener("wb-run", (e) => {
+    const d = (e as CustomEvent).detail, out = runs[d.id]?.();
+    if (out) d.respond({ verdict: L(out.verdict), bars: out.bars.map(([label, share, text, after]) => [L(label), share, L(text), after]) });
   });
+  if (watch) document.addEventListener("wb-watch", (e) => { const exp = list.find((x) => x.id === (e as CustomEvent).detail.id); if (exp) watch(exp); });
 }

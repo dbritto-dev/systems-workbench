@@ -1,36 +1,38 @@
-// The collection page in the browser: area filters, the preview dialog and search. The search engine and the
-// index (every lesson's text, both languages) load only when someone searches, arrives with ?q=, or opens a preview.
-import type { SearchDoc } from "../lib/search-index";
+// <lesson-collection index="…/search-index.json" locale="en">: the collection page's area filters, search and
+// cards (components/collection/Toolbar.astro and the card grid, in pages/[...lang]/index.astro). The search engine
+// and the index load only when someone searches or arrives with ?q=. A card's Preview button sends a
+// "lesson-preview" event, which <lesson-preview> opens on.
 import type { SearchRun } from "../lib/search";
+import { loadIndex, picker, PREVIEW_EVENT, type Locale, type PreviewDetail } from "./lesson-index";
 
-type Locale = "en" | "es";
-type Bi = string | { en: string; es: string };
+export class LessonCollection extends HTMLElement {
+  connectedCallback() {
+    if (this.dataset.ready) return;
+    this.dataset.ready = "";
+    init(this);
+  }
+}
 
-export function initCollection() {
-  const grid = document.querySelector<HTMLElement>("main.grid")!;
-  const locale = (grid.dataset.locale === "es" ? "es" : "en") as Locale;
-  const L = (v: Bi) => (typeof v === "string" ? v : v[locale]);
-  const T = (en: string, es: string) => (locale === "es" ? es : en);
+function init(root: HTMLElement) {
+  const grid = root.querySelector<HTMLElement>("main.grid")!;
+  const locale = (root.getAttribute("locale") === "es" ? "es" : "en") as Locale;
+  const { L, T } = picker(locale);
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const two = (n: number) => String(n).padStart(2, "0");
-
-  // ---- the index, fetched once on demand ----
-  let indexP: Promise<SearchDoc[]> | null = null;
-  const index = () => (indexP ??= fetch(grid.dataset.index!).then((r) => r.json() as Promise<SearchDoc[]>));
+  const index = () => loadIndex(root.getAttribute("index")!);
 
   // ---- area filters ----
-  const filters = [...document.querySelectorAll<HTMLButtonElement>("[data-filter]")];
+  const filters = [...root.querySelectorAll<HTMLButtonElement>("[data-filter]")];
   let area = "all";
   let search: Awaited<ReturnType<typeof startSearch>> | null = null;
   const setFilter = (a: string) => {
     area = a;
     filters.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === a)));
     if (search) search.render();
-    else document.querySelectorAll<HTMLElement>(".card").forEach((c) => { c.hidden = a !== "all" && c.dataset.area !== a; });
+    else grid.querySelectorAll<HTMLElement>(".card").forEach((c) => { c.hidden = a !== "all" && c.dataset.area !== a; });
   };
   filters.forEach((b) => b.addEventListener("click", () => { setFilter(b.dataset.filter!); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" }); }));
 
-  const strip = document.querySelector<HTMLElement>(".filters")!, wrap = document.querySelector<HTMLElement>(".filters-wrap")!;
+  const strip = root.querySelector<HTMLElement>(".filters")!, wrap = root.querySelector<HTMLElement>(".filters-wrap")!;
   const arrows = wrap.querySelectorAll<HTMLButtonElement>("[data-scroll]");
   const edges = () => {
     wrap.removeAttribute("data-fits");
@@ -54,40 +56,14 @@ export function initCollection() {
   }, { passive: false });
   edges();
 
-  // ---- preview dialog ----
-  const dlg = document.getElementById("preview") as HTMLDialogElement;
-  const d = <E extends HTMLElement = HTMLElement>(k: string) => dlg.querySelector<E>(`[data-d="${k}"]`)!;
-  const open = async (slug: string) => {
-    const card = document.querySelector<HTMLElement>(`.card[data-slug="${slug}"]`)!;
-    const imgs = card.querySelectorAll<HTMLImageElement>(".shot img");
-    d<HTMLImageElement>("light").src = imgs[0]?.currentSrc || imgs[0]?.src || "";
-    d<HTMLImageElement>("light").alt = imgs[0]?.alt || "";
-    d<HTMLImageElement>("dark").src = imgs[1]?.currentSrc || imgs[1]?.src || "";
-    const l = (await index()).find((x) => x.slug === slug)!;
-    d("no").textContent = T("Lesson ", "Lección ") + two(l.n);
-    d("machine").textContent = L(l.machine);
-    d("area").textContent = L(l.area);
-    d("concept").textContent = L(l.concept);
-    d("title").textContent = L(l.title);
-    d("lede").textContent = L(l.lede);
-    d("exps").replaceChildren(...l.exps.map((e, i) => {
-      const li = document.createElement("li"), n = document.createElement("span"), body = document.createElement("div"), b = document.createElement("b"), em = document.createElement("em");
-      n.textContent = two(i + 1); b.textContent = L(e.title); em.textContent = L(e.question);
-      body.append(b, em); li.append(n, body); return li;
-    }));
-    d("counts").textContent = card.querySelector(".counts")!.textContent;
-    d<HTMLAnchorElement>("url").href = card.querySelector<HTMLAnchorElement>(".btn.primary")!.href;
-    if (!dlg.open) dlg.showModal();
-  };
-  document.querySelectorAll<HTMLElement>("[data-preview]").forEach((b) => {
-    b.addEventListener("click", () => open(b.dataset.preview!));
+  // ---- previews: <lesson-preview> opens on this event; hovering a Preview button starts fetching the index ----
+  root.querySelectorAll<HTMLElement>("[data-preview]").forEach((b) => {
+    b.addEventListener("click", () => b.dispatchEvent(new CustomEvent<PreviewDetail>(PREVIEW_EVENT, { bubbles: true, detail: { card: b.closest<HTMLElement>(".card")! } })));
     b.addEventListener("pointerenter", () => void index(), { once: true });
   });
-  dlg.querySelector("[data-close]")!.addEventListener("click", () => dlg.close());
-  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
 
   // ---- search: the engine and the index load on first use ----
-  const input = document.getElementById("q") as HTMLInputElement;
+  const input = root.querySelector<HTMLInputElement>("input[type=search]")!;
   let starting: Promise<unknown> | null = null;
   const ensureSearch = () => (starting ??= startSearch().then((s) => { search = s; s.render(); }));
   input.addEventListener("focus", () => void ensureSearch(), { once: true });
@@ -96,7 +72,7 @@ export function initCollection() {
   document.addEventListener("keydown", (e) => {
     const el = document.activeElement as HTMLElement | null;
     const typing = !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
-    if (((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) && !dlg.open) {
+    if (((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) && !document.querySelector("dialog[open]")) {
       e.preventDefault(); input.focus(); input.select();
     }
   });
@@ -105,8 +81,8 @@ export function initCollection() {
     const [{ createSearch, fold, stem, terms, WORD }, docs] = await Promise.all([import("../lib/search"), index()]);
     const engine = createSearch(docs);
     const bySlug = new Map(docs.map((l) => [l.slug, l]));
-    const status = document.querySelector<HTMLElement>("[data-status]")!;
-    const empty = document.querySelector<HTMLElement>("[data-empty]")!;
+    const status = root.querySelector<HTMLElement>("[data-status]")!;
+    const empty = root.querySelector<HTMLElement>("[data-empty]")!;
     const cards = [...grid.querySelectorAll<HTMLElement>(".card")];
     const shown = new Map<HTMLElement, string>();
     cards.forEach((c) => c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => shown.set(e, e.textContent ?? "")));
@@ -206,5 +182,13 @@ export function initCollection() {
     empty.querySelector("[data-clear]")!.addEventListener("click", clear);
     empty.querySelector("[data-all]")!.addEventListener("click", () => filters.find((b) => b.dataset.filter === "all")!.click());
     return { render };
+  }
+}
+
+if (!customElements.get("lesson-collection")) customElements.define("lesson-collection", LessonCollection);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "lesson-collection": LessonCollection;
   }
 }

@@ -1,7 +1,7 @@
 ---
 // A lesson page: header, the machine (figure + panel), predict-then-run cards, explain-back questions.
-// The figure's still frame is plain HTML/SVG, so the page reads and prints without JavaScript; the lesson's live
-// code (the model and the animation) is a separate module, loaded as the machine comes into view.
+// The figure's still frame is plain HTML/SVG, so the page reads and prints without JavaScript. <wb-lesson> holds the
+// machine and the experiments and loads the lesson's live code (the model and the animation) as they come into view.
 import { getRelativeLocaleUrl } from "astro:i18n";
 import Base from "./Base.astro";
 import Switches from "../components/Switches.astro";
@@ -41,6 +41,7 @@ const path = `lessons/${lesson.slug}/`;
       </ul>
     </header>
 
+    <wb-lesson slug={lesson.slug}>
     <section id="machine">
       <div class="section-head"><span class="eyebrow">01</span><h2>{ui("lesson.machine")}</h2><p set:html={L(p.machine.intro)} /></div>
           <FigurePlate plate={def.machine.plate} svg={def.machine.svg} locale={locale} />
@@ -51,6 +52,8 @@ const path = `lessons/${lesson.slug}/`;
       <div class="section-head"><span class="eyebrow">02</span><h2>{ui("lesson.predict")}</h2><p set:html={L(p.predict.intro)} /></div>
       <Experiments locale={locale} experiments={p.predict.experiments} />
     </section>
+    <script type="application/json" data-lesson-data set:html={JSON.stringify(def.data).replace(/</g, "\\u003c")} />
+    </wb-lesson>
 
     <section id="explain">
       <div class="section-head"><span class="eyebrow">03</span><h2>{ui("lesson.explain")}</h2><p set:html={p.explain.intro ? L(p.explain.intro) : ui("lesson.explainIntro")} /></div>
@@ -59,10 +62,7 @@ const path = `lessons/${lesson.slug}/`;
 
     <footer set:html={p.footer ? L(p.footer) : ui("lesson.footer")} />
   </main>
-  <div hidden data-live={lesson.slug}></div>
-  <script type="application/json" data-lesson-data set:html={JSON.stringify(def.data).replace(/</g, "\\u003c")} />
   <script>
-    import { loadLive } from "../scripts/live-loader";
-    loadLive();
+    import "../elements/wb-lesson";
   </script>
 </Base>

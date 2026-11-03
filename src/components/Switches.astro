@@ -10,7 +10,7 @@ interface Props { locale: Locale; path: string; class?: string }
 const { locale, path, class: className = "switches" } = Astro.props;
 const ui = useUi(locale);
 ---
-<div class={className}>
+<site-switches class={className}>
   <nav class="seg lang-seg" aria-label={ui("lang.label")}>
     {LOCALES.map((l) => (
       <a href={getRelativeLocaleUrl(l, path)} hreflang={l} lang={l} aria-current={l === locale ? "page" : undefined} data-lang-link={l}>{l.toUpperCase()}</a>
@@ -21,9 +21,7 @@ const ui = useUi(locale);
     <button type="button" data-theme-choice="light">{ui("theme.light")}</button>
     <button type="button" data-theme-choice="dark">{ui("theme.dark")}</button>
   </div>
-</div>
+</site-switches>
 <script>
-  import { initTheme, rememberLanguage } from "../scripts/switches";
-  initTheme();
-  rememberLanguage();
+  import "../elements/site-switches";
 </script>

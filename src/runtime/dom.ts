@@ -40,19 +40,41 @@ export const setLit = (g: Element, on: boolean) => g.querySelectorAll(".iso-soli
 export const act = (name: string) => document.querySelector<HTMLButtonElement>(`[data-act="${name}"]`)!;
 
 /**
- * Play/Pause for a lesson: the Pause button's label and the readout follow the loop, the button toggles it, and
- * Space toggles it when the figure has focus. Pass onPause to WB.loop(), then call bind(loop).
+ * Play/Pause for a lesson: the Pause button's label and the readout follow the loop, and the "pause" action (the
+ * Pause button, or Space on the figure; see src/elements) toggles it. Pass onPause to WB.loop(), then call bind(loop).
  */
 export function pauseControls(stage: HTMLElement, say?: (text: string) => void) {
-  const btn = document.querySelector<HTMLButtonElement>('[data-act="pause"]');
+  const scope: ParentNode = stage.closest("wb-lesson") ?? document;
+  const btn = scope.querySelector<HTMLButtonElement>('[data-act="pause"]');
   return {
     onPause(on: boolean) {
       if (btn) btn.textContent = on ? L("Play", "Reanudar") : L("Pause", "Pausa");
       if (on && say) say(L("paused", "en pausa"));
     },
     bind(loop: Loop) {
-      btn?.addEventListener("click", () => loop.toggle());
-      stage.addEventListener("keydown", (e) => { if (e.key === " ") { e.preventDefault(); loop.toggle(); } });
+      scope.addEventListener("wb-action", (e) => {
+        const ev = e as CustomEvent;
+        if (ev.detail.name !== "pause") return;
+        ev.preventDefault();
+        loop.toggle();
+      });
+    },
+  };
+}
+
+/**
+ * Play/Pause for a lesson: the Pause button's label and the readout follow the loop, and the "pause" action (the
+ * Pause button, or Space on the figure) toggles it. Pass onPause to WB.loop(), then call bind(loop).
+ */
+export function playPause(root: { button(name: string): HTMLButtonElement | null; figure: { say(text: string): void }; on(type: "action", fn: (name: string, detail: { event: CustomEvent }) => void): unknown }) {
+  const btn = root.button("pause");
+  return {
+    onPause(on: boolean) {
+      if (btn) btn.textContent = on ? L("Play", "Reanudar") : L("Pause", "Pausa");
+      if (on) root.figure.say(L("paused", "en pausa"));
+    },
+    bind(loop: Loop) {
+      root.on("action", (name, { event }) => { if (name !== "pause") return; event.preventDefault(); loop.toggle(); });
     },
   };
 }

@@ -42,9 +42,18 @@ export interface Experiment {
   /** Index of the option that the model bears out. */
   answer: number;
   why: Bi;
-  /** Whatever the live code needs to put the figure in this experiment's state ("Watch it in the figure"). */
+  /** Whatever the live code needs to put the figure in this experiment's state ("Watch it on the machine"): sent
+   *  to it with the "watch" event. */
   watch?: unknown;
+  /** The result, worked out at build time from the model: the verdict and the bars the card shows after a run.
+   *  Without one, the card asks the live code ("run" event). */
+  result?: ExperimentResult;
 }
+
+/** One result bar: label, share of the track (0–1), the value text, and whether it's the "after" bar (accented). */
+export type ResultBar = [label: Bi, share: number, text: Bi, after?: boolean];
+/** An experiment's result: a verdict and bars, or bars in titled groups. */
+export type ExperimentResult = { verdict: Bi; bars: ResultBar[] } | { verdict: Bi; groups: { title: Bi; bars: ResultBar[] }[] };
 
 export interface LessonDef<Data = Record<string, unknown>> {
   title: Bi;
@@ -68,5 +77,9 @@ export interface LessonDef<Data = Record<string, unknown>> {
   /** Build-time values for live.ts (geometry, precomputed results). Serialised into the page as JSON. */
   data: Data;
 }
+
+/** Attach each experiment's build-time result: runs[id]() gives the verdict and bars its card shows after a run. */
+export const withResults = <E extends Experiment>(list: E[], runs: Record<string, () => ExperimentResult>): E[] =>
+  list.map((e) => (runs[e.id] ? { ...e, result: runs[e.id]() } : e));
 
 export const defineLesson = <Data extends Record<string, unknown>>(def: LessonDef<Data>) => def;

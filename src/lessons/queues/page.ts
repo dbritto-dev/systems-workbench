@@ -1,13 +1,48 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 33 · Queues: a parcel office as a work queue.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { one, n0 } from "../../lib/format";
 import { LIT_FILL_CSS } from "../../../workbench/parts.mjs";
 import { buildFigure, parcelSvg, P, GEOMETRY } from "./figure";
 import { overload, burstRun, crashRun, poisonRun, holRun } from "./sim";
 
-// Experiment results, computed at build time from the same model the page runs.
+// Experiment results, computed at build time from the same model the page runs (8 seeds each).
 const RESULTS = { overload: overload(), burst: burstRun(), crash: crashRun(), poison: poisonRun(), hol: holRun() };
+
+// What each card shows after a run.
+const RUNS = {
+  overload: () => {
+    const { under, over } = RESULTS.overload, top = Math.max(over.len, 1);
+    return { verdict: t("At 8/s: " + one(under.len) + " waiting after 5 minutes, the oldest for " + one(under.wait) + " s. At 10/s: " + n0(over.len) + " waiting, the oldest for " + n0(over.wait) + " s, and still growing by about one a second.",
+        "A 8/s: " + one(under.len) + " esperando después de 5 minutos, el más antiguo desde hace " + one(under.wait) + " s. A 10/s: " + n0(over.len) + " esperando, el más antiguo desde hace " + n0(over.wait) + " s, y sigue creciendo cerca de uno por segundo."),
+      bars: [[t("Waiting at 8/s", "Esperando a 8/s"), under.len / top, one(under.len)], [t("Waiting at 10/s", "Esperando a 10/s"), over.len / top, n0(over.len), true], [t("Oldest wait at 10/s (of 60 s)", "Espera más larga a 10/s (de 60 s)"), Math.min(1, over.wait / 60), n0(over.wait) + " s", true]] };
+  },
+  burst: () => {
+    const { queued, none } = RESULTS.burst;
+    return { verdict: t("With the queue: the line peaked at " + n0(queued.peak) + ", drained in " + n0(queued.drained) + " s, the longest wait was " + n0(queued.maxWait) + " s and nothing was turned away. With nowhere to wait: " + n0(none.rejected) + " of the 200 were turned away.",
+        "Con la cola: la fila llegó a " + n0(queued.peak) + ", se vació en " + n0(queued.drained) + " s, la espera más larga fue de " + n0(queued.maxWait) + " s y no se rechazó nada. Sin lugar para esperar: se rechazaron " + n0(none.rejected) + " de los 200."),
+      bars: [[t("Turned away, with a queue", "Rechazados, con cola"), queued.rejected / 200, n0(queued.rejected)], [t("Turned away, nowhere to wait", "Rechazados, sin lugar para esperar"), none.rejected / 200, n0(none.rejected), true], [t("Time to drain the burst (of 60 s)", "Tiempo en vaciar la ráfaga (de 60 s)"), Math.min(1, queued.drained / 60), n0(queued.drained) + " s"]] };
+  },
+  crash: () => {
+    const { after, first, idem } = RESULTS.crash, top = Math.max(after.harmful, first.lost, 1);
+    return { verdict: t("Stamp after the work: 0 lost, " + one(after.harmful) + " parcels done twice in 5 minutes. Stamp on pickup: 0 done twice, " + one(first.lost) + " lost. Stamp after, idempotent handler: " + one(idem.twice) + " repeats arrived and did no harm; nothing lost.",
+        "Sello después del trabajo: 0 perdidos, " + one(after.harmful) + " paquetes hechos dos veces en 5 minutos. Sello al recoger: 0 hechos dos veces, " + one(first.lost) + " perdidos. Sello después con handler idempotente: llegaron " + one(idem.twice) + " repeticiones y no hicieron daño; nada perdido."),
+      bars: [[t("Done twice, stamp after", "Hechos dos veces, sello después"), after.harmful / top, one(after.harmful), true], [t("Lost, stamp on pickup", "Perdidos, sello al recoger"), first.lost / top, one(first.lost), true], [t("Harm, stamp after + idempotent", "Daño, sello después + idempotente"), idem.harmful / top, one(idem.harmful)]] };
+  },
+  poison: () => {
+    const { forever, dlq } = RESULTS.poison, top = Math.max(forever.poisonTries, 1);
+    return { verdict: t("Retry forever: " + n0(forever.poisonTries) + " tries spent on bad parcels, " + n0(forever.len) + " parcels waiting at 5 minutes, the oldest for " + n0(forever.wait) + " s. Three tries then the cage: " + n0(dlq.poisonTries) + " tries, " + one(dlq.dead) + " parcels in the cage, " + one(dlq.len) + " waiting.",
+        "Reintentar para siempre: " + n0(forever.poisonTries) + " intentos gastados en paquetes malos, " + n0(forever.len) + " paquetes esperando a los 5 minutos, el más antiguo desde hace " + n0(forever.wait) + " s. Tres intentos y a la jaula: " + n0(dlq.poisonTries) + " intentos, " + one(dlq.dead) + " paquetes en la jaula, " + one(dlq.len) + " esperando."),
+      bars: [[t("Tries on bad parcels, forever", "Intentos en malos, para siempre"), forever.poisonTries / top, n0(forever.poisonTries), true], [t("Tries on bad parcels, 3 then cage", "Intentos en malos, 3 y jaula"), dlq.poisonTries / top, n0(dlq.poisonTries)], [t("Waiting at 5 min, forever (of 100)", "Esperando a los 5 min, para siempre (de 100)"), Math.min(1, forever.len / 100), n0(forever.len), true], [t("Waiting at 5 min, 3 then cage", "Esperando a los 5 min, 3 y jaula"), Math.min(1, dlq.len / 100), one(dlq.len)]] };
+  },
+  hol: () => {
+    const { strict, key } = RESULTS.hol, top = 32;
+    return { verdict: t("One order for everything: B, C and D waited up to " + one(strict.others) + " s and the line peaked at " + n0(strict.peak) + ". One order per customer: B, C and D waited at most " + one(key.others) + " s; A waited up to " + one(key.same) + " s behind its own slow parcel.",
+        "Un solo orden para todo: B, C y D esperaron hasta " + one(strict.others) + " s y la fila llegó a " + n0(strict.peak) + ". Un orden por cliente: B, C y D esperaron como mucho " + one(key.others) + " s; A esperó hasta " + one(key.same) + " s detrás de su propio paquete lento."),
+      bars: [[t("B, C, D wait, one order", "Espera de B, C, D, un orden"), Math.min(1, strict.others / top), one(strict.others) + " s", true], [t("B, C, D wait, per customer", "Espera de B, C, D, por cliente"), Math.min(1, key.others / top), one(key.others) + " s"], [t("A waits, per customer", "Espera de A, por cliente"), Math.min(1, key.same / top), one(key.same) + " s"]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -156,7 +191,7 @@ export default defineLesson({
     ],
     note: t("Each clerk takes 3 s a parcel (1.5 to 4.5), so three clerks keep up with about one parcel a second. Changing a setting starts the run again.", "Cada empleado tarda 3 s por paquete (de 1.5 a 4.5), así que tres empleados alcanzan para cerca de un paquete por segundo. Cambiar un ajuste reinicia la ejecución."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 [data-desk][data-off],[data-clerk][data-off]{display:none}
@@ -167,7 +202,5 @@ ${LIT_FILL_CSS}
     P,
     G: GEOMETRY,
     PARCEL_SVG: parcelSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

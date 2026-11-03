@@ -178,8 +178,6 @@ export default defineLesson({
   explain: { questions: QUESTIONS },
   // Experiment results here come in titled groups of bars.
   css: `
-.bar-group{font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted);margin-top:6px}
-.bar-group:first-child{margin-top:0}
 `,
   data: {
     P,

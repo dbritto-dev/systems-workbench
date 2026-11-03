@@ -9,7 +9,7 @@ import { readout, stats, act, pauseControls, setLit } from "../../runtime/dom";
 import { pct } from "../../lib/format";
 import { createOffice } from "./sim";
 
-export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET, RESULTS, EXPERIMENTS }, root) {
   const stage = document.querySelector("[data-office]");
   const svg = stage.querySelector("svg");
   const q = (s) => svg.querySelector(s);
@@ -205,47 +205,16 @@ export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET, RESULTS, EXPER
         groups: [[T("Attempts per request", "Intentos por solicitud"), [[T("1 layer", "1 capa"), a.attemptsPerRequest / top, a.attemptsPerRequest.toFixed(1)], [T("3 layers", "3 capas"), b.attemptsPerRequest / top, b.attemptsPerRequest.toFixed(1), true], [T("3 layers + budget", "3 capas + presupuesto"), c.attemptsPerRequest / top, c.attemptsPerRequest.toFixed(2)]]]] };
     },
   };
-  // The cards are wired here rather than by WB.experiments(): this lesson's results come in titled groups of bars,
-  // and the Run button shows "Running…" for a moment first.
-  document.querySelectorAll("[data-exp]").forEach((card) => {
-    const exp = EXPERIMENTS.find((e) => e.id === card.dataset.exp);
-    const runBtn = card.querySelector("[data-run]");
-    const choices = [...card.querySelectorAll("[data-choice]")];
-    let picked = null;
-    choices.forEach((c) => c.addEventListener("click", () => {
-      if (card.hasAttribute("data-done")) return;
-      picked = Number(c.dataset.choice);
-      choices.forEach((x) => x.setAttribute("aria-pressed", String(x === c)));
-      runBtn.disabled = false; runBtn.textContent = L("Run the experiment", "Ejecutar el experimento");
-    }));
-    runBtn.addEventListener("click", () => {
-      if (picked === null) return;
-      runBtn.disabled = true; runBtn.textContent = L("Running…", "Ejecutando…");
-      setTimeout(() => {
-        const out = RUNS[exp.id]();
-        const right = picked === exp.answer;
-        choices.forEach((x, j) => { x.disabled = true; if (j === exp.answer) x.dataset.verdict = "right"; else if (j === picked) x.dataset.verdict = "wrong"; });
-        const rows = [];
-        out.groups.forEach(([title, bars]) => { rows.push('<div class="bar-group" data-bar-group></div>'); bars.forEach(([label, share, text, after]) => rows.push('<div class="bar"' + (after ? " data-after" : "") + '><span data-bar-label></span><span class="track"><span class="fill" style="width:0" data-share="' + Math.max(0.01, Math.min(1, share)) + '"></span></span><b data-bar-text></b></div>')); });
-        card.querySelector("[data-bars]").innerHTML = rows.join("");
-        const bars = out.groups.flatMap(([, list]) => list);
-        card.querySelector("[data-outcome]").textContent = (right ? L("Your prediction held. ", "Tu predicción se cumplió. ") : L("Not what you predicted. ", "No es lo que predijiste. ")) + L(out.verdict);
-        card.querySelectorAll("[data-bar-group]").forEach((el, i) => { el.textContent = L(out.groups[i][0]); });
-        card.querySelectorAll("[data-bar-label]").forEach((el, i) => { el.textContent = L(bars[i][0]); });
-        card.querySelectorAll("[data-bar-text]").forEach((el, i) => { el.textContent = L(bars[i][2]); });
-        runBtn.textContent = L("Done", "Listo");
-        card.setAttribute("data-done", "");
-        requestAnimationFrame(() => requestAnimationFrame(() => card.querySelectorAll(".fill").forEach((f) => { f.style.width = Math.round(100 * Number(f.dataset.share)) + "%"; })));
-      }, 30);
-    });
-    card.querySelector("[data-watch]").addEventListener("click", () => {
-      const w = exp.watch;
-      for (const name of ["retries", "backoff", "jitter", "timeout", "layers", "budget"]) { settings[name] = w[name]; pressSeg(name, w[name]); }
-      start();
-      if (w.rush) pendingRush = office.t + 6;
-      document.getElementById("machine").scrollIntoView({ behavior: still.matches ? "auto" : "smooth" });
-      if (loop.paused) loop.setPaused(false);
-    });
+  // Results come in titled groups of bars.
+  root.on("run", (id, respond) => {
+    const out = RUNS[id]();
+    respond({ verdict: L(out.verdict), groups: out.groups.map(([title, bars]) => ({ title: L(title), bars: bars.map(([label, share, text, after]) => [L(label), Math.max(0.01, Math.min(1, share)), L(text), after]) })) });
+  });
+  root.on("watch", (w) => {
+    for (const name of ["retries", "backoff", "jitter", "timeout", "layers", "budget"]) { settings[name] = w[name]; pressSeg(name, w[name]); }
+    start();
+    if (w.rush) pendingRush = office.t + 6;
+    if (loop.paused) loop.setPaused(false);
   });
 
   start();

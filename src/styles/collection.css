@@ -106,3 +106,6 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
 .switches .lang-seg a{padding:7px 11px;min-height:32px;font-size:11.5px;letter-spacing:.04em}
 .switches .lang-seg a:not([aria-current]){color:var(--text)}
 .shot picture,.shot img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:contain}
+
+/* Custom elements that only group behaviour: they take no box of their own. */
+lesson-collection, lesson-preview { display: contents; }

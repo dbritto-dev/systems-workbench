@@ -14,6 +14,7 @@ const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const hint = plate.hint ?? { en: "Space pauses", es: "Espacio: pausa" };
 const readout = plate.readout ?? { en: "starting", es: "iniciando" };
 ---
+<wb-figure>
 <figure class="iso-figure">
   <div class="iso-plate">
     <div class="iso-plate-corners" aria-hidden="true">
@@ -33,3 +34,4 @@ const readout = plate.readout ?? { en: "starting", es: "iniciando" };
     </figcaption>
   )}
 </figure>
+</wb-figure>

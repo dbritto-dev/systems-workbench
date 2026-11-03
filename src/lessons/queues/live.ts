@@ -1,19 +1,17 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The parcel office in the browser: runs the model, eases parcels toward where it has them, wires the controls and
-// the experiment cards. mount() gets the build-time data from page.ts (geometry, parcel drawing, results).
+// The parcel office in the browser: runs the model, eases parcels toward where it has them, and answers the
+// controls. mount() gets the build-time data from page.ts (geometry, parcel drawing) and root, the <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
-import { one, n0 } from "../../lib/format";
 import { makeQueue } from "./sim";
 
-export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G, PARCEL_SVG }, root) {
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   const layers = { back: q('[data-layer="back"]'), front: q('[data-layer="front"]') };
   const desks = [0, 1, 2, 3].map((i) => q('[data-desk="' + i + '"]'));
@@ -174,65 +172,35 @@ export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
     else say(L(Q.length + " in queue · oldest " + Math.round(oldest) + " s · " + busy + " of " + cfg.clerks + " clerks busy",
       Q.length + " en cola · el más antiguo " + Math.round(oldest) + " s · " + busy + " de " + cfg.clerks + " empleados ocupados"));
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; model.runTo(clock); paint(dt); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = ["rate", "clerks", "crash", "poison"].includes(name) ? Number(raw) : raw;
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("burst").addEventListener("click", () => { model.burst(clock, 30); note = { t: clock, text: T("30 parcels dropped at once", "30 paquetes soltados de golpe") }; if (loop.paused) loop.setPaused(false); });
-  act("slow").addEventListener("click", () => { const p = model.slowOne(clock, 30, 0); note = { t: clock, text: T("parcel " + p.id + " for customer A takes 30 s", "el paquete " + p.id + " del cliente A tarda 30 s") }; if (loop.paused) loop.setPaused(false); });
-  act("reset").addEventListener("click", () => restart());
-
-  // ---------- experiments (numbers computed from the same model, 8 seeds each) ----------
-  const RUNS = {
-    overload: () => {
-      const { under, over } = RESULTS.overload, top = Math.max(over.len, 1);
-      return { verdict: T("At 8/s: " + one(under.len) + " waiting after 5 minutes, the oldest for " + one(under.wait) + " s. At 10/s: " + n0(over.len) + " waiting, the oldest for " + n0(over.wait) + " s, and still growing by about one a second.",
-          "A 8/s: " + one(under.len) + " esperando después de 5 minutos, el más antiguo desde hace " + one(under.wait) + " s. A 10/s: " + n0(over.len) + " esperando, el más antiguo desde hace " + n0(over.wait) + " s, y sigue creciendo cerca de uno por segundo."),
-        bars: [[T("Waiting at 8/s", "Esperando a 8/s"), under.len / top, one(under.len)], [T("Waiting at 10/s", "Esperando a 10/s"), over.len / top, n0(over.len), true], [T("Oldest wait at 10/s (of 60 s)", "Espera más larga a 10/s (de 60 s)"), Math.min(1, over.wait / 60), n0(over.wait) + " s", true]] };
-    },
-    burst: () => {
-      const { queued, none } = RESULTS.burst;
-      return { verdict: T("With the queue: the line peaked at " + n0(queued.peak) + ", drained in " + n0(queued.drained) + " s, the longest wait was " + n0(queued.maxWait) + " s and nothing was turned away. With nowhere to wait: " + n0(none.rejected) + " of the 200 were turned away.",
-          "Con la cola: la fila llegó a " + n0(queued.peak) + ", se vació en " + n0(queued.drained) + " s, la espera más larga fue de " + n0(queued.maxWait) + " s y no se rechazó nada. Sin lugar para esperar: se rechazaron " + n0(none.rejected) + " de los 200."),
-        bars: [[T("Turned away, with a queue", "Rechazados, con cola"), queued.rejected / 200, n0(queued.rejected)], [T("Turned away, nowhere to wait", "Rechazados, sin lugar para esperar"), none.rejected / 200, n0(none.rejected), true], [T("Time to drain the burst (of 60 s)", "Tiempo en vaciar la ráfaga (de 60 s)"), Math.min(1, queued.drained / 60), n0(queued.drained) + " s"]] };
-    },
-    crash: () => {
-      const { after, first, idem } = RESULTS.crash, top = Math.max(after.harmful, first.lost, 1);
-      return { verdict: T("Stamp after the work: 0 lost, " + one(after.harmful) + " parcels done twice in 5 minutes. Stamp on pickup: 0 done twice, " + one(first.lost) + " lost. Stamp after, idempotent handler: " + one(idem.twice) + " repeats arrived and did no harm; nothing lost.",
-          "Sello después del trabajo: 0 perdidos, " + one(after.harmful) + " paquetes hechos dos veces en 5 minutos. Sello al recoger: 0 hechos dos veces, " + one(first.lost) + " perdidos. Sello después con handler idempotente: llegaron " + one(idem.twice) + " repeticiones y no hicieron daño; nada perdido."),
-        bars: [[T("Done twice, stamp after", "Hechos dos veces, sello después"), after.harmful / top, one(after.harmful), true], [T("Lost, stamp on pickup", "Perdidos, sello al recoger"), first.lost / top, one(first.lost), true], [T("Harm, stamp after + idempotent", "Daño, sello después + idempotente"), idem.harmful / top, one(idem.harmful)]] };
-    },
-    poison: () => {
-      const { forever, dlq } = RESULTS.poison, top = Math.max(forever.poisonTries, 1);
-      return { verdict: T("Retry forever: " + n0(forever.poisonTries) + " tries spent on bad parcels, " + n0(forever.len) + " parcels waiting at 5 minutes, the oldest for " + n0(forever.wait) + " s. Three tries then the cage: " + n0(dlq.poisonTries) + " tries, " + one(dlq.dead) + " parcels in the cage, " + one(dlq.len) + " waiting.",
-          "Reintentar para siempre: " + n0(forever.poisonTries) + " intentos gastados en paquetes malos, " + n0(forever.len) + " paquetes esperando a los 5 minutos, el más antiguo desde hace " + n0(forever.wait) + " s. Tres intentos y a la jaula: " + n0(dlq.poisonTries) + " intentos, " + one(dlq.dead) + " paquetes en la jaula, " + one(dlq.len) + " esperando."),
-        bars: [[T("Tries on bad parcels, forever", "Intentos en malos, para siempre"), forever.poisonTries / top, n0(forever.poisonTries), true], [T("Tries on bad parcels, 3 then cage", "Intentos en malos, 3 y jaula"), dlq.poisonTries / top, n0(dlq.poisonTries)], [T("Waiting at 5 min, forever (of 100)", "Esperando a los 5 min, para siempre (de 100)"), Math.min(1, forever.len / 100), n0(forever.len), true], [T("Waiting at 5 min, 3 then cage", "Esperando a los 5 min, 3 y jaula"), Math.min(1, dlq.len / 100), one(dlq.len)]] };
-    },
-    hol: () => {
-      const { strict, key } = RESULTS.hol, top = 32;
-      return { verdict: T("One order for everything: B, C and D waited up to " + one(strict.others) + " s and the line peaked at " + n0(strict.peak) + ". One order per customer: B, C and D waited at most " + one(key.others) + " s; A waited up to " + one(key.same) + " s behind its own slow parcel.",
-          "Un solo orden para todo: B, C y D esperaron hasta " + one(strict.others) + " s y la fila llegó a " + n0(strict.peak) + ". Un orden por cliente: B, C y D esperaron como mucho " + one(key.others) + " s; A esperó hasta " + one(key.same) + " s detrás de su propio paquete lento."),
-        bars: [[T("B, C, D wait, one order", "Espera de B, C, D, un orden"), Math.min(1, strict.others / top), one(strict.others) + " s", true], [T("B, C, D wait, per customer", "Espera de B, C, D, por cliente"), Math.min(1, key.others / top), one(key.others) + " s"], [T("A waits, per customer", "Espera de A, por cliente"), Math.min(1, key.same / top), one(key.same) + " s"]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    burst: () => { model.burst(clock, 30); note = { t: clock, text: T("30 parcels dropped at once", "30 paquetes soltados de golpe") }; if (loop.paused) loop.setPaused(false); },
+    slow: () => { const p = model.slowOne(clock, 30, 0); note = { t: clock, text: T("parcel " + p.id + " for customer A takes 30 s", "el paquete " + p.id + " del cliente A tarda 30 s") }; if (loop.paused) loop.setPaused(false); },
+    reset: () => restart(),
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     set("rate", String(w.rate), true); set("crash", String(w.crash), true); set("poison", String(w.poison), true); set("order", w.order, true);
     set("cap", w.cap, true); set("clerks", String(w.clerks), true); set("tries", w.tries || "3", true); set("handler", w.handler || "after", true);
     restart(w.burst || w.slow ? 6 : WARM);
     if (loop.paused) loop.setPaused(false);
     if (w.burst) setTimeout(() => { model.burst(clock, 30); note = { t: clock, text: T("30 parcels dropped at once", "30 paquetes soltados de golpe") }; }, 1500);
     if (w.slow) { set("speed", "3"); setTimeout(() => { const p = model.slowOne(clock, 30, 0); note = { t: clock, text: T("parcel " + p.id + " for customer A takes 30 s · everyone waits behind it", "el paquete " + p.id + " del cliente A tarda 30 s · todos esperan detrás") }; }, 1500); }
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

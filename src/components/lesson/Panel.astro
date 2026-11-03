@@ -1,7 +1,7 @@
 ---
-// Under the figure: the stats strip (<b data-s="key">, written by the live code) and the controls (segmented
-// choices <button data-set data-value>, the speed control, action buttons <button data-act>, one of them maybe
-// marked primary).
+// Under the figure: the stats strip <wb-stats> (<b data-s="key">, written by the live code) and the controls:
+// segmented choices <wb-seg> (the speed control is one), and rows of action buttons <wb-actions>, one of them maybe
+// marked primary. The elements are in src/elements/wb-controls.ts.
 import { pick, type Locale } from "../../i18n";
 import type { Control } from "../../lessons/types";
 
@@ -16,22 +16,22 @@ const segs = controls.map((c) =>
 );
 ---
 <div class="panel">
-  <div class="stats" data-stats>
+  <wb-stats class="stats" data-stats>
     {stats.map(([key, label, initial = "0"]) => <div class="stat"><b data-s={key}>{L(initial)}</b><span>{L(label)}</span></div>)}
-  </div>
+  </wb-stats>
   <div class="controls">
     {controls.map((c, i) => {
       const s = segs[i];
       if (s) return (
         <div class="control" data-for={c.for} hidden={c.hidden}><span>{s.label}</span>
-          <div class="seg" role="group" aria-label={s.label}>
+          <wb-seg class="seg" role="group" aria-label={s.label} name={s.name} value={String(s.value)}>
             {s.options.map(([value, text]) => <button type="button" data-set={s.name} data-value={String(value)} aria-pressed={String(String(value) === String(s.value))}>{L(text)}</button>)}
-          </div>
+          </wb-seg>
         </div>
       );
       if ("actions" in c) return (
         <div class="control" data-for={c.for} hidden={c.hidden}><span>{L(c.label)}</span>
-          <div class="actions">{c.actions.map(([act, text, opts]) => <button class={opts?.primary ? "btn primary" : "btn"} type="button" data-act={act}>{L(text)}</button>)}</div>
+          <wb-actions class="actions">{c.actions.map(([act, text, opts]) => <button class={opts?.primary ? "btn primary" : "btn"} type="button" data-act={act}>{L(text)}</button>)}</wb-actions>
         </div>
       );
     })}
