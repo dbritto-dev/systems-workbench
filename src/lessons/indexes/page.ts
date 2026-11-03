@@ -96,7 +96,7 @@ export default defineLesson({
       { seg: "rows", label: t("Rows", "Filas"), options: [[1000, "1,000"], [10000, "10,000"], [100000, "100,000"]], value: 10000 },
       { seg: "query", label: t("Query", "Consulta"), options: [["isbn", "ISBN"], ["author", t("Author", "Autor")], ["year", t("Year", "Año")], ["authorYear", t("Author + year", "Autor + año")], ["loan", t("On loan", "Prestado")], ["titles", t("Titles by author", "Títulos por autor")]], value: "isbn" },
       // Several catalogues can be on at once: the live code presses each button that is on.
-      { seg: "idx", label: t("Catalogues (indexes)", "Catálogos (índices)"), options: [["isbn", "ISBN"], ["author", t("Author", "Autor")], ["authorYear", t("Author, year", "Autor, año")], ["loan", t("On loan", "Prestado")], ["authorTitle", t("Author + title", "Autor + título")]], value: "isbn" },
+      { seg: "idx", label: t("Catalogues (indexes)", "Catálogos (índices)"), options: [["isbn", "ISBN"], ["author", t("Author", "Autor")], ["authorYear", t("Author, year", "Autor, año")], ["loan", t("On loan", "Prestado")], ["authorTitle", t("Author + title", "Autor + título")]], value: "isbn", multiple: true },
       { seg: "writes", label: t("New books arriving", "Llegan libros nuevos"), options: [["false", t("Off", "No")], ["true", t("On", "Sí")]], value: "false" },
       { speed: true },
       { actions: [["restart", t("Restart", "Reiniciar")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },

@@ -14,7 +14,7 @@ export type { Bi };
 /** A control under the figure. `for` tags it (data-for) so the live code can show one group at a time;
  *  `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (.btn.primary). */
 export type Control = (
-  | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number }
+  | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number; /** Options switch on and off independently; value: the ones on at first, space-separated. */ multiple?: boolean }
   | { speed: true; options?: [value: number, label: string][]; value?: number }
   | { actions: [act: string, label: Bi, opts?: { primary?: boolean }][]; label: Bi }
 ) & { for?: string; hidden?: boolean };
