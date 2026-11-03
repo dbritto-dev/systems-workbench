@@ -1,0 +1,12 @@
+/* Type for every page: Montserrat (headings), Source Sans 3 (text), Inconsolata (labels, numbers, readouts). The
+   faces are declared in astro.config.mjs (fonts) and loaded by <Font> in layouts/Base.astro.
+   The machine drawings keep the system faces their words were fitted with, so no figure changes. */
+:root {
+  --font-figure-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-figure-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+:root .iso { --anatomy-mono: var(--font-mono); }
+html body { font-family: var(--font-body); }
+html h1, html h2, html h3 { font-family: var(--font-heading); }
+html .iso-stage { --anatomy-mono: var(--font-figure-mono); }
+html .iso-stage svg { font-family: var(--font-figure-sans); }

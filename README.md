@@ -117,7 +117,8 @@ What loads, and when:
   Card images are resized by `astro:assets` and lazy-loaded.
 
 Built on Astro's own features rather than custom code wherever Astro has one: content collections (lesson data),
-i18n routing and `astro:i18n` URL helpers, `astro:assets` (images), bundled `<script>` modules and
+i18n routing and `astro:i18n` URL helpers, `astro:assets` (images), the Fonts API (Montserrat, Source Sans 3 and
+Inconsolata, self-hosted from `@fontsource` packages), bundled `<script>` modules and
 `import.meta.glob` (shared and per-lesson chunks), `prefetch` (lesson pages load on hover), `redirects` (old URLs)
 and `@astrojs/sitemap` (both languages).
 

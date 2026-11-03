@@ -2,7 +2,9 @@
 // Every page: document head (title, description, language alternates), the theme set before first paint,
 // and old ?lang= links sent to the right language's URL.
 import { getRelativeLocaleUrl } from "astro:i18n";
+import { Font } from "astro:assets";
 import { LOCALES, type Locale } from "../i18n";
+import "../styles/fonts.css";
 
 interface Props {
   locale: Locale;
@@ -23,6 +25,9 @@ const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <Font cssVariable="--font-heading" preload={[{ weight: 600 }]} />
+    <Font cssVariable="--font-body" preload={[{ weight: 400, style: "normal" }]} />
+    <Font cssVariable="--font-mono" preload={[{ weight: 500 }]} />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}favicon.svg`} />
     {LOCALES.map((l) => <link rel="alternate" hreflang={l} href={new URL(getRelativeLocaleUrl(l, path), Astro.site)} />)}
     <link rel="alternate" hreflang="x-default" href={new URL(getRelativeLocaleUrl("en", path), Astro.site)} />

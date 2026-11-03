@@ -2,9 +2,9 @@
    of lesson plates whose previews are screenshots of each running machine. Colour tokens come from tokens.css. */
 :root{
   --sheet:var(--anatomy-page);--plate:var(--anatomy-card);--ink:var(--anatomy-strong);--text:var(--anatomy-text);--muted:var(--anatomy-muted);--rule:var(--anatomy-faint);--edge:var(--anatomy-lo);
-  --display:"IBM Plex Sans Condensed","Arial Narrow",ui-sans-serif,system-ui,sans-serif;
-  --body:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --display:var(--font-heading);
+  --body:var(--font-body);
+  --mono:var(--font-mono);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased}
