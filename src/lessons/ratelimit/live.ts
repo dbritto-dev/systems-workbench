@@ -1,23 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The ticket dispenser in the browser: runs the model a ticket's ride ahead, moves the tickets, discs, flaps and
-// window dials, wires the controls and the experiment cards. mount() gets the build-time data from page.ts
-// (geometry, the ticket drawing, results).
+// window dials, and answers the controls. mount() gets the build-time data from page.ts (geometry, the ticket
+// drawing) and root, the <wb-lesson>.
 import { lineOnTop, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { easeInOutCubic as ease } from "../../lib/tween";
-import { pct } from "../../lib/format";
 import { makeSim, levelOf, TRAVEL } from "./sim";
 
-export default function mount({ P, G, TICKET_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, TICKET_SVG }, root) {
   const POOL = 70, PASS_TIME = 0.9, BACK_TIME = 0.6, DROP_TIME = 0.3;
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const sayText = readout();
-  const say = (v) => sayText(L(v));
+  const say = (v) => root.figure.say(L(v));
   const NS = "http://www.w3.org/2000/svg";
   const groups = [0, 1].map((i) => q('[data-group="' + i + '"]'));
   const ups = [0, 1].map((i) => q('[data-up="' + i + '"]'));
@@ -135,7 +132,7 @@ export default function mount({ P, G, TICKET_SVG, RESULTS, EXPERIMENTS }) {
     }
   }
 
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
   let counts, recent;
   function resetCounts() { counts = { attempts: 0, allowed: 0, quiet: 0, quietRejected: 0, peak: 0, next: 0 }; recent = []; }
   function showStats() {
@@ -165,15 +162,14 @@ export default function mount({ P, G, TICKET_SVG, RESULTS, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, sayText);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(loop);
-  const pressSeg = WB.pressSeg;
   const NUMERIC = ["rate", "capacity", "instances", "speed"];
   function set(name, raw, quiet) {
     const value = NUMERIC.includes(name) ? Number(raw) : name === "noisy" ? raw === true || raw === "true" : raw;
     cfg[name] = value;
-    pressSeg(name, raw);
+    root.press(name, raw);
     if (name !== "speed" && !quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · corrida reiniciada")); }
   }
   function burst(client = 0, n = 20) {
@@ -182,38 +178,22 @@ export default function mount({ P, G, TICKET_SVG, RESULTS, EXPERIMENTS }) {
     say(T("client " + "ABC"[client] + " · burst of " + n, "cliente " + "ABC"[client] + " · ráfaga de " + n));
     if (loop.paused) loop.setPaused(false);
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("burst").addEventListener("click", () => burst());
-  act("reset").addEventListener("click", () => { restart(); say(T("started over", "empezó de nuevo")); });
-
-  // ---------- experiments (results computed at build time from the same model) ----------
-  const RUNS = {
-    size: () => {
-      const { a, b, b8, b16 } = RESULTS.size, top = Math.max(a.perMinute, b.perMinute);
-      return { verdict: T("Per minute: " + Math.round(a.perMinute) + " → " + Math.round(b.perMinute) + ". A burst of 20 after a quiet spell: " + b8 + " → " + b16 + " let through.",
-          "Por minuto: " + Math.round(a.perMinute) + " → " + Math.round(b.perMinute) + ". Una ráfaga de 20 después de un rato tranquilo: pasan " + b8 + " → " + b16 + "."),
-        bars: [[T("Per min, size 8", "Por min, tamaño 8"), a.perMinute / top, Math.round(a.perMinute)], [T("Per min, size 16", "Por min, tamaño 16"), b.perMinute / top, Math.round(b.perMinute), true], [T("Burst, size 8", "Ráfaga, tamaño 8"), b8 / 20, T(b8 + " of 20", b8 + " de 20")], [T("Burst, size 16", "Ráfaga, tamaño 16"), b16 / 20, T(b16 + " of 20", b16 + " de 20"), true]] };
-    },
-    window: () => { const { w, b } = RESULTS.window; return { verdict: T("In 0.4 s around the boundary, the fixed window let " + w + " through; the token bucket let " + b + " through. The limit is 8.", "En 0.4 s alrededor del borde, la ventana fija dejó pasar " + w + "; la cubeta de tokens dejó pasar " + b + ". El límite es 8."), bars: [[T("Fixed window", "Ventana fija"), w / 32, String(w), true], [T("Token bucket", "Cubeta de tokens"), b / 32, String(b)]] }; },
-    noisy: () => {
-      const { g, p } = RESULTS.noisy;
-      return { verdict: T("A and B's attempts rejected: " + pct(g.quietRejected) + " with one shared limit, " + pct(p.quietRejected) + " with a limit per client.", "Intentos de A y B rechazados: " + pct(g.quietRejected) + " con un límite compartido, " + pct(p.quietRejected) + " con un límite por cliente."), bars: [[T("Shared limit", "Límite compartido"), g.quietRejected, pct(g.quietRejected), true], [T("Per client", "Por cliente"), p.quietRejected, pct(p.quietRejected)]] };
-    },
-    retry: () => { const { now, after } = RESULTS.retry, top = Math.max(now, after); return { verdict: T("Rejected attempts in the minute after the burst: " + Math.round(now) + " retrying every 0.25 s, " + Math.round(after) + " waiting the Retry-After time.", "Intentos rechazados en el minuto después de la ráfaga: " + Math.round(now) + " reintentando cada 0.25 s, " + Math.round(after) + " esperando el tiempo de Retry-After."), bars: [[T("Retry now", "Reintentar ya"), now / top, String(Math.round(now)), true], [T("Wait Retry-After", "Esperar Retry-After"), after / top, String(Math.round(after))]] }; },
-    instances: () => {
-      const { one, two } = RESULTS.instances, top = Math.max(one.perMinute, two.perMinute);
-      return { verdict: T("Allowed per minute: " + Math.round(one.perMinute) + " with one instance, " + Math.round(two.perMinute) + " with two. The \"4/s\" limit is now about 8/s.", "Permitidas por minuto: " + Math.round(one.perMinute) + " con una instancia, " + Math.round(two.perMinute) + " con dos. El límite de \"4/s\" ahora es de unos 8/s."), bars: [[T("1 instance", "1 instancia"), one.perMinute / top, Math.round(one.perMinute)], [T("2 instances", "2 instancias"), two.perMinute / top, Math.round(two.perMinute), true]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    burst: () => burst(),
+    reset: () => { restart(); say(T("started over", "empezó de nuevo")); },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w, id) => {
     for (const name of ["rate", "capacity", "algorithm", "mode", "noisy", "behaviour", "instances"]) set(name, String(w[name]), true);
     cfg.demand = w.heavy ? [2.5, 2.5, 2.5] : [1, 1, 1];
     restart();
     if (loop.paused) loop.setPaused(false);
-    if (w.burst) setTimeout(() => burst(0, exp.id === "retry" ? 30 : 20), 2500);
-    say(T("watching: " + exp.id, "observando: " + exp.id));
-  } });
+    if (w.burst) setTimeout(() => burst(0, id === "retry" ? 30 : 20), 2500);
+    say(T("watching: " + id, "observando: " + id));
+  });
 
   loop.setPaused(loop.paused);
   restart();

@@ -1,13 +1,38 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 07 · Consistent hashing: a sorting carousel for a hash ring and hash mod n.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pctTenths } from "../../lib/format";
 import { buildFigure, cardSvg, P, GEOMETRY } from "./figure";
 import { moduloRun, ringRun, balanceRun, failRun, hotRun } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page computed them in
 // the browser; they're deterministic, so the numbers are the same).
 const RESULTS = { modulo: moduloRun(), ring: ringRun(), balance: balanceRun(), fail: failRun(), hot: hotRun() };
+
+// What each card shows after a run.
+const RUNS = {
+  modulo: () => {
+    const { m } = RESULTS.modulo;
+    return { verdict: t(pctTenths(m) + " of the keys moved to a different node, against 20% that had to.", "El " + pctTenths(m) + " de las claves se movió a otro nodo, frente al 20% que tenía que moverse."), bars: [["hash mod n", m, pctTenths(m), true], [t("Least possible", "Mínimo posible"), 0.2, "20%"]] };
+  },
+  ring: () => {
+    const { m, r, one } = RESULTS.ring;
+    return { verdict: t("On average " + pctTenths(r) + " of keys moved, and in " + pctTenths(one) + " of clusters they all came from a single neighbour.", "En promedio se movió el " + pctTenths(r) + " de las claves, y en el " + pctTenths(one) + " de los clústeres todas vinieron de un solo vecino."), bars: [["hash mod n", m, pctTenths(m)], [t("Hash ring", "Anillo de hash"), r, pctTenths(r), true]] };
+  },
+  balance: () => {
+    const { r1, r10, r100 } = RESULTS.balance, top = 2.6;
+    return { verdict: t("With one marker per node the busiest node carried " + r1.toFixed(2) + "× its fair share on average. With 100 markers, " + r100.toFixed(2) + "×.", "Con un marcador por nodo, el nodo más ocupado cargó en promedio " + r1.toFixed(2) + "× su parte justa. Con 100 marcadores, " + r100.toFixed(2) + "×."), bars: [[t("1 marker", "1 marcador"), r1 / top, r1.toFixed(2) + "×", true], [t("10 markers", "10 marcadores"), r10 / top, r10.toFixed(2) + "×"], [t("100 markers", "100 marcadores"), r100 / top, r100.toFixed(2) + "×"]] };
+  },
+  fail: () => {
+    const { r1, r100 } = RESULTS.fail;
+    return { verdict: t("With one marker per node, C's keys went to " + r1.toFixed(1) + " node on average. With 100 markers they spread over " + r100.toFixed(1) + " of the 4 survivors.", "Con un marcador por nodo, las claves de C fueron en promedio a " + r1.toFixed(1) + " nodo. Con 100 marcadores se repartieron entre " + r100.toFixed(1) + " de los 4 sobrevivientes."), bars: [[t("1 marker", "1 marcador"), r1 / 4, t(r1.toFixed(1) + " of 4", r1.toFixed(1) + " de 4"), true], [t("100 markers", "100 marcadores"), r100 / 4, t(r100.toFixed(1) + " of 4", r100.toFixed(1) + " de 4")]] };
+  },
+  hot: () => {
+    const { b3, b6 } = RESULTS.hot;
+    return { verdict: t("The busiest node served " + pctTenths(b3) + " of all requests with 3 nodes and still " + pctTenths(b6) + " with 6, where a fair share is 17%.", "El nodo más ocupado atendió el " + pctTenths(b3) + " de todas las solicitudes con 3 nodos y todavía el " + pctTenths(b6) + " con 6, donde la parte justa es 17%."), bars: [[t("3 nodes", "3 nodos"), b3, pctTenths(b3)], [t("6 nodes", "6 nodos"), b6, pctTenths(b6), true], [t("Fair share, 6", "Parte justa, 6"), 1 / 6, "17%"]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -162,13 +187,11 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results use the machine's own model with 1,000 keys; ring results are averaged over 200 clusters, because they depend on where the markers happen to land.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados usan el mismo modelo de la máquina con 1,000 claves; los del anillo se promedian sobre 200 clústeres, porque dependen de dónde caen los marcadores."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados usan el mismo modelo de la máquina con 1,000 claves; los del anillo se promedian sobre 200 clústeres, porque dependen de dónde caen los marcadores."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P,
     G: GEOMETRY,
     CARD_SVG: cardSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

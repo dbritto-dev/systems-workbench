@@ -1,12 +1,55 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 04 · Circuit breakers: a telephone switchboard calling a supplier exchange.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct as percent, secs1 } from "../../lib/format";
 import { buildFigure, P, GEOMETRY } from "./figure";
-import { experimentResults } from "./sim";
+import { experimentResults, WINDOW } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
 const RESULTS = experimentResults();
+
+// What each card shows after a run (8 seeds each).
+const recoveryText = (r) => r.recovered === 0 ? t("> " + WINDOW + " s", "> " + WINDOW + " s")
+  : r.recovered < r.runs ? t(secs1(r.recovery) + " (" + r.recovered + " of " + r.runs + " runs)", secs1(r.recovery) + " (" + r.recovered + " de " + r.runs + " corridas)")
+  : t(secs1(r.recovery), secs1(r.recovery));
+const recoveryShare = (r) => r.recovered === 0 ? 1 : Math.min(1, r.recovery / WINDOW);
+const RUNS = {
+  slow: () => {
+    const { a, b } = RESULTS.slow;
+    return { verdict: t("Requests that never call the supplier: " + percent(a.localServed) + " served when it was healthy, " + percent(b.localServed) + " when it was slow. " + percent(b.dropped) + " of all requests were turned away at the door.",
+        "Solicitudes que nunca llaman al proveedor: " + percent(a.localServed) + " atendidas cuando estaba sano, " + percent(b.localServed) + " cuando estaba lento. El " + percent(b.dropped) + " de todas las solicitudes se rechazó en la entrada."),
+      bars: [[t("Healthy supplier", "Proveedor sano"), a.localServed, percent(a.localServed)], [t("Slow supplier", "Proveedor lento"), b.localServed, percent(b.localServed), true]] };
+  },
+  timeout: () => {
+    const { a, b } = RESULTS.timeout;
+    const top = Math.max(a.p95Supplier, b.p95Supplier);
+    return { verdict: t("Requests that never call the supplier went from " + percent(a.localServed) + " to " + percent(b.localServed) + " served. Supplier requests now fail: " + percent(b.failedSlow) + " of all requests failed after waiting out the timeout.",
+        "Las solicitudes que nunca llaman al proveedor pasaron de " + percent(a.localServed) + " a " + percent(b.localServed) + " atendidas. Las solicitudes al proveedor ahora fallan: el " + percent(b.failedSlow) + " de todas las solicitudes falló después de esperar el tiempo límite completo."),
+      bars: [[t("No timeout: others served", "Sin límite: otras atendidas"), a.localServed, percent(a.localServed)], [t("1.5 s: others served", "1.5 s: otras atendidas"), b.localServed, percent(b.localServed), true], [t("No timeout: p95 wait", "Sin límite: espera p95"), a.p95Supplier / top, secs1(a.p95Supplier)], [t("1.5 s: p95 wait", "1.5 s: espera p95"), b.p95Supplier / top, secs1(b.p95Supplier), true]] };
+  },
+  breaker: () => {
+    const { a, b } = RESULTS.breaker;
+    const top = Math.max(a.p50Supplier, b.p50Supplier);
+    return { verdict: t("Calls in progress at the supplier: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " on average. A supplier request now fails in " + secs1(b.p50Supplier) + " (median), not " + secs1(a.p50Supplier) + ".",
+        "Llamadas en curso en el proveedor: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " en promedio. Una solicitud al proveedor ahora falla en " + secs1(b.p50Supplier) + " (mediana), no en " + secs1(a.p50Supplier) + "."),
+      bars: [[t("Breaker off: load", "Sin interruptor: carga"), a.load / 15, a.load.toFixed(1)], [t("Breaker on: load", "Con interruptor: carga"), b.load / 15, b.load.toFixed(1), true], [t("Breaker off: median wait", "Sin interruptor: espera mediana"), a.p50Supplier / top, secs1(a.p50Supplier)], [t("Breaker on: median wait", "Con interruptor: espera mediana"), b.p50Supplier / top, secs1(b.p50Supplier), true]] };
+  },
+  retries: () => {
+    const { a, b, c } = RESULTS.retries;
+    const ra = recoveryText(a), rb = recoveryText(b), rc = recoveryText(c);
+    return { verdict: t("Time from the fix to the first successful supplier call: " + ra.en + " without retries, " + rb.en + " with three immediate retries, " + rc.en + " with retries behind a breaker.",
+        "Tiempo desde el arreglo hasta la primera llamada exitosa al proveedor: " + ra.es + " sin reintentos, " + rb.es + " con tres reintentos inmediatos, " + rc.es + " con reintentos detrás de un interruptor."),
+      bars: [[t("No retries", "Sin reintentos"), recoveryShare(a), ra], [t("3 retries", "3 reintentos"), recoveryShare(b), rb, true], [t("3 retries + breaker", "3 reintentos + interruptor"), recoveryShare(c), rc]] };
+  },
+  cooldown: () => {
+    const { a, b, c } = RESULTS.cooldown;
+    const ra = recoveryText(a), rb = recoveryText(b), rc = recoveryText(c);
+    return { verdict: t("Time from the fix to the first successful supplier call: " + rb.en + " with a 5 s cooldown, " + rc.en + " with a 30 s cooldown (" + ra.en + " with no breaker at all).",
+        "Tiempo desde el arreglo hasta la primera llamada exitosa al proveedor: " + rb.es + " con un enfriamiento de 5 s, " + rc.es + " con uno de 30 s (" + ra.es + " sin ningún interruptor)."),
+      bars: [[t("No breaker", "Sin interruptor"), recoveryShare(a), ra], [t("Cooldown 5 s", "Enfriamiento 5 s"), recoveryShare(b), rb], [t("Cooldown 30 s", "Enfriamiento 30 s"), recoveryShare(c), rc, true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -142,7 +185,7 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over eight seeded runs of the same machine, about 50 to 70 seconds of traffic each.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados son el promedio de ocho corridas con semilla fija de la misma máquina, de unos 50 a 70 segundos de tráfico cada una."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados son el promedio de ocho corridas con semilla fija de la misma máquina, de unos 50 a 70 segundos de tráfico cada una."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 [data-op]>[data-v]{display:none}
@@ -159,7 +202,5 @@ export default defineLesson({
   data: {
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

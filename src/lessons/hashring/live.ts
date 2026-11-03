@@ -1,18 +1,18 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The sorting carousel in the browser: streams cards through the ring or the drum into the bins, flies the cards
-// that move when the cluster changes, wires the controls and the experiment cards. mount() gets the build-time data
-// from page.ts (geometry, the card drawing, experiment results). The parts that change with the cluster (pegs, drum
-// face, lever, bins) are drawn here with the kit, as the standalone page did.
+// that move when the cluster changes, and answers the controls. mount() gets the build-time data from page.ts
+// (geometry, the card drawing) and root, the <wb-lesson>. The parts that change with the cluster (pegs, drum face,
+// lever, bins) are drawn here with the kit, as the standalone page did.
 import * as k from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { T, L as Lg } from "../../runtime/wb";   // L draws lines in this figure, so the language helper is Lg
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp, easeInOutCubic as ease } from "../../lib/tween";
 import { rng } from "../../lib/random";
 import { KEYS, NODE_IDS, HOT_KEY, HOT_SHARE, keyHash, keyAngle, ringPoints, ownerOnRing, assign, loads, spread, moved } from "./sim";
 import { pctTenths } from "../../lib/format";
 
-export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, CARD_SVG }, root) {
   const { depthOf, slabOf, cylinder, lineOnTop, planOutline, insetPlan, haloOf, sideSeam, translateAlong } = k;
   const S = (paths, style) => k.solidSvg(paths, style), L = (d, style) => k.lineSvg(d, style);
   const RING = G.RING, DRUM = G.DRUM, BINS = G.BINS, TRAY_H = G.TRAY_H, STACK_SCALE = G.STACK_SCALE, LEVER = G.LEVER, MOUTH = G.MOUTH;
@@ -83,11 +83,10 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
   }
 
   const SALT = 25;
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const pegsEl = q("[data-pegs]"), trackEl = q("[data-track]"), drumEl = q("[data-drum]"), leverEl = q("[data-lever]"), binsEl = q("[data-bins]"), flyEl = q("[data-fly]");
   const DEFAULTS = { mode: "ring", count: 4, vnodes: 1, failed: false, hot: false };
   const cfg = { ...DEFAULTS, speed: 1 };
@@ -208,10 +207,9 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => advance(dt * cfg.speed), onPause: pause.onPause });
   pause.bind(loop);
-  const pressSeg = WB.pressSeg;
   const LABELS = {
     mode: (v) => v === "ring" ? T("switched to the hash ring", "cambio al anillo de hash") : T("switched to hash mod n", "cambio a hash mod n"),
     count: (v, before) => v > before
@@ -227,56 +225,35 @@ export default function mount({ P, G, CARD_SVG, RESULTS, EXPERIMENTS }) {
       parsed[name] = name === "count" || name === "vnodes" ? Number(raw) : name === "failed" || name === "hot" ? raw === true || raw === "true" : raw;
     }
     const real = Object.entries(parsed).filter(([name, v]) => cfg[name] !== v);
-    for (const [name, v] of Object.entries(parsed)) pressSeg(name, v);
+    for (const [name, v] of Object.entries(parsed)) root.press(name, v);
     if (!real.length) return;
     const parts = real.map(([name, v]) => LABELS[name](v, cfg[name]));
     const label = T(parts.map((x) => x.en).join(" · "), parts.map((x) => x.es).join(" · "));
     reconfigure(label, () => { for (const [name, v] of real) cfg[name] = v; });
     if (loop.paused) loop.setPaused(false);
   }
-  WB.onSegments((name, value) => {
-    if (name === "speed") { cfg.speed = Number(value); pressSeg("speed", cfg.speed); return; }
+  root.on("change", (name, value) => {
+    if (name === "speed") { cfg.speed = Number(value); root.press("speed", cfg.speed); return; }
     apply({ [name]: value });
   });
   function startOver(config = DEFAULTS) {
     Object.assign(cfg, config);
-    for (const name of Object.keys(DEFAULTS)) pressSeg(name, cfg[name]);
+    for (const name of Object.keys(DEFAULTS)) root.press(name, cfg[name]);
     random = rng(20261019); sorted = 0; lastMove = null; needle = 0;
     recompute(); shown = { ...share }; steps = []; current = null;
     drawPegs(); drawDrum(); drawLever(); drawBins(); drawFly([]); drawTrack([]); showStats();
     tell(cfg.mode === "ring" ? T("hash ring · " + activeNodes().length + " nodes", "anillo de hash · " + activeNodes().length + " nodos") : "hash mod " + activeNodes().length);
   }
-  act("reset").addEventListener("click", () => startOver());
+  const actions = { reset: () => startOver() };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (numbers computed at build time from the same model) ----------
-  const RUNS = {
-    modulo: () => {
-      const { m } = RESULTS.modulo;
-      return { verdict: T(pctTenths(m) + " of the keys moved to a different node, against 20% that had to.", "El " + pctTenths(m) + " de las claves se movió a otro nodo, frente al 20% que tenía que moverse."), bars: [["hash mod n", m, pctTenths(m), true], [T("Least possible", "Mínimo posible"), 0.2, "20%"]] };
-    },
-    ring: () => {
-      const { m, r, one } = RESULTS.ring;
-      return { verdict: T("On average " + pctTenths(r) + " of keys moved, and in " + pctTenths(one) + " of clusters they all came from a single neighbour.", "En promedio se movió el " + pctTenths(r) + " de las claves, y en el " + pctTenths(one) + " de los clústeres todas vinieron de un solo vecino."), bars: [["hash mod n", m, pctTenths(m)], [T("Hash ring", "Anillo de hash"), r, pctTenths(r), true]] };
-    },
-    balance: () => {
-      const { r1, r10, r100 } = RESULTS.balance, top = 2.6;
-      return { verdict: T("With one marker per node the busiest node carried " + r1.toFixed(2) + "× its fair share on average. With 100 markers, " + r100.toFixed(2) + "×.", "Con un marcador por nodo, el nodo más ocupado cargó en promedio " + r1.toFixed(2) + "× su parte justa. Con 100 marcadores, " + r100.toFixed(2) + "×."), bars: [[T("1 marker", "1 marcador"), r1 / top, r1.toFixed(2) + "×", true], [T("10 markers", "10 marcadores"), r10 / top, r10.toFixed(2) + "×"], [T("100 markers", "100 marcadores"), r100 / top, r100.toFixed(2) + "×"]] };
-    },
-    fail: () => {
-      const { r1, r100 } = RESULTS.fail;
-      return { verdict: T("With one marker per node, C's keys went to " + r1.toFixed(1) + " node on average. With 100 markers they spread over " + r100.toFixed(1) + " of the 4 survivors.", "Con un marcador por nodo, las claves de C fueron en promedio a " + r1.toFixed(1) + " nodo. Con 100 marcadores se repartieron entre " + r100.toFixed(1) + " de los 4 sobrevivientes."), bars: [[T("1 marker", "1 marcador"), r1 / 4, T(r1.toFixed(1) + " of 4", r1.toFixed(1) + " de 4"), true], [T("100 markers", "100 marcadores"), r100 / 4, T(r100.toFixed(1) + " of 4", r100.toFixed(1) + " de 4")]] };
-    },
-    hot: () => {
-      const { b3, b6 } = RESULTS.hot;
-      return { verdict: T("The busiest node served " + pctTenths(b3) + " of all requests with 3 nodes and still " + pctTenths(b6) + " with 6, where a fair share is 17%.", "El nodo más ocupado atendió el " + pctTenths(b3) + " de todas las solicitudes con 3 nodos y todavía el " + pctTenths(b6) + " con 6, donde la parte justa es 17%."), bars: [[T("3 nodes", "3 nodos"), b3, pctTenths(b3)], [T("6 nodes", "6 nodos"), b6, pctTenths(b6), true], [T("Fair share, 6", "Parte justa, 6"), 1 / 6, "17%"]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const { then, ...first } = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
+    const { then, ...first } = w;
     startOver({ ...DEFAULTS, ...first });
     if (loop.paused) loop.setPaused(false);
     if (then) setTimeout(() => apply(then), 3500);
-  } });
+  });
 
   startOver();
   loop.setPaused(loop.paused);

@@ -1,13 +1,39 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 08 · Canary deploys: a model railway junction with a canary track.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct as pctOf } from "../../lib/format";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { blastRun, rareRun, tightRun, stickyRun, silentRun } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page computed them in
 // the browser; they're seeded, so the numbers are the same).
 const RESULTS = { blast: blastRun(), rare: rareRun(), tight: tightRun(), sticky: stickyRun(), silent: silentRun() };
+
+// What each card shows after a run.
+const minutes = (s) => (s >= 5400 ? (s / 3600).toFixed(1) + " h" : Math.round(s / 60) + " min");
+const RUNS = {
+  blast: () => {
+    const { a, b } = RESULTS.blast, top = Math.max(a.hit, b.hit) * 1.1;
+    return { verdict: t("Failed orders before rollback: " + a.hit.toFixed(1) + " at 25% (caught in " + minutes(a.time) + "), " + b.hit.toFixed(1) + " at 1% (caught in " + minutes(b.time) + ").", "Pedidos fallidos antes de la reversión: " + a.hit.toFixed(1) + " con 25% (detectada en " + minutes(a.time) + "), " + b.hit.toFixed(1) + " con 1% (detectada en " + minutes(b.time) + ")."), bars: [[t("25% canary", "Canario 25%"), a.hit / top, a.hit.toFixed(1)], [t("1% canary", "Canario 1%"), b.hit / top, b.hit.toFixed(1), true]] };
+  },
+  rare: () => {
+    const { a, b } = RESULTS.rare, top = Math.max(a, b) * 1.1;
+    return { verdict: t("Time until the arm rolls it back: " + minutes(a) + " at 10%, " + minutes(b) + " at 1%. A 30-minute bake would have promoted it either way.", "Tiempo hasta que el brazo la revierte: " + minutes(a) + " con 10%, " + minutes(b) + " con 1%. Con 30 minutos de observación se habría promovido en ambos casos."), bars: [[t("10% canary", "Canario 10%"), a / top, minutes(a)], [t("1% canary", "Canario 1%"), b / top, minutes(b), true], [t("30-minute bake", "Observación de 30 min"), 1800 / top, "30 min"]] };
+  },
+  tight: () => {
+    const { a, b } = RESULTS.tight;
+    return { verdict: t("A good build was rolled back in " + pctOf(b) + " of deploys with the tight rule, " + pctOf(a) + " with the normal one.", "Una versión buena se revirtió en el " + pctOf(b) + " de los despliegues con la regla estricta y en el " + pctOf(a) + " con la estándar."), bars: [[t("Normal rule", "Regla estándar"), a, pctOf(a)], [t("Tight rule", "Regla estricta"), b, pctOf(b), true]] };
+  },
+  sticky: () => {
+    const { a, b } = RESULTS.sticky;
+    return { verdict: t(pctOf(a) + " of users saw both versions with per-request routing, " + pctOf(b) + " with per-user routing.", "El " + pctOf(a) + " de los usuarios vio ambas versiones con enrutamiento por solicitud y el " + pctOf(b) + " con enrutamiento por usuario."), bars: [[t("Per request", "Por solicitud"), a, pctOf(a), true], [t("Per user", "Por usuario"), b, pctOf(b)]] };
+  },
+  silent: () => {
+    const { a, b } = RESULTS.silent, top = Math.max(a.n, b.n) * 1.05;
+    return { verdict: t("Watching failures only: " + Math.round(a.n) + " wrong-price orders, promoted in " + pctOf(a.promoted) + " of runs. Watching prices too: " + Math.round(b.n) + ", rolled back within minutes.", "Vigilando solo fallos: " + Math.round(a.n) + " pedidos con precio erróneo, promovida en el " + pctOf(a.promoted) + " de las ejecuciones. Vigilando también los precios: " + Math.round(b.n) + ", revertida en minutos."), bars: [[t("Failures only", "Solo fallos"), a.n / top, String(Math.round(a.n)), true], [t("Failures + prices", "Fallos + precios"), b.n / top, String(Math.round(b.n))]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -175,12 +201,10 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over many seeded runs: 1.2 orders per second, 1 in 1,000 orders fail on either version by bad luck, and the rollback arm checks every 3 minutes for at least 3 failures above 0.4%.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados sobre muchas ejecuciones con semilla fija: 1.2 pedidos por segundo, 1 de cada 1,000 pedidos falla en cualquiera de las dos versiones por mala suerte, y el brazo de reversión revisa cada 3 minutos si hay al menos 3 fallos por encima de 0.4%."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados sobre muchas ejecuciones con semilla fija: 1.2 pedidos por segundo, 1 de cada 1,000 pedidos falla en cualquiera de las dos versiones por mala suerte, y el brazo de reversión revisa cada 3 minutos si hay al menos 3 fallos por encima de 0.4%."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

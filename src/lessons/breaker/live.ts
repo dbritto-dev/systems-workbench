@@ -1,20 +1,19 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The switchboard in the browser: steps the model, moves the cords, blade, shutter, dials and gauge, wires the
-// controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, results).
+// The switchboard in the browser: steps the model, moves the cords, blade, shutter, dials and gauge, and answers the
+// controls. mount() gets the build-time data from page.ts (geometry) and root, the <wb-lesson>.
 import { lineOnTop, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
-import { pct as percent, secs1 } from "../../lib/format";
+import { playPause } from "../../runtime/dom";
+import { secs1 } from "../../lib/format";
 import { rankQuantile } from "../../lib/stats";
-import { createSim, STEP, WINDOW } from "./sim";
+import { createSim, STEP } from "./sim";
 import { bladeSvg } from "./blade";
 
-export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+export default function mount({ P, G }, root) {
+  const { stage, svg } = root.figure;
   const q = (sel) => svg.querySelector(sel);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const ops = G.OPS.map((_, i) => q('[data-op="' + i + '"]'));
   const needles = G.OPS.map((_, i) => q('[data-needle="' + i + '"]'));
   const lamps = G.LAMPS.map((_, i) => q('[data-lamp="' + i + '"]'));
@@ -90,7 +89,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     say(L(breakerText) + " · " + L(waiting + " of 6 cords in the trunk", waiting + " de 6 cordones en la troncal") + " · " + L(supplier));
   }
 
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
   let statsAt = 0;
   function showStats(force) {
     const now = performance.now();
@@ -107,11 +106,10 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: (dt) => { advance(dt * speed); paint(); showStats(); }, onPause: pause.onPause });
   pause.bind(clock);
   clock.setPaused(clock.paused);
-  const pressSeg = WB.pressSeg;
   const KNOB_SHARE = { 0: 0, 1.5: 0.45, 4: 1 };
   function set(name, raw) {
     if (name === "cause") { machine.set("cause", raw); scheduled = []; }
@@ -121,62 +119,22 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     if (name === "cooldown") machine.set("cooldown", Number(raw));
     if (name === "retries") { machine.set("retries", raw === "0" ? 0 : 3); machine.set("backoff", raw === "3b"); }
     if (name === "speed") speed = Number(raw);
-    pressSeg(name, raw);
+    root.press(name, raw);
   }
   function resetCounts() { machine.resetCounts(); showStats(true); }
-  WB.onSegments(set);
-  act("reset").addEventListener("click", resetCounts);
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: resetCounts };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (results computed at build time from the same model, 8 seeds each) ----------
-  const recoveryText = (r) => r.recovered === 0 ? T("> " + WINDOW + " s", "> " + WINDOW + " s")
-    : r.recovered < r.runs ? T(secs1(r.recovery) + " (" + r.recovered + " of " + r.runs + " runs)", secs1(r.recovery) + " (" + r.recovered + " de " + r.runs + " corridas)")
-    : T(secs1(r.recovery), secs1(r.recovery));
-  const recoveryShare = (r) => r.recovered === 0 ? 1 : Math.min(1, r.recovery / WINDOW);
-  const RUNS = {
-    slow: () => {
-      const { a, b } = RESULTS.slow;
-      return { verdict: T("Requests that never call the supplier: " + percent(a.localServed) + " served when it was healthy, " + percent(b.localServed) + " when it was slow. " + percent(b.dropped) + " of all requests were turned away at the door.",
-          "Solicitudes que nunca llaman al proveedor: " + percent(a.localServed) + " atendidas cuando estaba sano, " + percent(b.localServed) + " cuando estaba lento. El " + percent(b.dropped) + " de todas las solicitudes se rechazó en la entrada."),
-        bars: [[T("Healthy supplier", "Proveedor sano"), a.localServed, percent(a.localServed)], [T("Slow supplier", "Proveedor lento"), b.localServed, percent(b.localServed), true]] };
-    },
-    timeout: () => {
-      const { a, b } = RESULTS.timeout;
-      const top = Math.max(a.p95Supplier, b.p95Supplier);
-      return { verdict: T("Requests that never call the supplier went from " + percent(a.localServed) + " to " + percent(b.localServed) + " served. Supplier requests now fail: " + percent(b.failedSlow) + " of all requests failed after waiting out the timeout.",
-          "Las solicitudes que nunca llaman al proveedor pasaron de " + percent(a.localServed) + " a " + percent(b.localServed) + " atendidas. Las solicitudes al proveedor ahora fallan: el " + percent(b.failedSlow) + " de todas las solicitudes falló después de esperar el tiempo límite completo."),
-        bars: [[T("No timeout: others served", "Sin límite: otras atendidas"), a.localServed, percent(a.localServed)], [T("1.5 s: others served", "1.5 s: otras atendidas"), b.localServed, percent(b.localServed), true], [T("No timeout: p95 wait", "Sin límite: espera p95"), a.p95Supplier / top, secs1(a.p95Supplier)], [T("1.5 s: p95 wait", "1.5 s: espera p95"), b.p95Supplier / top, secs1(b.p95Supplier), true]] };
-    },
-    breaker: () => {
-      const { a, b } = RESULTS.breaker;
-      const top = Math.max(a.p50Supplier, b.p50Supplier);
-      return { verdict: T("Calls in progress at the supplier: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " on average. A supplier request now fails in " + secs1(b.p50Supplier) + " (median), not " + secs1(a.p50Supplier) + ".",
-          "Llamadas en curso en el proveedor: " + a.load.toFixed(1) + " → " + b.load.toFixed(1) + " en promedio. Una solicitud al proveedor ahora falla en " + secs1(b.p50Supplier) + " (mediana), no en " + secs1(a.p50Supplier) + "."),
-        bars: [[T("Breaker off: load", "Sin interruptor: carga"), a.load / 15, a.load.toFixed(1)], [T("Breaker on: load", "Con interruptor: carga"), b.load / 15, b.load.toFixed(1), true], [T("Breaker off: median wait", "Sin interruptor: espera mediana"), a.p50Supplier / top, secs1(a.p50Supplier)], [T("Breaker on: median wait", "Con interruptor: espera mediana"), b.p50Supplier / top, secs1(b.p50Supplier), true]] };
-    },
-    retries: () => {
-      const { a, b, c } = RESULTS.retries;
-      const ra = recoveryText(a), rb = recoveryText(b), rc = recoveryText(c);
-      return { verdict: T("Time from the fix to the first successful supplier call: " + ra.en + " without retries, " + rb.en + " with three immediate retries, " + rc.en + " with retries behind a breaker.",
-          "Tiempo desde el arreglo hasta la primera llamada exitosa al proveedor: " + ra.es + " sin reintentos, " + rb.es + " con tres reintentos inmediatos, " + rc.es + " con reintentos detrás de un interruptor."),
-        bars: [[T("No retries", "Sin reintentos"), recoveryShare(a), ra], [T("3 retries", "3 reintentos"), recoveryShare(b), rb, true], [T("3 retries + breaker", "3 reintentos + interruptor"), recoveryShare(c), rc]] };
-    },
-    cooldown: () => {
-      const { a, b, c } = RESULTS.cooldown;
-      const ra = recoveryText(a), rb = recoveryText(b), rc = recoveryText(c);
-      return { verdict: T("Time from the fix to the first successful supplier call: " + rb.en + " with a 5 s cooldown, " + rc.en + " with a 30 s cooldown (" + ra.en + " with no breaker at all).",
-          "Tiempo desde el arreglo hasta la primera llamada exitosa al proveedor: " + rb.es + " con un enfriamiento de 5 s, " + rc.es + " con uno de 30 s (" + ra.es + " sin ningún interruptor)."),
-        bars: [[T("No breaker", "Sin interruptor"), recoveryShare(a), ra], [T("Cooldown 5 s", "Enfriamiento 5 s"), recoveryShare(b), rb], [T("Cooldown 30 s", "Enfriamiento 30 s"), recoveryShare(c), rc, true]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     machine = createSim(machine.cfg, (Date.now() % 1e6) + 1);
     set("cause", w.cause); set("timeout", w.timeout); set("breaker", w.breaker); set("retries", w.retries);
     if (w.cooldown) set("cooldown", w.cooldown);
-    if (w.fixAfter) scheduled = [{ at: machine.s.t + w.fixAfter, fn: () => { machine.set("cause", "healthy"); pressSeg("cause", "healthy"); } }];
+    if (w.fixAfter) scheduled = [{ at: machine.s.t + w.fixAfter, fn: () => { machine.set("cause", "healthy"); root.press("cause", "healthy"); } }];
     showStats(true);
     if (clock.paused) clock.setPaused(false);
-  } });
+  });
 
   paint(); showStats(true);
 }

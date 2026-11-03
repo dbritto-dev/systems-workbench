@@ -1,17 +1,17 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The two press lines in the browser: runs the blue-green model, moves requests along the infeed, the lanes and the
-// belts, presses, fills the cache trays, swings the gate arm, wires the controls and the experiment cards. mount()
-// gets the build-time data from page.ts (geometry, experiment results).
+// belts, presses, fills the cache trays, swings the gate arm, and answers the controls. mount() gets the build-time
+// data from page.ts (geometry, the experiments' titles) and root, the <wb-lesson>.
 import { translateAlong, extrude, cylinder, solidSvg } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp, lerpVec as lerp3, easeInOutCubic as ease } from "../../lib/tween";
 import { clamp as clamp01, rankQuantile } from "../../lib/stats";
-import { pct, secs1 } from "../../lib/format";
+import { secs1 } from "../../lib/format";
 import { createWorld, prepareGreen, flip, step } from "./sim";
 
-export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, TITLES }, root) {
   // The gate's arm, as figure.ts draws it (GATE_R is 15 there).
   function gateArm(angle, lit) {
     const [cx, cy] = G.GATE;
@@ -23,11 +23,10 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   }
   const SIDE = { blue: T("blue", "azul"), green: T("green", "verde") };
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const layers = { blue: q('[data-layer="blue"]'), green: q('[data-layer="green"]'), mid: q('[data-layer="mid"]') };
   const items = [...svg.querySelectorAll("[data-item]")];
   const heads = { blue: [0, 1, 2].map((i) => q('[data-head="blue-' + i + '"]')), green: [0, 1, 2].map((i) => q('[data-head="green-' + i + '"]')) };
@@ -163,7 +162,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     tell(T(en, es));
     updateFlipButton();
   }
-  const flipBtn = act("flip"), redeployBtn = act("redeploy");
+  const flipBtn = root.button("flip"), redeployBtn = root.button("redeploy");
   function updateFlipButton() { flipBtn.textContent = w.live === "blue" ? L("Flip to green", "Cambiar a verde") : L("Flip to blue", "Cambiar a azul"); redeployBtn.disabled = w.live === "green"; }
   const redeployed = () => w.o.warm ? T("green redeployed · cache warmed", "verde redesplegado · caché precalentada") : T("green redeployed · cache empty", "verde redesplegado · caché vacía");
 
@@ -177,10 +176,9 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     if (w.log.length > 4000) { const cut = w.log.length - 2000; w.log.splice(0, cut); seenLog = Math.max(0, seenLog - cut); }
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: (dt) => { advance(dt * speed); paint(dt); }, onPause: pause.onPause });
   pause.bind(clock);
-  const pressSeg = WB.pressSeg;
   function set(name, value) {
     if (name === "speed") speed = Number(value);
     else {
@@ -190,45 +188,25 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
       if (name === "migration") w.o.migration = value;
       if (name === "warm") { w.o.warm = value === "on"; if (prepareGreen(w)) tell(redeployed()); }
     }
-    pressSeg(name, value);
+    root.press(name, value);
   }
-  WB.onSegments(set);
-  flipBtn.addEventListener("click", () => { doFlip(); if (clock.paused) clock.setPaused(false); });
-  redeployBtn.addEventListener("click", () => { if (prepareGreen(w)) tell(redeployed()); });
-  act("reset").addEventListener("click", () => { start(); seenLog = 0; tell(T("started over · blue live", "reinicio · azul en vivo")); });
-
-  // ---------- experiments (numbers computed at build time from the same model) ----------
-  const RUNS = {
-    rollback: () => { const r = RESULTS.rollback, top = r.rolling * 1.05; return {
-      verdict: T("Errors stopped " + Math.round(r.flip) + " s after the bad flip with blue-green (15 s of it waiting for the alarm), against " + Math.round(r.rolling) + " s with a rolling redeploy. Failed requests: " + Math.round(r.flipErrors) + " against " + Math.round(r.rollingErrors) + ".",
-        "Con azul-verde, los errores pararon " + Math.round(r.flip) + " s después del cambio malo (15 s de eso esperando la alarma), contra " + Math.round(r.rolling) + " s con un redespliegue gradual. Solicitudes fallidas: " + Math.round(r.flipErrors) + " contra " + Math.round(r.rollingErrors) + "."),
-      bars: [[T("Flip back", "Volver atrás"), r.flip / top, Math.round(r.flip) + " s", true], [T("Rolling redeploy", "Redespliegue gradual"), r.rolling / top, Math.round(r.rolling) + " s"]] }; },
-    cost: () => { const r = RESULTS.cost, top = r.blueGreenServers; return {
-      verdict: T("Blue-green runs " + r.blueGreenServers + " servers to serve the work of " + r.normal + "; a rolling deploy runs " + r.rollingServers + ". After the flip, the idle side was busy " + pct(r.idleBusy) + " of the time, the live side " + pct(r.liveBusy) + ".",
-        "Azul-verde mantiene " + r.blueGreenServers + " servidores para atender el trabajo de " + r.normal + "; un despliegue gradual mantiene " + r.rollingServers + ". Después del cambio, el lado inactivo estuvo ocupado el " + pct(r.idleBusy) + " del tiempo, y el lado en vivo el " + pct(r.liveBusy) + "."),
-      bars: [[T("Normal", "Normal"), r.normal / top, String(r.normal)], [T("Rolling", "Gradual"), r.rollingServers / top, String(r.rollingServers)], [T("Blue-green", "Azul-verde"), r.blueGreenServers / top, String(r.blueGreenServers), true]] }; },
-    cold: () => { const r = RESULTS.cold, top = Math.max(r.cold.p95, r.warm.p95) * 1.1; return {
-      verdict: T("In the 30 s after the flip, p95 latency was " + secs1(r.warm.p95) + " with a warm green and " + secs1(r.cold.p95) + " with a cold one, and the cold flip turned away about " + Math.round(r.cold.turned) + " requests (warm: " + Math.round(r.warm.turned) + ").",
-        "En los 30 s después del cambio, la latencia p95 fue de " + secs1(r.warm.p95) + " con un verde precalentado y de " + secs1(r.cold.p95) + " con uno frío, y el cambio en frío rechazó unas " + Math.round(r.cold.turned) + " solicitudes (precalentado: " + Math.round(r.warm.turned) + ")."),
-      bars: [[T("Before the flip", "Antes del cambio"), r.warm.before / top, secs1(r.warm.before)], [T("Warm green", "Verde precalentado"), r.warm.p95 / top, secs1(r.warm.p95)], [T("Cold green", "Verde frío"), r.cold.p95 / top, secs1(r.cold.p95), true]] }; },
-    drain: () => { const r = RESULTS.drain, top = Math.max(r.off, 1) * 1.1; return {
-      verdict: T("Without draining, about " + r.off.toFixed(1) + " requests failed at each flip. With draining: " + Math.round(r.on) + ".",
-        "Sin drenado, fallaron unas " + r.off.toFixed(1) + " solicitudes en cada cambio. Con drenado: " + Math.round(r.on) + "."),
-      bars: [[T("Draining off", "Sin drenado"), r.off / top, r.off.toFixed(1), true], [T("Draining on", "Con drenado"), r.on / top, String(Math.round(r.on))]] }; },
-    migration: () => { const r = RESULTS.migration; return {
-      verdict: T("After the rollback, blue failed " + pct(r.breaking) + " of requests with the breaking migration, and " + pct(r.compatible) + " with a compatible one.",
-        "Después del rollback, azul hizo fallar el " + pct(r.breaking) + " de las solicitudes con la migración incompatible, y el " + pct(r.compatible) + " con una compatible."),
-      bars: [[T("Breaking", "Incompatible"), r.breaking, pct(r.breaking), true], [T("Compatible", "Compatible"), r.compatible, pct(r.compatible)]] }; },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    flip: () => { doFlip(); if (clock.paused) clock.setPaused(false); },
+    redeploy: () => { if (prepareGreen(w)) tell(redeployed()); },
+    reset: () => { start(); seenLog = 0; tell(T("started over · blue live", "reinicio · azul en vivo")); },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const wt = exp.watch;
-    for (const name of ["release", "warm", "draining", "migration"]) { settings[name] = wt[name]; pressSeg(name, wt[name]); }
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (wt, id) => {
+    for (const name of ["release", "warm", "draining", "migration"]) { settings[name] = wt[name]; root.press(name, wt[name]); }
     start(); seenLog = 0;
     script = wt.script.map(([at, act]) => [w.t + at, act]);
-    const title = EXPERIMENTS.find((e) => e.id === exp.id).title;
+    const title = TITLES[id];
     tell(T("watching: " + title.en, "observando: " + title.es));
     if (clock.paused) clock.setPaused(false);
-  } });
+  });
 
   start();
   clock.setPaused(clock.paused);

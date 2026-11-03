@@ -1,12 +1,37 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 09 · Blue-green deploys: two press lines behind one gate.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct, secs1 } from "../../lib/format";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { EXP } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
 const RESULTS = { rollback: EXP.rollback(), cost: EXP.cost(), cold: EXP.cold(), drain: EXP.drain(), migration: EXP.migration() };
+
+// What each card shows after a run.
+const RUNS = {
+  rollback: () => { const r = RESULTS.rollback, top = r.rolling * 1.05; return {
+    verdict: t("Errors stopped " + Math.round(r.flip) + " s after the bad flip with blue-green (15 s of it waiting for the alarm), against " + Math.round(r.rolling) + " s with a rolling redeploy. Failed requests: " + Math.round(r.flipErrors) + " against " + Math.round(r.rollingErrors) + ".",
+      "Con azul-verde, los errores pararon " + Math.round(r.flip) + " s después del cambio malo (15 s de eso esperando la alarma), contra " + Math.round(r.rolling) + " s con un redespliegue gradual. Solicitudes fallidas: " + Math.round(r.flipErrors) + " contra " + Math.round(r.rollingErrors) + "."),
+    bars: [[t("Flip back", "Volver atrás"), r.flip / top, Math.round(r.flip) + " s", true], [t("Rolling redeploy", "Redespliegue gradual"), r.rolling / top, Math.round(r.rolling) + " s"]] }; },
+  cost: () => { const r = RESULTS.cost, top = r.blueGreenServers; return {
+    verdict: t("Blue-green runs " + r.blueGreenServers + " servers to serve the work of " + r.normal + "; a rolling deploy runs " + r.rollingServers + ". After the flip, the idle side was busy " + pct(r.idleBusy) + " of the time, the live side " + pct(r.liveBusy) + ".",
+      "Azul-verde mantiene " + r.blueGreenServers + " servidores para atender el trabajo de " + r.normal + "; un despliegue gradual mantiene " + r.rollingServers + ". Después del cambio, el lado inactivo estuvo ocupado el " + pct(r.idleBusy) + " del tiempo, y el lado en vivo el " + pct(r.liveBusy) + "."),
+    bars: [[t("Normal", "Normal"), r.normal / top, String(r.normal)], [t("Rolling", "Gradual"), r.rollingServers / top, String(r.rollingServers)], [t("Blue-green", "Azul-verde"), r.blueGreenServers / top, String(r.blueGreenServers), true]] }; },
+  cold: () => { const r = RESULTS.cold, top = Math.max(r.cold.p95, r.warm.p95) * 1.1; return {
+    verdict: t("In the 30 s after the flip, p95 latency was " + secs1(r.warm.p95) + " with a warm green and " + secs1(r.cold.p95) + " with a cold one, and the cold flip turned away about " + Math.round(r.cold.turned) + " requests (warm: " + Math.round(r.warm.turned) + ").",
+      "En los 30 s después del cambio, la latencia p95 fue de " + secs1(r.warm.p95) + " con un verde precalentado y de " + secs1(r.cold.p95) + " con uno frío, y el cambio en frío rechazó unas " + Math.round(r.cold.turned) + " solicitudes (precalentado: " + Math.round(r.warm.turned) + ")."),
+    bars: [[t("Before the flip", "Antes del cambio"), r.warm.before / top, secs1(r.warm.before)], [t("Warm green", "Verde precalentado"), r.warm.p95 / top, secs1(r.warm.p95)], [t("Cold green", "Verde frío"), r.cold.p95 / top, secs1(r.cold.p95), true]] }; },
+  drain: () => { const r = RESULTS.drain, top = Math.max(r.off, 1) * 1.1; return {
+    verdict: t("Without draining, about " + r.off.toFixed(1) + " requests failed at each flip. With draining: " + Math.round(r.on) + ".",
+      "Sin drenado, fallaron unas " + r.off.toFixed(1) + " solicitudes en cada cambio. Con drenado: " + Math.round(r.on) + "."),
+    bars: [[t("Draining off", "Sin drenado"), r.off / top, r.off.toFixed(1), true], [t("Draining on", "Con drenado"), r.on / top, String(Math.round(r.on))]] }; },
+  migration: () => { const r = RESULTS.migration; return {
+    verdict: t("After the rollback, blue failed " + pct(r.breaking) + " of requests with the breaking migration, and " + pct(r.compatible) + " with a compatible one.",
+      "Después del rollback, azul hizo fallar el " + pct(r.breaking) + " de las solicitudes con la migración incompatible, y el " + pct(r.compatible) + " con una compatible."),
+    bars: [[t("Breaking", "Incompatible"), r.breaking, pct(r.breaking), true], [t("Compatible", "Compatible"), r.compatible, pct(r.compatible)]] }; },
+};
 
 const EXPERIMENTS = [
   {
@@ -124,7 +149,7 @@ export default defineLesson({
       { actions: [["flip", t("Flip to green", "Cambiar a verde"), { primary: true }], ["redeploy", t("Redeploy green", "Redesplegar verde")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over six runs: requests arrive at 5 per second, and each line has three presses.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados en seis corridas: llegan 5 solicitudes por segundo y cada línea tiene tres prensas."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over six runs: requests arrive at 5 per second, and each line has three presses.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados en seis corridas: llegan 5 solicitudes por segundo y cada línea tiene tres prensas."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   // Five stats instead of six; the item pool is hidden until placed.
   css: `
@@ -135,7 +160,7 @@ export default defineLesson({
   data: {
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch, title }) => ({ id, answer, watch, title })),
+    // The Watch handler names the experiment in the readout.
+    TITLES: Object.fromEntries(EXPERIMENTS.map(({ id, title }) => [id, title])),
   },
 });

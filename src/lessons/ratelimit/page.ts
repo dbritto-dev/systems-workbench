@@ -1,12 +1,33 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 05 · Rate limiting: a token-bucket ticket dispenser.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { pct } from "../../lib/format";
 import { buildFigure, ticketSvg, P, GEOMETRY } from "./figure";
 import { experimentResults } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
 const RESULTS = experimentResults();
+
+// What each card shows after a run.
+const RUNS = {
+  size: () => {
+    const { a, b, b8, b16 } = RESULTS.size, top = Math.max(a.perMinute, b.perMinute);
+    return { verdict: t("Per minute: " + Math.round(a.perMinute) + " → " + Math.round(b.perMinute) + ". A burst of 20 after a quiet spell: " + b8 + " → " + b16 + " let through.",
+        "Por minuto: " + Math.round(a.perMinute) + " → " + Math.round(b.perMinute) + ". Una ráfaga de 20 después de un rato tranquilo: pasan " + b8 + " → " + b16 + "."),
+      bars: [[t("Per min, size 8", "Por min, tamaño 8"), a.perMinute / top, Math.round(a.perMinute)], [t("Per min, size 16", "Por min, tamaño 16"), b.perMinute / top, Math.round(b.perMinute), true], [t("Burst, size 8", "Ráfaga, tamaño 8"), b8 / 20, t(b8 + " of 20", b8 + " de 20")], [t("Burst, size 16", "Ráfaga, tamaño 16"), b16 / 20, t(b16 + " of 20", b16 + " de 20"), true]] };
+  },
+  window: () => { const { w, b } = RESULTS.window; return { verdict: t("In 0.4 s around the boundary, the fixed window let " + w + " through; the token bucket let " + b + " through. The limit is 8.", "En 0.4 s alrededor del borde, la ventana fija dejó pasar " + w + "; la cubeta de tokens dejó pasar " + b + ". El límite es 8."), bars: [[t("Fixed window", "Ventana fija"), w / 32, String(w), true], [t("Token bucket", "Cubeta de tokens"), b / 32, String(b)]] }; },
+  noisy: () => {
+    const { g, p } = RESULTS.noisy;
+    return { verdict: t("A and B's attempts rejected: " + pct(g.quietRejected) + " with one shared limit, " + pct(p.quietRejected) + " with a limit per client.", "Intentos de A y B rechazados: " + pct(g.quietRejected) + " con un límite compartido, " + pct(p.quietRejected) + " con un límite por cliente."), bars: [[t("Shared limit", "Límite compartido"), g.quietRejected, pct(g.quietRejected), true], [t("Per client", "Por cliente"), p.quietRejected, pct(p.quietRejected)]] };
+  },
+  retry: () => { const { now, after } = RESULTS.retry, top = Math.max(now, after); return { verdict: t("Rejected attempts in the minute after the burst: " + Math.round(now) + " retrying every 0.25 s, " + Math.round(after) + " waiting the Retry-After time.", "Intentos rechazados en el minuto después de la ráfaga: " + Math.round(now) + " reintentando cada 0.25 s, " + Math.round(after) + " esperando el tiempo de Retry-After."), bars: [[t("Retry now", "Reintentar ya"), now / top, String(Math.round(now)), true], [t("Wait Retry-After", "Esperar Retry-After"), after / top, String(Math.round(after))]] }; },
+  instances: () => {
+    const { one, two } = RESULTS.instances, top = Math.max(one.perMinute, two.perMinute);
+    return { verdict: t("Allowed per minute: " + Math.round(one.perMinute) + " with one instance, " + Math.round(two.perMinute) + " with two. The \"4/s\" limit is now about 8/s.", "Permitidas por minuto: " + Math.round(one.perMinute) + " con una instancia, " + Math.round(two.perMinute) + " con dos. El límite de \"4/s\" ahora es de unos 8/s."), bars: [[t("1 instance", "1 instancia"), one.perMinute / top, Math.round(one.perMinute)], [t("2 instances", "2 instancias"), two.perMinute / top, Math.round(two.perMinute), true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -176,7 +197,7 @@ export default defineLesson({
     ),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over six seeded runs (60 s each unless noted).",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre seis ejecuciones con semilla fija (60 s cada una salvo que se indique otra cosa)."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre seis ejecuciones con semilla fija (60 s cada una salvo que se indique otra cosa)."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   // The second app instance is hidden while there is one.
   css: `
@@ -186,7 +207,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     TICKET_SVG: ticketSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

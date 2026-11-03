@@ -1,27 +1,26 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The railway junction in the browser: runs the deploy model, sends its orders down the tracks as trains, moves the
-// lever, the pusher and the console needles, wires the controls and the experiment cards. mount() gets the
-// build-time data from page.ts (geometry, experiment results).
+// lever, the pusher and the console needles, and answers the controls. mount() gets the build-time data from
+// page.ts (geometry) and root, the <wb-lesson>.
 import { translateAlong, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { easeInOutCubic as ease } from "../../lib/tween";
-import { pct as pctOf, pctTenths } from "../../lib/format";
+import { pctTenths } from "../../lib/format";
 import { rng } from "../../lib/random";
 import { INTERVAL, RULES, newDeploy, canaryFailures, canaryRate, hitCount, decide, advance } from "./sim";
 import { polylineLength, pointAlong } from "../../lib/geometry";
 
-export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G }, root) {
   const LEN = { old: polylineLength(G.PATHS.old), new: polylineLength(G.PATHS.new) };
   const DERAIL_S = polylineLength([[-170, 0], [-104, 0], [-64, G.NEW_Y]]) + (G.DERAIL_X + 64);
   const SPEED = 62, HEADWAY = 31;
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const layers = { old: q('[data-layer="old"]'), new: q('[data-layer="new"]') };
   const pools = { old: [...layers.old.querySelectorAll("[data-train]")], new: [...layers.new.querySelectorAll("[data-train]")] };
   pools.new.forEach((el) => el.querySelectorAll(".iso-solid").forEach((s) => s.setAttribute("data-lit", "")));
@@ -72,12 +71,12 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   }
 
   function onEvent(kind) {
-    if (kind === "rolled back") { push = { phase: 0, t: 0 }; pusherSolid.setAttribute("data-lit", ""); WB.pressSeg("pct", 0); }
+    if (kind === "rolled back") { push = { phase: 0, t: 0 }; pusherSolid.setAttribute("data-lit", ""); root.press("pct", 0); }
   }
 
   function advanceAll(dt) {
     advance(d, dt, random, spawn, onEvent);
-    if (promoteAt !== null && d.t >= promoteAt && d.decision === "watching") { decide(d, "promoted"); WB.pressSeg("pct", 100); }
+    if (promoteAt !== null && d.t >= promoteAt && d.decision === "watching") { decide(d, "promoted"); root.press("pct", 100); }
     launch();
     moveTrains(dt);
   }
@@ -127,7 +126,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({
     stage,
     step: (dt) => {
@@ -138,11 +137,10 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     onPause: pause.onPause,
   });
   pause.bind(clock);
-  const pressSeg = WB.pressSeg;
   function set(name, raw) {
-    if (name === "speed") { cfg.speed = Number(raw); pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     cfg[name] = name === "pct" ? Number(raw) : raw;
-    pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "pct") {
       if (d.decision !== "watching") deploy();
       else { d.pct = cfg.pct; push = null; pusherSolid.removeAttribute("data-lit"); }
@@ -154,42 +152,21 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     if (name === "check") d.check = raw;
     draw(); showStats();
   }
-  WB.onSegments(set);
-  act("promote").addEventListener("click", () => { decide(d, "promoted"); push = null; pressSeg("pct", 100); showStats(); });
-  act("rollback").addEventListener("click", () => { if (d.decision === "watching") { decide(d, "rolled back"); onEvent("rolled back"); showStats(); } });
-  act("reset").addEventListener("click", () => { if (cfg.pct === 0) { cfg.pct = 5; pressSeg("pct", 5); } deploy(); });
-
-  // ---------- experiments (numbers computed at build time from the same model) ----------
-  const minutes = (s) => (s >= 5400 ? (s / 3600).toFixed(1) + " h" : Math.round(s / 60) + " min");
-  const RUNS = {
-    blast: () => {
-      const { a, b } = RESULTS.blast, top = Math.max(a.hit, b.hit) * 1.1;
-      return { verdict: T("Failed orders before rollback: " + a.hit.toFixed(1) + " at 25% (caught in " + minutes(a.time) + "), " + b.hit.toFixed(1) + " at 1% (caught in " + minutes(b.time) + ").", "Pedidos fallidos antes de la reversión: " + a.hit.toFixed(1) + " con 25% (detectada en " + minutes(a.time) + "), " + b.hit.toFixed(1) + " con 1% (detectada en " + minutes(b.time) + ")."), bars: [[T("25% canary", "Canario 25%"), a.hit / top, a.hit.toFixed(1)], [T("1% canary", "Canario 1%"), b.hit / top, b.hit.toFixed(1), true]] };
-    },
-    rare: () => {
-      const { a, b } = RESULTS.rare, top = Math.max(a, b) * 1.1;
-      return { verdict: T("Time until the arm rolls it back: " + minutes(a) + " at 10%, " + minutes(b) + " at 1%. A 30-minute bake would have promoted it either way.", "Tiempo hasta que el brazo la revierte: " + minutes(a) + " con 10%, " + minutes(b) + " con 1%. Con 30 minutos de observación se habría promovido en ambos casos."), bars: [[T("10% canary", "Canario 10%"), a / top, minutes(a)], [T("1% canary", "Canario 1%"), b / top, minutes(b), true], [T("30-minute bake", "Observación de 30 min"), 1800 / top, "30 min"]] };
-    },
-    tight: () => {
-      const { a, b } = RESULTS.tight;
-      return { verdict: T("A good build was rolled back in " + pctOf(b) + " of deploys with the tight rule, " + pctOf(a) + " with the normal one.", "Una versión buena se revirtió en el " + pctOf(b) + " de los despliegues con la regla estricta y en el " + pctOf(a) + " con la estándar."), bars: [[T("Normal rule", "Regla estándar"), a, pctOf(a)], [T("Tight rule", "Regla estricta"), b, pctOf(b), true]] };
-    },
-    sticky: () => {
-      const { a, b } = RESULTS.sticky;
-      return { verdict: T(pctOf(a) + " of users saw both versions with per-request routing, " + pctOf(b) + " with per-user routing.", "El " + pctOf(a) + " de los usuarios vio ambas versiones con enrutamiento por solicitud y el " + pctOf(b) + " con enrutamiento por usuario."), bars: [[T("Per request", "Por solicitud"), a, pctOf(a), true], [T("Per user", "Por usuario"), b, pctOf(b)]] };
-    },
-    silent: () => {
-      const { a, b } = RESULTS.silent, top = Math.max(a.n, b.n) * 1.05;
-      return { verdict: T("Watching failures only: " + Math.round(a.n) + " wrong-price orders, promoted in " + pctOf(a.promoted) + " of runs. Watching prices too: " + Math.round(b.n) + ", rolled back within minutes.", "Vigilando solo fallos: " + Math.round(a.n) + " pedidos con precio erróneo, promovida en el " + pctOf(a.promoted) + " de las ejecuciones. Vigilando también los precios: " + Math.round(b.n) + ", revertida en minutos."), bars: [[T("Failures only", "Solo fallos"), a.n / top, String(Math.round(a.n)), true], [T("Failures + prices", "Fallos + precios"), b.n / top, String(Math.round(b.n))]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    promote: () => { decide(d, "promoted"); push = null; root.press("pct", 100); showStats(); },
+    rollback: () => { if (d.decision === "watching") { decide(d, "rolled back"); onEvent("rolled back"); showStats(); } },
+    reset: () => { if (cfg.pct === 0) { cfg.pct = 5; root.press("pct", 5); } deploy(); },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
-    for (const name of ["pct", "build", "auto", "rule", "routing", "check", "speed"]) { cfg[name] = name === "pct" || name === "speed" ? Number(w[name]) : w[name]; pressSeg(name, w[name]); }
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w, id) => {
+    for (const name of ["pct", "build", "auto", "rule", "routing", "check", "speed"]) { cfg[name] = name === "pct" || name === "speed" ? Number(w[name]) : w[name]; root.press(name, w[name]); }
     deploy();
-    if (exp.id === "silent") promoteAt = 1800;
+    if (id === "silent") promoteAt = 1800;
     if (clock.paused) clock.setPaused(false);
-  } });
+  });
 
   deploy(); clock.setPaused(clock.paused);
 }
