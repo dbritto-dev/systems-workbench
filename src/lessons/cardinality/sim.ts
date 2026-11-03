@@ -4,6 +4,7 @@
 // keeps or drops. The live machine runs a few requests a second; the experiments use 100 a second.
 // Shared by the page (experiment results at build time) and the live code.
 import { rng } from "../../lib/random";
+import { int } from "../../lib/format";
 
 export const METHODS = [["GET", 0.7], ["POST", 0.3]];
 // [template, share of traffic, has an id in the path]
@@ -89,4 +90,11 @@ export function sampleHour({ mode, head = 0.01, base = TAIL_BASE, errorRate = 0.
 }
 export function sampleHours(opts, hours) {
   return Array.from({ length: hours }, (_, h) => sampleHour(opts, 11 + h * 7919));
+}
+
+/** Memory as the machine writes it, shared by the page (verdicts) and the live code: "3.0 KB", "48 MB". */
+export function fmtBytes(b) {
+  const u = [["GB", 2 ** 30], ["MB", 2 ** 20], ["KB", 2 ** 10]];
+  for (const [n, v] of u) if (b >= v) { const x = b / v; return (x < 10 ? x.toFixed(1) : int(x)) + " " + n; }
+  return b + " B";
 }

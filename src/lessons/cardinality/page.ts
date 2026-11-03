@@ -3,7 +3,7 @@
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { buildFigure, tokenSvg, P, GEOMETRY } from "./figure";
-import { expectedSeries, sampleHours, seriesBytes } from "./sim";
+import { expectedSeries, sampleHours, seriesBytes, fmtBytes } from "./sim";
 import { one, int } from "../../lib/format";
 import { meanBy } from "../../lib/stats";
 
@@ -24,13 +24,6 @@ const RESULTS = {
   head6: sampleHours({ mode: "head", head: 0.01 }, 6),
   tail6: sampleHours({ mode: "tail" }, 6),
 };
-
-// Memory as the machine's readout writes it.
-function fmtBytes(b) {
-  const u = [["GB", 2 ** 30], ["MB", 2 ** 20], ["KB", 2 ** 10]];
-  for (const [n, v] of u) if (b >= v) { const x = b / v; return (x < 10 ? x.toFixed(1) : int(x)) + " " + n; }
-  return b + " B";
-}
 
 // What each card shows after a run.
 const RUNS = {

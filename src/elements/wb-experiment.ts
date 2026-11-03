@@ -2,8 +2,8 @@
 // The reader picks a prediction, runs it, and the card shows the verdict and the result bars.
 //
 // The result: the card's <script type="application/json" data-result>, worked out at build time by the lesson's
-// page.ts (predict.experiments[i].result), already in the page's language. A card without one asks the lesson's live
-// code with a "wb-run" event, { id, respond(result) }, waiting for the live code to load if it hasn't yet.
+// page.ts (predict.experiments[i].result, see withResults), already in the page's language. Running a card needs no
+// lesson code at all.
 //
 // "Watch it on the machine" sends "wb-watch", { id, watch } (watch: the experiment's settings from page.ts), then
 // scrolls to the machine. <wb-lesson> keeps the event until the live code has loaded, so an early click isn't lost.
@@ -13,7 +13,6 @@ import { L, still } from "../runtime/wb";
 export type ResultBar = [label: string, share: number, text: string, after?: boolean];
 /** An experiment's result: a verdict and bars, or bars in titled groups. */
 export interface Result { verdict: string; bars?: ResultBar[]; groups?: { title: string; bars: ResultBar[] }[] }
-export interface RunDetail { id: string; respond: (result: Result) => void }
 export interface WatchDetail { id: string; watch: unknown }
 
 export class WbExperiment extends HTMLElement {
@@ -31,7 +30,7 @@ export class WbExperiment extends HTMLElement {
     const t = e.target as Element;
     const choice = t.closest<HTMLButtonElement>("[data-choice]");
     if (choice) return this.pick(Number(choice.dataset.choice));
-    if (t.closest("[data-run]")) return void this.run();
+    if (t.closest("[data-run]")) return this.run();
     if (t.closest("[data-watch]")) return this.watch();
   };
 
@@ -43,12 +42,13 @@ export class WbExperiment extends HTMLElement {
     this.runButton.textContent = L("Run the experiment", "Ejecutar el experimento");
   }
 
-  async run() {
+  run() {
     if (this.#picked === null || this.done) return;
     const btn = this.runButton;
     btn.disabled = true;
-    const result = await this.#result();
-    if (!result) { btn.disabled = false; return; }
+    const data = this.querySelector("script[data-result]")?.textContent;
+    if (!data) { console.error(`experiment "${this.id}" has no result`); btn.disabled = false; return; }
+    const result: Result = JSON.parse(data);
     const right = this.#picked === this.answer;
     this.choices.forEach((x, j) => { x.disabled = true; if (j === this.answer) x.dataset.verdict = "right"; else if (j === this.#picked) x.dataset.verdict = "wrong"; });
     this.#show(result, right);
@@ -61,24 +61,6 @@ export class WbExperiment extends HTMLElement {
     const detail: WatchDetail = { id: this.id, watch: data ? JSON.parse(data) : undefined };
     this.dispatchEvent(new CustomEvent("wb-watch", { bubbles: true, detail }));
     document.getElementById(this.getAttribute("watch-target") || "machine")?.scrollIntoView({ behavior: still.matches ? "auto" : "smooth" });
-  }
-
-  async #result(): Promise<Result | null> {
-    const own = this.querySelector("script[data-result]")?.textContent;
-    if (own) return JSON.parse(own);
-    const ask = () => {
-      let got: Result | null = null;
-      const detail: RunDetail = { id: this.id, respond: (r) => { got = r; } };
-      this.dispatchEvent(new CustomEvent("wb-run", { bubbles: true, detail }));
-      return got as Result | null;
-    };
-    const now = ask();
-    if (now) return now;
-    const lesson = this.closest<HTMLElement & { ready?: Promise<unknown> }>("wb-lesson");
-    if (!lesson?.ready) return null;
-    this.runButton.textContent = L("Running…", "Ejecutando…");
-    await lesson.ready;
-    return ask();
   }
 
   #show(result: Result, right: boolean) {

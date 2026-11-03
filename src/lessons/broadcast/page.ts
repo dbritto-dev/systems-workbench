@@ -4,8 +4,8 @@ import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import * as k from "../../../workbench/kit.mjs";
 import { buildFigure, routeOf, P, gaugeTravel } from "./figure";
-import { TOPOLOGIES, edgesOf, createNet, HOP, runScenario, average, oneValue } from "./sim";
-import { pct, int, msOrSecs } from "../../lib/format";
+import { TOPOLOGIES, edgesOf, createNet, HOP, runScenario, average, oneValue, ms, n1 } from "./sim";
+import { pct, int } from "../../lib/format";
 
 const EXPERIMENTS = [
   {
@@ -110,10 +110,6 @@ const RESULTS = {
   forward: { newOnly: oneValue({ forward: "new" }), every: oneValue({ forward: "every" }) },
 };
 
-// Seconds as "250 ms" under one second, "1.25 s" above; "–" when there is nothing to show.
-const ms = (x) => (isFinite(x) ? msOrSecs(x) : "–");
-// Messages per value: one decimal, whole with thousands separators from 100 up.
-const n1 = (x) => (x >= 100 ? int(x) : x.toFixed(1));
 
 // What each card shows after a run.
 const RUNS = {

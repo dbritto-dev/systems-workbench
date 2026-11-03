@@ -93,25 +93,3 @@ export function loop({ stage, step, paused = still.matches, maxDt = 1 / 20, onPa
   return api;
 }
 
-// ---------- segmented controls and experiment cards ----------
-// Adapters over the lesson elements (src/elements) for live code written before them; new code uses root.seg(),
-// root.on("change" | "watch" | "run", …) from <wb-lesson> instead.
-type SegEl = HTMLElement & { value: string };
-export function pressSeg(name: string, value: string | number) {
-  document.querySelectorAll<SegEl>(`wb-seg[name="${name}"]`).forEach((s) => { s.value = String(value); });
-}
-export function onSegments(handler: (name: string, value: string, button: HTMLElement) => void) {
-  document.addEventListener("wb-change", (e) => { const d = (e as CustomEvent).detail; handler(d.name, d.value, d.button); });
-}
-
-export type Bar = [label: Bi, share: number, text: Bi, after?: boolean];
-export interface Outcome { verdict: Bi; bars: Bar[] }
-export interface ExperimentRef { id: string; answer: number; [k: string]: unknown }
-/** Answer the cards' "wb-run" and "wb-watch" events from runs[id]() and watch(exp). */
-export function experiments<E extends ExperimentRef>({ list, runs, watch }: { list: E[]; runs: Record<string, () => Outcome>; watch?: (exp: E) => void; scrollTo?: string }) {
-  document.addEventListener("wb-run", (e) => {
-    const d = (e as CustomEvent).detail, out = runs[d.id]?.();
-    if (out) d.respond({ verdict: L(out.verdict), bars: out.bars.map(([label, share, text, after]) => [L(label), share, L(text), after]) });
-  });
-  if (watch) document.addEventListener("wb-watch", (e) => { const exp = list.find((x) => x.id === (e as CustomEvent).detail.id); if (exp) watch(exp); });
-}

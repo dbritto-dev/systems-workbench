@@ -86,3 +86,6 @@ export function planPage(cfg, seed = 7) {
 export function average(cfg, seeds = 8) {
   return averageOver(Array.from({ length: seeds }, (_, i) => (i + 1) * 7919), (seed) => { const p = planPage(cfg, seed); return { time: p.end, queries: p.queries, bytes: p.bytes }; });
 }
+
+/** Bytes as the machine writes them, shared by the page (verdicts) and the live code: "4.2 KB", "38 KB", "1.25 MB". */
+export const kb = (b) => b < 1e6 ? (b / 1000).toFixed(b < 1e4 ? 1 : 0) + " KB" : (b / 1e6).toFixed(2) + " MB";

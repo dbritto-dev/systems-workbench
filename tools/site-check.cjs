@@ -1,5 +1,5 @@
 // Smoke test for the built site. Serve it first (npm run preview), then:
-//   CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/site-check.cjs [baseUrl] [slug ...]
+//   CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/site-check.cjs [baseUrl] [slug ...]   (slugs: separate or a,b,c)
 // For every lesson in English and Spanish: no console errors, the live code loads and animates the figure,
 // all five experiments run and show a verdict, nothing from the other language is left on the page, and the page
 // fits a 390 px phone. Also checks the collection pages and a redirect from an old lesson URL. Exits 1 on problems.
@@ -7,7 +7,9 @@ const { chromium } = require("playwright");
 const lessons = require("../workbench/collection/lessons.json");
 
 const BASE = (process.argv[2] && process.argv[2].startsWith("http") ? process.argv[2] : "http://localhost:4321/systems-workbench/").replace(/\/?$/, "/");
-const only = new Set(process.argv.slice(2).filter((a) => !a.startsWith("http")));
+const only = new Set(process.argv.slice(2).filter((a) => !a.startsWith("http")).flatMap((a) => a.split(",")).filter(Boolean));
+const unknown = [...only].filter((s) => !lessons.some((l) => l.slug === s));
+if (unknown.length) { console.error(`unknown lesson(s): ${unknown.join(", ")}`); process.exit(1); }
 const problems = [];
 const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(`  ✗ ${what}`); };
 

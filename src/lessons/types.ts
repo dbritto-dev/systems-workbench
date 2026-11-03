@@ -2,9 +2,10 @@
 //
 //   sim.ts    the seeded model, shared by the page (experiment results at build time) and the live code
 //   figure.ts the machine, drawn at build time (SVG)
-//   page.ts   export default defineLesson({...}): text in both languages, the figure, panel, experiments, questions,
-//             and `data` for the live code
-//   live.ts   export default function mount(data): the animation and controls, run in the browser
+//   page.ts   export default defineLesson({...}): text in both languages, the figure, panel, experiments with their
+//             results (withResults), questions, and `data` for the live code
+//   live.ts   export default function mount(data, root): the animation and the answers to the controls, run in the
+//             browser; root is the page's <wb-lesson> (src/elements/wb-lesson.ts)
 //
 // Text is bilingual: { en, es } pairs (or a plain string when both read the same). Pages show one language.
 import type { Bi } from "../i18n";
@@ -46,7 +47,7 @@ export interface Experiment {
    *  to it with the "watch" event. */
   watch?: unknown;
   /** The result, worked out at build time from the model: the verdict and the bars the card shows after a run.
-   *  Without one, the card asks the live code ("run" event). */
+   *  Attach it with withResults(); the card needs no lesson code to run. */
   result?: ExperimentResult;
 }
 

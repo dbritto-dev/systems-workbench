@@ -82,8 +82,11 @@ src/
   lessons/                  one folder per lesson, plus types.ts (defineLesson) and the README
   lib/                      shared code: random, stats, tween, format, draw (figure shorthands), the lesson list,
                             the search engine (BM25F) and its index
-  runtime/                  shared browser code: wb.ts (loop, counters, dials, meters, experiment cards),
-                            dom.ts (readout, stats, show, Play/Pause)
+  elements/                 the custom elements every page is built from: wb-lesson (loads a lesson's live code),
+                            wb-figure, wb-stats, wb-seg, wb-actions, wb-experiment; site-switches,
+                            lesson-collection, lesson-preview
+  runtime/                  shared browser code for live code: wb.ts (loop, counters, dials, meters, L/T),
+                            dom.ts (show, setText, setD, setLit, playPause)
   i18n/                     locales, interface strings (ui.ts), localize() for figures drawn in both languages
   layouts/                  Base (head, language alternates, theme) and Lesson (header, machine, experiments, questions)
   components/               Switches, lesson/ (FigurePlate, Panel, Experiments, Questions), collection/ (cards,
@@ -91,7 +94,6 @@ src/
   pages/[...lang]/          the collection and the lesson pages, once per language
   pages/workbench/          the parts gallery
   pages/search-index.json.ts  every lesson's text in both languages, for search
-  scripts/                  browser code: switches, collection (filters, preview, search), live-loader
   styles/                   collection, lesson additions, switches
 workbench/                  the drawing layer the figures build on: the Anatomy kit (vendored), shared parts,
                             digits, the lesson stylesheet (served as virtual:workbench.css)
@@ -100,8 +102,9 @@ workbench/                  the drawing layer the figures build on: the Anatomy 
 What loads, and when:
 
 - **Shared once, cached for every lesson:** the kit + `WB` runtime (about 5 KB gzipped) and the lesson stylesheet.
-- **Per lesson, on demand:** the lesson's live code (model + animation) is its own chunk, loaded as the machine or
-  the experiments come near the screen, or on the first interaction. The still frame is plain HTML/SVG.
+- **Per lesson, on demand:** the lesson's live code (model + animation) is its own chunk, which `<wb-lesson>` loads
+  as the machine or the experiments come near the screen, or on the first interaction. The still frame is plain
+  HTML/SVG, and the experiment cards carry their results from the build, so they run without the lesson's code.
 - **Collection, on demand:** the search engine and index load on the first search, a `?q=` link or a preview.
   Card images are resized by `astro:assets` and lazy-loaded.
 

@@ -11,13 +11,12 @@
 //                                multi-select segment, a list or space-separated values: the options to have on)
 //   root.button(name)            an action button <button data-act="name">, e.g. to relabel it
 //   root.on(type, fn)            "change" (name, value, detail) from a segment, "action" (name, detail) from a
-//                                button or Space on the figure, "watch" (watch, id) from an experiment card,
-//                                "run" (id, respond) from a card without a build-time result
+//                                button or Space on the figure, "watch" (watch, id) from an experiment card
 //   root.$(selector), root.$$(selector)   elements inside the lesson
 //   root.ready                   resolves once mount() has run
 import type { ChangeDetail, ActionDetail, WbSeg, WbStats, WbActions } from "./wb-controls";
 import type { WbFigure } from "./wb-figure";
-import type { RunDetail, WatchDetail } from "./wb-experiment";
+import type { WatchDetail } from "./wb-experiment";
 import "./wb-controls";
 import "./wb-figure";
 import "./wb-experiment";
@@ -29,7 +28,6 @@ type Handlers = {
   change: (name: string, value: string, detail: ChangeDetail & { event: CustomEvent }) => void;
   action: (name: string, detail: ActionDetail & { event: CustomEvent }) => void;
   watch: (watch: any, id: string) => void;
-  run: (id: string, respond: RunDetail["respond"]) => void;
 };
 
 export class WbLesson extends HTMLElement {
@@ -57,8 +55,7 @@ export class WbLesson extends HTMLElement {
       const ev = e as CustomEvent, d = ev.detail;
       if (type === "change") (fn as Handlers["change"])(d.name, d.value, { ...d, event: ev });
       else if (type === "action") (fn as Handlers["action"])(d.name, { ...d, event: ev });
-      else if (type === "watch") (fn as Handlers["watch"])((d as WatchDetail).watch, d.id);
-      else (fn as Handlers["run"])(d.id, (d as RunDetail).respond);
+      else (fn as Handlers["watch"])((d as WatchDetail).watch, d.id);
     };
     this.addEventListener(`wb-${type}`, h);
     return () => this.removeEventListener(`wb-${type}`, h);

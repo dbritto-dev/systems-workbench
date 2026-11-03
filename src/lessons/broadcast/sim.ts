@@ -6,6 +6,7 @@
 import { rng } from "../../lib/random";
 import { meanBy, rankQuantileSorted } from "../../lib/stats";
 import { minHeap } from "../../lib/events";
+import { int, msOrSecs } from "../../lib/format";
 
 export const COLS = 5;
 export const N = COLS * COLS;
@@ -202,3 +203,9 @@ export function oneValue({ topology = "grid", forward = "new", origin = CENTER, 
   net.runTo(window);
   return { msgs: net.stats.msgs, overload: net.stats.overload, have: net.ops[0].have };
 }
+
+// ---------- number text shared by the page (verdicts) and the live code (readout, stats) ----------
+/** Seconds as "250 ms" under one second, "1.25 s" above; "–" when there is nothing to show. */
+export const ms = (x) => (isFinite(x) ? msOrSecs(x) : "–");
+/** Messages per value: one decimal, whole with thousands separators from 100 up. */
+export const n1 = (x) => (x >= 100 ? int(x) : x.toFixed(1));

@@ -3,12 +3,11 @@
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { buildFigure, pickerSvg, cargoSvg, P, GEOMETRY } from "./figure";
-import { average } from "./sim";
+import { average, kb } from "./sim";
 import { int, oneUnder10 } from "../../lib/format";
 
 // What each card shows after a run: the same seeded pages the machine plays, averaged at build time.
 const one = oneUnder10;
-const kb = (b) => b < 1e6 ? (b / 1000).toFixed(b < 1e4 ? 1 : 0) + " KB" : (b / 1e6).toFixed(2) + " MB";
 const base = { mode: "n1", rows: 20, items: 5, nested: false, dist: "region" };
 const RUNS = {
   distance: () => {

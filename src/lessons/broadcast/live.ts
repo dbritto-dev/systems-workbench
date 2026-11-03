@@ -5,9 +5,9 @@
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { playPause } from "../../runtime/dom";
-import { pct, int, msOrSecs } from "../../lib/format";
+import { pct, int } from "../../lib/format";
 import { rankQuantileSorted } from "../../lib/stats";
-import { TOPOLOGIES, HOP, createNet, hubsOf } from "./sim";
+import { TOPOLOGIES, HOP, createNet, hubsOf, ms, n1 } from "./sim";
 
 export default function mount({ ROUTES, GAUGE }, root) {
   const KILL = { grid: 6, ring: 6, hubs: 6, star: 12, direct: 6 };
@@ -144,10 +144,6 @@ export default function mount({ ROUTES, GAUGE }, root) {
   }
 
   const stat = (key, value) => root.stat(key, value);
-  // Seconds as "250 ms" under one second, "1.25 s" above; "–" when there is nothing to show.
-  const ms = (x) => (isFinite(x) ? msOrSecs(x) : "–");
-  // Messages per value: one decimal, whole with thousands separators from 100 up.
-  const n1 = (x) => (x >= 100 ? int(x) : x.toFixed(1));
   function showStats() {
     const first = history[0], now = [net.t, net.stats.msgs, net.ops.length];
     const ops = now[2] - first[2];

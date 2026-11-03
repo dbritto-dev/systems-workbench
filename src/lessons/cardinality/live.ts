@@ -7,8 +7,7 @@ import { digitPath, counterCells } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
 import { L, digitsOf } from "../../runtime/wb";
 import { setD, playPause } from "../../runtime/dom";
-import { int } from "../../lib/format";
-import { makeLive, LIVE_RATE, BYTES_PER_SERIES } from "./sim";
+import { makeLive, LIVE_RATE, BYTES_PER_SERIES, fmtBytes } from "./sim";
 
 export default function mount({ P, G, TOK }, root) {
   const VM = 45, VT = 30, HOP = 0.45, DROP = 0.5, WAIT = 2.5, SLOTHOP = 0.3, WARM = 40;
@@ -169,11 +168,6 @@ export default function mount({ P, G, TOK }, root) {
   function needleOf(turn) {
     const D = G.DIAL, a = G.DIAL_SPAN.from + Math.max(0, Math.min(1, turn)) * G.DIAL_SPAN.span;
     return lineOnTop([D.x - Math.sin(a) * 2, D.y + Math.cos(a) * 2], [D.x + Math.sin(a) * (D.r - 2.6), D.y - Math.cos(a) * (D.r - 2.6)], D.top + 0.2, P);
-  }
-  function fmtBytes(b) {
-    const u = [["GB", 2 ** 30], ["MB", 2 ** 20], ["KB", 2 ** 10]];
-    for (const [n, v] of u) if (b >= v) { const x = b / v; return (x < 10 ? x.toFixed(1) : int(x)) + " " + n; }
-    return b + " B";
   }
   const stat = (key, value) => root.stat(key, value);
 

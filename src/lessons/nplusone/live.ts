@@ -8,7 +8,7 @@ import * as WB from "../../runtime/wb";
 import { L } from "../../runtime/wb";
 import { show as setVis, playPause } from "../../runtime/dom";
 import { oneUnder10, millis } from "../../lib/format";
-import { planPage, crateLevel } from "./sim";
+import { planPage, crateLevel, kb } from "./sim";
 
 export default function mount({ P, G, PICKER_SVG, CARGO_SVG }, root) {
   const MS_PER_S = 10;        // model milliseconds per second on screen, at ×1
@@ -50,7 +50,6 @@ export default function mount({ P, G, PICKER_SVG, CARGO_SVG }, root) {
     return fillCache.get(step);
   }
   const cargoScale = (bytes) => Math.max(1, Math.min(2.6, 1 + 0.4 * Math.log10(Math.max(1, bytes) / 1000)));
-  const kb = (b) => b < 1e6 ? (b / 1000).toFixed(b < 1e4 ? 1 : 0) + " KB" : (b / 1e6).toFixed(2) + " MB";
 
   const cfg = { mode: "n1", rows: 20, items: 5, nested: false, dist: "region", speed: 1 };
   let plan, clock, byLane, ptr, starts, backs, done, pages = 0, lastMs = null, fillStep = -1;
