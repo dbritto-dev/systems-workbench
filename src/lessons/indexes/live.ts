@@ -1,21 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The library in the browser: a queue of timed steps (walk, read a drawer, fetch a book, file a card) that the
-// trolley, cards, counter and stopwatch follow; the controls and the experiment cards. mount() gets the build-time
-// data from page.ts (geometry, experiment ids).
+// trolley, cards, counter and stopwatch follow, and the controls. mount() gets the build-time data from page.ts
+// (geometry) and root, the <wb-lesson>.
 import { iso, pathOf, translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { lerp, easeInOutQuad as ease } from "../../lib/tween";
 import { rng } from "../../lib/random";
-import { INDEXES, QUERIES, RAND, choose, plans, levels, scanCost, insertCost, insertReads, needlePath } from "./sim";
+import { INDEXES, QUERIES, RAND, choose, plans, levels, insertCost, insertReads, needlePath } from "./sim";
 
-export default function mount({ P, G, EXPERIMENTS }) {
+export default function mount({ P, G }, root) {
   const needleAt = (turn) => needlePath(G.DIAL, P, turn);
   const SCALE = 1;
 
-  const stage = document.querySelector("[data-library]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
   const trolleyEl = q("[data-trolley]"), fly = q("[data-fly]"), needle = q("[data-needle]"), newBook = q("[data-newbook]");
@@ -26,7 +25,7 @@ export default function mount({ P, G, EXPERIMENTS }) {
   const cardEls = G.CABS.map((_, i) => q('[data-card="' + i + '"]'));
   const drawerEls = G.CABS.map((_, i) => q('[data-drawer="' + i + '"] .iso-solid'));
   const tagEls = G.CASES.map((_, i) => q('[data-tag="' + i + '"]'));
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
   const cfg = { rows: 10000, query: "isbn", on: ["isbn"], writes: false, speed: 1 };
   let random = rng(7);
@@ -36,8 +35,7 @@ export default function mount({ P, G, EXPERIMENTS }) {
 
   const fmtMs = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + " s" : ms >= 10 ? ms.toFixed(0) + " ms" : ms.toFixed(1) + " ms");
   // Live words are kept as { en, es } and picked when written.
-  const write = readout();
-  const say = (msg) => write(L(msg));
+  const say = (msg) => root.figure.say(L(msg));
   const planNameT = (p) => (p.kind === "scan" ? T("Full scan", "Escaneo completo") : p.kind === "covering" ? T("Index only", "Solo índice") : T("Index + lookups", "Índice + búsquedas"));
   const planName = (p) => L(planNameT(p));
   const INDEX_ES = { isbn: "ISBN", author: "Autor", authorYear: "Autor, año", loan: "Prestado", authorTitle: "Autor + título" };
@@ -232,7 +230,7 @@ export default function mount({ P, G, EXPERIMENTS }) {
   // Several catalogues can be on at once, so each catalogue button shows its own state.
   function applyCatalogues() {
     G.CABS.forEach((c, i) => { cabEls[i].forEach((el) => { el.style.display = cfg.on.includes(c.id) ? "" : "none"; }); });
-    document.querySelectorAll('[data-set="idx"]').forEach((b) => b.setAttribute("aria-pressed", String(cfg.on.includes(b.dataset.value))));
+    root.press("idx", cfg.on.join(" "));
   }
   function restart() {
     steps = []; current = null; turn = 0; watchMs = 0; readsShown = 0; lastQuery = null; lastInsert = null;
@@ -243,63 +241,43 @@ export default function mount({ P, G, EXPERIMENTS }) {
     showStats();
   }
   function set(name, raw) {
-    if (name === "rows") { cfg.rows = Number(raw); WB.pressSeg(name, raw); }
-    if (name === "query") { cfg.query = raw; WB.pressSeg(name, raw); }
-    if (name === "writes") { cfg.writes = raw === "true" || raw === true; WB.pressSeg(name, String(cfg.writes)); }
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "rows") { cfg.rows = Number(raw); root.press(name, raw); }
+    if (name === "query") { cfg.query = raw; root.press(name, raw); }
+    if (name === "writes") { cfg.writes = raw === "true" || raw === true; root.press(name, String(cfg.writes)); }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     if (name === "idx") { cfg.on = cfg.on.includes(raw) ? cfg.on.filter((x) => x !== raw) : [...cfg.on, raw]; applyCatalogues(); }
     restart();
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: (dt) => advance(dt * cfg.speed), onPause: pause.onPause });
   pause.bind(clock);
   clock.setPaused(clock.paused);
-  WB.onSegments(set);
-  act("restart").addEventListener("click", restart);
+  root.on("change", (name, value) => set(name, value));
+  const actions = { restart };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments ----------
+  // ---------- experiments: "selective" is worked out here (see page.ts); the others come with the page ----------
   const share = (v, top) => Math.max(0.01, Math.min(1, v / top));
   const RUNS = {
-    grow: () => {
-      const s1 = scanCost(10000), s2 = scanCost(100000), i1 = choose("isbn", 10000, ["isbn"]).cost, i2 = choose("isbn", 100000, ["isbn"]).cost;
-      return { verdict: T("Scan " + fmtMs(s1) + " → " + fmtMs(s2) + " (×" + (s2 / s1).toFixed(0) + "). Catalogue " + fmtMs(i1) + " → " + fmtMs(i2) + ": " + levels(10000) + " → " + levels(100000) + " drawer levels.",
-          "Escaneo " + fmtMs(s1) + " → " + fmtMs(s2) + " (×" + (s2 / s1).toFixed(0) + "). Catálogo " + fmtMs(i1) + " → " + fmtMs(i2) + ": " + levels(10000) + " → " + levels(100000) + " niveles de cajón."),
-        bars: [[T("Scan, 10,000", "Escaneo, 10,000"), share(s1, s2), fmtMs(s1)], [T("Scan, 100,000", "Escaneo, 100,000"), 1, fmtMs(s2)], [T("Index, 10,000", "Índice, 10,000"), share(i1, s2), fmtMs(i1)], [T("Index, 100,000", "Índice, 100,000"), share(i2, s2), fmtMs(i2), true]] };
-    },
-    writes: () => {
-      const a = insertCost(100000, 1), b = insertCost(100000, 3);
-      return { verdict: T("Adding a book " + fmtMs(a) + " → " + fmtMs(b) + " (" + insertReads(100000, 1) + " → " + insertReads(100000, 3) + " page writes): " + Math.round(1000 / a) + " → " + Math.round(1000 / b) + " books a second.",
-          "Agregar un libro " + fmtMs(a) + " → " + fmtMs(b) + " (" + insertReads(100000, 1) + " → " + insertReads(100000, 3) + " escrituras de página): " + Math.round(1000 / a) + " → " + Math.round(1000 / b) + " libros por segundo."),
-        bars: [[T("No catalogue", "Sin catálogo"), share(insertCost(100000, 0), b), fmtMs(insertCost(100000, 0))], [T("1 catalogue", "1 catálogo"), share(a, b), fmtMs(a)], [T("3 catalogues", "3 catálogos"), 1, fmtMs(b), true]] };
-    },
-    prefix: () => {
-      const year = choose("year", 100000, ["authorYear"]), both = choose("authorYear", 100000, ["authorYear"]), author = choose("author", 100000, ["authorYear"]);
-      return { verdict: T("Year only: " + planNameT(year).en.toLowerCase() + ", " + fmtMs(year.cost) + ". Author + year: " + fmtMs(both.cost) + ". Author only still uses it: " + fmtMs(author.cost) + ".",
-          "Solo año: " + planNameT(year).es.toLowerCase() + ", " + fmtMs(year.cost) + ". Autor + año: " + fmtMs(both.cost) + ". Solo autor todavía lo usa: " + fmtMs(author.cost) + "."),
-        bars: [[T("Author + year", "Autor + año"), share(both.cost, 100), fmtMs(both.cost)], [T("Author only", "Solo autor"), share(author.cost, 100), fmtMs(author.cost)], [T("Year only (scan)", "Solo año (escaneo)"), share(year.cost, 100), fmtMs(year.cost), true]] };
-    },
     selective: () => {
       const all = plans("loan", 100000, ["loan"]), scan = all.find((p) => p.kind === "scan"), index = all.find((p) => p.kind !== "scan");
       return { verdict: T("The planner picks the scan: " + fmtMs(scan.cost) + " against " + fmtMs(index.cost) + " through the catalogue (" + index.shelfTrips.toLocaleString() + " shelf trips).",
           "El planificador elige el escaneo: " + fmtMs(scan.cost) + " contra " + fmtMs(index.cost) + " con el catálogo (" + index.shelfTrips.toLocaleString() + " viajes a estantes)."),
         bars: [[T("Full scan (chosen)", "Escaneo completo (elegido)"), share(scan.cost, index.cost), fmtMs(scan.cost), true], [T("Via the catalogue", "Con el catálogo"), 1, fmtMs(index.cost)]] };
     },
-    covering: () => {
-      const plain = choose("titles", 100000, ["author"]), cover = choose("titles", 100000, ["authorTitle"]);
-      return { verdict: T("Titles by one author: " + fmtMs(plain.cost) + " → " + fmtMs(cover.cost) + " (" + plain.shelfTrips + " shelf trips → none), " + (plain.cost / cover.cost).toFixed(0) + "× faster.",
-          "Títulos de un autor: " + fmtMs(plain.cost) + " → " + fmtMs(cover.cost) + " (" + plain.shelfTrips + " viajes a estantes → ninguno), " + (plain.cost / cover.cost).toFixed(0) + "× más rápido."),
-        bars: [[T("Author catalogue", "Catálogo por autor"), 1, fmtMs(plain.cost)], [T("Author + title", "Autor + título"), share(cover.cost, plain.cost), fmtMs(cover.cost), true]] };
-    },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("run", (id, respond) => {
+    const out = RUNS[id]?.();
+    if (out) respond({ verdict: L(out.verdict), bars: out.bars.map(([label, share, text, after]) => [L(label), share, L(text), after]) });
+  });
+  root.on("watch", (w) => {
     cfg.rows = w.rows; cfg.query = w.query; cfg.on = [...(w.then || w.on)]; cfg.writes = w.writes;
-    WB.pressSeg("rows", cfg.rows); WB.pressSeg("query", cfg.query); WB.pressSeg("writes", String(cfg.writes));
-    if (cfg.rows >= 100000 && cfg.speed < 8) { cfg.speed = 8; WB.pressSeg("speed", 8); }
+    root.press("rows", cfg.rows); root.press("query", cfg.query); root.press("writes", String(cfg.writes));
+    if (cfg.rows >= 100000 && cfg.speed < 8) { cfg.speed = 8; root.press("speed", 8); }
     applyCatalogues(); restart();
     if (clock.paused) clock.setPaused(false);
-  } });
+  });
 
   applyCatalogues(); showStats(); setNeedle(0); setCount(COUNT.books, 0);
 }

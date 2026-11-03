@@ -1,23 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The filing machine in the browser: runs a reader against the model, slides folders and the carriage to where the
-// model has them, wires the controls and the experiment cards. mount() gets the build-time data from page.ts
-// (geometry, folder drawings, experiment ids and titles).
+// model has them, and answers the controls. mount() gets the build-time data from page.ts (geometry, folder
+// drawings, the experiments' titles) and root, the <wb-lesson>.
 import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats as statsStrip, act, pauseControls } from "../../runtime/dom";
-import { int as fmt } from "../../lib/format";
-import { makeRun, average, needlePath } from "./sim";
+import { playPause } from "../../runtime/dom";
+import { makeRun, needlePath } from "./sim";
 
-export default function mount({ P, G, FOLDER_SVG, EXPERIMENTS }) {
+export default function mount({ P, G, FOLDER_SVG, TITLES }, root) {
   const RATES = { off: 0, slow: 0.15, fast: 0.4 };
   const NS = "http://www.w3.org/2000/svg";
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const write = readout();
-  const say = (msg) => write(L(msg));
+  const say = (msg) => root.figure.say(L(msg));
   const folderBox = q("[data-folders]"), clipEl = q("[data-clip]"), carriage = q("[data-carriage]"), needle = q("[data-needle]");
   const headSolid = q("[data-head] .iso-solid");
   const slotX = (i) => G.SLOT_X0 + i * G.SLOT_W;
@@ -159,7 +156,7 @@ export default function mount({ P, G, FOLDER_SVG, EXPERIMENTS }) {
     } else clipEl.style.display = "none";
   }
 
-  const stat = statsStrip();
+  const stat = (key, value) => root.stat(key, value);
   function showStats() {
     stat("page", stats.page || "–");
     stat("rows", stats.rows);
@@ -170,12 +167,12 @@ export default function mount({ P, G, FOLDER_SVG, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(loop);
   function set(name, raw, quiet) {
     cfg[name] = name === "pageSize" || name === "speed" ? Number(raw) : raw;
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name !== "speed" && !quiet) { restart(); say(T("settings applied · a new reader starts", "ajustes aplicados · empieza un lector nuevo")); }
   }
   function jump() {
@@ -184,60 +181,21 @@ export default function mount({ P, G, FOLDER_SVG, EXPERIMENTS }) {
     say(cfg.mode === "offset" ? T("jump to page 4 · one query, OFFSET " + 3 * cfg.pageSize, "salto a la página 4 · una consulta, OFFSET " + 3 * cfg.pageSize) : T("jump to page 4 · a cursor has to walk pages 1 to 3 first", "salto a la página 4 · un cursor primero tiene que recorrer las páginas 1 a 3"));
     if (loop.paused) loop.setPaused(false);
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("jump").addEventListener("click", jump);
-  act("reset").addEventListener("click", () => { restart(); say(T("started over", "empezó de nuevo")); });
-
-  // ---------- experiments ----------
-  const BIG = { pageSize: 20, pages: 10, rows0: 2000, batch: 1, insertRate: 0, deleteRate: 0, keyUnique: true, think: 2, stepTime: 0.0005 };
-  function lastCost(mode, pageNo) {
-    let cost = 0;
-    makeRun({ ...BIG, rows0: 20000, mode, firstPage: pageNo, pages: 1 }, 1).advanceTo(1e9, (e) => { if (e.type === "query") cost = e.cost; });
-    return cost;
-  }
-  function walk(mode, pageNo) {
-    const r = makeRun({ ...BIG, mode, firstPage: pageNo, pages: 1 }, 1).runToEnd();
-    return { rows: r.rowsRead, trips: r.roundTrips };
-  }
-  const RUNS = {
-    deep: () => {
-      const o1 = lastCost("offset", 1), o500 = lastCost("offset", 500), c1 = lastCost("cursor", 1), c500 = lastCost("cursor", 500);
-      return { verdict: T("Rows read for page 1 → page 500: offset " + fmt(o1) + " → " + fmt(o500) + " (" + Math.round(o500 / o1) + "×); cursor " + fmt(c1) + " → " + fmt(c500) + ".",
-          "Filas leídas de la página 1 → la página 500: offset " + fmt(o1) + " → " + fmt(o500) + " (" + Math.round(o500 / o1) + "×); cursor " + fmt(c1) + " → " + fmt(c500) + "."),
-        bars: [[T("Offset, page 1", "Offset, página 1"), o1 / o500, fmt(o1)], [T("Offset, page 500", "Offset, página 500"), 1, fmt(o500), true], [T("Cursor, page 1", "Cursor, página 1"), c1 / o500, fmt(c1)], [T("Cursor, page 500", "Cursor, página 500"), c500 / o500, fmt(c500)]] };
-    },
-    inserts: () => {
-      const o = average({ ...BIG, mode: "offset", insertRate: 1 }), c = average({ ...BIG, mode: "cursor", insertRate: 1 }), top = Math.max(o.duplicates, 1);
-      return { verdict: T("Over 10 pages, with about " + Math.round(o.inserts) + " new rows arriving: offset showed " + o.duplicates.toFixed(1) + " rows twice, cursor " + c.duplicates.toFixed(1) + ".",
-          "En 10 páginas, con unas " + Math.round(o.inserts) + " filas nuevas llegando: offset mostró " + o.duplicates.toFixed(1) + " filas dos veces, cursor " + c.duplicates.toFixed(1) + "."),
-        bars: [["Offset", o.duplicates / top, T(o.duplicates.toFixed(1) + " twice", o.duplicates.toFixed(1) + " dos veces"), true], ["Cursor", c.duplicates / top, T(c.duplicates.toFixed(1) + " twice", c.duplicates.toFixed(1) + " dos veces")]] };
-    },
-    deletes: () => {
-      const o = average({ ...BIG, mode: "offset", deleteRate: 1 }), c = average({ ...BIG, mode: "cursor", deleteRate: 1 }), top = Math.max(o.missing, 1);
-      return { verdict: T("With about " + Math.round(o.deletes) + " deletes, offset never showed " + o.missing.toFixed(1) + " rows that still exist; cursor missed " + c.missing.toFixed(1) + ".",
-          "Con unos " + Math.round(o.deletes) + " borrados, offset nunca mostró " + o.missing.toFixed(1) + " filas que todavía existen; cursor se perdió " + c.missing.toFixed(1) + "."),
-        bars: [["Offset", o.missing / top, T(o.missing.toFixed(1) + " missed", o.missing.toFixed(1) + " perdidas"), true], ["Cursor", c.missing / top, T(c.missing.toFixed(1) + " missed", c.missing.toFixed(1) + " perdidas")]] };
-    },
-    ties: () => {
-      const t = average({ ...BIG, mode: "cursor", batch: 3, keyUnique: false }), u = average({ ...BIG, mode: "cursor", batch: 3, keyUnique: true }), top = Math.max(t.missing, 1);
-      return { verdict: T("Over 10 pages (200 rows): " + t.missing.toFixed(0) + " rows skipped with created_at alone, " + u.missing.toFixed(0) + " with (created_at, id).",
-          "En 10 páginas (200 filas): " + t.missing.toFixed(0) + " filas saltadas con solo created_at, " + u.missing.toFixed(0) + " con (created_at, id)."),
-        bars: [[T("created_at only", "solo created_at"), t.missing / top, T(t.missing.toFixed(0) + " skipped", t.missing.toFixed(0) + " saltadas"), true], ["(created_at, id)", u.missing / top, T(u.missing.toFixed(0) + " skipped", u.missing.toFixed(0) + " saltadas")]] };
-    },
-    jump: () => {
-      const o = walk("offset", 37), c = walk("cursor", 37), topR = Math.max(o.rows, c.rows), topT = Math.max(o.trips, c.trips);
-      return { verdict: T("Offset: " + o.trips + " query reading " + fmt(o.rows) + " rows. Cursor: " + c.trips + " queries reading " + fmt(c.rows) + " rows in all.",
-          "Offset: " + o.trips + " consulta que lee " + fmt(o.rows) + " filas. Cursor: " + c.trips + " consultas que leen " + fmt(c.rows) + " filas en total."),
-        bars: [[T("Offset, queries", "Offset, consultas"), o.trips / topT, String(o.trips)], [T("Cursor, queries", "Cursor, consultas"), c.trips / topT, String(c.trips), true], [T("Offset, rows", "Offset, filas"), o.rows / topR, fmt(o.rows)], [T("Cursor, rows", "Cursor, filas"), c.rows / topR, fmt(c.rows), true]] };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    jump,
+    reset: () => { restart(); say(T("started over", "empezó de nuevo")); },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w, id) => {
     for (const name of ["mode", "pageSize", "inserts", "deletes", "key"]) set(name, String(w[name]), true);
     if (w.jump) jump(); else restart();
     if (loop.paused) loop.setPaused(false);
-    say(T("watching: " + exp.title.en.toLowerCase(), "mirando: " + exp.title.es.toLowerCase()));
-  } });
+    const title = TITLES[id];
+    say(T("watching: " + title.en.toLowerCase(), "mirando: " + title.es.toLowerCase()));
+  });
 
   restart();
   loop.setPaused(loop.paused);

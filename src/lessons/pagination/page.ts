@@ -1,8 +1,54 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 12 · Pagination: a filing machine that hands out a table one page at a time, by offset or by cursor.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { int as fmt } from "../../lib/format";
 import { buildFigure, folderSvg, P, GEOMETRY } from "./figure";
+import { makeRun, average } from "./sim";
+
+// What each card shows after a run, worked out from the same model as the machine (sim.ts).
+const BIG = { pageSize: 20, pages: 10, rows0: 2000, batch: 1, insertRate: 0, deleteRate: 0, keyUnique: true, think: 2, stepTime: 0.0005 };
+function lastCost(mode, pageNo) {
+  let cost = 0;
+  makeRun({ ...BIG, rows0: 20000, mode, firstPage: pageNo, pages: 1 }, 1).advanceTo(1e9, (e) => { if (e.type === "query") cost = e.cost; });
+  return cost;
+}
+function walk(mode, pageNo) {
+  const r = makeRun({ ...BIG, mode, firstPage: pageNo, pages: 1 }, 1).runToEnd();
+  return { rows: r.rowsRead, trips: r.roundTrips };
+}
+const RUNS = {
+  deep: () => {
+    const o1 = lastCost("offset", 1), o500 = lastCost("offset", 500), c1 = lastCost("cursor", 1), c500 = lastCost("cursor", 500);
+    return { verdict: t("Rows read for page 1 → page 500: offset " + fmt(o1) + " → " + fmt(o500) + " (" + Math.round(o500 / o1) + "×); cursor " + fmt(c1) + " → " + fmt(c500) + ".",
+        "Filas leídas de la página 1 → la página 500: offset " + fmt(o1) + " → " + fmt(o500) + " (" + Math.round(o500 / o1) + "×); cursor " + fmt(c1) + " → " + fmt(c500) + "."),
+      bars: [[t("Offset, page 1", "Offset, página 1"), o1 / o500, fmt(o1)], [t("Offset, page 500", "Offset, página 500"), 1, fmt(o500), true], [t("Cursor, page 1", "Cursor, página 1"), c1 / o500, fmt(c1)], [t("Cursor, page 500", "Cursor, página 500"), c500 / o500, fmt(c500)]] };
+  },
+  inserts: () => {
+    const o = average({ ...BIG, mode: "offset", insertRate: 1 }), c = average({ ...BIG, mode: "cursor", insertRate: 1 }), top = Math.max(o.duplicates, 1);
+    return { verdict: t("Over 10 pages, with about " + Math.round(o.inserts) + " new rows arriving: offset showed " + o.duplicates.toFixed(1) + " rows twice, cursor " + c.duplicates.toFixed(1) + ".",
+        "En 10 páginas, con unas " + Math.round(o.inserts) + " filas nuevas llegando: offset mostró " + o.duplicates.toFixed(1) + " filas dos veces, cursor " + c.duplicates.toFixed(1) + "."),
+      bars: [["Offset", o.duplicates / top, t(o.duplicates.toFixed(1) + " twice", o.duplicates.toFixed(1) + " dos veces"), true], ["Cursor", c.duplicates / top, t(c.duplicates.toFixed(1) + " twice", c.duplicates.toFixed(1) + " dos veces")]] };
+  },
+  deletes: () => {
+    const o = average({ ...BIG, mode: "offset", deleteRate: 1 }), c = average({ ...BIG, mode: "cursor", deleteRate: 1 }), top = Math.max(o.missing, 1);
+    return { verdict: t("With about " + Math.round(o.deletes) + " deletes, offset never showed " + o.missing.toFixed(1) + " rows that still exist; cursor missed " + c.missing.toFixed(1) + ".",
+        "Con unos " + Math.round(o.deletes) + " borrados, offset nunca mostró " + o.missing.toFixed(1) + " filas que todavía existen; cursor se perdió " + c.missing.toFixed(1) + "."),
+      bars: [["Offset", o.missing / top, t(o.missing.toFixed(1) + " missed", o.missing.toFixed(1) + " perdidas"), true], ["Cursor", c.missing / top, t(c.missing.toFixed(1) + " missed", c.missing.toFixed(1) + " perdidas")]] };
+  },
+  ties: () => {
+    const tie = average({ ...BIG, mode: "cursor", batch: 3, keyUnique: false }), u = average({ ...BIG, mode: "cursor", batch: 3, keyUnique: true }), top = Math.max(tie.missing, 1);
+    return { verdict: t("Over 10 pages (200 rows): " + tie.missing.toFixed(0) + " rows skipped with created_at alone, " + u.missing.toFixed(0) + " with (created_at, id).",
+        "En 10 páginas (200 filas): " + tie.missing.toFixed(0) + " filas saltadas con solo created_at, " + u.missing.toFixed(0) + " con (created_at, id)."),
+      bars: [[t("created_at only", "solo created_at"), tie.missing / top, t(tie.missing.toFixed(0) + " skipped", tie.missing.toFixed(0) + " saltadas"), true], ["(created_at, id)", u.missing / top, t(u.missing.toFixed(0) + " skipped", u.missing.toFixed(0) + " saltadas")]] };
+  },
+  jump: () => {
+    const o = walk("offset", 37), c = walk("cursor", 37), topR = Math.max(o.rows, c.rows), topT = Math.max(o.trips, c.trips);
+    return { verdict: t("Offset: " + o.trips + " query reading " + fmt(o.rows) + " rows. Cursor: " + c.trips + " queries reading " + fmt(c.rows) + " rows in all.",
+        "Offset: " + o.trips + " consulta que lee " + fmt(o.rows) + " filas. Cursor: " + c.trips + " consultas que leen " + fmt(c.rows) + " filas en total."),
+      bars: [[t("Offset, queries", "Offset, consultas"), o.trips / topT, String(o.trips)], [t("Cursor, queries", "Cursor, consultas"), c.trips / topT, String(c.trips), true], [t("Offset, rows", "Offset, filas"), o.rows / topR, fmt(o.rows)], [t("Cursor, rows", "Cursor, filas"), c.rows / topR, fmt(c.rows), true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -102,7 +148,7 @@ export default defineLesson({
       { actions: [["jump", t("Jump to page 4", "Saltar a la página 4")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, on a 2,000-row table (20,000 for the deep page), averaged over eight seeded readers where timing is random.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, sobre una tabla de 2,000 filas (20,000 para la página profunda), promediados sobre ocho lectores con semilla fija cuando los tiempos son aleatorios."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, on a 2,000-row table (20,000 for the deep page), averaged over eight seeded readers where timing is random.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, sobre una tabla de 2,000 filas (20,000 para la página profunda), promediados sobre ocho lectores con semilla fija cuando los tiempos son aleatorios."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .folder .tab>.iso-top{transition:fill .3s}
@@ -113,6 +159,7 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     FOLDER_SVG: [0, 1, 2].map((tab) => folderSvg(tab)),
-    EXPERIMENTS: EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, title, answer, watch })),
+    // The Watch handler names the experiment in the readout.
+    TITLES: Object.fromEntries(EXPERIMENTS.map(({ id, title }) => [id, title])),
   },
 });

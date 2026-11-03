@@ -1,8 +1,42 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 11 · Database indexes: a small library, its bookcases the table and its card catalogues the indexes.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY } from "./figure";
+import { choose, levels, scanCost, insertCost, insertReads } from "./sim";
+
+// What each card shows after a run, worked out from the same cost model as the machine (sim.ts). "selective" is
+// still answered by live.ts: its verdict formats a count with toLocaleString() and no locale, i.e. in the reader's
+// locale, which the build can't reproduce.
+const fmtMs = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + " s" : ms >= 10 ? ms.toFixed(0) + " ms" : ms.toFixed(1) + " ms");
+const planNameT = (p) => (p.kind === "scan" ? t("Full scan", "Escaneo completo") : p.kind === "covering" ? t("Index only", "Solo índice") : t("Index + lookups", "Índice + búsquedas"));
+const share = (v, top) => Math.max(0.01, Math.min(1, v / top));
+const RUNS = {
+  grow: () => {
+    const s1 = scanCost(10000), s2 = scanCost(100000), i1 = choose("isbn", 10000, ["isbn"]).cost, i2 = choose("isbn", 100000, ["isbn"]).cost;
+    return { verdict: t("Scan " + fmtMs(s1) + " → " + fmtMs(s2) + " (×" + (s2 / s1).toFixed(0) + "). Catalogue " + fmtMs(i1) + " → " + fmtMs(i2) + ": " + levels(10000) + " → " + levels(100000) + " drawer levels.",
+        "Escaneo " + fmtMs(s1) + " → " + fmtMs(s2) + " (×" + (s2 / s1).toFixed(0) + "). Catálogo " + fmtMs(i1) + " → " + fmtMs(i2) + ": " + levels(10000) + " → " + levels(100000) + " niveles de cajón."),
+      bars: [[t("Scan, 10,000", "Escaneo, 10,000"), share(s1, s2), fmtMs(s1)], [t("Scan, 100,000", "Escaneo, 100,000"), 1, fmtMs(s2)], [t("Index, 10,000", "Índice, 10,000"), share(i1, s2), fmtMs(i1)], [t("Index, 100,000", "Índice, 100,000"), share(i2, s2), fmtMs(i2), true]] };
+  },
+  writes: () => {
+    const a = insertCost(100000, 1), b = insertCost(100000, 3);
+    return { verdict: t("Adding a book " + fmtMs(a) + " → " + fmtMs(b) + " (" + insertReads(100000, 1) + " → " + insertReads(100000, 3) + " page writes): " + Math.round(1000 / a) + " → " + Math.round(1000 / b) + " books a second.",
+        "Agregar un libro " + fmtMs(a) + " → " + fmtMs(b) + " (" + insertReads(100000, 1) + " → " + insertReads(100000, 3) + " escrituras de página): " + Math.round(1000 / a) + " → " + Math.round(1000 / b) + " libros por segundo."),
+      bars: [[t("No catalogue", "Sin catálogo"), share(insertCost(100000, 0), b), fmtMs(insertCost(100000, 0))], [t("1 catalogue", "1 catálogo"), share(a, b), fmtMs(a)], [t("3 catalogues", "3 catálogos"), 1, fmtMs(b), true]] };
+  },
+  prefix: () => {
+    const year = choose("year", 100000, ["authorYear"]), both = choose("authorYear", 100000, ["authorYear"]), author = choose("author", 100000, ["authorYear"]);
+    return { verdict: t("Year only: " + planNameT(year).en.toLowerCase() + ", " + fmtMs(year.cost) + ". Author + year: " + fmtMs(both.cost) + ". Author only still uses it: " + fmtMs(author.cost) + ".",
+        "Solo año: " + planNameT(year).es.toLowerCase() + ", " + fmtMs(year.cost) + ". Autor + año: " + fmtMs(both.cost) + ". Solo autor todavía lo usa: " + fmtMs(author.cost) + "."),
+      bars: [[t("Author + year", "Autor + año"), share(both.cost, 100), fmtMs(both.cost)], [t("Author only", "Solo autor"), share(author.cost, 100), fmtMs(author.cost)], [t("Year only (scan)", "Solo año (escaneo)"), share(year.cost, 100), fmtMs(year.cost), true]] };
+  },
+  covering: () => {
+    const plain = choose("titles", 100000, ["author"]), cover = choose("titles", 100000, ["authorTitle"]);
+    return { verdict: t("Titles by one author: " + fmtMs(plain.cost) + " → " + fmtMs(cover.cost) + " (" + plain.shelfTrips + " shelf trips → none), " + (plain.cost / cover.cost).toFixed(0) + "× faster.",
+        "Títulos de un autor: " + fmtMs(plain.cost) + " → " + fmtMs(cover.cost) + " (" + plain.shelfTrips + " viajes a estantes → ninguno), " + (plain.cost / cover.cost).toFixed(0) + "× más rápido."),
+      bars: [[t("Author catalogue", "Catálogo por autor"), 1, fmtMs(plain.cost)], [t("Author + title", "Autor + título"), share(cover.cost, plain.cost), fmtMs(cover.cost), true]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -102,12 +136,11 @@ export default defineLesson({
       { actions: [["restart", t("Restart", "Reiniciar")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Times come from the same cost model the machine runs on: a page of 100 books read in order costs 0.1 ms, a random page (a drawer level or a trip to a shelf) 0.4 ms, and a catalogue page holds 100 cards.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los tiempos salen del mismo modelo de costos de la máquina: una página de 100 libros leída en orden cuesta 0.1 ms, una página aleatoria (un nivel de cajón o un viaje a un estante) 0.4 ms, y una página de catálogo tiene 100 fichas."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Times come from the same cost model the machine runs on: a page of 100 books read in order costs 0.1 ms, a random page (a drawer level or a trip to a shelf) 0.4 ms, and a catalogue page holds 100 cards.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los tiempos salen del mismo modelo de costos de la máquina: una página de 100 libros leída en orden cuesta 0.1 ms, una página aleatoria (un nivel de cajón o un viaje a un estante) 0.4 ms, y una página de catálogo tiene 100 fichas."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: '.iso-face-text[data-tone="lit"]{fill:var(--anatomy-lit)}\n[data-count],[data-count-label]{font-variant-numeric:tabular-nums}',
   data: {
     P,
     G: GEOMETRY,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
