@@ -1,23 +1,21 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The tally hall in the browser: runs the live model, moves tally cards to the wall and traces through the sampler,
-// wires the controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, tokens,
-// results).
+// and answers the controls. mount() gets the build-time data from page.ts (geometry, tokens) and root, the
+// <wb-lesson>.
 import { iso, translateAlong, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, counterCells } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
-import { L, T, digitsOf } from "../../runtime/wb";
-import { readout, stats, act, pauseControls, setD } from "../../runtime/dom";
-import { one, int } from "../../lib/format";
-import { meanBy } from "../../lib/stats";
-import { makeLive, seriesBytes, LIVE_RATE, BYTES_PER_SERIES } from "./sim";
+import { L, digitsOf } from "../../runtime/wb";
+import { setD, playPause } from "../../runtime/dom";
+import { int } from "../../lib/format";
+import { makeLive, LIVE_RATE, BYTES_PER_SERIES } from "./sim";
 
-export default function mount({ P, G, TOK, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, TOK }, root) {
   const VM = 45, VT = 30, HOP = 0.45, DROP = 0.5, WAIT = 2.5, SLOTHOP = 0.3, WARM = 40;
 
-  const stage = document.querySelector("[data-hall]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   // Set a path's d only when it changes.
 
@@ -177,64 +175,28 @@ export default function mount({ P, G, TOK, RESULTS, EXPERIMENTS }) {
     for (const [n, v] of u) if (b >= v) { const x = b / v; return (x < 10 ? x.toFixed(1) : int(x)) + " " + n; }
     return b + " B";
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { clock += dt * cfg.speed; paint(); }, onPause: pause.onPause });
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     if (name === "errors") cfg.errorRate = Number(raw); else cfg[name] = raw;
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (series counts and sampled hours computed at build time from the same model) ----------
-  const RUNS = {
-    status: () => {
-      const a = RESULTS.base, b = RESULTS.status;
-      return { verdict: T("16 series → " + int(b) + " (×" + one(b / a) + "), " + fmtBytes(seriesBytes(a)) + " → " + fmtBytes(seriesBytes(b)) + " of memory.",
-          "16 series → " + int(b) + " (×" + one(b / a) + "), " + fmtBytes(seriesBytes(a)) + " → " + fmtBytes(seriesBytes(b)) + " de memoria."),
-        bars: [["{method, route}", a / b, int(a) + " series"], ["{method, route, status}", 1, int(b) + " series", true]] };
-    },
-    user: () => {
-      const a = RESULTS.status, h = RESULTS.user, d = RESULTS.userDay;
-      return { verdict: T("After an hour: " + int(h) + " series (×" + int(h / a) + "), about " + fmtBytes(seriesBytes(h)) + ". After a day: " + int(d) + ", " + fmtBytes(seriesBytes(d)) + ". All for one counter.",
-          "Después de una hora: " + int(h) + " series (×" + int(h / a) + "), unos " + fmtBytes(seriesBytes(h)) + ". Después de un día: " + int(d) + ", " + fmtBytes(seriesBytes(d)) + ". Todo para un solo contador."),
-        bars: [[T("Without user_id", "Sin user_id"), a / d, int(a)], [T("With user_id, 1 hour", "Con user_id, 1 hora"), h / d, int(h), true], [T("With user_id, 1 day", "Con user_id, 1 día"), 1, int(d), true]] };
-    },
-    raw: () => {
-      const t1 = RESULTS.statusDay, r1 = RESULTS.raw, r24 = RESULTS.rawDay;
-      return { verdict: T("Template: " + int(t1) + " series after a day. Raw paths: " + int(r1) + " after an hour and " + int(r24) + " after a day (" + fmtBytes(seriesBytes(r24)) + "), still climbing.",
-          "Plantilla: " + int(t1) + " series después de un día. Rutas crudas: " + int(r1) + " después de una hora y " + int(r24) + " después de un día (" + fmtBytes(seriesBytes(r24)) + "), y siguen subiendo."),
-        bars: [[T("Template, 1 day", "Plantilla, 1 día"), t1 / r24, int(t1)], [T("Raw path, 1 hour", "Ruta cruda, 1 hora"), r1 / r24, int(r1), true], [T("Raw path, 1 day", "Ruta cruda, 1 día"), 1, int(r24), true]] };
-    },
-    head: () => {
-      const hours = RESULTS.head12;
-      const none = hours.filter((h) => h.rareKept === 0).length;
-      const err = int(meanBy(hours, (h) => h.errors)), errK = one(meanBy(hours, (h) => h.errorsKept)), rare = one(meanBy(hours, (h) => h.rare)), rareK = one(meanBy(hours, (h) => h.rareKept));
-      return { verdict: T("Per hour, on average: " + err + " errors, " + errK + " kept; " + rare + " rare failures, " + rareK + " kept. " + none + " of 12 hours kept no example of the rare bug.",
-          "Por hora, en promedio: " + err + " errores, " + errK + " guardados; " + rare + " fallas raras, " + rareK + " guardadas. En " + none + " de 12 horas no se guardó ningún ejemplo del bug raro."),
-        bars: [[T("Errors kept", "Errores guardados"), meanBy(hours, (h) => h.errorsKept / h.errors), T(errK + " of " + err, errK + " de " + err)], [T("Rare bug kept", "Bug raro guardado"), meanBy(hours, (h) => h.rareKept / Math.max(1, h.rare)), T(rareK + " of " + rare, rareK + " de " + rare), true], [T("Hours with no example", "Horas sin ningún ejemplo"), none / 12, T(none + " of 12", none + " de 12"), true]] };
-    },
-    tail: () => {
-      const head = RESULTS.head6, tail = RESULTS.tail6;
-      const hk = meanBy(head, (h) => h.kept), tk = meanBy(tail, (h) => h.kept);
-      const ehk = one(meanBy(head, (h) => h.errorsKept)), etk = int(meanBy(tail, (h) => h.errorsKept)), et = int(meanBy(tail, (h) => h.errors));
-      return { verdict: T("Traces stored per hour: " + int(hk) + " with head 1%, " + int(tk) + " with tail (×" + one(tk / hk) + "). Errors kept: " + ehk + " vs " + etk + " of " + et + ". The tail sampler holds about 1,000 traces at any moment (10 s each at 100/s) while it waits.",
-          "Trazas almacenadas por hora: " + int(hk) + " con head 1%, " + int(tk) + " con tail (×" + one(tk / hk) + "). Errores guardados: " + ehk + " contra " + etk + " de " + et + ". El muestreador tail retiene unas 1,000 trazas en todo momento (10 s cada una a 100/s) mientras espera."),
-        bars: [[T("Stored, head 1%", "Almacenadas, head 1%"), hk / tk, int(hk)], [T("Stored, tail", "Almacenadas, tail"), 1, int(tk), true], [T("Errors kept, head", "Errores guardados, head"), meanBy(head, (h) => h.errorsKept / h.errors), ehk], [T("Errors kept, tail", "Errores guardados, tail"), 1, etk, true]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     set("labels", w.labels, true); set("route", w.route, true); if (w.sampling) set("sampling", w.sampling, true);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

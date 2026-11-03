@@ -1,26 +1,25 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The taxi rank in the browser: runs the model 20 times slower than real time, drives the cabs between the ranks,
-// roads and the terminal kerb, wires the controls and the experiment cards. mount() gets the build-time data from
-// page.ts (geometry, the cab drawing, results).
+// roads and the terminal kerb, and answers the controls. mount() gets the build-time data from page.ts (geometry, the
+// cab drawing) and root, the <wb-lesson>.
 import { iso, translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, counterCells } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
-import { L, T, digitsOf } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
-import { pct, msOrSecs } from "../../lib/format";
+import { L, digitsOf } from "../../runtime/wb";
+import { playPause } from "../../runtime/dom";
+import { msOrSecs } from "../../lib/format";
 import { rankQuantileSorted } from "../../lib/stats";
 import { makeSim, slowdown, RETRY } from "./sim";
 
-export default function mount({ P, G, CAB_SVG, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, CAB_SVG }, root) {
   const SLOW = 20;          // the machine runs 20× slower than real time
   const WARM = 1.5;         // each run starts this far in, so the first frame already shows a working rank
   const NS = "http://www.w3.org/2000/svg";
   const rankSlot = (cx, s) => [cx + G.RANK.dx + (s % G.RANK.cols) * G.RANK.sx, G.RANK.y + Math.floor(s / G.RANK.cols) * G.RANK.sy];
 
-  const stage = document.querySelector("[data-rank-stage]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
+  const say = (text) => root.figure.say(text);
   const kerbLayer = q("[data-kerbcabs]");
   const cols = G.COLS.map((cx, j) => ({
     cx, rx: cx + G.ROAD.dx, g: q('[data-col="' + j + '"]'), plot: q('[data-plot="' + j + '"]'),
@@ -187,67 +186,35 @@ export default function mount({ P, G, CAB_SVG, RESULTS, EXPERIMENTS }) {
     say(L(model.active + " at the kerb · " + waiting + " waiting" + (leaked ? " · " + leaked + " never returned" : "") + " · " + open + " of 60 permits" + (paused ? " · paused" : ""),
       model.active + " en la terminal · " + waiting + " esperando" + (leaked ? " · " + leaked + " sin devolver" : "") + " · " + open + " de 60 permisos" + (paused ? " · en pausa" : "")));
   }
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
 
-  // The readout says "paused" itself (paint() reads clock.paused), so the pause controls get no say().
-  const pause = pauseControls(stage);
+  // The readout says "paused" itself (paint() reads clock.paused), so it is painted again after the pause controls.
+  const pause = playPause(root);
   let clock = null;
   clock = WB.loop({ stage, step: (dt) => { model.runTo(model.now + (dt * cfg.speed) / SLOW); paint(dt); }, onPause: (on) => { pause.onPause(on); if (model) paint(0); } });
   pause.bind(clock);
 
   function set(name, raw, quiet) {
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     if (name === "instances") { cfg.instances = Number(raw); if (!quiet) { model.scaleTo(cfg.instances); paint(0); } return; }
     if (name === "pool" || name === "rate" || name === "leak") cfg[name] = Number(raw); else cfg[name] = raw;
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments (numbers computed at build time from the same model) ----------
+  // ---------- "Watch it on the machine": an experiment's settings ----------
   let scaleTimer = null;
-  const RUNS = {
-    nopool: () => {
-      const r = RESULTS.nopool, top = Math.max(r.none.p50, r.pooled.p50);
-      return { verdict: T("Typical request: " + msOrSecs(r.none.p50) + " opening a connection each time, " + msOrSecs(r.pooled.p50) + " with a pool of 10, " + (r.none.p50 / r.pooled.p50).toFixed(1) + " times longer, for the same queries.",
-          "Solicitud típica: " + msOrSecs(r.none.p50) + " abriendo una conexión cada vez, " + msOrSecs(r.pooled.p50) + " con un pool de 10: " + (r.none.p50 / r.pooled.p50).toFixed(1) + " veces más, para las mismas consultas."),
-        bars: [[T("Pool of 10", "Pool de 10"), r.pooled.p50 / top, msOrSecs(r.pooled.p50)], [T("New connection each time", "Conexión nueva cada vez"), r.none.p50 / top, msOrSecs(r.none.p50), true]] };
-    },
-    size: () => {
-      const rs = RESULTS.size, top = Math.max(...rs.map((r) => r.served));
-      return { verdict: T(rs.map((r) => "pool " + r.pool + ": " + Math.round(r.served) + " served/s, each query ×" + slowdown(r.active).toFixed(1) + " slower").join(" · ") + ". The rest of the 1,000 requests a second time out waiting.",
-          rs.map((r) => "pool de " + r.pool + ": " + Math.round(r.served) + " servidas/s, cada consulta ×" + slowdown(r.active).toFixed(1) + " más lenta").join(" · ") + ". El resto de las 1,000 solicitudes por segundo agotan su tiempo de espera."),
-        bars: rs.map((r, i) => [T("Pool " + r.pool + " per instance (" + r.pool * 2 + " at once)", "Pool de " + r.pool + " por instancia (" + r.pool * 2 + " a la vez)"), r.served / top, Math.round(r.served) + "/s", i > 0]) };
-    },
-    leak: () => {
-      const r = RESULTS.leak;
-      return { verdict: T("Fine at first (" + Math.round(r.firstMinute) + " failures in the first minute), then all 20 connections were leaked after about " + Math.round(r.stoppedAt) + " s and every request timed out. Over 5 minutes, " + pct(r.failShare) + " of requests failed.",
-          "Bien al principio (" + Math.round(r.firstMinute) + " fallos en el primer minuto); después, a los " + Math.round(r.stoppedAt) + " s más o menos, las 20 conexiones estaban fugadas y todas las solicitudes agotaron su tiempo de espera. En 5 minutos falló el " + pct(r.failShare) + " de las solicitudes."),
-        bars: [[T("Served normally until", "Atendió con normalidad hasta"), r.stoppedAt / 300, T(Math.round(r.stoppedAt) + " s of 300", Math.round(r.stoppedAt) + " s de 300")], [T("Requests failed over 5 min", "Solicitudes fallidas en 5 min"), r.failShare, pct(r.failShare), true]] };
-    },
-    api: () => {
-      const r = RESULTS.api;
-      return { verdict: T("API call before the transaction: " + pct(r.before.failShare) + " failed, typical response " + msOrSecs(r.before.p50) + ". Inside it: " + pct(r.inside.failShare) + " failed and the typical response was " + msOrSecs(r.inside.p50) + ", with the database running about " + r.inside.active.toFixed(1) + " query at a time.",
-          "Llamada a la API antes de la transacción: falló el " + pct(r.before.failShare) + ", respuesta típica " + msOrSecs(r.before.p50) + ". Dentro de ella: falló el " + pct(r.inside.failShare) + " y la respuesta típica fue " + msOrSecs(r.inside.p50) + ", con la base de datos ejecutando unas " + r.inside.active.toFixed(1) + " consultas a la vez."),
-        bars: [[T("Failed, API before", "Fallidas, API antes"), r.before.failShare, pct(r.before.failShare)], [T("Failed, API inside", "Fallidas, API dentro"), r.inside.failShare, pct(r.inside.failShare), true], [T("Database queries at once, inside", "Consultas a la vez en la base de datos, dentro"), Math.min(1, r.inside.active / 8), T(r.inside.active.toFixed(1) + " of 8 it can run at full speed", r.inside.active.toFixed(1) + " de las 8 que puede correr a toda velocidad")]] };
-    },
-    scale: () => {
-      const r = RESULTS.scale;
-      return { verdict: T("Directly: " + Math.round(r.direct.open) + " of 60 connections taken, the fourth instance failed " + pct(r.lastDirect) + " of its requests (" + pct(r.direct.failShare) + " of all traffic). Through the pooler: " + Math.round(r.pooled.open) + " server connections, " + pct(r.pooled.failShare) + " failed.",
-          "Directo: " + Math.round(r.direct.open) + " de 60 conexiones ocupadas, y la cuarta instancia falló el " + pct(r.lastDirect) + " de sus solicitudes (el " + pct(r.direct.failShare) + " de todo el tráfico). Con el pooler: " + Math.round(r.pooled.open) + " conexiones de servidor, falló el " + pct(r.pooled.failShare) + "."),
-        bars: [[T("Failed, direct", "Fallidas, directo"), r.direct.failShare, pct(r.direct.failShare), true], [T("Fourth instance failing, direct", "Fallos de la cuarta instancia, directo"), r.lastDirect, pct(r.lastDirect), true], [T("Failed, through a pooler", "Fallidas, con un pooler"), r.pooled.failShare, pct(r.pooled.failShare)]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("watch", (w) => {
     clearTimeout(scaleTimer);
     for (const key of ["pool", "instances", "rate", "api", "leak", "pooler"]) set(key, String(w[key]), true);
     set("speed", String(w.speed || 1), true);
     restart();
     if (clock.paused) clock.setPaused(false);
     if (w.scaleTo) scaleTimer = setTimeout(() => set("instances", String(w.scaleTo)), 4000);
-  } });
+  });
 
   clock.setPaused(clock.paused);
   restart();

@@ -1,9 +1,11 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 30 · Sampling and cardinality: a tally hall for one metric and its traces.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, tokenSvg, P, GEOMETRY } from "./figure";
-import { expectedSeries, sampleHours } from "./sim";
+import { expectedSeries, sampleHours, seriesBytes } from "./sim";
+import { one, int } from "../../lib/format";
+import { meanBy } from "../../lib/stats";
 
 // Experiment results, computed at build time from the same model the page runs (the original computed them in the
 // browser when a card was run; series counts are exact expectations and the sampled hours are seeded, so the numbers
@@ -21,6 +23,51 @@ const RESULTS = {
   head12: sampleHours({ mode: "head", head: 0.01 }, 12),
   head6: sampleHours({ mode: "head", head: 0.01 }, 6),
   tail6: sampleHours({ mode: "tail" }, 6),
+};
+
+// Memory as the machine's readout writes it.
+function fmtBytes(b) {
+  const u = [["GB", 2 ** 30], ["MB", 2 ** 20], ["KB", 2 ** 10]];
+  for (const [n, v] of u) if (b >= v) { const x = b / v; return (x < 10 ? x.toFixed(1) : int(x)) + " " + n; }
+  return b + " B";
+}
+
+// What each card shows after a run.
+const RUNS = {
+  status: () => {
+    const a = RESULTS.base, b = RESULTS.status;
+    return { verdict: t("16 series → " + int(b) + " (×" + one(b / a) + "), " + fmtBytes(seriesBytes(a)) + " → " + fmtBytes(seriesBytes(b)) + " of memory.",
+        "16 series → " + int(b) + " (×" + one(b / a) + "), " + fmtBytes(seriesBytes(a)) + " → " + fmtBytes(seriesBytes(b)) + " de memoria."),
+      bars: [["{method, route}", a / b, int(a) + " series"], ["{method, route, status}", 1, int(b) + " series", true]] };
+  },
+  user: () => {
+    const a = RESULTS.status, h = RESULTS.user, d = RESULTS.userDay;
+    return { verdict: t("After an hour: " + int(h) + " series (×" + int(h / a) + "), about " + fmtBytes(seriesBytes(h)) + ". After a day: " + int(d) + ", " + fmtBytes(seriesBytes(d)) + ". All for one counter.",
+        "Después de una hora: " + int(h) + " series (×" + int(h / a) + "), unos " + fmtBytes(seriesBytes(h)) + ". Después de un día: " + int(d) + ", " + fmtBytes(seriesBytes(d)) + ". Todo para un solo contador."),
+      bars: [[t("Without user_id", "Sin user_id"), a / d, int(a)], [t("With user_id, 1 hour", "Con user_id, 1 hora"), h / d, int(h), true], [t("With user_id, 1 day", "Con user_id, 1 día"), 1, int(d), true]] };
+  },
+  raw: () => {
+    const t1 = RESULTS.statusDay, r1 = RESULTS.raw, r24 = RESULTS.rawDay;
+    return { verdict: t("Template: " + int(t1) + " series after a day. Raw paths: " + int(r1) + " after an hour and " + int(r24) + " after a day (" + fmtBytes(seriesBytes(r24)) + "), still climbing.",
+        "Plantilla: " + int(t1) + " series después de un día. Rutas crudas: " + int(r1) + " después de una hora y " + int(r24) + " después de un día (" + fmtBytes(seriesBytes(r24)) + "), y siguen subiendo."),
+      bars: [[t("Template, 1 day", "Plantilla, 1 día"), t1 / r24, int(t1)], [t("Raw path, 1 hour", "Ruta cruda, 1 hora"), r1 / r24, int(r1), true], [t("Raw path, 1 day", "Ruta cruda, 1 día"), 1, int(r24), true]] };
+  },
+  head: () => {
+    const hours = RESULTS.head12;
+    const none = hours.filter((h) => h.rareKept === 0).length;
+    const err = int(meanBy(hours, (h) => h.errors)), errK = one(meanBy(hours, (h) => h.errorsKept)), rare = one(meanBy(hours, (h) => h.rare)), rareK = one(meanBy(hours, (h) => h.rareKept));
+    return { verdict: t("Per hour, on average: " + err + " errors, " + errK + " kept; " + rare + " rare failures, " + rareK + " kept. " + none + " of 12 hours kept no example of the rare bug.",
+        "Por hora, en promedio: " + err + " errores, " + errK + " guardados; " + rare + " fallas raras, " + rareK + " guardadas. En " + none + " de 12 horas no se guardó ningún ejemplo del bug raro."),
+      bars: [[t("Errors kept", "Errores guardados"), meanBy(hours, (h) => h.errorsKept / h.errors), t(errK + " of " + err, errK + " de " + err)], [t("Rare bug kept", "Bug raro guardado"), meanBy(hours, (h) => h.rareKept / Math.max(1, h.rare)), t(rareK + " of " + rare, rareK + " de " + rare), true], [t("Hours with no example", "Horas sin ningún ejemplo"), none / 12, t(none + " of 12", none + " de 12"), true]] };
+  },
+  tail: () => {
+    const head = RESULTS.head6, tail = RESULTS.tail6;
+    const hk = meanBy(head, (h) => h.kept), tk = meanBy(tail, (h) => h.kept);
+    const ehk = one(meanBy(head, (h) => h.errorsKept)), etk = int(meanBy(tail, (h) => h.errorsKept)), et = int(meanBy(tail, (h) => h.errors));
+    return { verdict: t("Traces stored per hour: " + int(hk) + " with head 1%, " + int(tk) + " with tail (×" + one(tk / hk) + "). Errors kept: " + ehk + " vs " + etk + " of " + et + ". The tail sampler holds about 1,000 traces at any moment (10 s each at 100/s) while it waits.",
+        "Trazas almacenadas por hora: " + int(hk) + " con head 1%, " + int(tk) + " con tail (×" + one(tk / hk) + "). Errores guardados: " + ehk + " contra " + etk + " de " + et + ". El muestreador tail retiene unas 1,000 trazas en todo momento (10 s cada una a 100/s) mientras espera."),
+      bars: [[t("Stored, head 1%", "Almacenadas, head 1%"), hk / tk, int(hk)], [t("Stored, tail", "Almacenadas, tail"), 1, int(tk), true], [t("Errors kept, head", "Errores guardados, head"), meanBy(head, (h) => h.errorsKept / h.errors), ehk], [t("Errors kept, tail", "Errores guardados, tail"), 1, etk, true]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -146,7 +193,7 @@ export default defineLesson({
       "La máquina procesa 8 solicitudes por segundo, así que llena la pared en segundos; los experimentos usan 100 por segundo durante horas. Cambiar las etiquetas, la ruta, el muestreador o la tasa de errores reinicia la ejecución."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Series counts are the expected number of distinct label combinations at 100 requests a second; sampling results average seeded runs of the same model.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Las cantidades de series son el número esperado de combinaciones distintas de etiquetas a 100 solicitudes por segundo; los resultados de muestreo promedian ejecuciones con semilla fija del mismo modelo."), experiments: EXPERIMENTS },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Las cantidades de series son el número esperado de combinaciones distintas de etiquetas a 100 solicitudes por segundo; los resultados de muestreo promedian ejecuciones con semilla fija del mismo modelo."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Memory per series is a round figure (about 3 KB) for an in-memory time-series store. Simulation written for this lesson.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). La memoria por serie es una cifra redonda (unos 3 KB) para un almacén de series de tiempo en memoria. Simulación escrita para esta lección.`),
@@ -166,7 +213,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     TOK: tokenSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

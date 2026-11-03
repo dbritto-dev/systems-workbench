@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 29 · Connection pooling: a taxi rank, one hotel per app instance.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, cabSvg, P, GEOMETRY } from "./figure";
-import { noPoolVsPool, poolSizes, leakRun, apiInside, scaleOut } from "./sim";
+import { noPoolVsPool, poolSizes, leakRun, apiInside, scaleOut, slowdown } from "./sim";
+import { pct, msOrSecs } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the original computed them in the
 // browser when a card was run; they are seeded, so the numbers are the same). The per-seed runs are left out.
@@ -15,6 +16,40 @@ const RESULTS = {
   leak: leakRun(),
   api: { before: lean(api.before), inside: lean(api.inside) },
   scale: { direct: lean(scale.direct), pooled: lean(scale.pooled), lastDirect: scale.lastDirect, lastPooled: scale.lastPooled },
+};
+
+// What each card shows after a run.
+const RUNS = {
+  nopool: () => {
+    const r = RESULTS.nopool, top = Math.max(r.none.p50, r.pooled.p50);
+    return { verdict: t("Typical request: " + msOrSecs(r.none.p50) + " opening a connection each time, " + msOrSecs(r.pooled.p50) + " with a pool of 10, " + (r.none.p50 / r.pooled.p50).toFixed(1) + " times longer, for the same queries.",
+        "Solicitud típica: " + msOrSecs(r.none.p50) + " abriendo una conexión cada vez, " + msOrSecs(r.pooled.p50) + " con un pool de 10: " + (r.none.p50 / r.pooled.p50).toFixed(1) + " veces más, para las mismas consultas."),
+      bars: [[t("Pool of 10", "Pool de 10"), r.pooled.p50 / top, msOrSecs(r.pooled.p50)], [t("New connection each time", "Conexión nueva cada vez"), r.none.p50 / top, msOrSecs(r.none.p50), true]] };
+  },
+  size: () => {
+    const rs = RESULTS.size, top = Math.max(...rs.map((r) => r.served));
+    return { verdict: t(rs.map((r) => "pool " + r.pool + ": " + Math.round(r.served) + " served/s, each query ×" + slowdown(r.active).toFixed(1) + " slower").join(" · ") + ". The rest of the 1,000 requests a second time out waiting.",
+        rs.map((r) => "pool de " + r.pool + ": " + Math.round(r.served) + " servidas/s, cada consulta ×" + slowdown(r.active).toFixed(1) + " más lenta").join(" · ") + ". El resto de las 1,000 solicitudes por segundo agotan su tiempo de espera."),
+      bars: rs.map((r, i) => [t("Pool " + r.pool + " per instance (" + r.pool * 2 + " at once)", "Pool de " + r.pool + " por instancia (" + r.pool * 2 + " a la vez)"), r.served / top, Math.round(r.served) + "/s", i > 0]) };
+  },
+  leak: () => {
+    const r = RESULTS.leak;
+    return { verdict: t("Fine at first (" + Math.round(r.firstMinute) + " failures in the first minute), then all 20 connections were leaked after about " + Math.round(r.stoppedAt) + " s and every request timed out. Over 5 minutes, " + pct(r.failShare) + " of requests failed.",
+        "Bien al principio (" + Math.round(r.firstMinute) + " fallos en el primer minuto); después, a los " + Math.round(r.stoppedAt) + " s más o menos, las 20 conexiones estaban fugadas y todas las solicitudes agotaron su tiempo de espera. En 5 minutos falló el " + pct(r.failShare) + " de las solicitudes."),
+      bars: [[t("Served normally until", "Atendió con normalidad hasta"), r.stoppedAt / 300, t(Math.round(r.stoppedAt) + " s of 300", Math.round(r.stoppedAt) + " s de 300")], [t("Requests failed over 5 min", "Solicitudes fallidas en 5 min"), r.failShare, pct(r.failShare), true]] };
+  },
+  api: () => {
+    const r = RESULTS.api;
+    return { verdict: t("API call before the transaction: " + pct(r.before.failShare) + " failed, typical response " + msOrSecs(r.before.p50) + ". Inside it: " + pct(r.inside.failShare) + " failed and the typical response was " + msOrSecs(r.inside.p50) + ", with the database running about " + r.inside.active.toFixed(1) + " query at a time.",
+        "Llamada a la API antes de la transacción: falló el " + pct(r.before.failShare) + ", respuesta típica " + msOrSecs(r.before.p50) + ". Dentro de ella: falló el " + pct(r.inside.failShare) + " y la respuesta típica fue " + msOrSecs(r.inside.p50) + ", con la base de datos ejecutando unas " + r.inside.active.toFixed(1) + " consultas a la vez."),
+      bars: [[t("Failed, API before", "Fallidas, API antes"), r.before.failShare, pct(r.before.failShare)], [t("Failed, API inside", "Fallidas, API dentro"), r.inside.failShare, pct(r.inside.failShare), true], [t("Database queries at once, inside", "Consultas a la vez en la base de datos, dentro"), Math.min(1, r.inside.active / 8), t(r.inside.active.toFixed(1) + " of 8 it can run at full speed", r.inside.active.toFixed(1) + " de las 8 que puede correr a toda velocidad")]] };
+  },
+  scale: () => {
+    const r = RESULTS.scale;
+    return { verdict: t("Directly: " + Math.round(r.direct.open) + " of 60 connections taken, the fourth instance failed " + pct(r.lastDirect) + " of its requests (" + pct(r.direct.failShare) + " of all traffic). Through the pooler: " + Math.round(r.pooled.open) + " server connections, " + pct(r.pooled.failShare) + " failed.",
+        "Directo: " + Math.round(r.direct.open) + " de 60 conexiones ocupadas, y la cuarta instancia falló el " + pct(r.lastDirect) + " de sus solicitudes (el " + pct(r.direct.failShare) + " de todo el tráfico). Con el pooler: " + Math.round(r.pooled.open) + " conexiones de servidor, falló el " + pct(r.pooled.failShare) + "."),
+      bars: [[t("Failed, direct", "Fallidas, directo"), r.direct.failShare, pct(r.direct.failShare), true], [t("Fourth instance failing, direct", "Fallos de la cuarta instancia, directo"), r.lastDirect, pct(r.lastDirect), true], [t("Failed, through a pooler", "Fallidas, con un pooler"), r.pooled.failShare, pct(r.pooled.failShare)]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -116,7 +151,7 @@ export default defineLesson({
     ],
     note: t("The machine runs 20 times slower than real time. Changing the number of instances scales out or in while it runs; every other setting starts the run again.", "La máquina corre 20 veces más lento que el tiempo real. Cambiar el número de instancias escala hacia arriba o hacia abajo sin detenerla; cualquier otro ajuste vuelve a empezar la ejecución."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, run at full speed and averaged over six seeded runs.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, corrido a toda velocidad y promediado sobre seis ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, run at full speed and averaged over six seeded runs.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, corrido a toda velocidad y promediado sobre seis ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .cw{fill:var(--anatomy-page);stroke:var(--anatomy-lo);stroke-width:.6}
@@ -132,7 +167,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     CAB_SVG: cabSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
