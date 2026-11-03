@@ -16,13 +16,17 @@ imports Node modules), e.g. `breaker/blade.ts`, `throttle/paths.ts`, `concurrenc
 
 | Need | Import |
 |---|---|
-| Seeded random numbers | `rng`, `xorshift32`, `rngMixed`, `lcg`, `normal`, `exponential` from `src/lib/random` |
-| Averages, percentiles | `mean`, `meanBy`, `averageOver(seeds, fn)`, `percentile`, `clamp` from `src/lib/stats` |
+| Seeded random numbers | `rng`, `xorshift32`, `rngMixed`, `lcg`, `mulberry32`, `normal`, `exponential` from `src/lib/random` |
+| String hashes | `fnv1a(text, basis?)`, `fmix32(h)` (murmur3 finaliser) from `src/lib/random` |
+| Averages, percentiles | `mean`, `meanBy`, `averageOver(seeds, fn)`, `percentile` (sorted[floor(q·(n−1))]), `rankQuantile` / `rankQuantileSorted` (sorted[floor(q·n)], the rule most lessons' numbers use), `upperMedian`, `clamp` from `src/lib/stats` |
 | Easing | `lerp`, `lerpVec`, `approach`, `smoothstep`, `easeInOutQuad`, `easeInOutCubic` from `src/lib/tween` |
-| Number text | `one`, `n0`, `int` (thousands separators), `pct`, `secs` from `src/lib/format` |
-| Drawing shorthands (build) | `const { S, L, D, at } = shorthand(P)` from `src/lib/draw` |
+| Number text | `one`, `n0`, `int` (thousands separators), `pct`, `pctTenths` (one decimal under 10%), `oneUnder10`, `secs`, `secs1`, `secs2`, `msFromSecs`, `msOrSecs`, `millis` (a value in ms) from `src/lib/format` |
+| A route in x, y | `polylineLength`, `pointAlong` (clamped) from `src/lib/geometry` |
+| Event queue of a discrete-event model | `minHeap(less)` from `src/lib/events` |
+| Drawing shorthands (build) | `const { S, L, D, at, seg, text, faceY, top, rawText } = shorthand(P)` from `src/lib/draw` (`rawText`: the face-text markup some figures must keep byte for byte; new figures use `text`) |
 | Loop, counters (`set`, `setClamped`), dials, meters, `place(el, P, point)`, segments, experiment cards, `L`/`T` | `src/runtime/wb` |
-| Readout, stats strip, show/hide, text, lit accent, action buttons, Play/Pause | `readout`, `stats`, `show`, `setText`, `setLit`, `act`, `pauseControls` from `src/runtime/dom` |
+| Readout, stats strip, show/hide, text, a path's `d`, lit accent, action buttons, Play/Pause | `readout`, `stats`, `show`, `setText`, `setD`, `setLit`, `act`, `pauseControls` from `src/runtime/dom` |
+| The panel's primary button | `{ actions: [["go", t("Go", "Ir"), { primary: true }], …] }` in `page.ts` (drawn as `.btn.primary`) |
 | Kit geometry in the browser (`iso`, `pathOf`, `translateAlong`, `depthOf`, …) | `workbench/vendor-anatomy/kit/iso-kit.mjs` (tree-shaken) |
 | Bilingual text | `t(en, es)` from `src/i18n` |
 
