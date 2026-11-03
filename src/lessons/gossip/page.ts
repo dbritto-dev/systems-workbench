@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 19 · Gossip protocols: a village passing a rumour, and a town hall keeping a membership board.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { spreadRun, spreadAverage, detectionAverage } from "./sim";
+import { one, n0, pct } from "../../lib/format";
 
 const EXPERIMENTS = [
   {
@@ -88,6 +89,46 @@ const RESULTS = {
   timeout: [4, 8, 16].map((t) => ({ t, ...detectionAverage({ n: 40, fanout: 2, slow: 0.3, timeout: t }) })),
 };
 
+// What each card shows after a run.
+const rds = (x) => t(one(x) + " rounds", one(x) + " rondas");
+const RUNS = {
+  size: () => {
+    const { a, b } = RESULTS.size, top = b.rounds * 1.15;
+    return { verdict: t("Rounds to reach every house: " + one(a.rounds) + " with 40 houses, " + one(b.rounds) + " with 400. Ten times the houses, " + one(b.rounds - a.rounds) + " more rounds.",
+        "Rondas hasta llegar a todas las casas: " + one(a.rounds) + " con 40 casas, " + one(b.rounds) + " con 400. Diez veces las casas, " + one(b.rounds - a.rounds) + " rondas más."),
+      bars: [[t("40 houses", "40 casas"), a.rounds / top, rds(a.rounds)], [t("400 houses", "400 casas"), b.rounds / top, rds(b.rounds), true]] };
+  },
+  fanout: () => {
+    const { a, b } = RESULTS.fanout;
+    const tr = Math.max(a.rounds, b.rounds) * 1.1, tm = Math.max(a.messages, b.messages) * 1.1;
+    return { verdict: t("Rounds " + one(a.rounds) + " → " + one(b.rounds) + "; messages per rumour " + n0(a.messages) + " → " + n0(b.messages) + ".",
+        "Rondas " + one(a.rounds) + " → " + one(b.rounds) + "; mensajes por rumor " + n0(a.messages) + " → " + n0(b.messages) + "."),
+      bars: [[t("Rounds, fanout 1", "Rondas, fanout 1"), a.rounds / tr, one(a.rounds)], [t("Rounds, fanout 3", "Rondas, fanout 3"), b.rounds / tr, one(b.rounds), true], [t("Msgs, fanout 1", "Msjs, fanout 1"), a.messages / tm, n0(a.messages)], [t("Msgs, fanout 3", "Msjs, fanout 3"), b.messages / tm, n0(b.messages), true]] };
+  },
+  mode: () => {
+    const { p, l, b } = RESULTS.mode, top = p.half * 1.15;
+    return { verdict: t("From half the village to every house: push " + one(p.half) + " rounds, pull " + one(l.half) + ", push-pull " + one(b.half) + ". Messages per rumour: " + n0(p.messages) + ", " + n0(l.messages) + ", " + n0(b.messages) + ".",
+        "De la mitad del pueblo a todas las casas: push " + one(p.half) + " rondas, pull " + one(l.half) + ", push-pull " + one(b.half) + ". Mensajes por rumor: " + n0(p.messages) + ", " + n0(l.messages) + ", " + n0(b.messages) + "."),
+      bars: [["Push", p.half / top, rds(p.half)], ["Pull", l.half / top, rds(l.half), true], ["Push-pull", b.half / top, rds(b.half), true]] };
+  },
+  loss: () => {
+    const { a, b } = RESULTS.loss, top = b.worst * 1.1;
+    return { verdict: t("Every house heard it in " + pct(b.reached) + " of runs with 30% loss. Rounds " + one(a.rounds) + " → " + one(b.rounds) + " (slowest run " + a.worst + " → " + b.worst + ").",
+        "Todas las casas lo oyeron en el " + pct(b.reached) + " de las ejecuciones con 30% de pérdida. Rondas " + one(a.rounds) + " → " + one(b.rounds) + " (ejecución más lenta " + a.worst + " → " + b.worst + ")."),
+      bars: [[t("No loss", "Sin pérdida"), a.rounds / top, rds(a.rounds)], [t("30% lost", "30% perdidos"), b.rounds / top, rds(b.rounds), true]] };
+  },
+  timeout: () => {
+    const rows = RESULTS.timeout;
+    const td = Math.max(...rows.map((r) => r.detect)) * 1.1;
+    return { verdict: t("Healthy houses wrongly declared dead (out of 40): " + rows.map((r) => one(r.falseDead) + " at " + r.t).join(", ") + ". Rounds until everyone notices a real failure: " + rows.map((r) => one(r.detect)).join(", ") + ".",
+        "Casas sanas declaradas muertas por error (de 40): " + rows.map((r) => one(r.falseDead) + " con " + r.t).join(", ") + ". Rondas hasta que todos notan una falla real: " + rows.map((r) => one(r.detect)).join(", ") + "."),
+      bars: [
+        ...rows.map((r) => [t("Wrongly dead, " + r.t, "Muertas por error, " + r.t), r.falseDead / 40, one(r.falseDead), r.t === 4]),
+        ...rows.map((r) => [t("Detect, " + r.t + " rounds", "Detección, " + r.t + " rondas"), r.detect / td, one(r.detect) + " rds", r.t === 16]),
+      ] };
+  },
+};
+
 export default defineLesson({
   title: t("Gossip Workbench", "Banco de trabajo: gossip"),
   eyebrow: t("Systems lesson 19 · Gossip protocols", "Lección de sistemas 19 · Protocolos de gossip"),
@@ -119,7 +160,7 @@ export default defineLesson({
       { actions: [["kill", t("Stop a house", "Detener una casa")], ["revive", t("Revive all", "Revivir todas")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over 12 to 60 seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre 12 a 60 ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over 12 to 60 seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre 12 a 60 ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   // Figure-specific styles: the lamp glow, stopped houses, hidden plots, peg states.
   css: `
@@ -141,9 +182,8 @@ export default defineLesson({
 .messenger{fill:var(--anatomy-lit);stroke:var(--anatomy-card);stroke-width:.6}
 `,
   data: {
+    TITLES_ES: Object.fromEntries(EXPERIMENTS.map(({ id, title }) => [id, title.es])),
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, es: title.es, answer, watch })),
   },
 });

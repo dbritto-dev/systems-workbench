@@ -1,22 +1,21 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The signal network in the browser: runs the model at 100 values a second, follows one value at a time with pucks on
-// the wires, and wires the controls and the experiment cards. mount() gets the build-time data from page.ts (wire
-// routes in screen space, gauge travel, experiment results).
+// the wires, and answers the controls. mount() gets the build-time data from page.ts (wire routes in screen space,
+// gauge travel) and root, the <wb-lesson>.
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { playPause } from "../../runtime/dom";
 import { pct, int, msOrSecs } from "../../lib/format";
 import { rankQuantileSorted } from "../../lib/stats";
 import { TOPOLOGIES, HOP, createNet, hubsOf } from "./sim";
 
-export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
+export default function mount({ ROUTES, GAUGE }, root) {
   const KILL = { grid: 6, ring: 6, hubs: 6, star: 12, direct: 6 };
 
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
-  const sayText = readout();
+  const sayText = (text) => root.figure.say(text);
   const say = (text) => sayText(L(text));
   const NS = "http://www.w3.org/2000/svg";
   const topoEls = Object.fromEntries(TOPOLOGIES.map((t) => [t, q('[data-topo="' + t + '"]')]));
@@ -33,7 +32,7 @@ export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
   const dots = Array.from({ length: 90 }, () => { const c = document.createElementNS(NS, "circle"); c.setAttribute("r", "3"); c.setAttribute("class", "msg"); c.style.display = "none"; dotLayer.appendChild(c); return c; });
 
   // The note under the panel links its source; the panel writes notes as text, so make the link here.
-  const note = document.querySelector(".panel-note");
+  const note = root.$(".panel-note");
   if (note && note.textContent.includes("fly.io/dist-sys")) {
     const [before, after] = note.textContent.split("fly.io/dist-sys");
     const a = document.createElement("a");
@@ -45,8 +44,8 @@ export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
   let net, inflight, spot, nextSpotAt, history, seed = (Date.now() % 1e6) + 1, killed = null;
   const keyOf = (a, b) => (a < b ? a + "-" + b : b + "-" + a);
 
-  const cutBtn = act("cut");
-  const killBtn = act("kill");
+  const cutBtn = root.button("cut");
+  const killBtn = root.button("kill");
 
   function restart() {
     inflight = new Map();
@@ -144,7 +143,7 @@ export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
     return pts[pts.length - 1];
   }
 
-  const stat = stats();
+  const stat = (key, value) => root.stat(key, value);
   // Seconds as "250 ms" under one second, "1.25 s" above; "–" when there is nothing to show.
   const ms = (x) => (isFinite(x) ? msOrSecs(x) : "–");
   // Messages per value: one decimal, whole with thousands separators from 100 up.
@@ -169,76 +168,32 @@ export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(clock);
   function set(name, raw, quiet) {
     const value = name === "batch" || name === "speed" ? Number(raw) : name === "retries" ? raw === true || raw === "true" : raw;
     cfg[name] = value;
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name !== "speed" && !quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
   }
-  WB.onSegments((name, value) => set(name, value));
-  cutBtn.addEventListener("click", () => setCut(!net.partition));
-  killBtn.addEventListener("click", () => setKill(killed === null));
-  act("reset").addEventListener("click", () => { restart(); say(T("started over", "empezamos de nuevo")); });
-
-  // ---------- experiments (seeded runs of the same model, computed at build time) ----------
-  const RUNS = {
-    topology: () => {
-      const rows = RESULTS.topology;
-      const top = Math.max(...rows.map(([, r]) => r.msgsPerOp));
-      const name = { grid: T("Grid", "Malla"), ring: T("Ring", "Anillo"), hubs: T("Hubs", "Hubs") };
-      return {
-        verdict: T(rows.map(([t, r]) => name[t].en + ": " + n1(r.msgsPerOp) + " messages, median " + ms(r.median) + ", max " + ms(r.max)).join(" · ") + ". Only hubs meets 3d.",
-          rows.map(([t, r]) => name[t].es + ": " + n1(r.msgsPerOp) + " mensajes, mediana " + ms(r.median) + ", máx " + ms(r.max)).join(" · ") + ". Solo hubs cumple 3d."),
-        bars: rows.map(([t, r]) => [name[t], r.msgsPerOp / top, n1(r.msgsPerOp) + " · " + ms(r.max), t === "hubs"]),
-      };
-    },
-    batch: () => {
-      const rows = [T("Off", "Sin agrupar"), T("Every 200 ms", "Cada 200 ms"), T("Every 500 ms", "Cada 500 ms")].map((label, i) => [label, RESULTS.batch[i]]);
-      const top = Math.max(...rows.map(([, r]) => r.msgsPerOp));
-      const [, off] = rows[0], [, b2] = rows[1], [, b5] = rows[2];
-      return {
-        verdict: T("Messages per value " + n1(off.msgsPerOp) + " → " + n1(b2.msgsPerOp) + ", median " + ms(off.median) + " → " + ms(b2.median) + ", max " + ms(b2.max) + ": inside 3e. At 500 ms the median reaches " + ms(b5.median) + " and misses it.",
-          "Mensajes por valor " + n1(off.msgsPerOp) + " → " + n1(b2.msgsPerOp) + ", mediana " + ms(off.median) + " → " + ms(b2.median) + ", máx " + ms(b2.max) + ": dentro de 3e. Con 500 ms la mediana llega a " + ms(b5.median) + " y no lo cumple."),
-        bars: rows.map(([label, r], i) => [label, r.msgsPerOp / top, n1(r.msgsPerOp) + " · " + ms(r.median), i === 1]),
-      };
-    },
-    partition: () => {
-      const { off, on } = RESULTS.partition;
-      return {
-        verdict: T("Without retries " + pct(off.delivered) + " of values reached every node; the rest never crossed. With retry-until-acked: " + pct(on.delivered) + ", but messages per value went from " + n1(off.msgsPerOp) + " to " + n1(on.msgsPerOp) + ".",
-          "Sin reintentos, el " + pct(off.delivered) + " de los valores llegó a todos los nodos; el resto nunca cruzó. Reintentando hasta el ack: " + pct(on.delivered) + ", pero los mensajes por valor pasaron de " + n1(off.msgsPerOp) + " a " + n1(on.msgsPerOp) + "."),
-        bars: [[T("No retries", "Sin reintentos"), off.delivered, pct(off.delivered), true], [T("Retry until acked", "Reintentar hasta el ack"), on.delivered, pct(on.delivered)]],
-      };
-    },
-    hub: () => {
-      const { hubs, grid } = RESULTS.hub;
-      return {
-        verdict: T("With the hub off, each value reached " + pct(hubs.reach) + " of the live nodes on average: its six leaves hear nothing and their values go nowhere. The grid with the same node off: " + pct(grid.reach) + ".",
-          "Con el hub apagado, cada valor llegó en promedio al " + pct(hubs.reach) + " de los nodos vivos: sus seis hojas no reciben nada y sus valores no llegan a ningún lado. La malla con el mismo nodo apagado: " + pct(grid.reach) + "."),
-        bars: [[T("Hubs, hub off", "Hubs, hub apagado"), hubs.reach, pct(hubs.reach), true], [T("Grid, node off", "Malla, nodo apagado"), grid.reach, pct(grid.reach)]],
-      };
-    },
-    forward: () => {
-      const { newOnly, every } = RESULTS.forward;
-      return {
-        verdict: T("One value caused " + newOnly.msgs + " messages forwarding only new values, and " + int(every.msgs) + " in the first second forwarding every copy, still growing when the second ended.",
-          "Un valor causó " + newOnly.msgs + " mensajes reenviando solo valores nuevos, y " + int(every.msgs) + " en el primer segundo reenviando cada copia, y seguía creciendo al terminar ese segundo."),
-        bars: [[T("New values only", "Solo valores nuevos"), newOnly.msgs / every.msgs, String(newOnly.msgs)], [T("Every copy", "Cada copia"), 1, int(every.msgs), true]],
-      };
-    },
+  root.on("change", (name, value) => set(name, value));
+  const actions = {
+    cut: () => setCut(!net.partition),
+    kill: () => setKill(killed === null),
+    reset: () => { restart(); say(T("started over", "empezamos de nuevo")); },
   };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  root.on("action", (name) => actions[name]?.());
+
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     ["topology", "batch", "retries", "forward"].forEach((name) => set(name, String(w[name]), true));
     restart();
     if (clock.paused) clock.setPaused(false);
     if (w.cut) { setTimeout(() => setCut(true), 1500); setTimeout(() => net.partition && setCut(false), 1500 + 3000 / cfg.speed); }
     if (w.kill) setTimeout(() => setKill(true), 1000);
-  } });
+  });
 
   restart();
-  if (clock.paused) act("pause").textContent = L("Play", "Reanudar");
+  if (clock.paused) root.button("pause").textContent = L("Play", "Reanudar");
 }

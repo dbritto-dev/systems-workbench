@@ -1,10 +1,11 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 18 · Broadcast: 25 relay stations, wired by the chosen topology.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import * as k from "../../../workbench/kit.mjs";
 import { buildFigure, routeOf, P, gaugeTravel } from "./figure";
 import { TOPOLOGIES, edgesOf, createNet, HOP, runScenario, average, oneValue } from "./sim";
+import { pct, int, msOrSecs } from "../../lib/format";
 
 const EXPERIMENTS = [
   {
@@ -109,6 +110,59 @@ const RESULTS = {
   forward: { newOnly: oneValue({ forward: "new" }), every: oneValue({ forward: "every" }) },
 };
 
+// Seconds as "250 ms" under one second, "1.25 s" above; "–" when there is nothing to show.
+const ms = (x) => (isFinite(x) ? msOrSecs(x) : "–");
+// Messages per value: one decimal, whole with thousands separators from 100 up.
+const n1 = (x) => (x >= 100 ? int(x) : x.toFixed(1));
+
+// What each card shows after a run.
+const RUNS = {
+  topology: () => {
+    const rows = RESULTS.topology;
+    const top = Math.max(...rows.map(([, r]) => r.msgsPerOp));
+    const name = { grid: t("Grid", "Malla"), ring: t("Ring", "Anillo"), hubs: t("Hubs", "Hubs") };
+    return {
+      verdict: t(rows.map(([t, r]) => name[t].en + ": " + n1(r.msgsPerOp) + " messages, median " + ms(r.median) + ", max " + ms(r.max)).join(" · ") + ". Only hubs meets 3d.",
+        rows.map(([t, r]) => name[t].es + ": " + n1(r.msgsPerOp) + " mensajes, mediana " + ms(r.median) + ", máx " + ms(r.max)).join(" · ") + ". Solo hubs cumple 3d."),
+      bars: rows.map(([t, r]) => [name[t], r.msgsPerOp / top, n1(r.msgsPerOp) + " · " + ms(r.max), t === "hubs"]),
+    };
+  },
+  batch: () => {
+    const rows = [t("Off", "Sin agrupar"), t("Every 200 ms", "Cada 200 ms"), t("Every 500 ms", "Cada 500 ms")].map((label, i) => [label, RESULTS.batch[i]]);
+    const top = Math.max(...rows.map(([, r]) => r.msgsPerOp));
+    const [, off] = rows[0], [, b2] = rows[1], [, b5] = rows[2];
+    return {
+      verdict: t("Messages per value " + n1(off.msgsPerOp) + " → " + n1(b2.msgsPerOp) + ", median " + ms(off.median) + " → " + ms(b2.median) + ", max " + ms(b2.max) + ": inside 3e. At 500 ms the median reaches " + ms(b5.median) + " and misses it.",
+        "Mensajes por valor " + n1(off.msgsPerOp) + " → " + n1(b2.msgsPerOp) + ", mediana " + ms(off.median) + " → " + ms(b2.median) + ", máx " + ms(b2.max) + ": dentro de 3e. Con 500 ms la mediana llega a " + ms(b5.median) + " y no lo cumple."),
+      bars: rows.map(([label, r], i) => [label, r.msgsPerOp / top, n1(r.msgsPerOp) + " · " + ms(r.median), i === 1]),
+    };
+  },
+  partition: () => {
+    const { off, on } = RESULTS.partition;
+    return {
+      verdict: t("Without retries " + pct(off.delivered) + " of values reached every node; the rest never crossed. With retry-until-acked: " + pct(on.delivered) + ", but messages per value went from " + n1(off.msgsPerOp) + " to " + n1(on.msgsPerOp) + ".",
+        "Sin reintentos, el " + pct(off.delivered) + " de los valores llegó a todos los nodos; el resto nunca cruzó. Reintentando hasta el ack: " + pct(on.delivered) + ", pero los mensajes por valor pasaron de " + n1(off.msgsPerOp) + " a " + n1(on.msgsPerOp) + "."),
+      bars: [[t("No retries", "Sin reintentos"), off.delivered, pct(off.delivered), true], [t("Retry until acked", "Reintentar hasta el ack"), on.delivered, pct(on.delivered)]],
+    };
+  },
+  hub: () => {
+    const { hubs, grid } = RESULTS.hub;
+    return {
+      verdict: t("With the hub off, each value reached " + pct(hubs.reach) + " of the live nodes on average: its six leaves hear nothing and their values go nowhere. The grid with the same node off: " + pct(grid.reach) + ".",
+        "Con el hub apagado, cada valor llegó en promedio al " + pct(hubs.reach) + " de los nodos vivos: sus seis hojas no reciben nada y sus valores no llegan a ningún lado. La malla con el mismo nodo apagado: " + pct(grid.reach) + "."),
+      bars: [[t("Hubs, hub off", "Hubs, hub apagado"), hubs.reach, pct(hubs.reach), true], [t("Grid, node off", "Malla, nodo apagado"), grid.reach, pct(grid.reach)]],
+    };
+  },
+  forward: () => {
+    const { newOnly, every } = RESULTS.forward;
+    return {
+      verdict: t("One value caused " + newOnly.msgs + " messages forwarding only new values, and " + int(every.msgs) + " in the first second forwarding every copy, still growing when the second ended.",
+        "Un valor causó " + newOnly.msgs + " mensajes reenviando solo valores nuevos, y " + int(every.msgs) + " en el primer segundo reenviando cada copia, y seguía creciendo al terminar ese segundo."),
+      bars: [[t("New values only", "Solo valores nuevos"), newOnly.msgs / every.msgs, String(newOnly.msgs)], [t("Every copy", "Cada copia"), 1, int(every.msgs), true]],
+    };
+  },
+};
+
 export default defineLesson({
   title: t("Broadcast Workbench", "Banco de trabajo: broadcast"),
   eyebrow: t("Systems lesson 18 · Broadcast", "Lección de sistemas 18 · Broadcast"),
@@ -141,7 +195,7 @@ export default defineLesson({
     // The standalone note linked "fly.io/dist-sys"; Panel writes the note as text, so live.ts turns those words back into the link.
     note: t("Based on Fly.io's Gossip Glomers broadcast challenge (3a–3e), where your nodes are verified by Maelstrom: fly.io/dist-sys. Changing a setting starts the run again.", "Basado en el desafío de broadcast de Gossip Glomers de Fly.io (3a–3e), donde Maelstrom verifica tus nodos: fly.io/dist-sys. Cambiar un ajuste reinicia la ejecución."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: 25 nodes, 100 values a second for 20 s, 100 ms per message.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina: 25 nodos, 100 valores por segundo durante 20 s, 100 ms por mensaje."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine: 25 nodes, 100 values a second for 20 s, 100 ms per message.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina: 25 nodos, 100 valores por segundo durante 20 s, 100 ms por mensaje."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 .busy{fill:none;stroke:var(--anatomy-mid);stroke-width:1.6;stroke-linecap:round}
@@ -155,7 +209,5 @@ export default defineLesson({
   data: {
     ROUTES,
     GAUGE: { mpo: gaugeTravel("mpo"), max: gaugeTravel("max") },
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
