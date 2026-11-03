@@ -9,6 +9,7 @@ import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { lerpVec } from "../../lib/tween";
 import { one, n0 } from "../../lib/format";
+import { rankQuantileSorted } from "../../lib/stats";
 import { makeSim } from "./sim";
 
 export default function mount({ P, G, RAIL_SVG, DROP_SVG, RESULTS, EXPERIMENTS }) {
@@ -140,7 +141,7 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG, RESULTS, EXPERIMENTS }
     stat("orders", st.orders); stat("shipped", st.shipped); stat("lost", st.lost); stat("phantom", st.phantom);
     stat("dups", cfg.dedupe === "on" ? st.caught + L(" caught", " copias detectadas") : st.dupShipped);
     const ds = model.delays.slice(-40).sort((x, y) => x - y);
-    stat("delay", ds.length ? ds[Math.floor(ds.length / 2)].toFixed(1) + " s" : "–");
+    stat("delay", ds.length ? rankQuantileSorted(ds, 0.5).toFixed(1) + " s" : "–");
   }
   function story() {
     const c = model.clerk.seg, r = model.relay.seg, n = model.inbox.length, p = model.pending.length;

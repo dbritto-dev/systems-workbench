@@ -5,7 +5,7 @@
 // of its workers. Each side has its own cache (a hit share that grows with every miss).
 // Shared by the experiments (at build time) and the live figure (in the browser).
 import { rng } from "../../lib/random";
-import { meanBy } from "../../lib/stats";
+import { meanBy, rankQuantile } from "../../lib/stats";
 
 export const BASE = {
   rate: 5,          // requests per second
@@ -138,13 +138,6 @@ export function runScenario({ until = 120, flipAt = 30, rollback = null, dt = 0.
   return w;
 }
 
-// The 95th percentile as this lesson has always taken it: sorted[floor(0.95 × n)] (not the shared percentile(),
-// which takes sorted[floor(q × (n − 1))]).
-export const p95 = (values) => {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor(0.95 * sorted.length))];
-};
 const SEEDS = [3, 5, 7, 11, 13, 17];
 export const overSeeds = (f) => meanBy(SEEDS, f);
 
@@ -176,8 +169,8 @@ export const EXP = {
   },
   cold() {
     const measure = (warm) => {
-      const p = overSeeds((seed) => p95(runScenario({ seed, warm, until: 90 }).log.filter((j) => j.outcome === "ok" && j.born >= 30 && j.born < 60).map((j) => j.doneAt - j.born)));
-      const before = overSeeds((seed) => p95(runScenario({ seed, warm, until: 90 }).log.filter((j) => j.outcome === "ok" && j.born >= 5 && j.born < 30).map((j) => j.doneAt - j.born)));
+      const p = overSeeds((seed) => rankQuantile(runScenario({ seed, warm, until: 90 }).log.filter((j) => j.outcome === "ok" && j.born >= 30 && j.born < 60).map((j) => j.doneAt - j.born), 0.95));
+      const before = overSeeds((seed) => rankQuantile(runScenario({ seed, warm, until: 90 }).log.filter((j) => j.outcome === "ok" && j.born >= 5 && j.born < 30).map((j) => j.doneAt - j.born), 0.95));
       const turned = overSeeds((seed) => runScenario({ seed, warm, until: 90 }).log.filter((j) => j.outcome === "turned").length);
       return { p95: p, before, turned };
     };

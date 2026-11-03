@@ -8,12 +8,10 @@
 //   mode "leading":  send on the first event, ignore events until `wait` s of quiet
 
 import { mean as meanOf } from "../../lib/stats";
+import { mulberry32 } from "../../lib/random";
 
-// mulberry32: not one of the shared generators (src/lib/random), so it stays here.
-export function rng(seed) {
-  let a = seed >>> 0 || 1;
-  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-}
+// mulberry32, with seed 0 turned into 1 as this lesson's numbers always had it.
+export function rng(seed) { return mulberry32(seed >>> 0 || 1); }
 
 export const QUERIES = ["distributed systems", "debounce", "event loop", "react hooks", "rate limiter", "kafka offsets", "search box", "idempotency"];
 

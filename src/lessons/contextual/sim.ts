@@ -11,19 +11,9 @@
 //              fusion of the two, and a reranker that reads query and chunk together.
 // Every number on the page comes from here, worked out at build time.
 import { meanBy } from "../../lib/stats";
+import { mulberry32 as rngOf, fnv1a as hashOf } from "../../lib/random";
 
-export function rngOf(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 const pick = (r, list) => list[Math.floor(r() * list.length)];
-const hashOf = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
 export const COMPANIES = ["Acme", "Borealis", "Cobalt", "Dunmore", "Everline", "Fairhaven", "Granite", "Halcyon", "Ironwood", "Juniper", "Kestrel", "Lumen", "Meridian", "Nordwell", "Osprey", "Pellham"];
 export const TICKER = Object.fromEntries(COMPANIES.map((c) => [c, c.slice(0, 3).toUpperCase()]));

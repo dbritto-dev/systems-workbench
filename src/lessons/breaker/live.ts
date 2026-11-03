@@ -6,7 +6,8 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { pct as percent } from "../../lib/format";
-import { createSim, STEP, p95, WINDOW } from "./sim";
+import { rankQuantile } from "../../lib/stats";
+import { createSim, STEP, WINDOW } from "./sim";
 import { bladeSvg } from "./blade";
 
 export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
@@ -101,7 +102,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     stat("fast", c.failedFast);
     stat("slow", c.failedSlow);
     stat("dropped", c.dropped);
-    stat("p95", c.latencies.length ? p95(c.latencies).toFixed(1) + " s" : "–");
+    stat("p95", c.latencies.length ? rankQuantile(c.latencies, 0.95).toFixed(1) + " s" : "–");
     stat("load", machine.load() + " / " + machine.cfg.cap);
   }
 

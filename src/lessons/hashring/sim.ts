@@ -2,18 +2,14 @@
 // Shared model for the figure and the experiments: 1,000 keys, nodes A–F, a hash ring or hash % n.
 // Shared by the experiments (at build time) and the live figure (in the browser).
 import { meanBy } from "../../lib/stats";
+import { fnv1a, fmix32 } from "../../lib/random";
 
 export const KEYS = 1000;
 export const NODE_IDS = ["A", "B", "C", "D", "E", "F"];
 export const HOT_KEY = 7;
 export const HOT_SHARE = 0.3;
 // FNV-1a, then a murmur3 finaliser so nearby strings land far apart.
-export function hash32(text) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0; h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0; h ^= h >>> 16;
-  return h >>> 0;
-}
+export function hash32(text) { return fmix32(fnv1a(text)); }
 export const keyHash = (k) => hash32("key-" + k);
 export const keyAngle = (k) => (keyHash(k) / 4294967296) * 360;
 // Every node puts `vnodes` markers on the ring; salt stands for "a different cluster" in averaged runs.

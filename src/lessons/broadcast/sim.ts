@@ -4,7 +4,7 @@
 // Messages between nodes take HOP seconds. Time is in seconds.
 // Shared by the figure, the page (the still frame and the experiments, at build time) and the live code.
 import { rng } from "../../lib/random";
-import { meanBy } from "../../lib/stats";
+import { meanBy, rankQuantileSorted } from "../../lib/stats";
 
 export const COLS = 5;
 export const N = COLS * COLS;
@@ -180,7 +180,7 @@ export function createNet(cfg, hooks = {}) {
 export function summarize(net, from = 0, to = Infinity) {
   const ops = net.ops.filter((o) => o.t0 >= from && o.t0 < to);
   const lat = ops.filter((o) => o.done).map((o) => o.done - o.t0).sort((a, b) => a - b);
-  const q = (p) => (lat.length ? lat[Math.min(lat.length - 1, Math.floor(p * lat.length))] : NaN);
+  const q = (p) => rankQuantileSorted(lat, p, NaN);
   return {
     values: ops.length,
     msgsPerOp: net.ops.length ? net.stats.msgs / net.ops.length : 0,

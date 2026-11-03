@@ -6,6 +6,7 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { pct, int } from "../../lib/format";
+import { rankQuantileSorted } from "../../lib/stats";
 import { TOPOLOGIES, HOP, createNet, hubsOf } from "./sim";
 
 export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
@@ -154,7 +155,7 @@ export default function mount({ ROUTES, GAUGE, RESULTS, EXPERIMENTS }) {
     // Values from the last 12 s: finished ones give latency; unfinished ones older than 3 s count as not delivered.
     const win = net.ops.filter((o) => o.t0 >= Math.max(0, net.t - 12) && (o.done || o.t0 < net.t - 3));
     const lat = win.filter((o) => o.done).map((o) => o.done - o.t0).sort((a, b) => a - b);
-    const median = lat.length ? lat[Math.floor(lat.length / 2)] : NaN, max = lat.length ? lat[lat.length - 1] : NaN;
+    const median = rankQuantileSorted(lat, 0.5, NaN), max = lat.length ? lat[lat.length - 1] : NaN;
     const delivered = win.length ? lat.length / win.length : NaN;
     stat("mpo", isFinite(mpo) ? n1(mpo) : "–");
     stat("median", ms(median));

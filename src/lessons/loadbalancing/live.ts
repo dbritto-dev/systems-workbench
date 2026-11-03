@@ -7,9 +7,9 @@ import * as WB from "../../runtime/wb";
 import { T, L } from "../../runtime/wb";
 import { readout, stats as statsStrip, show, act, pauseControls } from "../../runtime/dom";
 import { lerp, easeInOutCubic } from "../../lib/tween";
-import { clamp } from "../../lib/stats";
+import { clamp, rankQuantile } from "../../lib/stats";
 import { pct } from "../../lib/format";
-import { TRANSFER, SLOW, createStation, percentile } from "./sim";
+import { TRANSFER, SLOW, createStation } from "./sim";
 
 export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
   const IN_TIME = 1.2;
@@ -164,8 +164,8 @@ export default function mount({ P, G, PARCEL_SVG, RESULTS, EXPERIMENTS }) {
     const times = done.map((j) => j.end - j.arrive);
     stat("served", station.st.done.length - base.done);
     stat("failed", station.st.errors - base.errors);
-    stat("p50", times.length ? percentile(times, 0.5).toFixed(1) + " s" : "–");
-    stat("p95", times.length ? percentile(times, 0.95).toFixed(1) + " s" : "–");
+    stat("p50", times.length ? rankQuantile(times, 0.5).toFixed(1) + " s" : "–");
+    stat("p95", times.length ? rankQuantile(times, 0.95).toFixed(1) + " s" : "–");
     if (history.length > 5) {
       const a = history[0], b = history[history.length - 1], span = b.t - a.t;
       const util = station.st.servers.slice(0, opts.servers).map((s, i) => ({ i, u: (b.busy[i] - a.busy[i]) / span }));

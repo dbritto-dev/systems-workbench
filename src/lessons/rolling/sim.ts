@@ -3,7 +3,7 @@
 // Times are in seconds of figure time. Geometry along the row (x) lives here too,
 // so the crane in the figure moves exactly as the model says.
 import { rng, exponential } from "../../lib/random";
-import { meanBy } from "../../lib/stats";
+import { meanBy, rankQuantileSorted } from "../../lib/stats";
 
 export const RD = {
   SLOTS: 8,          // 6 bays in normal use + 2 spare positions for surge
@@ -178,7 +178,7 @@ export function measure(records, from, to) {
   const inWindow = records.filter((r) => r.t0 >= from && r.t0 < to);
   const ok = inWindow.filter((r) => r.latency !== undefined).map((r) => r.latency).sort((a, b) => a - b);
   const errors = inWindow.filter((r) => r.error);
-  const p95 = ok.length ? ok[Math.min(ok.length - 1, Math.floor(0.95 * ok.length))] : 0;
+  const p95 = rankQuantileSorted(ok, 0.95);
   const why = {};
   errors.forEach((e) => { why[e.error] = (why[e.error] || 0) + 1; });
   return { requests: inWindow.length, served: ok.length, errors: errors.length, errorRate: inWindow.length ? errors.length / inWindow.length : 0, p95, why };

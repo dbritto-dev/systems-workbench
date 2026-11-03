@@ -5,6 +5,7 @@
 // live figure and the experiments (run at build time).
 
 import { averageOver } from "../../lib/stats";
+import { mulberry32 } from "../../lib/random";
 
 export const CUSTOMERS = 4;
 export const REQ_TIME = 0.8;          // request travel, customer → counter
@@ -18,11 +19,8 @@ export const THINK = [1, 3];          // time between a customer's purchases
 export const AMOUNTS = [12, 18, 25, 40, 55, 70];
 export const SLOTS = 30;              // pigeonholes on the key rack (the live figure shows the newest keys)
 
-// mulberry32. Not one of the shared generators (src/lib/random), so it stays here.
-export function rng(seed) {
-  let s = seed >>> 0 || 1;
-  return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-}
+// mulberry32, with seed 0 turned into 1 as this lesson's numbers always had it.
+export function rng(seed) { return mulberry32(seed >>> 0 || 1); }
 
 // cfg: { keys: "off" | "store" | "lock", lifetime: "long" | "short", loss: 0..1, timeout: "patient" | "impatient", drift: 0..1 }
 export function makeSim(cfg, seed = 1) {

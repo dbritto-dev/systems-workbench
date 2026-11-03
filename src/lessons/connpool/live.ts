@@ -8,6 +8,7 @@ import * as WB from "../../runtime/wb";
 import { L, T, digitsOf } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { pct } from "../../lib/format";
+import { rankQuantileSorted } from "../../lib/stats";
 import { makeSim, slowdown, RETRY } from "./sim";
 
 export default function mount({ P, G, CAB_SVG, RESULTS, EXPERIMENTS }) {
@@ -174,7 +175,7 @@ export default function mount({ P, G, CAB_SVG, RESULTS, EXPERIMENTS }) {
     const since = Math.max(0.001, Math.min(1, model.now));
     const lastSecond = model.done.filter((d) => d[0] > model.now - since);
     const lat = lastSecond.map((d) => d[1]).sort((x, y) => x - y);
-    const p95 = lat.length ? lat[Math.min(lat.length - 1, Math.floor(0.95 * lat.length))] : 0;
+    const p95 = rankQuantileSorted(lat, 0.95);
     const waiting = model.waiting(), leaked = model.leaked();
     stat("served", Math.round(lastSecond.length / since));
     stat("p95", lat.length ? (p95 < 1 ? Math.round(p95 * 1000) + " ms" : p95.toFixed(2) + " s") : "–");

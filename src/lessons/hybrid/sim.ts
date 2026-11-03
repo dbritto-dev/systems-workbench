@@ -26,7 +26,7 @@
 //   mixed       a product name plus the customer's words ("Kestrel money back cracked"): the one article for that
 //               product on those topics
 
-import { xorshift32 } from "../../lib/random";
+import { xorshift32, fnv1a as hash } from "../../lib/random";
 import { mean, meanBy } from "../../lib/stats";
 
 export const makeRng = xorshift32;
@@ -120,7 +120,6 @@ export function makeBM25(docs, { k1 = 1.2, b = 0.75 } = {}) {
 // ---------- the toy embedding ----------
 const HASH = 12;
 const DIM = C + 1 + HASH;
-function hash(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 const conceptOf = new Map();
 CONCEPTS.forEach(([, doc, user], c) => { for (const w of doc) conceptOf.set(w.toLowerCase(), c); for (const w of user) conceptOf.set(w.toLowerCase(), c); });
 const productSet = new Set(PRODUCTS.map((p) => p.toLowerCase()));

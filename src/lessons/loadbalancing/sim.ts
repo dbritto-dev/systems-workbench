@@ -1,6 +1,6 @@
 // @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 import { rng, exponential } from "../../lib/random";
-import { averageOver } from "../../lib/stats";
+import { averageOver, rankQuantile } from "../../lib/stats";
 
 // Shared model for the figure and the experiments: a sorting station with a dispatcher in front of
 // up to five counters. Times are in seconds of figure time.
@@ -123,13 +123,6 @@ export function createStation(opts, seed = 1) {
   return { st, step, kill, restart, set };
 }
 
-// The p-quantile as sorted[floor(p * n)] (not the shared percentile's floor(p * (n - 1))): the published numbers use it.
-export function percentile(values, p) {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
-}
-
 // Run one headless trial. `at` events: [{ t, do: "kill", index }]
 export function runHeadless(opts, { seconds = 1200, warm = 120, seed = 1, events = [] } = {}) {
   const m = createStation(opts, seed);
@@ -144,7 +137,7 @@ export function runHeadless(opts, { seconds = 1200, warm = 120, seed = 1, events
   const done = m.st.done.slice(startDone).filter((j) => j.arrive >= warm);
   const times = done.map((j) => j.end - j.arrive);
   const util = m.st.servers.slice(0, m.st.o.servers).map((s) => s.busy / seconds);
-  return { served: done.length, errors: m.st.errors - startErr, p50: percentile(times, 0.5), p95: percentile(times, 0.95), util, stuck: m.st.jobs.length };
+  return { served: done.length, errors: m.st.errors - startErr, p50: rankQuantile(times, 0.5), p95: rankQuantile(times, 0.95), util, stuck: m.st.jobs.length };
 }
 
 export function average(opts, run = {}, seeds = [3, 5, 7, 11, 13, 17]) {

@@ -7,7 +7,7 @@
 //             carries pending letters to the postbox and only then marks them sent (at-least-once).
 
 import { rng } from "../../lib/random";
-import { meanBy } from "../../lib/stats";
+import { meanBy, rankQuantile, upperMedian } from "../../lib/stats";
 export const T = { WRITE: 0.5, WALK: 1.0, POST: 0.25, DOWN: 2.5, RAIL: 1.6, R_WALK: 1.0, R_POST: 0.2, R_EACH: 0.12, MARK: 0.3 };
 export const RATE = 0.25;      // orders per second arriving at the clerk
 export const BATCH = 6;        // letters the relay carries in one trip
@@ -141,9 +141,6 @@ export function makeSim(cfg, seed = 7) {
 
 // ---------- experiments: each averaged over seeded runs (at build time) ----------
 const SEEDS = [3, 7, 11, 19, 23, 29, 31, 37];
-// The upper median and a rank of floor(p * n): not the shared percentile() rule (floor(p * (n - 1))), so they stay here.
-const median = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
-const pctl = (a, p) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 export function runFor(cfg, seconds = 600) {
   const out = SEEDS.map((seed) => { const s = makeSim({ ...cfg, stopAt: seconds }, seed); s.runTo(seconds + 60); return s; });
   const avg = (f) => meanBy(out, f);
@@ -151,7 +148,7 @@ export function runFor(cfg, seconds = 600) {
   return {
     orders: avg((s) => s.stats.orders), shipped: avg((s) => s.stats.shipped), lost: avg((s) => s.stats.lost), phantom: avg((s) => s.stats.phantom),
     dupShipped: avg((s) => s.stats.dupShipped), caught: avg((s) => s.stats.caught), failed: avg((s) => s.stats.failed), sent: avg((s) => s.stats.sent),
-    relayCrashes: avg((s) => s.stats.relayCrashes), median: median(delays), p95: pctl(delays, 0.95),
+    relayCrashes: avg((s) => s.stats.relayCrashes), median: upperMedian(delays), p95: rankQuantile(delays, 0.95),
   };
 }
 // runFor stops taking orders at `seconds`, then runs a minute more so every letter in flight lands.

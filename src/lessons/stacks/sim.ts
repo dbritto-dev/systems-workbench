@@ -6,6 +6,7 @@
 // Plain functions; the experiments run them in the browser.
 
 import { rng } from "../../lib/random";
+import { rankQuantileSorted } from "../../lib/stats";
 
 // ---------- 1. The call stack ----------
 // A small tree for the depth-first walk: node -> children.
@@ -146,6 +147,5 @@ export function serverRun(order, load, seconds = 60, seed = 7) {
   const pastDeadline = sv.waiting.filter((r) => seconds - r.t > TIMEOUT).length;
   const decided = sv.onTime + sv.late + pastDeadline;
   const waits = sv.done.map((r) => r.end - r.t).sort((a, b) => a - b);
-  const p = (q) => (waits.length ? waits[Math.min(waits.length - 1, Math.floor(q * waits.length))] : 0);
-  return { onTimeShare: decided ? sv.onTime / decided : 1, onTime: sv.onTime, late: sv.late, pastDeadline, waiting: sv.waiting.length, oldest: sv.oldest(), p50: p(0.5), p99: p(0.99), arrived: sv.arrived };
+  return { onTimeShare: decided ? sv.onTime / decided : 1, onTime: sv.onTime, late: sv.late, pastDeadline, waiting: sv.waiting.length, oldest: sv.oldest(), p50: rankQuantileSorted(waits, 0.5), p99: rankQuantileSorted(waits, 0.99), arrived: sv.arrived };
 }

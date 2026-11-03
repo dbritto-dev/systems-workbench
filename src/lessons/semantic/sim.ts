@@ -10,6 +10,7 @@
 // (cosine between unrelated texts is around 0.2-0.3, not 0).
 
 import { meanBy } from "../../lib/stats";
+import { fnv1a } from "../../lib/random";
 
 export const CONCEPTS = ["PAYMENTS", "DUPLICATES", "REFUNDS", "TIME", "SIGN-IN", "SECURITY", "SHIPPING", "ERRORS", "API", "EXPORTS", "PLANS", "INVOICES", "ACCOUNT", "MOBILE", "ALERTS", "SUPPORT"];
 const C = CONCEPTS.length, H = 24, DIM = C + H + 1, GENERIC = 0.62;
@@ -43,7 +44,7 @@ const LEX = (() => {
 })();
 const STOP = new Set("a an the and or of to in on at by for from is are was were be been it its this that these those i my me you your we our us can do does did how what when where why which who will would should could if with as not no yes any all there here up out about after before before into than then so very just get gets got has have had use using under one show shows other usually most also more".split(" "));
 
-function hash(s, mod) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % mod); }
+function hash(s, mod) { return fnv1a(s) % mod; }
 function wobble(word, axis) { return ((hash(word + "|" + axis, 1000) / 1000) - 0.5) * 0.3; }
 const stems = (w) => [w, w.replace(/ies$/, "y"), w.replace(/es$/, ""), w.replace(/s$/, ""), w.replace(/ed$/, ""), w.replace(/ing$/, ""), w.replace(/d$/, "")];
 

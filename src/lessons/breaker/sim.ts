@@ -2,7 +2,7 @@
 // Shared model for the figure and the experiments: a pool of workers calling a supplier,
 // optionally through a timeout, retries and a circuit breaker. Times are in seconds of figure time.
 import { rng } from "../../lib/random";
-import { mean, meanBy } from "../../lib/stats";
+import { mean, meanBy, rankQuantile } from "../../lib/stats";
 
 export const STEP = 0.05;
 export const BASE = {
@@ -111,9 +111,6 @@ export function createSim(options = {}, seed = 1) {
   return { s, cfg, step, set, sick, load: () => s.calls.length, resetCounts: () => { s.counts = freshCounts(); } };
 }
 
-// The q-quantile by this lesson's rule, sorted[floor(q * n)] (not the shared percentile(), which uses n - 1).
-export function pct(list, q) { if (!list.length) return 0; const a = [...list].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(q * a.length))]; }
-export const p95 = (list) => pct(list, 0.95);
 
 // One scripted run. events: [{ at, cause }]. Counts are measured from `from` to `seconds`.
 export function runScenario({ options = {}, seconds = 60, from = 10, events = [], seed = 1 }) {
@@ -129,7 +126,7 @@ export function runScenario({ options = {}, seconds = 60, from = 10, events = []
   return {
     served: c.served / Math.max(1, c.arrived), localServed: Math.min(1, c.servedLocal / Math.max(1, c.localArrived)),
     dropped: c.dropped / Math.max(1, c.arrived), failedFast: c.failedFast / Math.max(1, c.arrived), failedSlow: c.failedSlow / Math.max(1, c.arrived),
-    p95: p95(c.latencies), p95Supplier: p95(c.supplierLatencies), p50Supplier: pct(c.supplierLatencies, 0.5), load: c.loadArea / Math.max(STEP, c.time),
+    p95: rankQuantile(c.latencies, 0.95), p95Supplier: rankQuantile(c.supplierLatencies, 0.95), p50Supplier: rankQuantile(c.supplierLatencies, 0.5), load: c.loadArea / Math.max(STEP, c.time),
     recovery: fixAt === null ? null : sim.s.recoveredAt === null ? Infinity : sim.s.recoveredAt - fixAt,
     opens: sim.s.breaker.opens,
   };

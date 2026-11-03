@@ -12,7 +12,7 @@
 // jitter: 0 for equal expiry; 0.2 for ±20 % on every TTL.
 // Shared by the page (experiment results at build time) and the live code.
 import { rng } from "../../lib/random";
-import { averageOver } from "../../lib/stats";
+import { averageOver, rankQuantile } from "../../lib/stats";
 
 export const LIVE = { weights: [0.36, 0.2, 0.15, 0.12, 0.1, 0.07], shelves: 4 };
 
@@ -103,8 +103,6 @@ export function makeSim(cfg, seed = 7) {
 }
 
 // ---------- experiments (computed once at build time from the same model) ----------
-// Not the shared percentile(): this one takes sorted[floor(p * n)], the rule the published numbers used.
-const pctile = (xs, p) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 const SEEDS = [3, 7, 11, 19, 23, 31];
 // Run the model to `until` once per seed and average every measured field.
 const over = (cfg, until, measure) => averageOver(SEEDS, (seed) => { const s = makeSim(cfg, seed); s.runTo(until); return measure(s); });
@@ -117,7 +115,7 @@ export function deployRun(jitter) {
     orders: s.stats.orders,
     dups: s.stats.dups,
     maxWait: s.stats.maxWait,
-    p99: pctile(s.waits.concat(Array(s.stats.hits).fill(0)), 0.99),
+    p99: rankQuantile(s.waits.concat(Array(s.stats.hits).fill(0)), 0.99),
     capacity: DEPLOY.shelves / DEPLOY.bake,
   }));
 }

@@ -3,7 +3,7 @@
 // One request = one transaction: get a connection, (maybe call an external API), run its queries, give the connection back.
 // Shared by the page (experiment results at build time) and the live code.
 import { rng } from "../../lib/random";
-import { mean } from "../../lib/stats";
+import { mean, rankQuantile } from "../../lib/stats";
 
 export const DB = {
   unit: 0.010,        // a typical request's queries take 10 ms on an otherwise quiet database
@@ -241,8 +241,6 @@ export function makeSim(cfg, seed = 7) {
 }
 
 // ---------- experiments: the same model, headless, averaged over seeds (computed once at build time) ----------
-// Not the shared percentile(): this one takes sorted[floor(p * n)], the rule the published numbers used.
-const pctile = (xs, p) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 
 // Run one configuration; measure from `from` to `to` (seconds).
 export function measure(cfg, { from = 2, to = 12, seed = 1, until } = {}) {
@@ -260,7 +258,7 @@ export function measure(cfg, { from = 2, to = 12, seed = 1, until } = {}) {
     served: done.length / (to - from),
     failed: fails.length / (to - from),
     failShare: fails.length / Math.max(1, done.length + fails.length),
-    p50: pctile(lat, 0.5), p95: pctile(lat, 0.95),
+    p50: rankQuantile(lat, 0.5), p95: rankQuantile(lat, 0.95),
     wait: mean(done.map((d) => d[2])),
     active: busySum / Math.max(1, samples), open: openSum / Math.max(1, samples), peakActive,
     sim,

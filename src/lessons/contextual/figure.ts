@@ -12,6 +12,7 @@ import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, sign, lamp, faceText, variants } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
+import { mulberry32 } from "../../lib/random";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
@@ -184,7 +185,7 @@ function cabinets() {
   out.push(`<g data-lamp="words">${variants("lamp-words", { off: lamp(P, [WORDS.x + WORDS.w - 5, WORDS.y + 5, WORDS_H], { r: 2.2 }), on: lamp(P, [WORDS.x + WORDS.w - 5, WORDS.y + 5, WORDS_H], { r: 2.2, lit: true }) }, "off")}</g>`);
   // the meaning map: a table whose top is a map of clusters of pins
   out.push(S(k.slabOf(MAP, 0, MAP_H, P, 3, 0.6), { tone: "mid", inner: L(k.planOutline(k.insetPlan(MAP, 1.8), MAP_H, P), { tone: "lo" }) }));
-  const r = mulberry(5), pins = [];
+  const r = mulberry32(5), pins = [];
   for (const [cx, cy] of [[MAP.x + 8, MAP.y + 7], [MAP.x + 19, MAP.y + 15], [MAP.x + 30, MAP.y + 7], [MAP.x + 35, MAP.y + 16], [MAP.x + 10, MAP.y + 16]]) for (let i = 0; i < 9; i++) pins.push(at([cx + (r() - 0.5) * 6, cy + (r() - 0.5) * 5, MAP_H]));
   out.push(D(pins, { size: 0.55, tone: "mid" }));
   out.push(faceText(P, [MAP.x + MAP.w / 2, MAP.y + MAP.d, MAP_H - 4.4], t("MEANING", "SIGNIFICADO"), { size: 2.6, tone: "hi", anchor: "middle" }));
@@ -192,7 +193,6 @@ function cabinets() {
   return out.join("");
 }
 const faceRectY = (x0, x1, y, z0, z1) => k.pathOf([[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]].map(at), true);
-function mulberry(seed) { let a = seed; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
 // The person asking, and the question on a board in front of them.
 function asker() {

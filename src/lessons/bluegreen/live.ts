@@ -7,9 +7,9 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { readout, stats, act, pauseControls } from "../../runtime/dom";
 import { lerp, lerpVec as lerp3, easeInOutCubic as ease } from "../../lib/tween";
-import { clamp as clamp01 } from "../../lib/stats";
+import { clamp as clamp01, rankQuantile } from "../../lib/stats";
 import { pct } from "../../lib/format";
-import { createWorld, prepareGreen, flip, step, p95 } from "./sim";
+import { createWorld, prepareGreen, flip, step } from "./sim";
 
 export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   // The gate's arm, as figure.ts draws it (GATE_R is 15 there).
@@ -139,7 +139,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     }
     stat("served", w.stats.ok);
     stat("errors", errors);
-    stat("p95", latencies.length ? p95(latencies).toFixed(1) + " s" : "–");
+    stat("p95", latencies.length ? rankQuantile(latencies, 0.95).toFixed(1) + " s" : "–");
     stat("recover", !incident ? "–" : w.t - incident.last < 10 ? L("ongoing", "en curso") : Math.max(1, Math.round(incident.last - incident.start)) + " s");
     const busy = w.sides.blue.workers.filter((x) => x.job).length + w.sides.green.workers.filter((x) => x.job).length;
     stat("running", "6 · " + busy + L(" busy", " ocupados"));

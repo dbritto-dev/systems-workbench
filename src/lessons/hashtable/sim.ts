@@ -9,7 +9,7 @@
 // Shared by the experiments (at build time) and the live figure (in the browser).
 
 // The seed is scrambled first (rngMixed) so neighbouring seeds don't start with similar numbers.
-import { rngMixed as rng } from "../../lib/random";
+import { rngMixed as rng, fnv1a, fmix32 } from "../../lib/random";
 import { averageOver } from "../../lib/stats";
 
 // ---------- hash functions ----------
@@ -20,10 +20,7 @@ import { averageOver } from "../../lib/stats";
 export const WEAK_CHARS = 4;
 export function hashOf(key, kind = "seeded", seed = 0) {
   const text = kind === "weak" ? key.slice(0, WEAK_CHARS) : key;
-  let h = (2166136261 ^ (kind === "seeded" ? Math.imul(seed | 0, 0x9e3779b1) : 0)) >>> 0;
-  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0; h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0; h ^= h >>> 16;
-  return h >>> 0;
+  return fmix32(fnv1a(text, (2166136261 ^ (kind === "seeded" ? Math.imul(seed | 0, 0x9e3779b1) : 0)) >>> 0));
 }
 
 // Keys: user ids "user:1000" … "user:9999", distinct, in a seeded random order.
