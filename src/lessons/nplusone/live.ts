@@ -1,25 +1,24 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The warehouse in the browser: plays one planned page of trips at a time (pickers walk out, wait, carry the data
-// back), fills tickets, counters, stopwatch and crate, and wires the controls and the experiment cards. mount() gets
-// the build-time data from page.ts (geometry, picker and cargo drawings, experiment ids).
+// back), fills tickets, counters, stopwatch and crate, and answers the controls. mount() gets the build-time data
+// from page.ts (geometry, picker and cargo drawings) and root, the <wb-lesson>.
 import { iso, depthOf, translateAlong, solidSvg, slabOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
-import { L, T } from "../../runtime/wb";
-import { readout, stats, show as setVis, act, pauseControls } from "../../runtime/dom";
-import { int, oneUnder10, millis } from "../../lib/format";
-import { planPage, average, crateLevel } from "./sim";
+import { L } from "../../runtime/wb";
+import { show as setVis, playPause } from "../../runtime/dom";
+import { oneUnder10, millis } from "../../lib/format";
+import { planPage, crateLevel } from "./sim";
 
-export default function mount({ P, G, PICKER_SVG, CARGO_SVG, EXPERIMENTS }) {
+export default function mount({ P, G, PICKER_SVG, CARGO_SVG }, root) {
   const MS_PER_S = 10;        // model milliseconds per second on screen, at ×1
   const HOLD = 15;            // model ms the finished page stays up before the next one
   const LIT_MS = 5;           // a box stays lit this long after its order completes
 
-  const stage = document.querySelector("[data-warehouse-stage]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const NS = "http://www.w3.org/2000/svg";
   const house = q("[data-warehouse]");
   const lampOn = q('[data-lamp="on"]'), lampOff = q('[data-lamp="off"]');
@@ -144,7 +143,7 @@ export default function mount({ P, G, PICKER_SVG, CARGO_SVG, EXPERIMENTS }) {
     stat("pages", pages);
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => {
     if (!plan) return;
     clock += dt * cfg.speed * MS_PER_S;
@@ -155,62 +154,25 @@ export default function mount({ P, G, PICKER_SVG, CARGO_SVG, EXPERIMENTS }) {
   pause.bind(loop);
 
   function set(name, raw, quiet) {
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     if (name === "mode") cfg.mode = raw;
     if (name === "rows") cfg.rows = Number(raw);
     if (name === "items") cfg.items = Number(raw);
     if (name === "nested") cfg.nested = raw === "on";
     if (name === "dist") cfg.dist = raw;
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (!quiet) restart();
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("reset").addEventListener("click", () => restart());
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: () => restart() };
+  root.on("action", (name) => actions[name]?.());
 
-  // ---------- experiments ----------
-  const one = oneUnder10;
-  const base = { mode: "n1", rows: 20, items: 5, nested: false, dist: "region" };
-  const RUNS = {
-    distance: () => {
-      const h = average({ ...base, dist: "host" }), z = average({ ...base, dist: "zone" }), r = average(base);
-      return { verdict: T("Same 21 queries and " + kb(r.bytes) + " each time: " + one(h.time) + " ms on the same host, " + one(z.time) + " ms in the same zone, " + one(r.time) + " ms in another zone.",
-          "Las mismas 21 consultas y " + kb(r.bytes) + " cada vez: " + one(h.time) + " ms en el mismo host, " + one(z.time) + " ms en la misma zona, " + one(r.time) + " ms en otra zona."),
-        bars: [[T("Same host", "Mismo host"), h.time / r.time, one(h.time) + " ms"], [T("Same zone", "Misma zona"), z.time / r.time, one(z.time) + " ms"], [T("Other zone", "Otra zona"), 1, one(r.time) + " ms", true]] };
-    },
-    rows: () => {
-      const n20 = average(base), n50 = average({ ...base, rows: 50 }), b20 = average({ ...base, mode: "batch" }), b50 = average({ ...base, mode: "batch", rows: 50 }), top = n50.time;
-      return { verdict: T("N+1: " + one(n20.time) + " → " + one(n50.time) + " ms (" + n20.queries + " → " + n50.queries + " queries). Batched: " + one(b20.time) + " → " + one(b50.time) + " ms, 2 queries both times.",
-          "N+1: " + one(n20.time) + " → " + one(n50.time) + " ms (" + n20.queries + " → " + n50.queries + " consultas). Por lotes: " + one(b20.time) + " → " + one(b50.time) + " ms, 2 consultas las dos veces."),
-        bars: [[T("N+1, 20 orders", "N+1, 20 pedidos"), n20.time / top, one(n20.time) + " ms"], [T("N+1, 50 orders", "N+1, 50 pedidos"), 1, one(n50.time) + " ms", true], [T("Batched, 20 orders", "Por lotes, 20 pedidos"), b20.time / top, one(b20.time) + " ms"], [T("Batched, 50 orders", "Por lotes, 50 pedidos"), b50.time / top, one(b50.time) + " ms", true]] };
-    },
-    nested: () => {
-      const flat = average(base), deep = average({ ...base, nested: true }), batch = average({ ...base, nested: true, mode: "batch" }), top = deep.time;
-      return { verdict: T("With products: " + deep.queries + " queries and " + one(deep.time) + " ms per page (it was " + flat.queries + " queries, " + one(flat.time) + " ms). Batched per level: " + batch.queries + " queries, " + one(batch.time) + " ms.",
-          "Con productos: " + deep.queries + " consultas y " + one(deep.time) + " ms por página (antes eran " + flat.queries + " consultas, " + one(flat.time) + " ms). Por lotes en cada nivel: " + batch.queries + " consultas, " + one(batch.time) + " ms."),
-        bars: [[T("N+1, orders and items", "N+1, pedidos y artículos"), flat.time / top, T(flat.queries + " queries · " + one(flat.time) + " ms", flat.queries + " consultas · " + one(flat.time) + " ms")], [T("N+1, with products", "N+1, con productos"), 1, T(deep.queries + " queries · " + one(deep.time) + " ms", deep.queries + " consultas · " + one(deep.time) + " ms"), true], [T("Batched, with products", "Por lotes, con productos"), batch.time / top, T(batch.queries + " queries · " + one(batch.time) + " ms", batch.queries + " consultas · " + one(batch.time) + " ms")]] };
-    },
-    join: () => {
-      const big = { ...base, rows: 50, items: 50 };
-      const j = average({ ...big, mode: "join" }), b = average({ ...big, mode: "batch" });
-      const js = average({ ...base, mode: "join" }), bs = average({ ...base, mode: "batch" });
-      const top = Math.max(j.time, b.time);
-      return { verdict: T("50 × 50: the JOIN ships " + kb(j.bytes) + " in " + one(j.time) + " ms; batching ships " + kb(b.bytes) + " in " + one(b.time) + " ms. With 20 orders of 5 items the JOIN wins instead: " + one(js.time) + " ms vs " + one(bs.time) + " ms.",
-          "50 × 50: el JOIN envía " + kb(j.bytes) + " en " + one(j.time) + " ms; por lotes se envían " + kb(b.bytes) + " en " + one(b.time) + " ms. Con 20 pedidos de 5 artículos, en cambio, gana el JOIN: " + one(js.time) + " ms vs " + one(bs.time) + " ms."),
-        bars: [[T("JOIN, 1 query", "JOIN, 1 consulta"), j.time / top, one(j.time) + " ms · " + kb(j.bytes)], [T("Batched, 2 queries", "Por lotes, 2 consultas"), b.time / top, one(b.time) + " ms · " + kb(b.bytes), true]] };
-    },
-    parallel: () => {
-      const n = average(base), p = average({ ...base, mode: "par" }), b = average({ ...base, mode: "batch" }), top = n.time;
-      return { verdict: T("One by one: " + one(n.time) + " ms. Five at a time: " + one(p.time) + " ms. Batched: " + one(b.time) + " ms. Queries per page: " + n.queries + ", " + p.queries + " and " + b.queries + ": at 200 pages a second that is " + int(p.queries * 200) + " vs " + (b.queries * 200) + " queries a second.",
-          "Una por una: " + one(n.time) + " ms. Cinco a la vez: " + one(p.time) + " ms. Por lotes: " + one(b.time) + " ms. Consultas por página: " + n.queries + ", " + p.queries + " y " + b.queries + ": a 200 páginas por segundo eso son " + int(p.queries * 200) + " vs " + (b.queries * 200) + " consultas por segundo."),
-        bars: [[T("One by one", "Una por una"), 1, T(one(n.time) + " ms · " + n.queries + " queries", one(n.time) + " ms · " + n.queries + " consultas")], [T("5 at once", "5 a la vez"), p.time / top, T(one(p.time) + " ms · " + p.queries + " queries", one(p.time) + " ms · " + p.queries + " consultas"), true], [T("Batched", "Por lotes"), b.time / top, T(one(b.time) + " ms · " + b.queries + " queries", one(b.time) + " ms · " + b.queries + " consultas")]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     for (const key of ["mode", "rows", "items", "nested", "dist"]) set(key, String(w[key]), true);
     restart();
     if (loop.paused) loop.setPaused(false);
-  } });
+  });
 
   loop.setPaused(loop.paused);
   restart();

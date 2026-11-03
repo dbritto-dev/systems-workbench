@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 28 · Cache stampede: a bakery whose trays all expire at once.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { deployRun, hotRun } from "./sim";
+import { one, n0 } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the original computed them in the
 // browser when a card was run; they are seeded, so the numbers are the same).
@@ -12,6 +13,40 @@ const RESULTS = {
   all: hotRun("all"), single: hotRun("single"),
   single1: hotRun("single", 1), stale1: hotRun("stale", 1),
   slowFast: hotRun("all", 0.2, 200), slowSlow: hotRun("all", 1, 200),
+};
+
+// What each card shows after a run.
+const RUNS = {
+  deploy: () => {
+    const r = RESULTS.deploy, top = Math.max(r.peak, r.capacity);
+    return { verdict: t("At the 30 s mark the oven got up to " + n0(r.peak) + " orders in one second, against a capacity of " + n0(r.capacity) + ". " + n0(r.dups) + " of " + n0(r.orders) + " orders were duplicates, and the unluckiest customer waited " + one(r.maxWait) + " s.",
+        "Cerca del segundo 30 el horno llegó a " + n0(r.peak) + " pedidos en un segundo, con una capacidad de " + n0(r.capacity) + ". " + n0(r.dups) + " de " + n0(r.orders) + " pedidos fueron duplicados, y el cliente con peor suerte esperó " + one(r.maxWait) + " s."),
+      bars: [[t("Oven capacity per second", "Capacidad del horno por segundo"), r.capacity / top, n0(r.capacity)], [t("Busiest second", "Segundo de más trabajo"), r.peak / top, n0(r.peak), true], [t("Duplicate orders", "Pedidos duplicados"), r.dups / r.orders, t(n0(r.dups) + " of " + n0(r.orders), n0(r.dups) + " de " + n0(r.orders)), true]] };
+  },
+  jitter: () => {
+    const a = RESULTS.deploy, b = RESULTS.jitter, top = Math.max(a.peak, b.peak, a.capacity), wtop = Math.max(a.maxWait, b.maxWait);
+    return { verdict: t("With jitter the busiest second fell from " + n0(a.peak) + " to " + n0(b.peak) + " orders (the oven takes " + n0(a.capacity) + "), and the longest wait from " + one(a.maxWait) + " s to " + one(b.maxWait) + " s.",
+        "Con jitter el segundo de más trabajo bajó de " + n0(a.peak) + " a " + n0(b.peak) + " pedidos (el horno acepta " + n0(a.capacity) + "), y la espera más larga de " + one(a.maxWait) + " s a " + one(b.maxWait) + " s."),
+      bars: [[t("Busiest second, equal TTL", "Segundo de más trabajo, mismo TTL"), a.peak / top, n0(a.peak)], [t("Busiest second, ±20 %", "Segundo de más trabajo, ±20 %"), b.peak / top, n0(b.peak), true], [t("Longest wait, equal TTL", "Espera más larga, mismo TTL"), a.maxWait / wtop, one(a.maxWait) + " s"], [t("Longest wait, ±20 %", "Espera más larga, ±20 %"), b.maxWait / wtop, one(b.maxWait) + " s", true]] };
+  },
+  single: () => {
+    const a = RESULTS.all, b = RESULTS.single, top = a.perExpiry, wtop = Math.max(a.maxWait, b.maxWait);
+    return { verdict: t("Orders per expiry: " + n0(a.perExpiry) + " when every miss orders, " + n0(b.perExpiry) + " with single-flight. The longest wait fell from " + one(a.maxWait) + " s to " + one(b.maxWait) + " s, because no queue forms.",
+        "Pedidos por vencimiento: " + n0(a.perExpiry) + " si cada fallo pide, " + n0(b.perExpiry) + " con single-flight. La espera más larga bajó de " + one(a.maxWait) + " s a " + one(b.maxWait) + " s, porque no se forma cola."),
+      bars: [[t("Orders per expiry, everyone orders", "Pedidos por vencimiento, todos piden"), a.perExpiry / top, n0(a.perExpiry)], [t("Orders per expiry, single-flight", "Pedidos por vencimiento, single-flight"), b.perExpiry / top, n0(b.perExpiry), true], [t("Longest wait, everyone orders", "Espera más larga, todos piden"), a.maxWait / wtop, one(a.maxWait) + " s"], [t("Longest wait, single-flight", "Espera más larga, single-flight"), b.maxWait / wtop, one(b.maxWait) + " s", true]] };
+  },
+  stale: () => {
+    const a = RESULTS.single1, b = RESULTS.stale1, top = Math.max(a.waitedPerExpiry, b.stalePerExpiry);
+    return { verdict: t("Single-flight: " + n0(a.waitedPerExpiry) + " customers waited at each expiry, up to " + one(a.maxWait) + " s. Stale-while-revalidate: " + n0(b.waitedPerExpiry) + " waited and " + n0(b.stalePerExpiry) + " got the old loaf; the oven still baked " + n0(b.perExpiry) + " order per expiry.",
+        "Single-flight: " + n0(a.waitedPerExpiry) + " clientes esperaron en cada vencimiento, hasta " + one(a.maxWait) + " s. Stale-while-revalidate: " + n0(b.waitedPerExpiry) + " esperaron y " + n0(b.stalePerExpiry) + " recibieron el pan viejo; el horno siguió horneando " + n0(b.perExpiry) + " pedido por vencimiento."),
+      bars: [[t("Waited per expiry, single-flight", "Esperaron por vencimiento, single-flight"), a.waitedPerExpiry / top, n0(a.waitedPerExpiry)], [t("Waited per expiry, stale", "Esperaron por vencimiento, viejo"), b.waitedPerExpiry / top, n0(b.waitedPerExpiry), true], [t("Served stale per expiry", "Viejos servidos por vencimiento"), b.stalePerExpiry / top, n0(b.stalePerExpiry), true]] };
+  },
+  slow: () => {
+    const a = RESULTS.slowFast, b = RESULTS.slowSlow, wtop = Math.max(a.maxWait, b.maxWait), otop = Math.max(a.perExpiry, b.perExpiry);
+    return { verdict: t("Bake 0.2 s: " + n0(a.perExpiry) + " orders per expiry, longest wait " + one(a.maxWait) + " s. Bake 1 s: " + n0(b.perExpiry) + " orders, longest wait " + one(b.maxWait) + " s, " + Math.round(b.maxWait / a.maxWait) + " times longer for a bake five times slower.",
+        "Horneado de 0.2 s: " + n0(a.perExpiry) + " pedidos por vencimiento, espera más larga " + one(a.maxWait) + " s. Horneado de 1 s: " + n0(b.perExpiry) + " pedidos, espera más larga " + one(b.maxWait) + " s, " + Math.round(b.maxWait / a.maxWait) + " veces más larga por un horneado cinco veces más lento."),
+      bars: [[t("Orders per expiry, 0.2 s bake", "Pedidos por vencimiento, horneado de 0.2 s"), a.perExpiry / otop, n0(a.perExpiry)], [t("Orders per expiry, 1 s bake", "Pedidos por vencimiento, horneado de 1 s"), b.perExpiry / otop, n0(b.perExpiry), true], [t("Longest wait, 0.2 s bake", "Espera más larga, horneado de 0.2 s"), a.maxWait / wtop, one(a.maxWait) + " s"], [t("Longest wait, 1 s bake", "Espera más larga, horneado de 1 s"), b.maxWait / wtop, one(b.maxWait) + " s", true]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -111,7 +146,7 @@ export default defineLesson({
     ],
     note: t("Every tray is cached at the start, as after a deploy, with a 10 s TTL. Changing a setting starts the run again. Expire every tray now to watch a stampede on demand.", "Al empezar, todas las bandejas están en caché, como después de un despliegue, con un TTL de 10 s. Cambiar un ajuste vuelve a empezar la ejecución. Usa Vencer todas las bandejas para ver una estampida cuando quieras."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, at larger scale, averaged over six seeded runs.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, a mayor escala, promediados sobre seis ejecuciones con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, at larger scale, averaged over six seeded runs.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, a mayor escala, promediados sobre seis ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson. Probabilistic early expiration follows Vattani, Chierichetti and Lowenstein, <em>Optimal Probabilistic Cache Stampede Prevention</em> (VLDB 2015).`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección. El vencimiento anticipado probabilístico sigue a Vattani, Chierichetti y Lowenstein, <em>Optimal Probabilistic Cache Stampede Prevention</em> (VLDB 2015).`),
@@ -122,7 +157,5 @@ body.lit-fill [data-shelf-tag]:has(> [data-shelf-lit]:not([style*="none"])) [dat
   data: {
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

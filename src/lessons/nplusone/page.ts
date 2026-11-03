@@ -1,8 +1,50 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 27 · N+1 queries: a warehouse picker filling one page of orders, one trip per query.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, pickerSvg, cargoSvg, P, GEOMETRY } from "./figure";
+import { average } from "./sim";
+import { int, oneUnder10 } from "../../lib/format";
+
+// What each card shows after a run: the same seeded pages the machine plays, averaged at build time.
+const one = oneUnder10;
+const kb = (b) => b < 1e6 ? (b / 1000).toFixed(b < 1e4 ? 1 : 0) + " KB" : (b / 1e6).toFixed(2) + " MB";
+const base = { mode: "n1", rows: 20, items: 5, nested: false, dist: "region" };
+const RUNS = {
+  distance: () => {
+    const h = average({ ...base, dist: "host" }), z = average({ ...base, dist: "zone" }), r = average(base);
+    return { verdict: t("Same 21 queries and " + kb(r.bytes) + " each time: " + one(h.time) + " ms on the same host, " + one(z.time) + " ms in the same zone, " + one(r.time) + " ms in another zone.",
+        "Las mismas 21 consultas y " + kb(r.bytes) + " cada vez: " + one(h.time) + " ms en el mismo host, " + one(z.time) + " ms en la misma zona, " + one(r.time) + " ms en otra zona."),
+      bars: [[t("Same host", "Mismo host"), h.time / r.time, one(h.time) + " ms"], [t("Same zone", "Misma zona"), z.time / r.time, one(z.time) + " ms"], [t("Other zone", "Otra zona"), 1, one(r.time) + " ms", true]] };
+  },
+  rows: () => {
+    const n20 = average(base), n50 = average({ ...base, rows: 50 }), b20 = average({ ...base, mode: "batch" }), b50 = average({ ...base, mode: "batch", rows: 50 }), top = n50.time;
+    return { verdict: t("N+1: " + one(n20.time) + " → " + one(n50.time) + " ms (" + n20.queries + " → " + n50.queries + " queries). Batched: " + one(b20.time) + " → " + one(b50.time) + " ms, 2 queries both times.",
+        "N+1: " + one(n20.time) + " → " + one(n50.time) + " ms (" + n20.queries + " → " + n50.queries + " consultas). Por lotes: " + one(b20.time) + " → " + one(b50.time) + " ms, 2 consultas las dos veces."),
+      bars: [[t("N+1, 20 orders", "N+1, 20 pedidos"), n20.time / top, one(n20.time) + " ms"], [t("N+1, 50 orders", "N+1, 50 pedidos"), 1, one(n50.time) + " ms", true], [t("Batched, 20 orders", "Por lotes, 20 pedidos"), b20.time / top, one(b20.time) + " ms"], [t("Batched, 50 orders", "Por lotes, 50 pedidos"), b50.time / top, one(b50.time) + " ms", true]] };
+  },
+  nested: () => {
+    const flat = average(base), deep = average({ ...base, nested: true }), batch = average({ ...base, nested: true, mode: "batch" }), top = deep.time;
+    return { verdict: t("With products: " + deep.queries + " queries and " + one(deep.time) + " ms per page (it was " + flat.queries + " queries, " + one(flat.time) + " ms). Batched per level: " + batch.queries + " queries, " + one(batch.time) + " ms.",
+        "Con productos: " + deep.queries + " consultas y " + one(deep.time) + " ms por página (antes eran " + flat.queries + " consultas, " + one(flat.time) + " ms). Por lotes en cada nivel: " + batch.queries + " consultas, " + one(batch.time) + " ms."),
+      bars: [[t("N+1, orders and items", "N+1, pedidos y artículos"), flat.time / top, t(flat.queries + " queries · " + one(flat.time) + " ms", flat.queries + " consultas · " + one(flat.time) + " ms")], [t("N+1, with products", "N+1, con productos"), 1, t(deep.queries + " queries · " + one(deep.time) + " ms", deep.queries + " consultas · " + one(deep.time) + " ms"), true], [t("Batched, with products", "Por lotes, con productos"), batch.time / top, t(batch.queries + " queries · " + one(batch.time) + " ms", batch.queries + " consultas · " + one(batch.time) + " ms")]] };
+  },
+  join: () => {
+    const big = { ...base, rows: 50, items: 50 };
+    const j = average({ ...big, mode: "join" }), b = average({ ...big, mode: "batch" });
+    const js = average({ ...base, mode: "join" }), bs = average({ ...base, mode: "batch" });
+    const top = Math.max(j.time, b.time);
+    return { verdict: t("50 × 50: the JOIN ships " + kb(j.bytes) + " in " + one(j.time) + " ms; batching ships " + kb(b.bytes) + " in " + one(b.time) + " ms. With 20 orders of 5 items the JOIN wins instead: " + one(js.time) + " ms vs " + one(bs.time) + " ms.",
+        "50 × 50: el JOIN envía " + kb(j.bytes) + " en " + one(j.time) + " ms; por lotes se envían " + kb(b.bytes) + " en " + one(b.time) + " ms. Con 20 pedidos de 5 artículos, en cambio, gana el JOIN: " + one(js.time) + " ms vs " + one(bs.time) + " ms."),
+      bars: [[t("JOIN, 1 query", "JOIN, 1 consulta"), j.time / top, one(j.time) + " ms · " + kb(j.bytes)], [t("Batched, 2 queries", "Por lotes, 2 consultas"), b.time / top, one(b.time) + " ms · " + kb(b.bytes), true]] };
+  },
+  parallel: () => {
+    const n = average(base), p = average({ ...base, mode: "par" }), b = average({ ...base, mode: "batch" }), top = n.time;
+    return { verdict: t("One by one: " + one(n.time) + " ms. Five at a time: " + one(p.time) + " ms. Batched: " + one(b.time) + " ms. Queries per page: " + n.queries + ", " + p.queries + " and " + b.queries + ": at 200 pages a second that is " + int(p.queries * 200) + " vs " + (b.queries * 200) + " queries a second.",
+        "Una por una: " + one(n.time) + " ms. Cinco a la vez: " + one(p.time) + " ms. Por lotes: " + one(b.time) + " ms. Consultas por página: " + n.queries + ", " + p.queries + " y " + b.queries + ": a 200 páginas por segundo eso son " + int(p.queries * 200) + " vs " + (b.queries * 200) + " consultas por segundo."),
+      bars: [[t("One by one", "Una por una"), 1, t(one(n.time) + " ms · " + n.queries + " queries", one(n.time) + " ms · " + n.queries + " consultas")], [t("5 at once", "5 a la vez"), p.time / top, t(one(p.time) + " ms · " + p.queries + " queries", one(p.time) + " ms · " + p.queries + " consultas"), true], [t("Batched", "Por lotes"), b.time / top, t(one(b.time) + " ms · " + b.queries + " queries", one(b.time) + " ms · " + b.queries + " consultas")]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -103,7 +145,7 @@ export default defineLesson({
     ],
     note: t("The machine runs 100× slower than real time: one millisecond of the page takes a tenth of a second here. Changing a setting starts a new page.", "La máquina corre 100× más lento que el tiempo real: aquí un milisegundo de la página tarda una décima de segundo. Cambiar un ajuste empieza una página nueva."),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded pages.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho páginas con semilla fija."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded pages.", "Cada experimento cambia una sola cosa. Elige qué esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho páginas con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson: round trips, database time and wire time per query, with a little jitter.`,
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección: viajes de ida y vuelta, tiempo de base de datos y tiempo en la red por consulta, con un poco de variación aleatoria.`),
@@ -118,6 +160,5 @@ export default defineLesson({
     G: GEOMETRY,
     PICKER_SVG: pickerSvg(),
     CARGO_SVG: cargoSvg(),
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
