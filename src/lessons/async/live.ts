@@ -1,21 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The restaurant pass in the browser: runs the model, moves the waiters, fills the rail, the burners and the trays,
-// wires the controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, results).
+// and answers the controls. mount() gets the build-time data from page.ts (geometry) and root, the <wb-lesson>.
 import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L as tr, T } from "../../runtime/wb";
-import { readout, stats, pauseControls, act } from "../../runtime/dom";
+import { L as tr } from "../../runtime/wb";
+import { playPause } from "../../runtime/dom";
 import { createSim } from "./sim";
 
-export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G }, root) {
   const SLOW = 10;
   const AZ = (52 * Math.PI) / 180;   // the figure's azimuth: waiters are re-stacked back to front along it
-  const stage = document.querySelector("[data-pass]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const pots = qa("[data-pot]").sort((a, b) => a.dataset.pot - b.dataset.pot);
   const queued = qa("[data-q]").sort((a, b) => a.dataset.q - b.dataset.q);
   const rail = qa("[data-rail]").sort((a, b) => a.dataset.rail - b.dataset.rail);
@@ -131,7 +130,7 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
       if (hold > 1.6) {
         if (touring) {
           tourAt = (tourAt + 1) % TOUR.length;
-          for (const [name, value] of Object.entries(TOUR[tourAt])) { cfg[name] = value; WB.pressSeg(name, value); }
+          for (const [name, value] of Object.entries(TOUR[tourAt])) { cfg[name] = value; root.press(name, value); }
         }
         restart();
       }
@@ -143,55 +142,28 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
     paint(dt);
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step, onPause: pause.onPause });
   clock.setPaused(clock.paused);
   function set(name, raw) {
     touring = false;
-    if (name === "speed") { cfg.speed = Number(raw); WB.pressSeg(name, raw); return; }
+    if (name === "speed") { cfg.speed = Number(raw); root.press(name, raw); return; }
     cfg[name] = ["mode", "gather"].includes(name) ? raw : Number(raw);
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     restart();
   }
-  WB.onSegments(set);
-  act("restart").addEventListener("click", () => { touring = false; restart(); if (clock.paused) clock.setPaused(false); });
+  root.on("change", (name, value) => set(name, value));
+  const actions = { restart: () => { touring = false; restart(); if (clock.paused) clock.setPaused(false); } };
+  root.on("action", (name) => actions[name]?.());
   pause.bind(clock);
 
-  // ---------- experiments (results computed at build time from the same model) ----------
-  const secs = (ms) => (ms / 1000).toFixed(2) + " s";
-  const RUNS = {
-    threads: () => { const { a, b } = RESULTS.threads; const top = Math.max(a.throughput, b.throughput) * 1.05;
-      const ar = a.throughput.toFixed(0), br = b.throughput.toFixed(0), more = (b.throughput / a.throughput).toFixed(1);
-      return { verdict: T("4 blocking threads: " + ar + " orders/s, done in " + secs(a.total) + ". One async waiter: " + br + " orders/s, done in " + secs(b.total) + " (" + more + "× more).",
-          "4 hilos bloqueantes: " + ar + " pedidos/s, listos en " + secs(a.total) + ". Un mesero async: " + br + " pedidos/s, listos en " + secs(b.total) + " (" + more + "× más)."),
-        bars: [[T("4 blocking threads", "4 hilos bloqueantes"), a.throughput / top, ar + "/s"], [T("1 async waiter", "1 mesero async"), b.throughput / top, br + "/s", true]] }; },
-    cpu: () => { const { a, b } = RESULTS.cpu; const top = Math.max(a.total, b.total) * 1.05;
-      const busy = Math.round(b.busy * 100);
-      return { verdict: T("4 blocking threads: " + secs(a.total) + ". One async waiter: " + secs(b.total) + ". The desk was busy " + busy + "% of the time either way.",
-          "4 hilos bloqueantes: " + secs(a.total) + ". Un mesero async: " + secs(b.total) + ". El mostrador estuvo ocupado el " + busy + "% del tiempo en ambos casos."),
-        bars: [[T("4 blocking threads", "4 hilos bloqueantes"), a.total / top, secs(a.total)], [T("1 async waiter", "1 mesero async"), b.total / top, secs(b.total), true]] }; },
-    loop: () => { const { a, b } = RESULTS.loop; const top = Math.max(a.total, b.total) * 1.05;
-      const x = Math.round(a.total / b.total);
-      return { verdict: T("Await in a loop: " + secs(a.total) + ". Gather: " + secs(b.total) + " (" + x + "× faster).",
-          "Await en un bucle: " + secs(a.total) + ". Reunir: " + secs(b.total) + " (" + x + "× más rápido)."),
-        bars: [[T("Await in a loop", "Await en un bucle"), a.total / top, secs(a.total)], [T("Gather", "Reunir"), b.total / top, secs(b.total), true]] }; },
-    limit: () => { const { a, b } = RESULTS.limit;
-      const ad = Math.round(a.done), bd = Math.round(b.done), am = Math.round(a.maxInFlight);
-      return { verdict: T("All at once: " + ad + " delivered, " + (1000 - ad) + " timed out, up to " + am + " orders in the kitchen. At most 20 in flight: " + bd + " delivered, none timed out, in " + secs(b.total) + ".",
-          "Todos a la vez: " + ad + " entregados, " + (1000 - ad) + " expirados, hasta " + am + " pedidos en la cocina. Como máximo 20 en curso: " + bd + " entregados, ninguno expirado, en " + secs(b.total) + "."),
-        bars: [[T("All at once", "Todos a la vez"), a.done / 1000, T(ad + " ok", ad + " ok")], [T("At most 20", "Máximo 20"), b.done / 1000, T(bd + " ok", bd + " ok"), true]] }; },
-    block: () => { const { a, b } = RESULTS.block; const top = Math.max(a.total, b.total) * 1.05;
-      return { verdict: T("Without the read: " + secs(a.total) + ", dishes picked up within " + Math.round(a.bellP95) + " ms (p95). With a 15 ms blocking read: " + secs(b.total) + ", and ready dishes waited " + secs(b.bellP95) + " at the bell (p95).",
-          "Sin la lectura: " + secs(a.total) + ", platos recogidos en menos de " + Math.round(a.bellP95) + " ms (p95). Con una lectura bloqueante de 15 ms: " + secs(b.total) + ", y los platos listos esperaron " + secs(b.bellP95) + " en la campana (p95)."),
-        bars: [[T("No blocking read", "Sin lectura bloqueante"), a.total / top, secs(a.total)], [T("15 ms blocking read", "Lectura bloqueante de 15 ms"), b.total / top, secs(b.total), true]] }; },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     touring = false;
-    for (const [name, value] of Object.entries(w)) { cfg[name] = value; WB.pressSeg(name, value); }
+    for (const [name, value] of Object.entries(w)) { cfg[name] = value; root.press(name, value); }
     restart();
     if (clock.paused) clock.setPaused(false);
-  } });
+  });
 
   restart();
 }

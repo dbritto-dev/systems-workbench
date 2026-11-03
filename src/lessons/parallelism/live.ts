@@ -1,20 +1,20 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
-// The workshop in the browser: runs the model, moves workers, crates, the shared tool and the press, wires the
-// controls and the experiment cards. mount() gets the build-time data from page.ts (geometry, experiment results).
+// The workshop in the browser: runs the model, moves workers, crates, the shared tool and the press, and answers the
+// controls. mount() gets the build-time data from page.ts (geometry, the experiments' Spanish names) and root, the
+// <wb-lesson>.
 import { translateAlong, solidSvg, slabOf, cylinder, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
-import { L as tr, T } from "../../runtime/wb";
-import { readout, stats as statsStrip, act, pauseControls } from "../../runtime/dom";
+import { L as tr } from "../../runtime/wb";
+import { playPause } from "../../runtime/dom";
 import { PAR, makeShop, amdahl, speedup } from "./sim";
 import { secs1, msFromSecs } from "../../lib/format";
 
-export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMENTS }) {
+export default function mount({ P, G, BASE, PAWN_SVG, EXP_ES }, root) {
   const NS = "http://www.w3.org/2000/svg";
-  const stage = document.querySelector("[data-office]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = statsStrip();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const covers = G.BENCHES.map((b) => q('[data-bench="' + b.i + '"] [data-cover]'));
   const crateRows = [q('[data-crates="0"]'), q('[data-crates="1"]')];
   const pawnRows = [q('[data-pawns="0"]'), q('[data-pawns="1"]')];
@@ -131,61 +131,26 @@ export default function mount({ P, G, BASE, RESULTS, PAWN_SVG, EXP_ES, EXPERIMEN
   }
 
   // ---------- controls ----------
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   const NUMERIC = ["workers", "cores", "serial", "chunks", "speed"];
   function set(name, raw, quiet) {
     cfg[name] = NUMERIC.includes(name) ? Number(raw) : name === "tool" ? raw === true || raw === "true" : raw;
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
     if (name !== "speed" && !quiet) { restart(); showStats(); }
   }
-  WB.onSegments((name, value) => set(name, value));
-  act("reset").addEventListener("click", () => { restart(); showStats(); say(tr("started over", "empezó de nuevo")); });
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: () => { restart(); showStats(); say(tr("started over", "empezó de nuevo")); } };
+  root.on("action", (name) => actions[name]?.());
   pause.bind(loop);
 
-  // ---------- experiments (results computed at build time from the same model) ----------
-  const x1 = (v) => v.toFixed(1) + "×";
-  const RUNS = {
-    amdahl: () => {
-      const { list, limit } = RESULTS.amdahl;
-      const s8 = list[3][1];
-      return { verdict: T("8 workers finished a job " + x1(s8) + " faster, not 8×. Amdahl's limit for 10% serial work on 8 cores is " + x1(limit) + "; handing out and merging chunks takes the rest.",
-          "8 trabajadores terminaron un trabajo " + x1(s8) + " más rápido, no 8×. El límite de Amdahl para un 10% de trabajo serial en 8 núcleos es " + x1(limit) + "; repartir y unir los bloques se lleva el resto."),
-        bars: list.map(([w, s]) => [T(w + (w === 1 ? " worker" : " workers"), w + (w === 1 ? " trabajador" : " trabajadores")), s / 8, x1(s), w === 8]) };
-    },
-    oversub: () => {
-      const { a, b } = RESULTS.oversub, top = Math.max(a, b);
-      const slower = Math.round(100 * (b / a - 1));
-      return { verdict: T("Job time " + secs1(a) + " with 8 workers, " + secs1(b) + " with 16 on the same 8 benches: " + slower + "% slower.",
-          "Tiempo del trabajo: " + secs1(a) + " con 8 trabajadores, " + secs1(b) + " con 16 en los mismos 8 bancos: " + slower + "% más lento."),
-        bars: [[T("8 workers", "8 trabajadores"), a / top, secs1(a)], [T("16 workers", "16 trabajadores"), b / top, secs1(b), true]] };
-    },
-    tool: () => {
-      const { off, on } = RESULTS.tool;
-      return { verdict: T("Speed-up with 8 workers: " + x1(off) + " without the shared tool, " + x1(on) + " with it.",
-          "Aceleración con 8 trabajadores: " + x1(off) + " sin la herramienta compartida, " + x1(on) + " con ella."),
-        bars: [[T("Tool off", "Herramienta apagada"), off / 8, x1(off)], [T("Tool on", "Herramienta encendida"), on / 8, x1(on), true]] };
-    },
-    tiny: () => {
-      const { one, eight, more } = RESULTS.tiny, top = Math.max(one, eight, more);
-      return { verdict: T("A 0.3 s job took " + msFromSecs(one) + " with 1 worker and " + msFromSecs(eight) + " split across 8. Split into 32 chunks it took " + msFromSecs(more) + ".",
-          "Un trabajo de 0.3 s tardó " + msFromSecs(one) + " con 1 trabajador y " + msFromSecs(eight) + " repartido entre 8. Dividido en 32 bloques tardó " + msFromSecs(more) + "."),
-        bars: [[T("1 worker", "1 trabajador"), one / top, msFromSecs(one)], [T("8 workers, 8 chunks", "8 trabajadores, 8 bloques"), eight / top, msFromSecs(eight), true], [T("8 workers, 32 chunks", "8 trabajadores, 32 bloques"), more / top, msFromSecs(more)]] };
-    },
-    uneven: () => {
-      const { even, u8, u32 } = RESULTS.uneven, top = Math.max(even, u8, u32);
-      return { verdict: T("Job time " + secs1(even) + " with even chunks, " + secs1(u8) + " with one heavy chunk, " + secs1(u32) + " once the job is cut into 32 chunks.",
-          "Tiempo del trabajo: " + secs1(even) + " con bloques parejos, " + secs1(u8) + " con un bloque pesado, " + secs1(u32) + " al cortar el trabajo en 32 bloques."),
-        bars: [[T("Even, 8 chunks", "Parejo, 8 bloques"), even / top, secs1(even)], [T("Heavy, 8 chunks", "Pesado, 8 bloques"), u8 / top, secs1(u8), true], [T("Heavy, 32 chunks", "Pesado, 32 bloques"), u32 / top, secs1(u32)]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w, id) => {
     for (const name of ["workers", "cores", "serial", "chunks", "tool", "job", "data"]) set(name, String(w[name]), true);
     restart(); showStats();
     if (loop.paused) loop.setPaused(false);
-    say(tr("watching: " + exp.id, "observando: " + EXP_ES[exp.id]));
-  } });
+    say(tr("watching: " + id, "observando: " + EXP_ES[id]));
+  });
 
   loop.setPaused(loop.paused);
   restart();

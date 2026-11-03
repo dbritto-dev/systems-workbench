@@ -1,12 +1,41 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 15 · Async I/O: a restaurant pass with one desk (the CPU), a ticket rail, a bell and a kitchen.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY } from "./figure";
 import { threadsRun, cpuRun, loopRun, limitRun, blockRun } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the original ran them in the browser).
 const RESULTS = { threads: threadsRun(), cpu: cpuRun(), loop: loopRun(), limit: limitRun(), block: blockRun() };
+
+// What each card shows after a run.
+const secs = (ms) => (ms / 1000).toFixed(2) + " s";
+const RUNS = {
+  threads: () => { const { a, b } = RESULTS.threads; const top = Math.max(a.throughput, b.throughput) * 1.05;
+    const ar = a.throughput.toFixed(0), br = b.throughput.toFixed(0), more = (b.throughput / a.throughput).toFixed(1);
+    return { verdict: t("4 blocking threads: " + ar + " orders/s, done in " + secs(a.total) + ". One async waiter: " + br + " orders/s, done in " + secs(b.total) + " (" + more + "× more).",
+        "4 hilos bloqueantes: " + ar + " pedidos/s, listos en " + secs(a.total) + ". Un mesero async: " + br + " pedidos/s, listos en " + secs(b.total) + " (" + more + "× más)."),
+      bars: [[t("4 blocking threads", "4 hilos bloqueantes"), a.throughput / top, ar + "/s"], [t("1 async waiter", "1 mesero async"), b.throughput / top, br + "/s", true]] }; },
+  cpu: () => { const { a, b } = RESULTS.cpu; const top = Math.max(a.total, b.total) * 1.05;
+    const busy = Math.round(b.busy * 100);
+    return { verdict: t("4 blocking threads: " + secs(a.total) + ". One async waiter: " + secs(b.total) + ". The desk was busy " + busy + "% of the time either way.",
+        "4 hilos bloqueantes: " + secs(a.total) + ". Un mesero async: " + secs(b.total) + ". El mostrador estuvo ocupado el " + busy + "% del tiempo en ambos casos."),
+      bars: [[t("4 blocking threads", "4 hilos bloqueantes"), a.total / top, secs(a.total)], [t("1 async waiter", "1 mesero async"), b.total / top, secs(b.total), true]] }; },
+  loop: () => { const { a, b } = RESULTS.loop; const top = Math.max(a.total, b.total) * 1.05;
+    const x = Math.round(a.total / b.total);
+    return { verdict: t("Await in a loop: " + secs(a.total) + ". Gather: " + secs(b.total) + " (" + x + "× faster).",
+        "Await en un bucle: " + secs(a.total) + ". Reunir: " + secs(b.total) + " (" + x + "× más rápido)."),
+      bars: [[t("Await in a loop", "Await en un bucle"), a.total / top, secs(a.total)], [t("Gather", "Reunir"), b.total / top, secs(b.total), true]] }; },
+  limit: () => { const { a, b } = RESULTS.limit;
+    const ad = Math.round(a.done), bd = Math.round(b.done), am = Math.round(a.maxInFlight);
+    return { verdict: t("All at once: " + ad + " delivered, " + (1000 - ad) + " timed out, up to " + am + " orders in the kitchen. At most 20 in flight: " + bd + " delivered, none timed out, in " + secs(b.total) + ".",
+        "Todos a la vez: " + ad + " entregados, " + (1000 - ad) + " expirados, hasta " + am + " pedidos en la cocina. Como máximo 20 en curso: " + bd + " entregados, ninguno expirado, en " + secs(b.total) + "."),
+      bars: [[t("All at once", "Todos a la vez"), a.done / 1000, t(ad + " ok", ad + " ok")], [t("At most 20", "Máximo 20"), b.done / 1000, t(bd + " ok", bd + " ok"), true]] }; },
+  block: () => { const { a, b } = RESULTS.block; const top = Math.max(a.total, b.total) * 1.05;
+    return { verdict: t("Without the read: " + secs(a.total) + ", dishes picked up within " + Math.round(a.bellP95) + " ms (p95). With a 15 ms blocking read: " + secs(b.total) + ", and ready dishes waited " + secs(b.bellP95) + " at the bell (p95).",
+        "Sin la lectura: " + secs(a.total) + ", platos recogidos en menos de " + Math.round(a.bellP95) + " ms (p95). Con una lectura bloqueante de 15 ms: " + secs(b.total) + ", y los platos listos esperaron " + secs(b.bellP95) + " en la campana (p95)."),
+      bars: [[t("No blocking read", "Sin lectura bloqueante"), a.total / top, secs(a.total)], [t("15 ms blocking read", "Lectura bloqueante de 15 ms"), b.total / top, secs(b.total), true]] }; },
+};
 
 const EXPERIMENTS = [
   {
@@ -122,7 +151,7 @@ export default defineLesson({
       { actions: [["restart", t("New batch", "Nueva tanda")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Acciones") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over six seeded runs of the same model the figure runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados se promedian en seis ejecuciones con semilla del mismo modelo que usa la figura."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over six seeded runs of the same model the figure runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados se promedian en seis ejecuciones con semilla del mismo modelo que usa la figura."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 [data-off]{display:none}
@@ -130,7 +159,5 @@ export default defineLesson({
   data: {
     P,
     G: GEOMETRY,
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

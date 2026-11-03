@@ -1,12 +1,50 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 14 · Parallelism: a workshop with benches (cores), a shared tool and one packing station.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
+import { secs1, msFromSecs } from "../../lib/format";
 import { buildFigure, pawnSvg, P, GEOMETRY } from "./figure";
 import { BASE, amdahlRun, oversubRun, toolRun, tinyRun, unevenRun } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the original ran them in the browser).
 const RESULTS = { amdahl: amdahlRun(), oversub: oversubRun(), tool: toolRun(), tiny: tinyRun(), uneven: unevenRun() };
+
+// What each card shows after a run.
+const x1 = (v) => v.toFixed(1) + "×";
+const RUNS = {
+  amdahl: () => {
+    const { list, limit } = RESULTS.amdahl;
+    const s8 = list[3][1];
+    return { verdict: t("8 workers finished a job " + x1(s8) + " faster, not 8×. Amdahl's limit for 10% serial work on 8 cores is " + x1(limit) + "; handing out and merging chunks takes the rest.",
+        "8 trabajadores terminaron un trabajo " + x1(s8) + " más rápido, no 8×. El límite de Amdahl para un 10% de trabajo serial en 8 núcleos es " + x1(limit) + "; repartir y unir los bloques se lleva el resto."),
+      bars: list.map(([w, s]) => [t(w + (w === 1 ? " worker" : " workers"), w + (w === 1 ? " trabajador" : " trabajadores")), s / 8, x1(s), w === 8]) };
+  },
+  oversub: () => {
+    const { a, b } = RESULTS.oversub, top = Math.max(a, b);
+    const slower = Math.round(100 * (b / a - 1));
+    return { verdict: t("Job time " + secs1(a) + " with 8 workers, " + secs1(b) + " with 16 on the same 8 benches: " + slower + "% slower.",
+        "Tiempo del trabajo: " + secs1(a) + " con 8 trabajadores, " + secs1(b) + " con 16 en los mismos 8 bancos: " + slower + "% más lento."),
+      bars: [[t("8 workers", "8 trabajadores"), a / top, secs1(a)], [t("16 workers", "16 trabajadores"), b / top, secs1(b), true]] };
+  },
+  tool: () => {
+    const { off, on } = RESULTS.tool;
+    return { verdict: t("Speed-up with 8 workers: " + x1(off) + " without the shared tool, " + x1(on) + " with it.",
+        "Aceleración con 8 trabajadores: " + x1(off) + " sin la herramienta compartida, " + x1(on) + " con ella."),
+      bars: [[t("Tool off", "Herramienta apagada"), off / 8, x1(off)], [t("Tool on", "Herramienta encendida"), on / 8, x1(on), true]] };
+  },
+  tiny: () => {
+    const { one, eight, more } = RESULTS.tiny, top = Math.max(one, eight, more);
+    return { verdict: t("A 0.3 s job took " + msFromSecs(one) + " with 1 worker and " + msFromSecs(eight) + " split across 8. Split into 32 chunks it took " + msFromSecs(more) + ".",
+        "Un trabajo de 0.3 s tardó " + msFromSecs(one) + " con 1 trabajador y " + msFromSecs(eight) + " repartido entre 8. Dividido en 32 bloques tardó " + msFromSecs(more) + "."),
+      bars: [[t("1 worker", "1 trabajador"), one / top, msFromSecs(one)], [t("8 workers, 8 chunks", "8 trabajadores, 8 bloques"), eight / top, msFromSecs(eight), true], [t("8 workers, 32 chunks", "8 trabajadores, 32 bloques"), more / top, msFromSecs(more)]] };
+  },
+  uneven: () => {
+    const { even, u8, u32 } = RESULTS.uneven, top = Math.max(even, u8, u32);
+    return { verdict: t("Job time " + secs1(even) + " with even chunks, " + secs1(u8) + " with one heavy chunk, " + secs1(u32) + " once the job is cut into 32 chunks.",
+        "Tiempo del trabajo: " + secs1(even) + " con bloques parejos, " + secs1(u8) + " con un bloque pesado, " + secs1(u32) + " al cortar el trabajo en 32 bloques."),
+      bars: [[t("Even, 8 chunks", "Parejo, 8 bloques"), even / top, secs1(even)], [t("Heavy, 8 chunks", "Pesado, 8 bloques"), u8 / top, secs1(u8), true], [t("Heavy, 32 chunks", "Pesado, 32 bloques"), u32 / top, secs1(u32)]] };
+  },
+};
 
 const EXPERIMENTS = [
   {
@@ -121,15 +159,13 @@ export default defineLesson({
       { actions: [["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Acciones") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over six seeded runs of one job.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados en seis ejecuciones con semilla de un mismo trabajo."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over six seeded runs of one job.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados en seis ejecuciones con semilla de un mismo trabajo."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P,
     G: GEOMETRY,
     BASE,
-    RESULTS,
     PAWN_SVG: pawnSvg(),
     EXP_ES: Object.fromEntries(EXPERIMENTS.map((e) => [e.id, e.title.es])),
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });
