@@ -81,7 +81,7 @@ export const P = k.fitProjection(
   { pad: 16, azimuth: 50 },
 );
 
-const { S, L, D, at, seg } = shorthand(P);
+const { S, L, D, at, seg, faceY } = shorthand(P);
 const label = (x, y, z, text, size = 2.6, face = "y") => faceText(P, [x, y, z], text, { size, tone: "mid", face });
 
 function plate() {
@@ -177,7 +177,7 @@ function cabinets() {
   const wf = WORDS.y + WORDS.d;
   out.push(S(k.slabOf(WORDS, 0, WORDS_H, P, 3, 0.6), { tone: "mid" }));
   const drawers = [];
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) drawers.push(faceRectY(WORDS.x + 2 + c * 9, WORDS.x + 10 + c * 9, wf, 2 + r * 5.6, 6.8 + r * 5.6));
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) drawers.push(faceY(WORDS.x + 2 + c * 9, WORDS.x + 10 + c * 9, wf, 2 + r * 5.6, 6.8 + r * 5.6));
   out.push(L(drawers.join(""), { tone: "lo" }));
   out.push(D([0, 1, 2, 3].flatMap((r) => [0, 1, 2].map((c) => at([WORDS.x + 6 + c * 9, wf, 4.4 + r * 5.6]))), { size: 0.5, tone: "mid" }));
   out.push(faceText(P, [WORDS.x + WORDS.w / 2, wf, WORDS_H - 3.6], t("WORDS", "PALABRAS"), { size: 2.6, tone: "hi", anchor: "middle" }));
@@ -192,7 +192,6 @@ function cabinets() {
   out.push(`<g data-lamp="map">${variants("lamp-map", { off: lamp(P, [MAP.x + MAP.w - 4, MAP.y + 4, MAP_H], { r: 2.2 }), on: lamp(P, [MAP.x + MAP.w - 4, MAP.y + 4, MAP_H], { r: 2.2, lit: true }) }, "off")}</g>`);
   return out.join("");
 }
-const faceRectY = (x0, x1, y, z0, z1) => k.pathOf([[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]].map(at), true);
 
 // The person asking, and the question on a board in front of them.
 function asker() {

@@ -39,8 +39,7 @@ export const P = k.fitProjection(
   { pad: 24, azimuth: 50 },
 );
 
-const { S, L, D, at } = shorthand(P);
-export const faceRect = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
+const { S, L, D, at, faceY } = shorthand(P);
 
 // Warm-up strip on a module's front face, relative to the module's centre x.
 export const WARM_STRIP = { x0: -7, x1: 7, z0: 18, z1: 20.6, y: ROW_Y + MODULE.d / 2 };
@@ -109,7 +108,7 @@ export function moduleSvg({ lit = false, x = 0, y = ROW_Y, z = SOCKET_TOP } = {}
   const plan = { x: x - MODULE.w / 2, y: y - MODULE.d / 2, w: MODULE.w, d: MODULE.d, r: 1.6 };
   const face = y + MODULE.d / 2;
   let out = S(k.slabOf(plan, z, MODULE.h, P, 3, 0.5), { tone: "hi", crease: "lo", lit, inner: L(k.sideSeam(plan, z + 8, P, 3), { tone: "faint" }) });
-  out += L(faceRect(x + WARM_STRIP.x0, x + WARM_STRIP.x1, face, z + WARM_STRIP.z0 - SOCKET_TOP, z + WARM_STRIP.z1 - SOCKET_TOP), { tone: "lo" });
+  out += L(faceY(x + WARM_STRIP.x0, x + WARM_STRIP.x1, face, z + WARM_STRIP.z0 - SOCKET_TOP, z + WARM_STRIP.z1 - SOCKET_TOP), { tone: "lo" });
   out += L([5, 8, 11].map((dz) => k.segment([x - 7, face, z + dz - 2], [x + 7, face, z + dz - 2], P)).join(""), { tone: "faint" });
   out += S(k.slabOf({ x: x - 5, y: y - 2, w: 10, d: 4, r: 1 }, z + MODULE.h, HANDLE_H, P, 2, 0.3), { tone: "mid" });
   out += D([at([x - 7, y - 8, z + MODULE.h]), at([x + 7, y - 8, z + MODULE.h])], { size: 0.35, tone: "lo" });

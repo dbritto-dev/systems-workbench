@@ -5,7 +5,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
-import { t, isT } from "../../../workbench/i18n.mjs";
+import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
@@ -62,13 +62,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const { S, L, at } = shorthand(P);
-const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-// Not draw's text(): the attribute goes after the class and the text isn't escaped, and the figure must stay byte for byte.
-export const text = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) => {
-  if (isT(value)) return `<g data-l="en">${text(x, y, z, value.en, { size, tone, anchor, attr })}</g><g data-l="es">${text(x, y, z, value.es, { size, tone, anchor, attr })}</g>`;
-  return `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
-};
+const { S, L, at, faceY, rawText } = shorthand(P);
 
 // A needle on a vertical face (constant y): frac 0 points left, 1 points right, sweeping over the top.
 export function needle(c, frac, len = 0.82) {
@@ -95,14 +89,14 @@ function board() {
   out.push(S(k.slabOf({ x: BOARD.x + BOARD.w - 9, y: BOARD.y + 0.5, w: 3, d: 3, r: 0.4 }, 0, BOARD_Z[0], P, 2), { tone: "mid", crease: "none" }));
   out.push(S(k.slabOf(BOARD, BOARD_Z[0], BOARD_Z[1] - BOARD_Z[0], P, 2, 0.4), { tone: "hi", crease: "lo" }));
   for (const row of BOARD_ROWS) {
-    out.push(text(BOARD.x + 5, BOARD_FRONT, row.z + 3, row.label, { size: 4, tone: "mid" }));
+    out.push(rawText(BOARD.x + 5, BOARD_FRONT, row.z + 3, row.label, { size: 4, tone: "mid" }));
     const front = BOARD_FRONT + 1.8;
     out.push(S(k.slabOf({ x: HOUSING.x, y: BOARD_FRONT, w: HOUSING.w, d: 1.8, r: 0.4 }, row.z, HOUSING.h, P, 2, 0.3), { tone: "mid" }));
     for (let n = 0; n < WHEELS; n++) {
       const x0 = HOUSING.x + 1.2 + n * WIN + 0.4, x1 = x0 + WIN - 0.8;
       out.push(L(faceY(x0, x1, front, row.z + 1.1, row.z + HOUSING.h - 1.1), { tone: "lo" }));
       out.push(L(k.segment([x0 + 0.6, front, row.z + HOUSING.h - 2], [x1 - 0.6, front, row.z + HOUSING.h - 2], P) + k.segment([x0 + 0.6, front, row.z + 2], [x1 - 0.6, front, row.z + 2], P), { tone: "faint", free: true }));
-      out.push(text((x0 + x1) / 2, front, row.z + 3.1, "0", { size: 4.8, tone: "hi", anchor: "middle", attr: `data-digit="${row.name}${n}"` }));
+      out.push(rawText((x0 + x1) / 2, front, row.z + 3.1, "0", { size: 4.8, tone: "hi", anchor: "middle", attr: `data-digit="${row.name}${n}"` }));
     }
   }
   return out.join("");
@@ -137,7 +131,7 @@ function oven() {
     out.push(`<g data-shelf-tag="${i}" style="display:none">`
       + S(k.slabOf({ x: cx - 3.6, y: OVEN_FRONT, w: 7.2, d: 1, r: 0.4 }, s.z[1] + 0.6, 4.6, P, 2), { tone: "hi", crease: "none" })
       + `<g data-shelf-lit style="display:none">${S(k.slabOf({ x: cx - 3.6, y: OVEN_FRONT, w: 7.2, d: 1, r: 0.4 }, s.z[1] + 0.6, 4.6, P, 2), { tone: "hi", crease: "none", lit: true })}</g>`
-      + text(cx, OVEN_FRONT + 1, s.z[1] + 1.6, "1", { size: 3.4, tone: "hi", anchor: "middle", attr: "data-shelf-num" })
+      + rawText(cx, OVEN_FRONT + 1, s.z[1] + 1.6, "1", { size: 3.4, tone: "hi", anchor: "middle", attr: "data-shelf-num" })
       + `</g>`);
     // The tray in the opening, sticking out a little.
     out.push(`<g data-shelf-tray="${i}" style="display:none">${trayAt(s.x[0] + 2.5, OVEN_FRONT - 6, s.z[0] + 0.4, { w: s.x[1] - s.x[0] - 5, d: 9 })}</g>`);
@@ -179,7 +173,7 @@ function displayCase() {
     // Tray well on top.
     out.push(L(k.planOutline({ x: x - 13, y: TRAY_Y - 9, w: 26, d: 18, r: 1.2 }, CASE_H, P, 3), { tone: "lo" }));
     // The number and the expiry dial on the front.
-    out.push(text(x - 9.5, CASE_FRONT, 12.2, String(i + 1), { size: 4.4, tone: "hi", anchor: "middle" }));
+    out.push(rawText(x - 9.5, CASE_FRONT, 12.2, String(i + 1), { size: 4.4, tone: "hi", anchor: "middle" }));
     out.push(L(k.sideRing([x + 2, DIAL.y, DIAL.z], DIAL.r, "y", P, 28), { tone: "lo" }));
     const ticks = [];
     for (let n = 0; n < 12; n++) { const a = (n / 12) * Math.PI * 2; ticks.push(k.segment([x + 2 + Math.cos(a) * DIAL.r * 0.8, DIAL.y, DIAL.z + Math.sin(a) * DIAL.r * 0.8], [x + 2 + Math.cos(a) * DIAL.r * 0.95, DIAL.y, DIAL.z + Math.sin(a) * DIAL.r * 0.95], P)); }
@@ -196,9 +190,9 @@ function displayCase() {
       + S(k.cylinder(x + 6, TRAY_Y + 1, 0.4, CASE_H + 7, 8, P, 8), { tone: "mid", crease: "none" })
       // the Spanish word is longer, so its flag is wider; the English flag is unchanged
       + `<g data-l="en">` + S(k.slabOf({ x: x + 6.4, y: TRAY_Y + 0.6, w: 9, d: 0.8, r: 0.2 }, CASE_H + 10.5, 4.5, P, 2), { tone: "hi", crease: "none", lit: true })
-      + text(x + 10.9, TRAY_Y + 1.4, CASE_H + 11.6, "OLD", { size: 2.8, tone: "hi", anchor: "middle" }) + `</g>`
+      + rawText(x + 10.9, TRAY_Y + 1.4, CASE_H + 11.6, "OLD", { size: 2.8, tone: "hi", anchor: "middle" }) + `</g>`
       + `<g data-l="es">` + S(k.slabOf({ x: x + 6.4, y: TRAY_Y + 0.6, w: 11.5, d: 0.8, r: 0.2 }, CASE_H + 10.5, 4.5, P, 2), { tone: "hi", crease: "none", lit: true })
-      + text(x + 12.15, TRAY_Y + 1.4, CASE_H + 11.6, "VIEJO", { size: 2.8, tone: "hi", anchor: "middle" }) + `</g>`
+      + rawText(x + 12.15, TRAY_Y + 1.4, CASE_H + 11.6, "VIEJO", { size: 2.8, tone: "hi", anchor: "middle" }) + `</g>`
       + `</g></g>`);
   });
   return out.join("");

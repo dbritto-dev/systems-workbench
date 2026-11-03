@@ -58,9 +58,8 @@ export const P = k.fitProjection(
   { pad: 26, azimuth: 52 },
 );
 
-const { S, L, D, at } = shorthand(P);
+const { S, L, D, at, faceY } = shorthand(P);
 // A closed rectangle on a face of constant y (x along, z up).
-export const faceRect = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -97,7 +96,7 @@ function chest() {
   out.push(L(k.planOutline(k.insetPlan(CHEST, 4), CHEST_TOP + 3, P), { tone: "faint" }));
   out.push(D(k.corners(CHEST, 4).map(([x, y]) => at([x, y, CHEST_TOP + 3])), { size: 0.45 }));
   // Face frame: the recess every drawer sits in.
-  out.push(L(DRAWERS.map((d) => faceRect(d.x0 - 0.8, d.x0 + DRAWER.w + 0.8, FACE_Y, d.z0 - 0.8, d.z0 + DRAWER.h + 0.8)).join(""), { tone: "lo" }));
+  out.push(L(DRAWERS.map((d) => faceY(d.x0 - 0.8, d.x0 + DRAWER.w + 0.8, FACE_Y, d.z0 - 0.8, d.z0 + DRAWER.h + 0.8)).join(""), { tone: "lo" }));
   return out.join("");
 }
 
@@ -107,7 +106,7 @@ export function drawerFront(d) {
   const plan = { x: d.x0, y: FACE_Y, w: DRAWER.w, d: DRAWER.t, r: 0.8 };
   out.push(S(k.slabOf(plan, d.z0, DRAWER.h, P, 2, 0.4), { tone: "hi", crease: "lo" }));
   const front = FACE_Y + DRAWER.t;
-  out.push(L(faceRect(d.x0 + 4, d.x0 + 14, front, d.z0 + 7.5, d.z0 + 10.5), { tone: "lo" }));
+  out.push(L(faceY(d.x0 + 4, d.x0 + 14, front, d.z0 + 7.5, d.z0 + 10.5), { tone: "lo" }));
   const handle = { x: d.cx + 2, y: front, w: 10, d: 1.8, r: 0.6 };
   out.push(S(k.slabOf(handle, d.z0 + 4, 2.4, P, 2), { tone: "mid", crease: "none" }));
   out.push(D([at([d.cx + 3.2, front + 1.8, d.z0 + 5.2]), at([d.cx + 10.8, front + 1.8, d.z0 + 5.2])], { size: 0.35, tone: "lo" }));
@@ -129,14 +128,14 @@ export const TTL_STRIP = { x0: -6.5, x1: 6.5, z0: CARD.h - 6, z1: CARD.h - 3.6 }
 export function ttlBar(slot, share) {
   const y = slot.y + CARD.d;
   if (share <= 0.01) return "";
-  return faceRect(slot.cx + TTL_STRIP.x0, slot.cx + TTL_STRIP.x0 + (TTL_STRIP.x1 - TTL_STRIP.x0) * share, y, slot.z + TTL_STRIP.z0, slot.z + TTL_STRIP.z1);
+  return faceY(slot.cx + TTL_STRIP.x0, slot.cx + TTL_STRIP.x0 + (TTL_STRIP.x1 - TTL_STRIP.x0) * share, y, slot.z + TTL_STRIP.z0, slot.z + TTL_STRIP.z1);
 }
 
 function slotCard(slot, index) {
   const y = slot.y + CARD.d;
   return `<g data-slot="${index}" class="slot" data-empty="">`
     + `<g data-lift>${S(k.slabOf({ x: slot.cx - CARD.w / 2, y: slot.y, w: CARD.w, d: CARD.d, r: 0.3 }, slot.z, CARD.h, P, 2, 0.3), { tone: "hi", crease: "lo" })}`
-    + L(faceRect(slot.cx + TTL_STRIP.x0, slot.cx + TTL_STRIP.x1, y, slot.z + TTL_STRIP.z0, slot.z + TTL_STRIP.z1), { tone: "lo" })
+    + L(faceY(slot.cx + TTL_STRIP.x0, slot.cx + TTL_STRIP.x1, y, slot.z + TTL_STRIP.z0, slot.z + TTL_STRIP.z1), { tone: "lo" })
     + `<path class="ttl-fill" data-ttl d=""/>`
     + L([4, 7, 10].map((dz, i) => k.segment([slot.cx - 6.5, y, slot.z + CARD.h - 6 - dz], [slot.cx - 6.5 + [13, 9, 11][i], y, slot.z + CARD.h - 6 - dz], P)).join(""), { tone: "faint", free: true })
     + `</g></g>`;

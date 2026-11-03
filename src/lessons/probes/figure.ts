@@ -53,8 +53,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 58 },
 );
 
-const { S, L } = shorthand(P);
-const face = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
+const { S, L, faceY } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -69,9 +68,9 @@ function warehouse() {
   out.push(S(k.slabOf(plan, 0, HOUSE.h, P, 4, 0.6), { tone: "mid", inner: L(k.sideSeam(plan, 26, P, 4), { tone: "faint" }) }));
   out.push(S(k.slabOf(k.insetPlan(plan, -1.5), HOUSE.h, 2.4, P, 4, 0.6), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(plan, 4), HOUSE.h + 2.4, P, 4), { tone: "faint" }));
-  out.push(L(face(DOOR.x0 - 1.2, DOOR.x1 + 1.2, front, 0, DOOR.z1 + 1.2), { tone: "lo" }));
-  out.push(L(face(DOOR.x0, DOOR.x1, front, 0, DOOR.z1), { tone: "faint" }));
-  for (const x of [-142, -60, -46, 40, 54, 134]) out.push(L(face(x, x + 8, front, 14, 20), { tone: "lo" }));
+  out.push(L(faceY(DOOR.x0 - 1.2, DOOR.x1 + 1.2, front, 0, DOOR.z1 + 1.2), { tone: "lo" }));
+  out.push(L(faceY(DOOR.x0, DOOR.x1, front, 0, DOOR.z1), { tone: "faint" }));
+  for (const x of [-142, -60, -46, 40, 54, 134]) out.push(L(faceY(x, x + 8, front, 14, 20), { tone: "lo" }));
   // A socket on the front wall for each shop's supply pipe.
   for (const cx of SHOP_X) out.push(L(k.sideRing([cx, front, PIPE.z], 1.6, "y", P, 16), { tone: "lo" }));
   // Stacked stock inside the open door.
@@ -95,8 +94,8 @@ function building(cx) {
   out.push(S(k.slabOf(plan, 0, SHOP.h, P, 3, 0.5), { tone: "mid" }));
   out.push(S(k.slabOf(k.insetPlan(plan, -1), SHOP.h, 2, P, 3, 0.5), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(plan, 3), SHOP.h + 2, P, 3), { tone: "faint" }));
-  out.push(L(face(cx - 5, cx + 5, front, 0, 14), { tone: "lo" }));
-  out.push(L(face(cx - 20, cx - 8, front, 8, 18), { tone: "lo" }));
+  out.push(L(faceY(cx - 5, cx + 5, front, 0, 14), { tone: "lo" }));
+  out.push(L(faceY(cx - 20, cx - 8, front, 8, 18), { tone: "lo" }));
   out.push(L(k.segment([cx - 14, front, 8], [cx - 14, front, 18], P), { tone: "faint" }));
   // The sign's track on the wall, right of the door.
   for (const x of [SIGN.x0 + 0.6, SIGN.x1 - 0.6]) out.push(L(k.segment([cx + x, front, SIGN.rail0], [cx + x, front, SIGN.rail1], P), { tone: "lo" }));
@@ -145,7 +144,7 @@ function crate(x, y, z) {
 function sign(cx, ready) {
   const board = { x: cx + SIGN.x0, y: SHOP.y1, w: SIGN.x1 - SIGN.x0, d: 1.2, r: 0.2 };
   const fy = board.y + board.d, mid = (SIGN.z0 + SIGN.z1) / 2;
-  const inner = L(face(board.x + 1.2, board.x + board.w - 1.2, fy, SIGN.z0 + 1.4, SIGN.z1 - 1.4), { tone: "lo" })
+  const inner = L(faceY(board.x + 1.2, board.x + board.w - 1.2, fy, SIGN.z0 + 1.4, SIGN.z1 - 1.4), { tone: "lo" })
     + L(k.segment([board.x + 2.6, fy, mid], [board.x + board.w - 2.6, fy, mid], P), { tone: "lo" });
   const plateSvg = S(k.slabOf(board, SIGN.z0, SIGN.z1 - SIGN.z0, P, 2, 0.2), { tone: ready ? "hi" : "mid", crease: "lo", lit: ready, inner });
   return `<g data-sign-plate${ready ? "" : ` transform="${k.translateAlong(P, [0, 0, -SIGN_DROP])}"`}>${plateSvg}</g>`;
@@ -173,12 +172,12 @@ function inspector(cx, i, st) {
   out.push(L(k.segment([x0 + 0.8, fy, 8.9], [x1 - 0.8, fy, 8.9], P), { tone: "faint" }));
   for (let n = 0; n < 3; n++) {
     const sx = x0 + 1.3 + n * 4.1;
-    out.push(`<g data-slot="${i}-${n}">${L(face(sx, sx + 3.4, fy, 10, 14), { tone: "lo" })}<path class="tally-fill" data-tally="${i}-${n}" d="${face(sx + 0.5, sx + 2.9, fy, 10.5, 13.5)}"${show(n < st.fails)}/></g>`);
+    out.push(`<g data-slot="${i}-${n}">${L(faceY(sx, sx + 3.4, fy, 10, 14), { tone: "lo" })}<path class="tally-fill" data-tally="${i}-${n}" d="${faceY(sx + 0.5, sx + 2.9, fy, 10.5, 13.5)}"${show(n < st.fails)}/></g>`);
   }
   for (let n = 0; n < PIPS; n++) {
     const sx = x0 + 1.3 + n * 2.45;
-    out.push(L(face(sx, sx + 1.8, fy, 4.2, 7.8), { tone: "lo" }));
-    out.push(`<path class="tally-fill" data-pip="${i}-${n}" d="${face(sx + 0.4, sx + 1.4, fy, 4.6, 7.4)}"${show(n < st.restarts)}/>`);
+    out.push(L(faceY(sx, sx + 1.8, fy, 4.2, 7.8), { tone: "lo" }));
+    out.push(`<path class="tally-fill" data-pip="${i}-${n}" d="${faceY(sx + 0.4, sx + 1.4, fy, 4.6, 7.4)}"${show(n < st.restarts)}/>`);
   }
   const px = cx + INSPECTOR.dx, py = INSPECTOR.y;
   out.push(person(px, py, 1.5, { tone: "mid" }));
@@ -212,7 +211,7 @@ function kiosk(state) {
   const plan = { x: KIOSK.x, y: KIOSK.y, w: KIOSK.w, d: KIOSK.d, r: 2 };
   const out = [S(k.slabOf(plan, 0, KIOSK.h, P, 3, 0.5), { tone: "mid", inner: L(k.sideSeam(plan, 5, P, 3), { tone: "faint" }) })];
   out.push(S(k.slabOf(k.insetPlan(plan, -1), KIOSK.h, 2, P, 3, 0.5), { tone: "mid" }));
-  out.push(L(face(KIOSK.x + 6, KIOSK.x + 20, KIOSK.y + KIOSK.d, 6, 11), { tone: "lo" }));
+  out.push(L(faceY(KIOSK.x + 6, KIOSK.x + 20, KIOSK.y + KIOSK.d, 6, 11), { tone: "lo" }));
   const strip = { x: PEGS[0][0] - 3, y: PEGS[0][1] - 3, w: PEGS[4][0] - PEGS[0][0] + 6, d: 6, r: 1 };
   out.push(L(k.planOutline(strip, KIOSK_TOP, P, 2), { tone: "lo" }));
   PEGS.forEach(([x, y], i) => {

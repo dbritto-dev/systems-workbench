@@ -3,7 +3,7 @@
 // or a seat-booking board. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
-import { t, isT } from "../../../workbench/i18n.mjs";
+import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
@@ -45,14 +45,7 @@ export const P = k.fitProjection(
   { pad: 20, azimuth: 52 },
 );
 
-const { S, L, seg } = shorthand(P);
-const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-// Not draw.text: the attribute sits right after the class here, and the still frame must stay byte-identical.
-const text = (x, y, z, value, opts = {}) => (isT(value)
-  ? `<g data-l="en">${text1(x, y, z, value.en, opts)}</g><g data-l="es">${text1(x, y, z, value.es, opts)}</g>`
-  : text1(x, y, z, value, opts));
-const text1 = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
-  `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
+const { S, L, seg, faceY, rawText } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -71,7 +64,7 @@ function counter(z, name) {
     out.push(L(faceY(x0, x1, front, z + 1.2, z + HOUSING_H - 1.2), { tone: "lo" }));
     // Wheel rims: the drum curving away above and below the digit.
     out.push(L(seg([x0 + 0.6, front, z + HOUSING_H - 2], [x1 - 0.6, front, z + HOUSING_H - 2]) + seg([x0 + 0.6, front, z + 2], [x1 - 0.6, front, z + 2]), { tone: "faint", free: true }));
-    out.push(text((x0 + x1) / 2, front, z + 3.3, "0", { size: 4.6, tone: "hi", anchor: "middle", attr: `data-digit="${name}${n}"` }));
+    out.push(rawText((x0 + x1) / 2, front, z + 3.3, "0", { size: 4.6, tone: "hi", anchor: "middle", attr: `data-digit="${name}${n}"` }));
   }
   return out.join("");
 }
@@ -86,15 +79,15 @@ function ledger() {
   out.push(`<g data-card-lit style="display:none">${S(card, { tone: "hi", crease: "lo", lit: true }).replace('class="iso-solid"', 'class="iso-solid" data-lit-outline')}</g>`);
   const x0 = CARD.x + 3, x1 = CARD.x + CARD.w - 3;
   // Header: title, a rule, and the version stamp at the top right.
-  out.push(text(x0, FACE, 55.6, t("LEDGER · ACCOUNT 7", "LIBRO · CUENTA 7"), { size: 2.8, tone: "lo" }));
+  out.push(rawText(x0, FACE, 55.6, t("LEDGER · ACCOUNT 7", "LIBRO · CUENTA 7"), { size: 2.8, tone: "lo" }));
   out.push(L(seg([x0, FACE, 52.6], [x1, FACE, 52.6]), { tone: "faint", free: true }));
   out.push(S(k.slabOf({ x: -2, y: FACE, w: 11, d: 1, r: 0.3 }, 53.6, 6.6, P, 2, 0.2), { tone: "mid", crease: "none" }));
   out.push(L(faceY(-1.2, 8.2, FACE + 1, 54.4, 59.4), { tone: "lo" }));
-  out.push(text(3.5, FACE + 1, 55.4, "v0", { size: 3.6, tone: "hi", anchor: "middle", attr: "data-version" }));
+  out.push(rawText(3.5, FACE + 1, 55.4, "v0", { size: 3.6, tone: "hi", anchor: "middle", attr: "data-version" }));
   // Two counters with their labels on the card face.
-  out.push(text(x0, FACE, ROWS.balance + 3.6, "BALANCE", { size: 2.9, tone: "mid", attr: 'data-label="balance"' }));
+  out.push(rawText(x0, FACE, ROWS.balance + 3.6, "BALANCE", { size: 2.9, tone: "mid", attr: 'data-label="balance"' }));
   out.push(counter(ROWS.balance, "b"));
-  out.push(text(x0, FACE, ROWS.expected + 3.6, "SHOULD BE", { size: 2.9, tone: "mid", attr: 'data-label="expected"' }));
+  out.push(rawText(x0, FACE, ROWS.expected + 3.6, "SHOULD BE", { size: 2.9, tone: "mid", attr: 'data-label="expected"' }));
   out.push(counter(ROWS.expected, "e"));
   // Ruled entry lines below.
   out.push(L([0, 1, 2, 3].map((n) => seg([x0, FACE, 22 - n * 3.4], [x0 + [44, 30, 50, 22][n], FACE, 22 - n * 3.4])).join(""), { tone: "faint", free: true }));
@@ -173,8 +166,8 @@ export function clerkSvg() {
   out.push(`<g data-slip style="display:none">`
     + S(slip, { tone: "hi", crease: "lo" })
     + `<g data-slip-lit style="display:none">${S(slip, { tone: "hi", crease: "lo", lit: true })}</g>`
-    + text(0, front, 12.6, "0", { size: 4, tone: "hi", anchor: "middle", attr: "data-slip-value" })
-    + text(0, front, 9.4, "", { size: 2.4, tone: "mid", anchor: "middle", attr: "data-slip-note" })
+    + rawText(0, front, 12.6, "0", { size: 4, tone: "hi", anchor: "middle", attr: "data-slip-value" })
+    + rawText(0, front, 9.4, "", { size: 2.4, tone: "mid", anchor: "middle", attr: "data-slip-note" })
     + `</g>`);
   return out.join("");
 }

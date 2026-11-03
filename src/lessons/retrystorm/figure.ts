@@ -62,9 +62,8 @@ export const P = k.fitProjection(
   { pad: 24, azimuth: 50 },
 );
 
-const { S, L, D, at } = shorthand(P);
+const { S, L, D, at, faceY } = shorthand(P);
 const byDepth = (points) => [...points].sort((a, b) => k.depthOf([a[0], a[1], 0], P) - k.depthOf([b[0], b[1], 0], P));
-const faceRect = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H });
@@ -132,8 +131,8 @@ function booth() {
   out.push(S(k.slabOf(BOOTH, 3, BOOTH_TOP - 3, P, 4, 0.6), { tone: "mid", inner: L(k.sideSeam(BOOTH, 14, P, 4), { tone: "faint" }) }));
   // Windows: a frame and a pane per slot, a ledge under each.
   for (const cx of WINDOWS) {
-    out.push(L(faceRect(cx - WIN.w / 2, cx + WIN.w / 2, FACE_Y, WIN.z0, WIN.z1), { tone: "lo" }));
-    out.push(L(faceRect(cx - WIN.w / 2 + 2, cx + WIN.w / 2 - 2, FACE_Y, WIN.z0 + 2, WIN.z1 - 2), { tone: "faint" }));
+    out.push(L(faceY(cx - WIN.w / 2, cx + WIN.w / 2, FACE_Y, WIN.z0, WIN.z1), { tone: "lo" }));
+    out.push(L(faceY(cx - WIN.w / 2 + 2, cx + WIN.w / 2 - 2, FACE_Y, WIN.z0 + 2, WIN.z1 - 2), { tone: "faint" }));
     out.push(S(k.slabOf({ x: cx - 13, y: FACE_Y, w: 26, d: 6, r: 0.8 }, LEDGE_Z - 2.5, 2.5, P, 2, 0.3), { tone: "mid" }));
   }
   // Roof cap and the gauge.

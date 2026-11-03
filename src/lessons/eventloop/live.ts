@@ -5,7 +5,7 @@
 import { iso, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L as tr, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls } from "../../runtime/dom";
+import { readout, stats, show, act, pauseControls, setD } from "../../runtime/dom";
 import { createLoop, advance, resetStats, task, armTimer } from "./sim";
 import { millis } from "../../lib/format";
 
@@ -30,7 +30,6 @@ export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
   const deskBar = q("[data-desk-bar]"), workerBar = q("[data-worker-bar]"), cover = q("[data-worker-cover]");
   const helperBars = [...svg.querySelectorAll("[data-helper-bar]")];
   const bar = (b, share) => share > 0.01 ? WB.faceRectY(P, b.x0, b.x0 + (b.x1 - b.x0) * Math.min(1, share), b.y, b.z0, b.z1) : "";
-  const setD = (el, d) => { if (el.getAttribute("d") !== d) el.setAttribute("d", d); };
 
   const cfg = { job: 50, chunk: false, flood: false, worker: false, delay: 10, speed: 1 };
   let loop = createLoop(cfg, 7);

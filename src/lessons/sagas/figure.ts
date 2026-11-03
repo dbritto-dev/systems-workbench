@@ -6,7 +6,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
-import { t, isT } from "../../../workbench/i18n.mjs";
+import { t } from "../../../workbench/i18n.mjs";
 import { sphereOf } from "../../../workbench/vendor-anatomy/kit/lathe.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -48,16 +48,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 56 },
 );
 
-const { S, L, D, at } = shorthand(P);
-const faceY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
-// A bilingual value (t(en, es)) draws two texts, one per language; the page shows one.
-// Not draw.ts's text(): the attribute goes after the class and the value isn't escaped, and the figure must stay
-// byte-identical to the standalone page's.
-const text = (x, y, z, value, opts = {}) => isT(value)
-  ? `<g data-l="en">${text1(x, y, z, value.en, opts)}</g><g data-l="es">${text1(x, y, z, value.es, opts)}</g>`
-  : text1(x, y, z, value, opts);
-const text1 = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) =>
-  `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
+const { S, L, D, at, faceY, rawText } = shorthand(P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -104,7 +95,7 @@ function station(svc) {
   if (svc !== "M") {
     out.push(S(k.slabOf(BOARD, 0, BOARD_H, P, 2, 0.3), { tone: "hi", crease: "lo" }));
     out.push(L(faceY(BOARD.x + 1.6, BOARD.x + BOARD.w - 1.6, BOARD_FACE, 12, BOARD_H - 7), { tone: "faint" }));
-    out.push(text(0, BOARD_FACE, BOARD_H - 5.2, LABELS[svc], { size: 3.8, tone: "hi", anchor: "middle" }));
+    out.push(rawText(0, BOARD_FACE, BOARD_H - 5.2, LABELS[svc], { size: 3.8, tone: "hi", anchor: "middle" }));
     HOOKS.forEach(([hx, hz], n) => {
       out.push(`<g data-hook="${n}">`);
       out.push(D([at([hx, BOARD_FACE, hz])], { size: 0.55, tone: "mid" }));
@@ -119,7 +110,7 @@ function station(svc) {
     // The name plate: "CORREO" is longer than "EMAIL", so the Spanish plate is wider (the page shows one).
     const plateOf = (w) => S(k.slabOf({ x: -w / 2, y: -50.2, w, d: 1, r: 0.3 }, 12, 6, P, 2), { tone: "mid", crease: "none" });
     out.push(`<g data-l="en">${plateOf(12)}</g><g data-l="es">${plateOf(15)}</g>`);
-    out.push(text(0, -49.2, 13.6, LABELS[svc], { size: 3.4, tone: "hi", anchor: "middle" }));
+    out.push(rawText(0, -49.2, 13.6, LABELS[svc], { size: 3.4, tone: "hi", anchor: "middle" }));
     out.push(`<g data-letter style="display:none">${S(k.slabOf({ x: -3.2, y: -50.6, w: 6.4, d: 0.6, r: 0.2 }, 25, 5, P, 1), { tone: "hi", crease: "lo", lit: false })}</g>`);
   }
   out.push(S(k.slabOf(COUNTER, 0, COUNTER_H, P, 3, 0.5), { tone: "mid" }));
@@ -184,14 +175,14 @@ function scoreboard() {
   const face = SCORE.y + SCORE.d, rowH = (SCORE_Z[1] - SCORE_Z[0] - 4) / SCORE_ROWS.length;
   SCORE_ROWS.forEach((name, i) => {
     const z = SCORE_Z[1] - 2 - (i + 1) * rowH + 1.4;
-    out.push(text(SCORE.x + 3, face, z + 2.4, SCORE_LABELS[name], { size: 3, tone: "mid" }));
+    out.push(rawText(SCORE.x + 3, face, z + 2.4, SCORE_LABELS[name], { size: 3, tone: "mid" }));
     const hx = SCORE.x + SCORE.w - 25, hw = 22;
     out.push(S(k.slabOf({ x: hx, y: face, w: hw, d: 1.6, r: 0.3 }, z, rowH - 1.8, P, 2, 0.2), { tone: "mid" }));
     const win = (hw - 1.6) / 3;
     for (let n = 0; n < 3; n++) {
       const x0 = hx + 0.8 + n * win + 0.4, x1 = x0 + win - 0.8;
       out.push(L(faceY(x0, x1, face + 1.6, z + 0.8, z + rowH - 2.6), { tone: "lo" }));
-      out.push(text((x0 + x1) / 2, face + 1.6, z + 1.7, "0", { size: 4, tone: "hi", anchor: "middle", attr: `data-digit="${name}${n}"` }));
+      out.push(rawText((x0 + x1) / 2, face + 1.6, z + 1.7, "0", { size: 4, tone: "hi", anchor: "middle", attr: `data-digit="${name}${n}"` }));
     }
   });
   return out.join("");

@@ -28,6 +28,11 @@ export function setText(el: Element, value: unknown) {
   if (el.textContent !== text) el.textContent = text;
 }
 
+/** Set a path's d, touching the DOM only when it changes. */
+export function setD(el: Element, d: string) {
+  if (el.getAttribute("d") !== d) el.setAttribute("d", d);
+}
+
 /** Light (or unlight) every solid in a group: the one lit accent of the figure. */
 export const setLit = (g: Element, on: boolean) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", on));
 

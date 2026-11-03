@@ -6,7 +6,7 @@ import { iso, translateAlong, lineOnTop } from "../../../workbench/vendor-anatom
 import { digitPath, counterCells } from "../../../workbench/digits.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T, digitsOf } from "../../runtime/wb";
-import { readout, stats, act, pauseControls } from "../../runtime/dom";
+import { readout, stats, act, pauseControls, setD } from "../../runtime/dom";
 import { one, int } from "../../lib/format";
 import { meanBy } from "../../lib/stats";
 import { makeLive, seriesBytes, LIVE_RATE, BYTES_PER_SERIES } from "./sim";
@@ -20,7 +20,6 @@ export default function mount({ P, G, TOK, RESULTS, EXPERIMENTS }) {
   const say = readout();
   const NS = "http://www.w3.org/2000/svg";
   // Set a path's d only when it changes.
-  const setD = (el, d) => { if (el.getAttribute("d") !== d) el.setAttribute("d", d); };
 
   const holes = Array.from({ length: G.HOLES }, (_, i) => q('[data-hole="' + i + '"]'));
   const bins = Array.from({ length: G.BIN_LEVELS }, (_, i) => q('[data-bin="' + (i + 1) + '"]'));

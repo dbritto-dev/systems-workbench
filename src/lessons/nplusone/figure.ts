@@ -7,7 +7,7 @@
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
 import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
-import { t, isT } from "../../../workbench/i18n.mjs";
+import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { crateLevel } from "./sim";
 
@@ -56,12 +56,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const { S, L, D, at, text } = shorthand(P);
-// Words on the front faces: a bilingual value draws one <text> per language (static words only). Kept rather than
-// the shared text(): its markup (attribute order, spacing) is what the published figure has.
-const faceTextY = (x, y, z, value, { size = 3, tone = "mid", anchor = "start", attr = "" } = {}) => isT(value)
-  ? `<g data-l="en">${faceTextY(x, y, z, value.en, { size, tone, anchor, attr })}</g><g data-l="es">${faceTextY(x, y, z, value.es, { size, tone, anchor, attr })}</g>`
-  : `<text class="iso-face-text" ${attr} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}" text-anchor="${anchor}">${value}</text>`;
+const { S, L, D, at, text, rawText } = shorthand(P);
 const topText = (x, y, z, value, { size = 3, tone = "lo", anchor = "middle" } = {}) => text(x, y, z, value, { face: "top", size, tone, anchor });
 
 // A counter: one window per wheel with its printed digit.
@@ -147,7 +142,7 @@ function table() {
   out.push(S(k.slabOf(k.insetPlan(t, 2), 0, 2, P, 3), { tone: "lo" }));
   out.push(S(k.slabOf(t, 2, TABLE_H - 2, P, 3, 0.5), {
     tone: "mid",
-    inner: faceTextY(t.x + 4, FRONT, 14.4, QUERIES_LABEL, { size: 3.4, tone: "mid" }) + faceTextY(t.x + 4, FRONT, 4.8, "MS", { size: 3.4, tone: "mid" }),
+    inner: rawText(t.x + 4, FRONT, 14.4, QUERIES_LABEL, { size: 3.4, tone: "mid" }) + rawText(t.x + 4, FRONT, 4.8, "MS", { size: 3.4, tone: "mid" }),
   }));
   out.push(L(k.planOutline(k.insetPlan(t, 1.6), TOP, P), { tone: "faint" }));
   // Ticket slots, back row first.
@@ -188,7 +183,7 @@ function crate() {
   out.push(S(k.slabOf({ x, y, w, d, r: 0.6 }, TOP, 0.8, P, 2), { tone: "lo" }));
   const back = { x, y, w, d: wall, r: 0.3 };
   const marks = CRATE_LEVELS.map(([b]) => { const zz = TOP + 0.8 + crateLevel(b) * (h - 1.6); return k.segment([x + 1.5, y + wall, zz], [x + w - 1.5, y + wall, zz], P); }).join("");
-  const labels = CRATE_LEVELS.map(([b, label]) => faceTextY(x + w - 2, y + wall, TOP + 1.4 + crateLevel(b) * (h - 1.6), label, { size: 2.3, tone: "lo", anchor: "end" })).join("");
+  const labels = CRATE_LEVELS.map(([b, label]) => rawText(x + w - 2, y + wall, TOP + 1.4 + crateLevel(b) * (h - 1.6), label, { size: 2.3, tone: "lo", anchor: "end" })).join("");
   out.push(S(k.slabOf(back, TOP, h, P, 2), { tone: "hi", crease: "lo", inner: L(marks, { tone: "lo" }) + labels }));
   out.push(S(k.slabOf({ x, y, w: wall, d, r: 0.3 }, TOP, h * 0.55, P, 2), { tone: "hi", crease: "lo" }));
   out.push(`<g data-fill>${S(k.slabOf({ x: x + wall + 0.4, y: y + wall + 0.4, w: w - 2 * wall - 0.8, d: d - 2 * wall - 0.8, r: 0.4 }, TOP + 0.8, 1, P, 2), { tone: "hi", crease: "lo" })}</g>`);

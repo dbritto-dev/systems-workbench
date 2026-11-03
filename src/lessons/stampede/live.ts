@@ -4,7 +4,7 @@
 import { iso, pathOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls } from "../../runtime/dom";
+import { readout, stats, show, act, pauseControls, setD } from "../../runtime/dom";
 import { one, n0 } from "../../lib/format";
 import { makeSim, LIVE } from "./sim";
 
@@ -18,7 +18,6 @@ export default function mount({ P, G, RESULTS, EXPERIMENTS }) {
   const say = readout();
   const stat = stats();
   // Set a path's d only when it changes.
-  const setD = (el, d) => { if (el.getAttribute("d") !== d) el.setAttribute("d", d); };
   const at = (p) => iso(p, P);
 
   const trays = Array.from({ length: G.KEYS }, (_, i) => ({ loaf: q('[data-loaf="' + i + '"]'), old: q('[data-loaf="' + i + '"] [data-old]'), dial: q('[data-dial="' + i + '"]'), fill: q('[data-dial-fill="' + i + '"]') }));

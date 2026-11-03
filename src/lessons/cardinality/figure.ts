@@ -90,7 +90,7 @@ function counter(c, name, value = 0) {
 }
 // Text printed on a front face (constant y), reading left to right. text may be t(en, es): one <text> per language.
 // Not draw's text(): the extra attribute goes after the class and the text isn't escaped, and the figure must stay
-// byte for byte.
+// byte for byte. Not rawText() either: these words have no text-anchor attribute.
 const printed1 = (x, y, z, text, size, tone, extra) =>
   `<text class="iso-face-text" ${extra} data-tone="${tone}" transform="${k.sideMatrix([x, y], z, P, "left")}" font-size="${size}">${text}</text>`;
 const printed = (x, y, z, text, size = 2.5, tone = "mid", extra = "") => (isT(text)

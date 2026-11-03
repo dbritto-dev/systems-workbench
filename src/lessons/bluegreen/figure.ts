@@ -33,8 +33,7 @@ export const P = k.fitProjection(
   WIDTH, HEIGHT, { pad: 22, azimuth: 52 },
 );
 
-const { S, L, D, at } = shorthand(P);
-const faceRectY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
+const { S, L, D, at, faceY } = shorthand(P);
 const faceRectX = (x, y0, y1, z0, z1) => k.faceRectX(P, x, y0, y1, z0, z1);
 
 function plate() {
@@ -158,8 +157,8 @@ function cabinet() {
   out.push(S(k.slabOf({ x: CAB.x + 10, y: fy, w: 30, d: 1, r: 0.3 }, 36, 12, P, 2), { tone: "hi", crease: "none" }));
   out.push(D([at([CAB.x + 12, fy + 1, 46]), at([CAB.x + 38, fy + 1, 46]), at([CAB.x + 12, fy + 1, 38]), at([CAB.x + 38, fy + 1, 38])], { size: 0.4, tone: "lo" }));
   out.push(`<text data-schema class="iso-face-text" data-tone="mid" transform="${k.sideMatrix([CAB.x + 25, fy + 1], 40.5, P, "left")}" font-size="4.2" text-anchor="middle">SCHEMA v1</text>`);
-  out.push(L(faceRectY(CAB.x + 10, CAB.x + 40, fy + 1, 26, 32), { tone: "lo" }));
-  out.push(L(faceRectY(CAB.x + 10, CAB.x + 40, fy + 1, 12, 18), { tone: "lo" }));
+  out.push(L(faceY(CAB.x + 10, CAB.x + 40, fy + 1, 26, 32), { tone: "lo" }));
+  out.push(L(faceY(CAB.x + 10, CAB.x + 40, fy + 1, 12, 18), { tone: "lo" }));
   return out.join("");
 }
 

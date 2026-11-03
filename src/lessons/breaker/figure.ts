@@ -54,8 +54,7 @@ export const P = k.fitProjection(
   { pad: 24, azimuth: 52 },
 );
 
-const { S, L, D, at, text } = shorthand(P);
-export const faceRectY = (x0, x1, y, z0, z1) => k.faceRectY(P, x0, x1, y, z0, z1);
+const { S, L, D, at, text, faceY } = shorthand(P);
 // A circle on a face of constant y.
 const faceCircle = (x, y, z, r, steps = 20) => k.sideRing([x, y, z], r, "y", P, steps);
 
@@ -94,10 +93,10 @@ function supplier() {
   // Selector banks on the face: rows of small jacks, the exchange's own lines.
   const banks = [];
   for (const z of [42, 48]) for (let i = 0; i < 6; i++) banks.push(faceCircle(74 + i * 4, face, z, 1.1, 12));
-  out.push(L(faceRectY(71, 97, face, 38.5, 51.5), { tone: "lo" }), L(banks.join(""), { tone: "lo" }));
+  out.push(L(faceY(71, 97, face, 38.5, 51.5), { tone: "lo" }), L(banks.join(""), { tone: "lo" }));
   const g = GAUGE;
-  out.push(L(faceRectY(g.x0 - 1.2, g.x1 + 1.2, g.y, g.z0 - 1.2, g.z1 + 1.2), { tone: "lo" }));
-  out.push(L(faceRectY(g.x0, g.x1, g.y, g.z0, g.z1), { tone: "faint" }));
+  out.push(L(faceY(g.x0 - 1.2, g.x1 + 1.2, g.y, g.z0 - 1.2, g.z1 + 1.2), { tone: "lo" }));
+  out.push(L(faceY(g.x0, g.x1, g.y, g.z0, g.z1), { tone: "faint" }));
   const capZ = g.z0 + (g.z1 - g.z0) * (g.cap / g.full);
   out.push(L(k.segment([g.x0, g.y, capZ], [g.x1, g.y, capZ], P), { tone: "mid" }));
   out.push(`<path class="gauge-fill" data-gauge d=""/>`);
@@ -114,12 +113,12 @@ function panel() {
   out.push(S(k.slabOf(k.insetPlan(PANEL, -1.8), PANEL_TOP, 3, P, 3, 0.6), { tone: "mid" }));
   out.push(D(k.corners(PANEL, 4).map(([x, y]) => at([x, y, PANEL_TOP + 3])), { size: 0.4 }));
   // Intake lamps, the overflow lamp, the local row and the trunk row, each on its own plate.
-  out.push(L(faceRectY(-147, -110, FACE, 56.5, 65.5) + faceRectY(-105, -95, FACE, 56.5, 65.5), { tone: "lo" }));
+  out.push(L(faceY(-147, -110, FACE, 56.5, 65.5) + faceY(-105, -95, FACE, 56.5, 65.5), { tone: "lo" }));
   out.push(L([...LAMPS, OVERFLOW].map((l) => faceCircle(l.x, FACE, l.z, 3, 24)).join(""), { tone: "mid" }));
   LAMPS.forEach((l, i) => out.push(`<path class="lamp" data-lamp="${i}" d="${faceCircle(l.x, FACE, l.z, 2.1, 20)}"/>`));
   out.push(`<path class="lamp" data-overflow d="${faceCircle(OVERFLOW.x, FACE, OVERFLOW.z, 2.1, 20)}"/>`);
-  out.push(L(faceRectY(-148, 12, FACE, ROWS.local - 5, ROWS.local + 5), { tone: "lo" }));
-  out.push(L(faceRectY(SHUTTER.x0, SHUTTER.x1, FACE, SHUTTER.z0, SHUTTER.z1), { tone: "lo" }));
+  out.push(L(faceY(-148, 12, FACE, ROWS.local - 5, ROWS.local + 5), { tone: "lo" }));
+  out.push(L(faceY(SHUTTER.x0, SHUTTER.x1, FACE, SHUTTER.z0, SHUTTER.z1), { tone: "lo" }));
   const jacks = [];
   for (const o of OPS) for (const z of [ROWS.local, ROWS.trunk]) jacks.push(faceCircle(o.cx, FACE, z, 2.2, 18));
   out.push(L(jacks.join(""), { tone: "mid" }));
@@ -143,7 +142,7 @@ function shelf() {
   out.push(L(k.planOutline(k.insetPlan(SHELF, 3), SHELF_TOP, P), { tone: "faint" }));
   const front = SHELF.y + SHELF.d;
   OPS.forEach((o) => {
-    out.push(L(faceRectY(o.cx - 8, o.cx + 8, front, 6, 10), { tone: "lo" }));
+    out.push(L(faceY(o.cx - 8, o.cx + 8, front, 6, 10), { tone: "lo" }));
     out.push(L(k.ring(o.cx, HOLE_Y, 2.6, SHELF_TOP, P, 20), { tone: "mid" }) + L(k.ring(o.cx, HOLE_Y, 1.5, SHELF_TOP, P, 16), { tone: "lo" }));
     // Wait timer: one turn is 8 s on the line.
     out.push(S(k.cylinder(o.cx, DIAL.y, DIAL.r, SHELF_TOP, 1.4, P, 36, 0.3), { tone: "hi", crease: "lo" }));

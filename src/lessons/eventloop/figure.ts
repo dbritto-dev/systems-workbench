@@ -85,8 +85,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 52 },
 );
 
-const { S, L } = shorthand(P);
-const top = (a, b, z) => k.lineOnTop(a, b, z, P);
+const { S, L, top } = shorthand(P);
 
 // ---------- a pawn: one person ----------
 function pawn(x, y, z, s, tone = "mid") {
