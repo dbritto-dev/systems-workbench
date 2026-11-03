@@ -12,12 +12,14 @@ import type { Bi } from "../i18n";
 
 export type { Bi };
 
-/** A control under the figure. `for` tags it (data-for) so the live code can show one group at a time;
- *  `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (.btn.primary). */
+/** A control under the figure: a <wb-control> row. `for` puts it in a group, so the live code can show one group at a
+ *  time (root.controls.showFor(group)); `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (.btn.primary). */
 export type Control = (
   | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number; /** Options switch on and off independently; value: the ones on at first, space-separated. */ multiple?: boolean }
   | { speed: true; options?: [value: number, label: string][]; value?: number }
   | { actions: [act: string, label: Bi, opts?: { primary?: boolean }][]; label: Bi }
+  /** A text box: <input data-input="name">; live code listens to it with root.$('[data-input="name"]'). */
+  | { input: string; label: Bi; placeholder?: Bi; aria?: Bi; maxLength?: number }
 ) & { for?: string; hidden?: boolean };
 
 export interface Plate {

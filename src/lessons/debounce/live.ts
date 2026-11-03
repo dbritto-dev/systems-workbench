@@ -11,7 +11,7 @@ import { lerpVec, smoothstep } from "../../lib/tween";
 import { msFromSecs } from "../../lib/format";
 import { makeSim } from "./sim";
 
-export default function mount({ P, G, PAWN, TICKET_SVG, DOT_SVG, PEG_SVG, POST_SVG, TYPE }, root) {
+export default function mount({ P, G, PAWN, TICKET_SVG, DOT_SVG, PEG_SVG, POST_SVG }, root) {
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const say = (text) => root.figure.say(text);
@@ -255,18 +255,8 @@ export default function mount({ P, G, PAWN, TICKET_SVG, DOT_SVG, PEG_SVG, POST_S
   const actions = { reset: () => restart() };
   root.on("action", (name) => actions[name]?.());
 
-  // The "Type here" box: Panel has no text input, so it goes in here, between the settings and the speed control.
-  const typeBox = document.createElement("div");
-  typeBox.className = "control";
-  const typeLabel = document.createElement("span");
-  typeLabel.textContent = L(TYPE.label);
-  const typeIn = document.createElement("input");
-  Object.assign(typeIn, { className: "type-in", type: "text", placeholder: L(TYPE.placeholder), autocomplete: "off", spellcheck: false, maxLength: 40 });
-  typeIn.setAttribute("data-type", "");
-  typeIn.setAttribute("aria-label", L(TYPE.aria));
-  typeBox.append(typeLabel, typeIn);
-  const speedBox = root.$('[data-set="speed"]')?.closest(".control");
-  if (speedBox) speedBox.before(typeBox); else root.$(".controls").append(typeBox);
+  // The "Type here" box (a text control in page.ts): what you type feeds the machine.
+  const typeIn = root.$('[data-input="type"]');
   typeIn.addEventListener("focus", () => { if (cfg.input !== "live") set("input", "live"); });
   typeIn.addEventListener("input", () => {
     if (cfg.input !== "live") set("input", "live");

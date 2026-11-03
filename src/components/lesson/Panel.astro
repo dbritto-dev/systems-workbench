@@ -1,7 +1,7 @@
 ---
-// Under the figure: the stats strip <wb-stats> (<b data-s="key">, written by the live code) and the controls:
-// segmented choices <wb-seg> (the speed control is one), and rows of action buttons <wb-actions>, one of them maybe
-// marked primary. The elements are in src/elements/wb-controls.ts.
+// Under the figure: the stats strip <wb-stats>, one <wb-stat> per figure (written by the live code), and the controls
+// <wb-controls>, one <wb-control> row each: a segmented choice <wb-seg> (the speed control is one), a row of action
+// buttons <wb-actions> (one maybe marked primary), or a text box. The elements are in src/elements/wb-controls.ts.
 import { pick, type Locale } from "../../i18n";
 import type { Control } from "../../lessons/types";
 
@@ -17,28 +17,36 @@ const segs = controls.map((c) =>
 ---
 <div class="panel">
   <wb-stats class="stats" data-stats>
-    {stats.map(([key, label, initial = "0"]) => <div class="stat"><b data-s={key}>{L(initial)}</b><span>{L(label)}</span></div>)}
+    {stats.map(([key, label, initial = "0"]) => <wb-stat class="stat" key={key}><b data-s={key}>{L(initial)}</b><span>{L(label)}</span></wb-stat>)}
   </wb-stats>
-  <div class="controls">
+  <wb-controls class="controls">
     {controls.map((c, i) => {
       const s = segs[i];
       if (s) return (
-        <div class="control" data-for={c.for} hidden={c.hidden}><span>{s.label}</span>
+        <wb-control class="control" for={c.for} hidden={c.hidden || undefined}><span>{s.label}</span>
           <wb-seg class="seg" role="group" aria-label={s.label} name={s.name} value={s.multiple ? undefined : String(s.value)} multiple={s.multiple || undefined}>
             {s.options.map(([value, text]) => <button type="button" data-set={s.name} data-value={String(value)} aria-pressed={String(s.multiple ? String(s.value).split(" ").includes(String(value)) : String(value) === String(s.value))}>{L(text)}</button>)}
           </wb-seg>
-        </div>
+        </wb-control>
       );
       if ("actions" in c) return (
-        <div class="control" data-for={c.for} hidden={c.hidden}><span>{L(c.label)}</span>
+        <wb-control class="control" for={c.for} hidden={c.hidden || undefined}><span>{L(c.label)}</span>
           <wb-actions class="actions">{c.actions.map(([act, text, opts]) => <button class={opts?.primary ? "btn primary" : "btn"} type="button" data-act={act}>{L(text)}</button>)}</wb-actions>
-        </div>
+        </wb-control>
+      );
+      if ("input" in c) return (
+        <wb-control class="control" for={c.for} hidden={c.hidden || undefined}><span>{L(c.label)}</span>
+          <input class="text-in" type="text" data-input={c.input} placeholder={c.placeholder && L(c.placeholder)} aria-label={c.aria && L(c.aria)} maxlength={c.maxLength} autocomplete="off" spellcheck="false" />
+        </wb-control>
       );
     })}
-  </div>
+  </wb-controls>
   {note && <p class="note panel-note">{L(note)}</p>}
 </div>
 <style is:global>
   .panel-note { padding: 0 12px 12px; margin: 0; }
   .controls > .control[hidden] { display: none; }
+  wb-stat, wb-control { display: block; }
+  .text-in { font: inherit; font-size: 13px; padding: 6px 8px; min-width: 0; width: 100%; max-width: 280px; background: transparent; color: inherit; border: 1px solid var(--anatomy-lo); border-radius: 0; }
+  .text-in:focus-visible { outline: 2px solid var(--anatomy-strong); outline-offset: 1px; }
 </style>

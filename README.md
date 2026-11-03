@@ -83,8 +83,8 @@ src/
   lib/                      shared code: random, stats, tween, format, draw (figure shorthands), the lesson list,
                             the search engine (BM25F) and its index
   elements/                 the custom elements every page is built from: wb-lesson (loads a lesson's live code),
-                            wb-figure, wb-stats, wb-seg, wb-actions, wb-experiment; site-switches,
-                            lesson-collection, lesson-preview
+                            wb-figure, wb-stats + wb-stat, wb-controls + wb-control, wb-seg, wb-actions,
+                            wb-experiment; site-switches, lesson-collection, lesson-preview
   runtime/                  shared browser code for live code: wb.ts (loop, counters, dials, meters, L/T),
                             dom.ts (show, setText, setD, setLit, playPause)
   i18n/                     locales, interface strings (ui.ts), localize() for figures drawn in both languages

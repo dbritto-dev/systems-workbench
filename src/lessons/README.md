@@ -21,7 +21,8 @@ elements give it behaviour. `root`, the `<wb-lesson>`, is all a lesson's live co
 export default function mount({ P, G }, root) {
   const { stage, svg } = root.figure;              // <wb-figure>: the stage and the machine's SVG
   const say = (text) => root.figure.say(text);     // the readout corner
-  root.stat("done", 12);                           // <wb-stats>
+  root.stat("done", 12);                           // the <wb-stat key="done"> in <wb-stats>
+  root.controls.showFor("lookups");                // <wb-controls>: show the rows for one group
   root.on("change", (name, value) => { … });       // a <wb-seg> option was clicked (pressed for you)
   root.press("speed", 3);                          // press an option without an event
   const actions = { burst: () => { … } };
@@ -33,8 +34,9 @@ export default function mount({ P, G }, root) {
 }
 ```
 
-The cards (`<wb-experiment>`) run without the lesson's code: their results come from the build. A segment with
-`multiple: true` in `page.ts` switches options on and off independently. Look up anything else with
+The cards (`<wb-experiment>`) run without the lesson's code: their results come from the build. Each control in
+`page.ts` is a `<wb-control>` row: a segment (`seg`; `multiple: true` switches options on and off independently),
+buttons (`actions`) or a text box (`input`, read with `root.$('[data-input="name"]')`). Look up anything else with
 `root.$(selector)` / `root.$$(selector)`, never `document`.
 
 ## Shared code: import it, don't copy it

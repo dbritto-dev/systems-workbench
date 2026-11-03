@@ -1,6 +1,10 @@
 // The controls under a lesson's figure (markup from components/lesson/Panel.astro):
 //
-//   <wb-stats>   the stats strip. stats.set("done", 12) writes <b data-s="done">, touching the DOM only on change.
+//   <wb-stats>   the stats strip: one <wb-stat key="done"> per figure. stats.set("done", 12) or stat.set(12) writes
+//                its value, touching the DOM only on change.
+//   <wb-controls> the controls area: one <wb-control> per row (a label and a segment, buttons or a text box).
+//                controls.showFor("lookups") shows the rows with for="lookups" and hides the other rows that have a
+//                for= (rows without one always show).
 //   <wb-seg name="speed" value="1">   a segmented choice. A click sends a "wb-change" event, { name, value, button,
 //                pressed }, which bubbles to the lesson; unless a listener cancels it (preventDefault) or changes
 //                the pressed options itself, the clicked option becomes the pressed one. seg.value = "3" presses an
@@ -15,13 +19,32 @@
 export interface ChangeDetail { name: string; value: string; button: HTMLButtonElement; pressed: boolean }
 export interface ActionDetail { name: string; button?: HTMLButtonElement }
 
-export class WbStats extends HTMLElement {
-  #els: Record<string, HTMLElement> | null = null;
-  set(key: string, value: unknown) {
-    this.#els ??= Object.fromEntries([...this.querySelectorAll<HTMLElement>("[data-s]")].map((el) => [el.dataset.s!, el]));
-    const el = this.#els[key], text = String(value);
+export class WbStat extends HTMLElement {
+  get key() { return this.getAttribute("key") ?? ""; }
+  get value() { return this.querySelector("b")?.textContent ?? ""; }
+  set(value: unknown) {
+    const el = this.querySelector("b"), text = String(value);
     if (el && el.textContent !== text) el.textContent = text;
   }
+}
+
+export class WbStats extends HTMLElement {
+  #byKey: Map<string, WbStat> | null = null;
+  stat(key: string) {
+    this.#byKey ??= new Map([...this.querySelectorAll<WbStat>("wb-stat")].map((s) => [s.key, s]));
+    return this.#byKey.get(key);
+  }
+  set(key: string, value: unknown) { this.stat(key)?.set(value); }
+}
+
+export class WbControl extends HTMLElement {
+  /** The group this row belongs to (for="…"), shown by controls.showFor(group). */
+  get for() { return this.getAttribute("for"); }
+}
+
+export class WbControls extends HTMLElement {
+  get rows() { return [...this.querySelectorAll<WbControl>(":scope > wb-control")]; }
+  showFor(group: string) { this.rows.forEach((r) => { if (r.for !== null) r.hidden = r.for !== group; }); }
 }
 
 export class WbSeg extends HTMLElement {
@@ -67,13 +90,19 @@ export class WbActions extends HTMLElement {
 }
 
 const define = (name: string, ctor: CustomElementConstructor) => { if (!customElements.get(name)) customElements.define(name, ctor); };
+define("wb-stat", WbStat);
 define("wb-stats", WbStats);
+define("wb-control", WbControl);
+define("wb-controls", WbControls);
 define("wb-seg", WbSeg);
 define("wb-actions", WbActions);
 
 declare global {
   interface HTMLElementTagNameMap {
+    "wb-stat": WbStat;
     "wb-stats": WbStats;
+    "wb-control": WbControl;
+    "wb-controls": WbControls;
     "wb-seg": WbSeg;
     "wb-actions": WbActions;
   }

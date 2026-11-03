@@ -91,7 +91,7 @@ export default function mount({ P, G, COURIER_SVG, DEFAULT_HOW }, root) {
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(loop);
 
-  function showJob(job) { root.$$("[data-for]").forEach((el) => { el.hidden = el.dataset.for !== job; }); }
+  const showJob = (job) => root.controls.showFor(job);
   function set(name, raw, quiet) {
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }

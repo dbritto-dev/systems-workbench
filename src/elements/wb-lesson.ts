@@ -5,7 +5,8 @@
 //
 // What live code gets from root:
 //   root.figure                  <wb-figure>: .stage, .svg, .say(text)
-//   root.stat(key, value)        a stat in the strip under the figure
+//   root.stat(key, value)        a stat in the strip under the figure (<wb-stat key>)
+//   root.controls                <wb-controls>: .showFor(group) for rows that belong to a group
 //   root.seg(name)               a <wb-seg>: .value to read or press an option
 //   root.press(name, value)      press an option of the segment(s) called name, without a "change" event (for a
 //                                multi-select segment, a list or space-separated values: the options to have on)
@@ -14,7 +15,7 @@
 //                                button or Space on the figure, "watch" (watch, id) from an experiment card
 //   root.$(selector), root.$$(selector)   elements inside the lesson
 //   root.ready                   resolves once mount() has run
-import type { ChangeDetail, ActionDetail, WbSeg, WbStats, WbActions } from "./wb-controls";
+import type { ChangeDetail, ActionDetail, WbSeg, WbStats, WbActions, WbControls } from "./wb-controls";
 import type { WbFigure } from "./wb-figure";
 import type { WatchDetail } from "./wb-experiment";
 import "./wb-controls";
@@ -42,6 +43,7 @@ export class WbLesson extends HTMLElement {
   get data() { return JSON.parse(this.querySelector("script[data-lesson-data]")?.textContent || "{}"); }
   get figure() { return this.querySelector<WbFigure>("wb-figure")!; }
   get stats() { return this.querySelector<WbStats>("wb-stats"); }
+  get controls() { return this.querySelector<WbControls>("wb-controls"); }
 
   $<E extends Element = HTMLElement>(sel: string) { return this.querySelector<E>(sel); }
   $$<E extends Element = HTMLElement>(sel: string) { return [...this.querySelectorAll<E>(sel)]; }

@@ -174,7 +174,7 @@ export default defineLesson({
       { seg: "input", label: t("Input", "Entrada"), options: [["typing", t("Typing", "Tecleo")], ["hold", t("Held key", "Tecla sostenida")], ["clicks", t("Double clicks", "Doble clic")], ["live", t("You type", "Tú escribes")]], value: "typing" },
       { seg: "latency", label: t("Server", "Servidor"), options: [["steady", t("Steady", "Estable")], ["variable", t("Slow tail", "Picos lentos")]], value: "variable" },
       { seg: "cancel", label: t("Older request", "Solicitud anterior"), options: [["off", t("Keep", "Mantener")], ["on", t("Cancel", "Cancelar")]], value: "off" },
-      // The "Type here" box goes here; Panel has no text input, so live.ts inserts it (see TYPE in data).
+      { input: "type", label: t("Type here", "Escribe aquí"), placeholder: t("type to feed keystrokes", "escribe para enviar pulsaciones"), aria: t("Type to send keystrokes into the machine", "Escribe para enviar pulsaciones a la máquina"), maxLength: 40 },
       { speed: true },
       { actions: [["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
@@ -196,8 +196,6 @@ export default defineLesson({
 .field{fill:var(--anatomy-page);stroke:var(--anatomy-lo);stroke-width:.7}
 .field[data-lit]{stroke:var(--anatomy-lit);stroke-width:1.5}
 .iso-stage .iso-face-text[data-tone="lit"]{fill:var(--anatomy-lit)}
-.type-in{font:inherit;font-size:13px;padding:6px 8px;min-width:0;width:100%;max-width:280px;background:transparent;color:inherit;border:1px solid var(--anatomy-lo);border-radius:0}
-.type-in:focus-visible{outline:2px solid var(--anatomy-strong);outline-offset:1px}
 `,
   data: {
     P,
@@ -208,6 +206,5 @@ export default defineLesson({
     PEG_SVG: pegSvg(),
     POST_SVG: postSvg(),
     // The "Type here" box (Panel has no text input): its label, placeholder and accessible name.
-    TYPE: { label: t("Type here", "Escribe aquí"), placeholder: t("type to feed keystrokes", "escribe para enviar pulsaciones"), aria: t("Type to send keystrokes into the machine", "Escribe para enviar pulsaciones a la máquina") },
   },
 });
