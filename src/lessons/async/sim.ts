@@ -6,6 +6,7 @@
 // Shared by the page (experiment results at build time) and the live code.
 import { rng } from "../../lib/random";
 import { meanBy, percentile } from "../../lib/stats";
+import { minHeap } from "../../lib/events";
 
 export const DEFAULTS = {
   mode: "async",      // "blocking": threads that wait at the window; "async": one waiter, a ticket rail and a bell
@@ -27,20 +28,10 @@ export function createSim(options) {
   const o = { ...DEFAULTS, ...options };
   const random = rng(o.seed * 7919 + 13);
   let now = 0, seq = 0;
-  const heap = [];
-  const push = (t, fn) => {
-    heap.push({ t, s: seq++, fn });
-    let i = heap.length - 1;
-    while (i > 0) { const p = (i - 1) >> 1; if (heap[p].t < heap[i].t || (heap[p].t === heap[i].t && heap[p].s < heap[i].s)) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; }
-  };
-  const pop = () => {
-    const top = heap[0], last = heap.pop();
-    if (heap.length) {
-      heap[0] = last; let i = 0;
-      for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; const lt = (a, b) => heap[a].t < heap[b].t || (heap[a].t === heap[b].t && heap[a].s < heap[b].s); if (l < heap.length && lt(l, m)) m = l; if (r < heap.length && lt(r, m)) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; }
-    }
-    return top;
-  };
+  // Events as { t, s, fn }: earliest first, and first in, first out at the same t.
+  const heap = minHeap((a, b) => a.t < b.t || (a.t === b.t && a.s < b.s));
+  const push = (t, fn) => heap.push({ t, s: seq++, fn });
+  const pop = () => heap.pop();
 
   const orders = Array.from({ length: o.n }, (_, id) => ({ id, state: "pending", thread: -1, sentAt: 0, readyAt: 0, doneAt: 0, failed: false, burner: -1 }));
   const st = { done: 0, failed: 0, maxInFlight: 0, coreBusy: 0, bellWaits: [], latencies: [], bells: 0, lastBell: -1 };
@@ -146,8 +137,8 @@ export function createSim(options) {
     get inFlight() { return o.mode === "async" ? inFlight : threads.filter((t) => t.order && t.state !== "idle").length; },
     complete,
     // Run every event up to time t (ms).
-    advance(t) { while (heap.length && heap[0].t <= t) { const e = pop(); now = e.t; e.fn(); } now = Math.max(now, t); },
-    runToEnd() { let guard = 0; while (heap.length && guard++ < 5e6) { const e = pop(); now = e.t; e.fn(); } return this.metrics(); },
+    advance(t) { while (heap.size && heap.peek().t <= t) { const e = pop(); now = e.t; e.fn(); } now = Math.max(now, t); },
+    runToEnd() { let guard = 0; while (heap.size && guard++ < 5e6) { const e = pop(); now = e.t; e.fn(); } return this.metrics(); },
     metrics() {
       const total = st.latencies.length ? Math.max(...st.latencies) : now;
       return {
