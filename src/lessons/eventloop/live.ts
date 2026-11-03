@@ -1,26 +1,22 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The event loop in the browser: runs the model, shows each queue's tokens, the operator's task and its frames, the
-// lamp, the gate and the timer dial, and wires the controls and the experiment cards. mount() gets the build-time
-// data from page.ts (geometry, slot counts, experiment results).
+// lamp, the gate and the timer dial, and answers the controls. mount() gets the build-time data from page.ts
+// (geometry, slot counts) and root, the <wb-lesson>.
 import { iso, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L as tr, T } from "../../runtime/wb";
-import { readout, stats, show, act, pauseControls, setD } from "../../runtime/dom";
-import { createLoop, advance, resetStats, task, armTimer } from "./sim";
+import { show, setD, playPause } from "../../runtime/dom";
+import { createLoop, advance, resetStats, task, armTimer, LABEL_ES } from "./sim";
 import { millis } from "../../lib/format";
 
-export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
+export default function mount({ P, G, SLOTS }, root) {
   const MS_PER_SECOND = 40;
-  // Task labels come from the model in English; code names stay as they are.
-  const LABEL_ES = { "post to worker": "enviar al worker", "worker result": "resultado del worker", "CPU job": "trabajo de CPU", "CPU chunk": "trozo de CPU", "start promise chain": "iniciar cadena de promesas", "I/O callback": "callback de E/S", "frame": "cuadro",
-    "setTimeout(0) callback": "callback de setTimeout(0)", "Promise.then callback": "callback de Promise.then", "console.log in the script": "console.log en el script" };
   const lbl = (s) => (WB.lang() === "es" && LABEL_ES[s]) || s;
 
-  const stage = document.querySelector("[data-loop]");
-  const svg = stage.querySelector("svg");
+  const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
-  const say = readout();
-  const stat = stats();
+  const say = (text) => root.figure.say(text);
+  const stat = (key, value) => root.stat(key, value);
   const slotEls = {};
   svg.querySelectorAll("[data-slot]").forEach((el) => { slotEls[el.dataset.slot] = el; });
   const setKind = (name, kind) => { const el = slotEls[name], v = kind || ""; if (el.dataset.kind !== v) el.dataset.kind = v; };
@@ -111,7 +107,7 @@ export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
     say(tr(puzzle.msg));
   }
 
-  const pause = pauseControls(stage, say);
+  const pause = playPause(root);
   const clock = WB.loop({ stage, step: (dt) => { advance(loop, dt * cfg.speed * MS_PER_SECOND); paint(); }, onPause: pause.onPause });
   clock.setPaused(clock.paused);
   function resetCounts() { resetStats(loop); showStats(); }
@@ -119,56 +115,20 @@ export default function mount({ P, G, SLOTS, RESULTS, EXPERIMENTS }) {
     if (name === "speed") cfg.speed = Number(raw);
     else if (name === "job" || name === "delay") { cfg[name] = Number(raw); loop.cfg[name] = Number(raw); if (name === "job") loop.nextCycle = Math.min(loop.nextCycle, loop.t + 20); resetCounts(); }
     else { cfg[name] = raw === "true" || raw === true; loop.cfg[name] = cfg[name]; if (name === "flood" && cfg.flood) loop.nextCycle = Math.min(loop.nextCycle, loop.t + 20); resetCounts(); }
-    WB.pressSeg(name, raw);
+    root.press(name, raw);
   }
-  WB.onSegments(set);
-  act("reset").addEventListener("click", resetCounts);
-  act("puzzle").addEventListener("click", () => { runPuzzle(); if (clock.paused) clock.setPaused(false); });
+  root.on("change", (name, value) => set(name, value));
+  const actions = { reset: resetCounts, puzzle: () => { runPuzzle(); if (clock.paused) clock.setPaused(false); } };
+  root.on("action", (name) => actions[name]?.());
   pause.bind(clock);
 
-  // ---------- experiments (numbers computed from the same model at build time) ----------
-  const RUNS = {
-    long: () => {
-      const { a, b } = RESULTS.long;
-      const top = Math.max(a.lateMax, b.lateMax, a.gapMax, b.gapMax) * 1.05;
-      return { verdict: T("With the 200 ms job, the 10 ms timer ran up to " + millis(b.lateMax) + " late (" + millis(a.lateMax) + " without it), and the longest gap between frames grew from " + millis(a.gapMax) + " to " + millis(b.gapMax) + ".",
-          "Con el trabajo de 200 ms, el temporizador de 10 ms se ejecutó hasta " + millis(b.lateMax) + " tarde (" + millis(a.lateMax) + " sin él), y el mayor hueco entre cuadros creció de " + millis(a.gapMax) + " a " + millis(b.gapMax) + "."),
-        bars: [[T("Timer late, no job", "Retraso de timer, sin trabajo"), a.lateMax / top, millis(a.lateMax)], [T("Timer late, 200 ms job", "Retraso de timer, trabajo de 200 ms"), b.lateMax / top, millis(b.lateMax), true], [T("Frame gap, no job", "Hueco entre cuadros, sin trabajo"), a.gapMax / top, millis(a.gapMax)], [T("Frame gap, 200 ms job", "Hueco entre cuadros, trabajo de 200 ms"), b.gapMax / top, millis(b.gapMax), true]] };
-    },
-    order: () => {
-      const o = RESULTS.order, es = o.map((x) => LABEL_ES[x] || x);
-      return { verdict: T("The order was: " + o.join(", then ") + ".", "El orden fue: " + es.join(", luego ") + "."),
-        bars: o.map((x, i) => [(i + 1) + ". " + x.split(" ")[0], 1 - i / 3, T(["1st", "2nd", "3rd"][i], ["1.º", "2.º", "3.º"][i]), i === 0]) };
-    },
-    flood: () => {
-      const { a, b } = RESULTS.flood;
-      const top = Math.max(a.ioWaitMax, b.ioWaitMax, a.gapMax, b.gapMax) * 1.05;
-      return { verdict: T("While the chain ran, I/O callbacks waited up to " + millis(b.ioWaitMax) + " (" + millis(a.ioWaitMax) + " without it), and the longest gap between frames was " + millis(b.gapMax) + ".",
-          "Mientras corría la cadena, los callbacks de E/S esperaron hasta " + millis(b.ioWaitMax) + " (" + millis(a.ioWaitMax) + " sin ella), y el mayor hueco entre cuadros fue de " + millis(b.gapMax) + "."),
-        bars: [[T("I/O wait, no chain", "Espera de E/S, sin cadena"), a.ioWaitMax / top, millis(a.ioWaitMax)], [T("I/O wait, promise chain", "Espera de E/S, cadena de promesas"), b.ioWaitMax / top, millis(b.ioWaitMax), true], [T("Frame gap, no chain", "Hueco entre cuadros, sin cadena"), a.gapMax / top, millis(a.gapMax)], [T("Frame gap, promise chain", "Hueco entre cuadros, cadena de promesas"), b.gapMax / top, millis(b.gapMax), true]] };
-    },
-    chunk: () => {
-      const { a, b } = RESULTS.chunk;
-      const gt = Math.max(a.gapMax, b.gapMax) * 1.05, jt = Math.max(a.jobAvg, b.jobAvg) * 1.05;
-      return { verdict: T("In 5 ms chunks, the longest frame gap fell from " + millis(a.gapMax) + " to " + millis(b.gapMax) + ", and the job took " + millis(b.jobAvg) + " instead of " + millis(a.jobAvg) + ".",
-          "En trozos de 5 ms, el mayor hueco entre cuadros bajó de " + millis(a.gapMax) + " a " + millis(b.gapMax) + ", y el trabajo tardó " + millis(b.jobAvg) + " en vez de " + millis(a.jobAvg) + "."),
-        bars: [[T("Frame gap, one block", "Hueco entre cuadros, un bloque"), a.gapMax / gt, millis(a.gapMax)], [T("Frame gap, chunked", "Hueco entre cuadros, en trozos"), b.gapMax / gt, millis(b.gapMax), true], [T("Job time, one block", "Tiempo del trabajo, un bloque"), a.jobAvg / jt, millis(a.jobAvg)], [T("Job time, chunked", "Tiempo del trabajo, en trozos"), b.jobAvg / jt, millis(b.jobAvg), true]] };
-    },
-    worker: () => {
-      const { a, b } = RESULTS.worker;
-      const gt = Math.max(a.gapMax, b.gapMax) * 1.05, jt = Math.max(a.jobAvg, b.jobAvg) * 1.05;
-      return { verdict: T("With a worker, the longest frame gap was " + millis(b.gapMax) + " (" + millis(a.gapMax) + " on the main thread), and the job took " + millis(b.jobAvg) + " instead of " + millis(a.jobAvg) + ".",
-          "Con un worker, el mayor hueco entre cuadros fue de " + millis(b.gapMax) + " (" + millis(a.gapMax) + " en el hilo principal), y el trabajo tardó " + millis(b.jobAvg) + " en vez de " + millis(a.jobAvg) + "."),
-        bars: [[T("Frame gap, main thread", "Hueco entre cuadros, hilo principal"), a.gapMax / gt, millis(a.gapMax)], [T("Frame gap, worker", "Hueco entre cuadros, worker"), b.gapMax / gt, millis(b.gapMax), true], [T("Job time, main thread", "Tiempo del trabajo, hilo principal"), a.jobAvg / jt, millis(a.jobAvg)], [T("Job time, worker", "Tiempo del trabajo, worker"), b.jobAvg / jt, millis(b.jobAvg), true]] };
-    },
-  };
-  WB.experiments({ list: EXPERIMENTS, runs: RUNS, watch: (exp) => {
-    const w = exp.watch;
+  // ---------- "Watch it on the machine": an experiment's settings ----------
+  root.on("watch", (w) => {
     if (w.puzzle) { set("job", 0); set("flood", "false"); set("worker", "false"); set("chunk", "false"); setTimeout(runPuzzle, 800); }
     else for (const k of ["job", "chunk", "worker", "flood", "delay"]) set(k, String(w[k]));
     if (cfg.speed > 1) set("speed", 1);
     if (clock.paused) clock.setPaused(false);
-  } });
+  });
 
   paint();
 }

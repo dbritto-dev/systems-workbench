@@ -5,6 +5,10 @@
 import { rng } from "../../lib/random";
 import { averageOver } from "../../lib/stats";
 
+// Task labels come from the model in English; code names stay as they are.
+export const LABEL_ES = { "post to worker": "enviar al worker", "worker result": "resultado del worker", "CPU job": "trabajo de CPU", "CPU chunk": "trozo de CPU", "start promise chain": "iniciar cadena de promesas", "I/O callback": "callback de E/S", "frame": "cuadro",
+  "setTimeout(0) callback": "callback de setTimeout(0)", "Promise.then callback": "callback de Promise.then", "console.log in the script": "console.log en el script" };
+
 export const FRAME_MS = 16;          // the heartbeat lamp should blink this often
 export const CYCLE_MS = 500;         // every cycle: one CPU job (if any) and, if on, one promise flood
 export const TIMER_EVERY = 100;      // the app arms one setTimeout this often

@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 16 · The event loop: one operator, one desk, a conveyor of macrotasks and a tray of microtasks.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, P, GEOMETRY, BELT_SLOTS, MICRO_SLOTS, TIMER_SLOTS, HELPERS, DEPTH_MAX } from "./figure";
-import { measure, orderPuzzle } from "./sim";
+import { measure, orderPuzzle, LABEL_ES } from "./sim";
+import { millis } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the original page ran these
 // same deterministic runs in the browser when a card was run).
@@ -13,6 +14,43 @@ const RESULTS = {
   flood: { a: measure({ job: 0 }), b: measure({ job: 0, flood: true }) },
   chunk: { a: measure({ job: 200 }), b: measure({ job: 200, chunk: true }) },
   worker: { a: measure({ job: 200 }), b: measure({ job: 200, worker: true }) },
+};
+
+// What each card shows after a run.
+const RUNS = {
+  long: () => {
+    const { a, b } = RESULTS.long;
+    const top = Math.max(a.lateMax, b.lateMax, a.gapMax, b.gapMax) * 1.05;
+    return { verdict: t("With the 200 ms job, the 10 ms timer ran up to " + millis(b.lateMax) + " late (" + millis(a.lateMax) + " without it), and the longest gap between frames grew from " + millis(a.gapMax) + " to " + millis(b.gapMax) + ".",
+        "Con el trabajo de 200 ms, el temporizador de 10 ms se ejecutó hasta " + millis(b.lateMax) + " tarde (" + millis(a.lateMax) + " sin él), y el mayor hueco entre cuadros creció de " + millis(a.gapMax) + " a " + millis(b.gapMax) + "."),
+      bars: [[t("Timer late, no job", "Retraso de timer, sin trabajo"), a.lateMax / top, millis(a.lateMax)], [t("Timer late, 200 ms job", "Retraso de timer, trabajo de 200 ms"), b.lateMax / top, millis(b.lateMax), true], [t("Frame gap, no job", "Hueco entre cuadros, sin trabajo"), a.gapMax / top, millis(a.gapMax)], [t("Frame gap, 200 ms job", "Hueco entre cuadros, trabajo de 200 ms"), b.gapMax / top, millis(b.gapMax), true]] };
+  },
+  order: () => {
+    const o = RESULTS.order, es = o.map((x) => LABEL_ES[x] || x);
+    return { verdict: t("The order was: " + o.join(", then ") + ".", "El orden fue: " + es.join(", luego ") + "."),
+      bars: o.map((x, i) => [(i + 1) + ". " + x.split(" ")[0], 1 - i / 3, t(["1st", "2nd", "3rd"][i], ["1.º", "2.º", "3.º"][i]), i === 0]) };
+  },
+  flood: () => {
+    const { a, b } = RESULTS.flood;
+    const top = Math.max(a.ioWaitMax, b.ioWaitMax, a.gapMax, b.gapMax) * 1.05;
+    return { verdict: t("While the chain ran, I/O callbacks waited up to " + millis(b.ioWaitMax) + " (" + millis(a.ioWaitMax) + " without it), and the longest gap between frames was " + millis(b.gapMax) + ".",
+        "Mientras corría la cadena, los callbacks de E/S esperaron hasta " + millis(b.ioWaitMax) + " (" + millis(a.ioWaitMax) + " sin ella), y el mayor hueco entre cuadros fue de " + millis(b.gapMax) + "."),
+      bars: [[t("I/O wait, no chain", "Espera de E/S, sin cadena"), a.ioWaitMax / top, millis(a.ioWaitMax)], [t("I/O wait, promise chain", "Espera de E/S, cadena de promesas"), b.ioWaitMax / top, millis(b.ioWaitMax), true], [t("Frame gap, no chain", "Hueco entre cuadros, sin cadena"), a.gapMax / top, millis(a.gapMax)], [t("Frame gap, promise chain", "Hueco entre cuadros, cadena de promesas"), b.gapMax / top, millis(b.gapMax), true]] };
+  },
+  chunk: () => {
+    const { a, b } = RESULTS.chunk;
+    const gt = Math.max(a.gapMax, b.gapMax) * 1.05, jt = Math.max(a.jobAvg, b.jobAvg) * 1.05;
+    return { verdict: t("In 5 ms chunks, the longest frame gap fell from " + millis(a.gapMax) + " to " + millis(b.gapMax) + ", and the job took " + millis(b.jobAvg) + " instead of " + millis(a.jobAvg) + ".",
+        "En trozos de 5 ms, el mayor hueco entre cuadros bajó de " + millis(a.gapMax) + " a " + millis(b.gapMax) + ", y el trabajo tardó " + millis(b.jobAvg) + " en vez de " + millis(a.jobAvg) + "."),
+      bars: [[t("Frame gap, one block", "Hueco entre cuadros, un bloque"), a.gapMax / gt, millis(a.gapMax)], [t("Frame gap, chunked", "Hueco entre cuadros, en trozos"), b.gapMax / gt, millis(b.gapMax), true], [t("Job time, one block", "Tiempo del trabajo, un bloque"), a.jobAvg / jt, millis(a.jobAvg)], [t("Job time, chunked", "Tiempo del trabajo, en trozos"), b.jobAvg / jt, millis(b.jobAvg), true]] };
+  },
+  worker: () => {
+    const { a, b } = RESULTS.worker;
+    const gt = Math.max(a.gapMax, b.gapMax) * 1.05, jt = Math.max(a.jobAvg, b.jobAvg) * 1.05;
+    return { verdict: t("With a worker, the longest frame gap was " + millis(b.gapMax) + " (" + millis(a.gapMax) + " on the main thread), and the job took " + millis(b.jobAvg) + " instead of " + millis(a.jobAvg) + ".",
+        "Con un worker, el mayor hueco entre cuadros fue de " + millis(b.gapMax) + " (" + millis(a.gapMax) + " en el hilo principal), y el trabajo tardó " + millis(b.jobAvg) + " en vez de " + millis(a.jobAvg) + "."),
+      bars: [[t("Frame gap, main thread", "Hueco entre cuadros, hilo principal"), a.gapMax / gt, millis(a.gapMax)], [t("Frame gap, worker", "Hueco entre cuadros, worker"), b.gapMax / gt, millis(b.gapMax), true], [t("Job time, main thread", "Tiempo del trabajo, hilo principal"), a.jobAvg / jt, millis(a.jobAvg)], [t("Job time, worker", "Tiempo del trabajo, worker"), b.jobAvg / jt, millis(b.jobAvg), true]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -128,7 +166,7 @@ export default defineLesson({
       { actions: [["puzzle", t("Run the order puzzle", "Resolver el acertijo del orden")], ["reset", t("Reset counts", "Reiniciar conteos")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Acciones") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over four 3-second runs of loop time.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados en cuatro ejecuciones de 3 segundos de tiempo del bucle."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over four 3-second runs of loop time.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados en cuatro ejecuciones de 3 segundos de tiempo del bucle."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 [data-slot] > [data-k]{display:none}
@@ -146,7 +184,5 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     SLOTS: { belt: BELT_SLOTS, micro: MICRO_SLOTS, timers: TIMER_SLOTS, helpers: HELPERS, depth: DEPTH_MAX },
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, answer, watch }) => ({ id, answer, watch })),
   },
 });

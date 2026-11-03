@@ -1,9 +1,10 @@
 // @ts-nocheck: content ported as-is
 // Systems lesson 17 · Race conditions: clerks in a bank office updating one shared ledger card, or booking seats.
 import { t } from "../../i18n";
-import { defineLesson } from "../types";
+import { defineLesson, withResults } from "../types";
 import { buildFigure, clerkSvg, P, GEOMETRY } from "./figure";
 import { average } from "./sim";
+import { one as r1, pct } from "../../lib/format";
 
 // Experiment results, computed at build time from the same model the page runs (the original page ran these
 // same seeded runs in the browser when a card was run). Each is the average over eight seeds, without the runs.
@@ -15,6 +16,47 @@ const RESULTS = {
   cas: { two: avg({ ...D, clerks: 2, think: 1, protection: "cas" }), four: avg({ ...D, clerks: 4, think: 1, protection: "cas" }), lock: avg({ ...D, clerks: 4, think: 1, protection: "lock" }), atomic: avg({ ...D, clerks: 4, think: 1, protection: "atomic" }) },
   booking: { none: avg({ scenario: "booking", traffic: "busy", clerks: 3, think: 1, protection: "none" }), cas: avg({ scenario: "booking", traffic: "busy", clerks: 3, think: 1, protection: "cas" }) },
   hidden: { unit: avg({ ...D, clerks: 1, think: 1, protection: "none" }), manual: avg({ ...D, clerks: 2, think: 0.2, traffic: "quiet", protection: "none" }), prod: avg({ ...D, clerks: 4, think: 1, traffic: "busy", protection: "none" }) },
+};
+
+// What each card shows after a run.
+const RUNS = {
+  overlap: () => {
+    const lost = RESULTS.overlap.map((a) => Math.round(a.lost));
+    const lb = (n) => t(n + " lost", n + " perdidos");
+    return { verdict: t(lost[1] + " of 200 deposits lost with 1 s at the desk. With 0.2 s: " + lost[0] + "; with 3 s: " + lost[2] + ".",
+        lost[1] + " de 200 depósitos perdidos con 1 s en el escritorio. Con 0.2 s: " + lost[0] + "; con 3 s: " + lost[2] + "."),
+      bars: [[t("0.2 s at desk", "0.2 s en escritorio"), lost[0] / 200, lb(lost[0])], [t("1 s at desk", "1 s en escritorio"), lost[1] / 200, lb(lost[1]), true], [t("3 s at desk", "3 s en escritorio"), lost[2] / 200, lb(lost[2])]] };
+  },
+  lock: () => {
+    const { none, lock, one } = RESULTS.lock;
+    const top = Math.max(none.perMinute, lock.perMinute);
+    const a = Math.round(none.perMinute), l = Math.round(none.lost), b = Math.round(lock.perMinute), c = Math.round(one.perMinute);
+    return { verdict: t("Deposits per minute with 4 clerks: " + a + " unprotected (losing " + l + " of 400), " + b + " with the lock (losing none). One clerk alone manages " + c + ".",
+        "Depósitos por minuto con 4 empleados: " + a + " sin protección (se pierden " + l + " de 400), " + b + " con el bloqueo (no se pierde ninguno). Un empleado solo logra " + c + "."),
+      bars: [[t("No protection", "Sin protección"), none.perMinute / top, a + "/min"], [t("Lock", "Bloqueo"), lock.perMinute / top, b + "/min", true], [t("One clerk", "Un empleado"), one.perMinute / top, c + "/min"]] };
+  },
+  cas: () => {
+    const { two, four, lock, atomic } = RESULTS.cas;
+    const r2 = two.retries / two.done, r4 = four.retries / four.done, topR = Math.max(r2, r4), topW = Math.max(lock.wait, four.wait, atomic.wait);
+    return { verdict: t("Retries per deposit: " + r2.toFixed(2) + " with 2 clerks, " + r4.toFixed(2) + " with 4, and nothing lost. Average time per deposit with 4 clerks: " + r1(lock.wait) + " s with the lock, " + r1(four.wait) + " s with the version check, " + r1(atomic.wait) + " s with an atomic increment.",
+        "Reintentos por depósito: " + r2.toFixed(2) + " con 2 empleados, " + r4.toFixed(2) + " con 4, y no se pierde nada. Tiempo promedio por depósito con 4 empleados: " + r1(lock.wait) + " s con el bloqueo, " + r1(four.wait) + " s con el chequeo de versión, " + r1(atomic.wait) + " s con un incremento atómico."),
+      bars: [[t("Retries, 2 clerks", "Reintentos, 2 empleados"), r2 / topR, r2.toFixed(2)], [t("Retries, 4 clerks", "Reintentos, 4 empleados"), r4 / topR, r4.toFixed(2), true], [t("Time, lock", "Tiempo, bloqueo"), lock.wait / topW, r1(lock.wait) + " s"], [t("Time, version", "Tiempo, versión"), four.wait / topW, r1(four.wait) + " s", true], [t("Time, atomic", "Tiempo, atómico"), atomic.wait / topW, r1(atomic.wait) + " s"]] };
+  },
+  booking: () => {
+    const { none, cas } = RESULTS.booking;
+    const seats = (x) => t(r1(x) + " seats", r1(x) + " asientos");
+    return { verdict: t(r1(none.doubleSeats) + " of 24 seats booked twice on average with check-then-book. With \"pin only if still free\": 0, at the cost of " + r1(cas.retries) + " re-checks.",
+        r1(none.doubleSeats) + " de 24 asientos reservados dos veces en promedio con verificar-y-después-reservar. Con \"clavar solo si sigue libre\": 0, a costa de " + r1(cas.retries) + " nuevas verificaciones."),
+      bars: [[t("Check, then book", "Verificar y reservar"), none.doubleSeats / 24, seats(none.doubleSeats), true], [t("Pin if still free", "Clavar si sigue libre"), cas.doubleSeats / 24, seats(cas.doubleSeats)]] };
+  },
+  hidden: () => {
+    const { unit, manual, prod } = RESULTS.hidden;
+    const p = (a) => a.done ? a.lost / a.done : 0;
+    const pc = (a) => pct(p(a));
+    return { verdict: t("Deposits lost: " + pc(unit) + " in the unit test, " + pc(manual) + " in the quiet manual test, " + pc(prod) + " in busy production.",
+        "Depósitos perdidos: " + pc(unit) + " en la prueba unitaria, " + pc(manual) + " en la prueba manual tranquila, " + pc(prod) + " en producción con la oficina llena."),
+      bars: [[t("Unit test", "Prueba unitaria"), p(unit), pc(unit)], [t("Manual, quiet", "Manual, tranquila"), p(manual), pc(manual)], [t("Production", "Producción"), p(prod), pc(prod), true]] };
+  },
 };
 
 const EXPERIMENTS = [
@@ -157,17 +199,16 @@ export default defineLesson({
       'En la reserva de asientos, "Chequeo de versión" significa clavar solo si el asiento sigue libre, y "Atómico" significa una restricción de unicidad sobre el asiento. Cambiar un ajuste vuelve a empezar la corrida.',
     ),
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs of 100 deposits per clerk unless noted.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho corridas con semilla de 100 depósitos por empleado, salvo que se indique otra cosa."), experiments: EXPERIMENTS },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs of 100 deposits per clerk unless noted.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho corridas con semilla de 100 depósitos por empleado, salvo que se indique otra cosa."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   css: `
 body.lit-fill [data-slip]:has(> [data-slip-lit]:not([style*="none"])) :is([data-slip-value],[data-slip-note]){fill:var(--anatomy-page)}
 .iso-stage .iso-face-text[data-tone="lit"]{fill:var(--anatomy-lit)}
 `,
   data: {
+    TITLES: Object.fromEntries(EXPERIMENTS.map(({ id, title }) => [id, title])),
     P,
     G: GEOMETRY,
     CLERK_SVG: clerkSvg(),
-    RESULTS,
-    EXPERIMENTS: EXPERIMENTS.map(({ id, title, answer, watch }) => ({ id, title, answer, watch })),
   },
 });
