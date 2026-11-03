@@ -3,7 +3,7 @@ import type { Locale } from "./index";
 
 const en = {
   "site.name": "Systems Workbench",
-  "site.tagline": "Distributed systems, one machine at a time",
+  "site.tagline": "How systems work, one machine at a time",
   "site.intro":
     "Each lesson turns one idea into a small machine you can watch and adjust: a cache becomes a card rack, a circuit breaker a switchboard, a rolling deploy a crane swapping modules. Watch the machine, predict what an experiment will do, run it, then explain it back.",
   "site.description": "Interactive lessons on systems concepts: one simulated machine per idea, with experiments to predict and run.",
@@ -56,7 +56,7 @@ export type UiKey = keyof typeof en;
 
 const es: Record<UiKey, string> = {
   "site.name": "Systems Workbench",
-  "site.tagline": "Sistemas distribuidos, una máquina a la vez",
+  "site.tagline": "Cómo funcionan los sistemas, una máquina a la vez",
   "site.intro":
     "Cada lección convierte una idea en una pequeña máquina que puedes observar y ajustar: una caché se vuelve un estante de fichas, un circuit breaker un conmutador, un despliegue gradual una grúa que cambia módulos. Observa la máquina, predice qué hará un experimento, ejecútalo y luego explícalo.",
   "site.description": "Lecciones interactivas de sistemas: una máquina simulada por idea, con experimentos para predecir y ejecutar.",
