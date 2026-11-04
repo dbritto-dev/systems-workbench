@@ -166,6 +166,11 @@ export function runHeadless(options = {}, seed = 7, { warm = 40, after = 120, tr
   let lastTimeout = -1;
   bins.forEach((b, i) => { if (b.timeouts) lastTimeout = i; });
   const recovered = lastTimeout < after - 20;
+  // Peak load: the busiest 10 s of attempts at the window. Late load: attempts per second in the second minute.
+  const series = bins.map((b) => b.attempts);
+  let busiest = 0;
+  for (let i = 0; i + 10 <= series.length; i++) { let sum = 0; for (let j = i; j < i + 10; j++) sum += series[j]; busiest = Math.max(busiest, sum / 10); }
+  const late = series.slice(60, 120);
   return {
     baseline,
     peak: Math.max(...bins.slice(2).map((b) => b.attempts)),
@@ -177,7 +182,8 @@ export function runHeadless(options = {}, seed = 7, { warm = 40, after = 120, tr
     goodputRate: delta.goodput / after,
     wasted: delta.wasted, failed: delta.failed, timeouts: delta.timeouts, attempts: delta.attempts, requests: delta.requests,
     load: delta.attempts / after,
-    series: bins.map((b) => b.attempts),
+    peak10: busiest, lateLoad: late.reduce((x, y) => x + y, 0) / Math.max(1, late.length),
+    series,
   };
 }
 
@@ -189,6 +195,7 @@ export function average(options, seeds = [3, 5, 7, 11, 13, 17], run = {}) {
     peak: mean((r) => r.peak), recovery: mean((r) => r.recovery), recoveredShare: mean((r) => (r.recovered ? 1 : 0)),
     attemptsPerRequest: mean((r) => r.attemptsPerRequest), goodputShare: mean((r) => r.goodputShare), goodputRate: mean((r) => r.goodputRate),
     load: mean((r) => r.load), baseline: mean((r) => r.baseline), failed: mean((r) => r.failed), wasted: mean((r) => r.wasted),
+    peak10: mean((r) => r.peak10), lateLoad: mean((r) => r.lateLoad),
   };
 }
 
