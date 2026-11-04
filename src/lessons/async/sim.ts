@@ -161,8 +161,8 @@ export function measure(options, seeds = [1, 2, 3, 4, 5, 6]) {
 }
 
 // ---------- experiments: computed once at build time from the same model (the original ran them in the browser) ----------
-export const threadsRun = () => ({ a: measure({ mode: "blocking", threads: 4, n: 100 }), b: measure({ mode: "async", n: 100 }) });
+export const threadsRun = () => ({ a: measure({ mode: "blocking", threads: 4, n: 100 }), b: measure({ mode: "async", n: 100 }), c: measure({ mode: "blocking", threads: 32, n: 100 }) });
 export const cpuRun = () => ({ a: measure({ mode: "blocking", threads: 4, n: 100, cpu: 40, io: 10 }), b: measure({ mode: "async", n: 100, cpu: 40, io: 10 }) });
 export const loopRun = () => ({ a: measure({ mode: "async", n: 20, gather: "sequential" }), b: measure({ mode: "async", n: 20 }) });
-export const limitRun = () => ({ a: measure({ mode: "async", n: 1000 }), b: measure({ mode: "async", n: 1000, limit: 20 }) });
+export const limitRun = () => ({ a: measure({ mode: "async", n: 1000 }), b: measure({ mode: "async", n: 1000, limit: 20 }), c: measure({ mode: "async", n: 1000, limit: 32 }) });
 export const blockRun = () => ({ a: measure({ mode: "async", n: 100 }), b: measure({ mode: "async", n: 100, block: 15 }) });
