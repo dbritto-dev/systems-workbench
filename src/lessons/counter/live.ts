@@ -108,7 +108,7 @@ export default function mount({ P, G, PUCK_SVG }, root) {
     const behind = model.added - Math.min(...views);
     const name = ["A", "B", "C"][far], held = model.held.length;
     say(cut ? L(name + " cut off · " + held + " waiting at the barrier", name + " aislada · " + held + " esperando en la barrera")
-      : (cfg.approach === "shared" ? L("read, add, write", "leer, sumar, escribir") : cfg.approach === "cas" ? "compare-and-swap" : L("one slot each", "una casilla cada una")) + " · " + L("total", "total") + " " + model.added);
+      : (cfg.approach === "shared" ? L("read, add, write", "leer, sumar, escribir") : cfg.approach === "cas" ? "compare-and-swap" : L("one slot each", "una casilla cada una")) + " · " + L(model.added + " adds made · register " + model.stored(), model.added + " sumas hechas · registro " + model.stored()));
     stat("total", model.added);
     stat("stored", model.stored());
     stat("lost", cfg.approach === "shared" ? model.lost() : 0);

@@ -18,6 +18,7 @@ const PLATE_H = 12;
 const FOOT_H = 5;
 
 export const XS = [-64, 0, 64];             // branch, track and slot centre for A, B, C
+const NAMES = ["A", "B", "C"];
 const CAB = { x: -100, y: -84, w: 200, d: 32, r: 2.5 };
 const CAB_H = 24;
 const CAB_FRONT = CAB.y + CAB.d;            // -52
@@ -48,7 +49,7 @@ export const P = k.fitProjection(
   { pad: 20, azimuth: 50 },
 );
 
-const { S, L, D, at } = shorthand(P);
+const { S, L, D, at, text } = shorthand(P);
 
 const counter = (c, name, value = 0) => digitCounter(P, { ...c, proud: PROUD, name, value });
 
@@ -104,6 +105,8 @@ function barrier(i) {
   out.push(S(k.slabOf({ x: px - 2.5, y: BARRIER_Y - 2.5, w: 5, d: 5, r: 1 }, 0, 2, P, 2, 0.3), { tone: "mid" }));
   out.push(S(k.cylinder(px, BARRIER_Y, 1.3, 2, 7, P, 14), { tone: "mid", crease: "none" }));
   out.push(`<g data-arm="up">${S(k.slabOf({ x: px - 0.8, y: BARRIER_Y - 0.8, w: 1.6, d: 1.6, r: 0.4 }, 9, 15, P, 2), { tone: "mid", crease: "none" })}</g>`);
+  // The branch the barrier cuts off, on the plate beside the post.
+  out.push(text(px - 7, BARRIER_Y - 3, 0, NAMES[i], { face: "top", size: 8, tone: "mid", anchor: "middle" }));
   out.push(`<g data-arm="down" style="display:none">${S(k.slabOf({ x: px - 0.8, y: BARRIER_Y - 0.9, w: 22, d: 1.8, r: 0.5 }, 7.4, 1.6, P, 2), { tone: "hi", lit: true })}</g>`);
   out.push(`</g>`);
   return out.join("");
@@ -124,6 +127,8 @@ function branch(i) {
   out.push(`<g data-plunger="${i}">${S(k.cylinder(body.x + body.w / 2, body.y + body.d / 2, 2.6, DESK_H + 12.6, 1.5, P, 18), { tone: "hi", crease: "lo" })}</g>`);
   out.push(counter(COUNTERS.view[i], "view" + i, 0));
   out.push(D([at([desk.x + 3, desk.y + desk.d - 3, DESK_H]), at([desk.x + 3, desk.y + 3, DESK_H])], { size: 0.4, tone: "lo" }));
+  // The branch's letter on the desk's front face, right of its display.
+  out.push(text(cx + 14, desk.y + desk.d, 2.4, NAMES[i], { size: 8.4, tone: "mid", anchor: "middle" }));
   out.push(`</g>`);
   return out.join("");
 }

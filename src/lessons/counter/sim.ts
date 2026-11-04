@@ -56,16 +56,21 @@ export function makeSim(cfg, seed = 7) {
     return ts;
   }
 
+  // Every add carries an id (`add`) through all its messages, so its acknowledgement can be matched to it.
   function startAdd(i, t) {
-    sim.added++;
-    sim.log.push({ t, type: "add", node: i });
+    const add = ++sim.added;
+    sim.log.push({ t, type: "add", node: i, add });
     if (cfg.approach === "g") {
+      // The branch owns its slot (nobody else writes it), so it acknowledges the add at once; the courier only
+      // publishes the slot's new value to the register.
       const node = nodes[i];
       node.local++;
       node.view = node.others + node.local;
-      send(i, "up", t, { kind: "write", value: node.local, purpose: "add" });
+      sim.completed++;
+      sim.log.push({ t, type: "done", node: i, add });
+      send(i, "up", t, { kind: "write", value: node.local, purpose: "add", add });
     } else {
-      send(i, "up", t, { kind: "read", purpose: "add", tries: 0 });
+      send(i, "up", t, { kind: "read", purpose: "add", tries: 0, add });
     }
   }
 
@@ -77,18 +82,18 @@ export function makeSim(cfg, seed = 7) {
         ? nodes.map((x) => (x.i === e.node ? 0 : valueAt("slot" + x.i, ts)))
         : valueAt("counter", ts);
       sim.reads.push({ t, node: e.node, ts, stale: t - ts });
-      send(e.node, "down", t, { kind: "value", purpose: e.purpose, value, tries: e.tries, asked: e.asked });
+      send(e.node, "down", t, { kind: "value", purpose: e.purpose, value, tries: e.tries, asked: e.asked, add: e.add });
     } else if (e.kind === "write") {
       if (cfg.approach === "g") history["slot" + e.node].push([t, e.value]);
       else { history.counter.push([t, e.value]); sim.applied++; }
       node.seen = t;
-      send(e.node, "down", t, { kind: "ack", purpose: e.purpose });
+      send(e.node, "down", t, { kind: "ack", purpose: e.purpose, add: e.add });
     } else if (e.kind === "cas") {
       const ok = current("counter") === e.from;
       sim.stamps.push({ t, node: e.node, ok });
       if (ok) { history.counter.push([t, e.to]); sim.applied++; }
       node.seen = t;
-      send(e.node, "down", t, { kind: ok ? "ack" : "fail", ok, purpose: "add", tries: e.tries, from: e.from });
+      send(e.node, "down", t, { kind: ok ? "ack" : "fail", ok, purpose: "add", tries: e.tries, from: e.from, add: e.add });
     }
   }
 
@@ -99,14 +104,14 @@ export function makeSim(cfg, seed = 7) {
       else node.view = e.value;
       sim.log.push({ t, type: "view", node: e.node, value: node.view, asked: e.asked });
     } else if (e.kind === "value" && e.purpose === "add") {
-      if (cfg.approach === "shared") send(e.node, "up", t, { kind: "write", value: e.value + 1, purpose: "add" });
-      else send(e.node, "up", t, { kind: "cas", from: e.value, to: e.value + 1, tries: e.tries });
+      if (cfg.approach === "shared") send(e.node, "up", t, { kind: "write", value: e.value + 1, purpose: "add", add: e.add });
+      else send(e.node, "up", t, { kind: "cas", from: e.value, to: e.value + 1, tries: e.tries, purpose: "add", add: e.add });
     } else if (e.kind === "fail") {
       sim.retries++;
-      send(e.node, "up", t, { kind: "read", purpose: "add", tries: e.tries + 1 });
-    } else if (e.kind === "ack" && e.purpose === "add") {
+      send(e.node, "up", t, { kind: "read", purpose: "add", tries: e.tries + 1, add: e.add });
+    } else if (e.kind === "ack" && e.purpose === "add" && cfg.approach !== "g") {
       sim.completed++;
-      sim.log.push({ t, type: "done", node: e.node });
+      sim.log.push({ t, type: "done", node: e.node, add: e.add });
     }
   }
 
@@ -184,6 +189,24 @@ export function partitionRun() {
     return { farBehind: behind[2], nearBehind: Math.max(behind[0], behind[1]), converge: convergeTime(s, 35) ?? 99, exact: s.stored() === s.added ? 1 : 0 };
   });
 }
+// The far branch (C) is cut off from 20 s to 35 s while all three keep adding; adds stop when it heals.
+// For C's adds made during the cut: the share acknowledged before the cut heals, and the mean wait for the ack.
+export function cutAcks(approach) {
+  return averageOver(SEEDS, (seed) => {
+    const s = makeSim({ approach, nodes: 3, rate: 0.3, stopAt: 35, partitions: [[20, 35]] }, seed);
+    s.runTo(90);
+    const made = s.log.filter((e) => e.type === "add" && e.node === 2 && e.t >= 20 && e.t < 35);
+    const doneAt = new Map(s.log.filter((e) => e.type === "done").map((e) => [e.add, e.t]));
+    const waits = made.map((e) => (doneAt.get(e.add) ?? 90) - e.t);
+    return {
+      made: made.length,
+      during: made.length ? made.filter((e) => doneAt.get(e.add) < 35).length / made.length : 1,
+      wait: waits.length ? waits.reduce((a, b) => a + b, 0) / waits.length : 0,
+      exact: s.stored() === s.added ? 1 : 0,
+    };
+  });
+}
+
 // B adds; as soon as B's add is acknowledged, A and B each read once.
 export function readAfterAdd() {
   return averageOver(SEEDS, (seed) => {
