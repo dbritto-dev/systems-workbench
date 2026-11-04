@@ -42,12 +42,12 @@ export default function mount({ P, G, TOKENS }, root) {
     dials[name].forEach((el, j) => { if (el.textContent !== s[j]) el.textContent = s[j]; const tone = lit ? "lit" : "hi"; if (el.getAttribute("data-tone") !== tone) el.setAttribute("data-tone", tone); });
   }
 
-  const cfg = { keys: "lock", loss: 0.3, timeout: "patient", lifetime: "long", drift: 0, speed: 1 };
+  const cfg = { keys: "lock", loss: 0.3, timeout: "patient", lifetime: "long", drift: 0, card: "normal", speed: 1 };
   let model, clock, logAt, holeHit, lastExtra, lastEvent, outcomes, piles;
   let seed = (Date.now() % 1e6) + 1;
 
   function restart() {
-    model = makeSim({ keys: cfg.keys, loss: cfg.loss, timeout: cfg.timeout, lifetime: cfg.lifetime, drift: cfg.drift }, seed++);
+    model = makeSim({ keys: cfg.keys, loss: cfg.loss, timeout: cfg.timeout, lifetime: cfg.lifetime, drift: cfg.drift, card: cfg.card }, seed++);
     clock = WARM; logAt = 0; holeHit = {}; lastExtra = -9; lastEvent = null; outcomes = [null, null, null, null]; piles = [[], [], [], []];
     model.runTo(clock);
     paint();
@@ -163,6 +163,7 @@ export default function mount({ P, G, TOKENS }, root) {
       : e.type === "409" ? k + L(" · still in progress (409), try again shortly", " · todavía en curso (409), reintenta en un momento")
       : e.type === "422" ? k + L(" · same key, different amount: rejected (422)", " · misma clave, otro monto: rechazado (422)")
       : e.type === "expired" ? k + L(" · key expired, so this is a new payment", " · la clave venció, así que es un pago nuevo")
+      : e.type === "lease" ? k + L(" · in-progress flag expired mid-charge: charging again", " · la bandera de en curso venció a mitad del cobro: cobra de nuevo")
       : e.type === "charge" && e.n > 1 ? k + L(" · charged again (" + e.n + "×)", " · cobrado de nuevo (" + e.n + "×)")
       : idle);
     stat("orders", model.charged());

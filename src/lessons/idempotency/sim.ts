@@ -10,7 +10,8 @@ import { mulberry32 } from "../../lib/random";
 export const CUSTOMERS = 4;
 export const REQ_TIME = 0.8;          // request travel, customer → counter
 export const REP_TIME = 0.8;          // reply travel, counter → customer
-export const PROC = [1.2, 2.4];       // charging the card takes this long
+export const PROC = { normal: [1.2, 2.4], slow: [4, 8] };   // charging the card takes this long (a slow card network: 4–8 s)
+export const LEASE = 5;               // an in-progress flag expires after this long, so a crashed charge can't hold its key forever
 export const MAX_TRIES = 5;
 export const TIMEOUTS = { patient: 5, impatient: 1 };
 export const BACKOFF = { patient: 1, impatient: 0.5 };
@@ -22,13 +23,14 @@ export const SLOTS = 30;              // pigeonholes on the key rack (the live f
 // mulberry32, with seed 0 turned into 1 as this lesson's numbers always had it.
 export function rng(seed) { return mulberry32(seed >>> 0 || 1); }
 
-// cfg: { keys: "off" | "store" | "lock", lifetime: "long" | "short", loss: 0..1, timeout: "patient" | "impatient", drift: 0..1 }
+// cfg: { keys: "off" | "store" | "lock", lifetime: "long" | "short", loss: 0..1, timeout: "patient" | "impatient", drift: 0..1, card: "normal" | "slow" }
 export function makeSim(cfg, seed = 1) {
   const rand = rng(seed);
   const between = ([a, b]) => a + rand() * (b - a);
   const keys = cfg.keys !== "off", lock = cfg.keys === "lock";
   const ttl = LIFETIMES[cfg.lifetime || "long"];
   const timeout = TIMEOUTS[cfg.timeout || "patient"], backoff = BACKOFF[cfg.timeout || "patient"];
+  const proc = PROC[cfg.card || "normal"];
 
   let now = 0, seq = 0;
   const queue = [];                         // { t, fn } sorted by t
@@ -42,7 +44,7 @@ export function makeSim(cfg, seed = 1) {
   const working = [];                       // charges in progress: { client, key, start, end }
   const log = [];                           // { t, type, ... }
   const customers = Array.from({ length: CUSTOMERS }, (_, c) => ({ c, current: null, n: 0 }));
-  const S = { purchases: 0, charges: 0, extra: 0, replays: 0, conflicts: 0, rejected: 0, lost: 0, gaveUp: 0, expiredHits: 0, wrongAmount: 0 };
+  const S = { purchases: 0, charges: 0, extra: 0, replays: 0, conflicts: 0, rejected: 0, lost: 0, gaveUp: 0, expiredHits: 0, wrongAmount: 0, leaseHits: 0 };
 
   function slotFor(key) {
     const e = store.get(key);
@@ -106,14 +108,15 @@ export function makeSim(cfg, seed = 1) {
         S.replays++; log.push({ t, type: "replay", key, slot: e.slot });
         return reply(req, t, "replay");
       }
+      if (e && e.state === "progress" && t > e.expires) { S.leaseHits++; log.push({ t, type: "lease", key }); e = null; }   // the flag ran out mid-charge
       if (e && e.state === "progress") { S.conflicts++; log.push({ t, type: "409", key, slot: e.slot }); return reply(req, t, "409"); }
-      if (lock) { const slot = slotFor(key); store.set(key, { state: "progress", slot, t }); }
+      if (lock) { const slot = slotFor(key); store.set(key, { state: "progress", slot, t, expires: t + LEASE }); }
     }
     charge(req, t);
   }
 
   function charge(req, t) {
-    const end = t + between(PROC);
+    const end = t + between(proc);
     const job = { client: req.p.client, key: req.p.key, start: t, end, try: req.n };
     working.push(job);
     at(end, (tt) => {
@@ -147,7 +150,7 @@ export function makeSim(cfg, seed = 1) {
         if (!key) return null;
         const e = store.get(key);
         if (!e) return null;
-        if (e.state === "done" && t > e.expires) return { key, state: "expired" };
+        if (t > e.expires) return { key, state: "expired" };
         return { key, state: e.state, age: e.state === "done" ? (t - e.t) / ttl : 0 };
       });
     },
@@ -164,7 +167,7 @@ export function runScenario(cfg, { duration = 180, seeds = 8 } = {}) {
     m.runTo(duration);
     const done = m.purchases.filter((p) => p.done);
     const r = { purchases: done.length, settled: done.filter((p) => p.outcome === "paid").length, charges: 0, extra: 0, doubled: done.filter((p) => p.charges > 1).length, replays: 0, conflicts: 0, rejected: 0, lost: 0, gaveUp: 0, expiredHits: 0, wrongAmount: 0, retries: done.reduce((a, p) => a + p.tries - 1, 0) };
-    for (const k of ["charges", "extra", "replays", "conflicts", "rejected", "lost", "gaveUp", "expiredHits", "wrongAmount"]) r[k] = m.stats[k];
+    for (const k of ["charges", "extra", "replays", "conflicts", "rejected", "lost", "gaveUp", "expiredHits", "wrongAmount", "leaseHits"]) r[k] = m.stats[k];
     return r;
   });
 }
@@ -192,6 +195,6 @@ export function experimentResults() {
     keys: { off: runScenario({ keys: "off", loss: 0.1 }), on: runScenario({ keys: "store", loss: 0.1 }) },
     race: { late: runScenario({ keys: "store", loss: 0, timeout: "impatient" }), claim: runScenario({ keys: "lock", loss: 0, timeout: "impatient" }) },
     ttl: { long: runScenario({ keys: "lock", loss: 0.3, lifetime: "long" }), short: runScenario({ keys: "lock", loss: 0.3, lifetime: "short" }) },
-    drift: { on: runScenario({ keys: "lock", loss: 0.3, drift: 0.5 }), off: runScenario({ keys: "off", loss: 0.3, drift: 0.5 }) },
+    lease: { normal: runScenario({ keys: "lock", loss: 0 }), slow: runScenario({ keys: "lock", loss: 0, card: "slow" }) },
   };
 }
