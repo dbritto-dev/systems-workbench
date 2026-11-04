@@ -65,6 +65,8 @@ export default function mount({ P, G, PICKER_SVG, CARGO_SVG }, root) {
     clock = warm ? plan.end * 0.42 : 0;
     slots.forEach((s, i) => s.g.toggleAttribute("data-off", i >= cfg.rows));
     house.setAttribute("transform", translateAlong(P, [G.STOPS[cfg.dist] - G.STOPS.host, 0, 0]));
+    // Light the floor plaque where the warehouse stands: the figure's cue for the distance setting.
+    svg.querySelectorAll("[data-plaque]").forEach((g) => { const on = g.getAttribute("data-plaque") === cfg.dist; g.toggleAttribute("data-on", on); g.querySelector(".iso-solid")?.toggleAttribute("data-lit", on); });
     pickers.forEach((p, i) => { p.g.style.display = i < plan.lanes ? "" : "none"; });
   }
   function restart() { pages = 0; lastMs = null; newPage(true); paint(); }

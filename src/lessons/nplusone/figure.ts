@@ -87,14 +87,14 @@ function aisle() {
 
 function plaques() {
   const out = [];
-  const names = { host: [t("SAME", "MISMO"), "HOST"], zone: [t("SAME", "MISMA"), t("ZONE", "ZONA")], region: [t("OTHER", "OTRA"), t("ZONE", "ZONA")] };
+  const names = { host: [t("SAME", "MISMO"), "HOST"], zone: [t("OTHER", "OTRA"), t("ZONE", "ZONA")], region: [t("OTHER", "OTRA"), t("REGION", "REGIÓN")] };
   for (const [key, x] of Object.entries(STOPS)) {
     const plan = { x: x - 20, y: 22, w: 20, d: 12, r: 1.2 };
     out.push(`<g data-plaque="${key}">`);
     out.push(S(k.slabOf(plan, 0, 0.9, P, 3), { tone: "mid", crease: "none" }));
     out.push(L(k.planOutline(k.insetPlan(plan, 1.2), 0.9, P), { tone: "faint" }));
-    out.push(topText(x - 10, 26.6, 0.9, names[key][0], { size: 2.7 }));
-    out.push(topText(x - 10, 30.8, 0.9, names[key][1], { size: 2.7 }));
+    out.push(topText(x - 10, 26.4, 0.9, names[key][0], { size: 3.4, tone: "mid" }));
+    out.push(topText(x - 10, 31.4, 0.9, names[key][1], { size: 3.4, tone: "mid" }));
     // A short stake from the plaque to the aisle edge: the stop it marks.
     out.push(L(k.lineOnTop([x, AISLE.y + AISLE.d], [x, 22], 0.6, P), { tone: "lo" }));
     out.push(`</g>`);
@@ -225,8 +225,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label:
-      t("A warehouse picker filling one page of orders. On the right, a packing table holds a ticket for each order on the page and a box on each ticket whose items have arrived, with a stopwatch, a crate that fills with the data fetched, and counters for queries and milliseconds on its front. A long aisle runs to a warehouse that stands at one of three distances: same host, same zone or other zone. Each query is one trip down the aisle and back: out with a slip, back with a box.",
-        "Un preparador de pedidos llenando una página de pedidos. A la derecha, una mesa de empaque tiene un ticket por cada pedido de la página y una caja sobre cada ticket cuyos artículos ya llegaron, con un cronómetro, un cajón que se llena con los datos traídos y contadores de consultas y milisegundos en su frente. Un pasillo largo lleva a un almacén que está a una de tres distancias: mismo host, misma zona u otra zona. Cada consulta es un viaje por el pasillo, de ida y vuelta: de ida con una nota, de vuelta con una caja."),
+      t("A warehouse picker filling one page of orders. On the right, a packing table holds a ticket for each order on the page and a box on each ticket whose items have arrived, with a stopwatch, a crate that fills with the data fetched, and counters for queries and milliseconds on its front. A long aisle runs to a warehouse that stands at one of three distances: same host, another zone or another region. Each query is one trip down the aisle and back: out with a slip, back with a box.",
+        "Un preparador de pedidos llenando una página de pedidos. A la derecha, una mesa de empaque tiene un ticket por cada pedido de la página y una caja sobre cada ticket cuyos artículos ya llegaron, con un cronómetro, un cajón que se llena con los datos traídos y contadores de consultas y milisegundos en su frente. Un pasillo largo lleva a un almacén que está a una de tres distancias: mismo host, otra zona u otra región. Cada consulta es un viaje por el pasillo, de ida y vuelta: de ida con una nota, de vuelta con una caja."),
     body: [
       plate(),
       aisle(),

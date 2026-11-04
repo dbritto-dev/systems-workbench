@@ -6,7 +6,7 @@ import { rng } from "../../lib/random";
 import { averageOver } from "../../lib/stats";
 
 export const RTT = { host: 0.2, zone: 1, region: 10 };          // round-trip time to the database, ms
-export const DIST_NAMES = { host: "same host", zone: "same zone", region: "other zone" };
+export const DIST_NAMES = { host: "same host", zone: "other zone", region: "other region" };
 export const BYTES = { order: 800, item: 120, product: 300 };    // bytes per row of each table
 export const SERVER = { base: 0.15, perRow: 0.002 };             // database time per query, ms
 export const BANDWIDTH = 60000;                                  // bytes per ms on the wire (about 480 Mbit/s)
