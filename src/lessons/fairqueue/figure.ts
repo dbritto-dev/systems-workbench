@@ -83,7 +83,7 @@ function lane(i) {
   out.push(S(k.slabOf({ x: LANE_X1 - 2.4, y: bed.y + 0.8, w: 2.4, d: bed.d - 1.6, r: 0.4 }, BED_H, 5, P, 2), { tone: "hi", crease: "lo" }));
   const front = y + LANE_HALF;
   out.push(digitCounter(P, { x: LANE_X0 + 3, y: front, z: 3.6, count: 2, w: 4.2, h: 5.6, gap: 0.6, pad: 1.1, name: "wait" + i }));
-  out.push(text(LANE_X0 + 15, front, 6.2, t("WAITING", "EN ESPERA"), 2.4));
+  out.push(text(LANE_X0 + 15, front, 5.4, t("WAITING", "EN ESPERA"), 3.2));
   return out.join("");
 }
 
@@ -115,16 +115,16 @@ function body() {
   out.push(L(k.planOutline({ x: WORK_SPOT[0] - 6, y: WORK_Y - 6, w: 12, d: 12, r: 1 }, BED_H, P), { tone: "lo" }));
   const front = BODY.y + BODY.d;
   out.push(digitCounter(P, { x: BODY.x + 3.4, y: front, z: 2.2, count: 3, w: 4.2, h: 5.4, gap: 0.6, pad: 1.1, name: "serving" }));
-  out.push(text(BODY.x + 20.2, front, 3.2, t("SERVING", "TURNO"), 2.6));
+  out.push(text(BODY.x + 20.2, front, 3.8, t("SERVING", "TURNO"), 3.2));
   const side = BODY.x + BODY.w;
   out.push(meter(P, { x: side, y: BODY.y + BODY.d - 7, z: 1.8, r: 5.6, face: "x", ticks: 10, zone: 0.9, name: "busy" }));
-  out.push(faceText(P, [side, BODY.y + BODY.d - 15, 1.8], t("BUSY", "OCUPADO"), { face: "x", size: 2.4, tone: "mid" }));
+  out.push(faceText(P, [side, BODY.y + BODY.d - 15, 1.8], t("BUSY", "OCUPADO"), { face: "x", size: 3, tone: "mid" }));
   return out.join("");
 }
 function idleLamp() {
   const p = [BODY.x + BODY.w - 4, BODY.y + BODY.d - 19, BED_H];
   return `<g data-idle="off">${lamp(P, p, { r: 2.8 })}</g><g data-idle="on" style="display:none">${litFill(lamp(P, p, { r: 2.8, lit: true }))}</g>`
-    + faceText(P, [BODY.x + BODY.w, BODY.y + BODY.d - 15, 6.4], t("IDLE", "OCIOSO"), { face: "x", size: 2.4, tone: "mid" });
+    + faceText(P, [BODY.x + BODY.w, BODY.y + BODY.d - 15, 6.4], t("IDLE", "OCIOSO"), { face: "x", size: 3, tone: "mid" });
 }
 
 // The press: a column behind the work spot, an arm over it and the head the live code lowers onto each job.
@@ -147,7 +147,7 @@ function bin() {
   const out = [S(k.slabOf(BIN, 0, BIN_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(BIN, 2.2), BIN_H, P), { tone: "lo" }) })];
   const front = BIN.y + BIN.d;
   out.push(digitCounter(P, { x: BIN.x + 3, y: front, z: 1.4, count: 3, w: 3.8, h: 4.8, gap: 0.6, pad: 0.9, name: "done" }));
-  out.push(text(BIN.x + 18.6, front, 2.4, t("DONE", "HECHOS"), 2.4));
+  out.push(text(BIN.x + 18.2, front, 2.6, t("DONE", "HECHOS"), 2.8));
   return out.join("");
 }
 

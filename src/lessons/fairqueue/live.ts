@@ -241,7 +241,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = String(raw);
-    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · corrida reiniciada")); }
+    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };

@@ -94,12 +94,12 @@ const EXPERIMENTS = [
     id: "weights",
     title: t("Give A weight 3", "Darle peso 3 a A"),
     change: t("A and D each drop 30 jobs at once · fair by work · equal weights vs A weighted 3 (say, a paid plan)",
-      "A y D sueltan 30 trabajos cada uno de golpe · justo por trabajo · pesos iguales vs A con peso 3 (por ejemplo, un plan pago)"),
+      "A y D sueltan 30 trabajos cada uno de golpe · justo por trabajo · pesos iguales vs A con peso 3 (por ejemplo, un plan de pago)"),
     question: t("With A weighted 3, when does D's batch finish?", "Con A de peso 3, ¿cuándo termina el lote de D?"),
     options: [
       t("About three times later: D gets a third of what A gets", "Unas tres veces más tarde: D recibe un tercio de lo que recibe A"),
       t("A little later: once A's batch is done, D gets the worker back", "Un poco más tarde: cuando termina el lote de A, D recupera el trabajador"),
-      t("Not until A stops sending work", "No hasta que A deje de enviar trabajo"),
+      t("No later: D's share is reserved whatever A's weight", "Nada más tarde: la parte de D está reservada, pese al peso de A"),
     ],
     answer: 1,
     why: t(
@@ -122,7 +122,7 @@ const EXPERIMENTS = [
     answer: 2,
     why: t(
       "Strict priority serves the low lane only when the high lane is empty. During the spike interactive work arrives faster than the worker can finish it, so the high lane never empties and nothing is left over: D starts " + one(N4.prio.dStarted) + " jobs in " + SPIKE_SECS + " s and its oldest job waits " + s1(N4.prio.dMax) + ". That is starvation. Round robin keeps D going (" + pct(N4.rr.dShare) + " of the worker), but overload has to land somewhere: A, B and C's p95 wait rises from " + s1(N4.prio.hiP95) + " to " + s1(N4.rr.hiP95) + ". Weighted fair queueing lets you choose the split, for example a small weight for batch work: interactive traffic gets most of the worker and the low lane never stops.",
-      "La prioridad estricta solo atiende el carril bajo cuando el carril alto está vacío. Durante el pico el trabajo interactivo llega más rápido de lo que el trabajador lo termina, así que el carril alto nunca se vacía y no sobra nada: D empieza " + one(N4.prio.dStarted) + " trabajos en " + SPIKE_SECS + " s y su trabajo más antiguo espera " + s1(N4.prio.dMax) + ". Eso es inanición (starvation). Round robin mantiene a D en marcha (" + pct(N4.rr.dShare) + " del trabajador), pero la sobrecarga tiene que caer en algún lado: el p95 de espera de A, B y C sube de " + s1(N4.prio.hiP95) + " a " + s1(N4.rr.hiP95) + ". El encolamiento justo ponderado (weighted fair queueing) te deja elegir el reparto, por ejemplo un peso chico para el trabajo por lotes: el tráfico interactivo se lleva casi todo el trabajador y el carril bajo nunca se detiene.",
+      "La prioridad estricta solo atiende el carril bajo cuando el carril alto está vacío. Durante el pico el trabajo interactivo llega más rápido de lo que el trabajador lo termina, así que el carril alto nunca se vacía y no sobra nada: D empieza " + one(N4.prio.dStarted) + " trabajos en " + SPIKE_SECS + " s y su trabajo más antiguo espera " + s1(N4.prio.dMax) + ". Eso es inanición (starvation). Round robin mantiene a D en marcha (" + pct(N4.rr.dShare) + " del trabajador), pero la sobrecarga tiene que caer en algún lado: el p95 de espera de A, B y C sube de " + s1(N4.prio.hiP95) + " a " + s1(N4.rr.hiP95) + ". El encolamiento justo ponderado (weighted fair queueing) te deja elegir el reparto, por ejemplo un peso pequeño para el trabajo por lotes: el tráfico interactivo se lleva casi todo el trabajador y el carril bajo nunca se detiene.",
     ),
     watch: { sched: "prio", scenario: "spike" },
   },
@@ -134,7 +134,7 @@ const EXPERIMENTS = [
     question: t("With fixed slots, how long does D's batch take?", "Con franjas fijas, ¿cuánto tarda el lote de D?"),
     options: [
       t("About the same as round robin: D still gets its quarter", "Más o menos lo mismo que con round robin: D sigue teniendo su cuarto"),
-      t("Much longer, and the worker sits idle through other tenants' empty slots", "Mucho más, y el trabajador queda ocioso en las franjas vacías de los demás"),
+      t("Much longer: the worker idles through empty slots", "Mucho más: el trabajador queda ocioso en franjas vacías"),
       t("Less: D's slots are guaranteed, so nobody gets in its way", "Menos: las franjas de D están garantizadas, así que nadie se le cruza"),
     ],
     answer: 1,
@@ -162,15 +162,15 @@ const QUESTIONS = [
   [t("When is strict priority the right tool, and how do you stop it from starving the low lane?",
      "¿Cuándo es la prioridad estricta la herramienta correcta y cómo evitas que deje sin atender al carril bajo?"),
    t("When the high class is small and bounded, like health checks, control messages or interactive requests that are a fraction of the load, and the low lane can wait. Guard it: cap the high lane's rate so it can't take everything, give the low lane a minimum share (a weight instead of a strict order), or age waiting jobs so their priority rises the longer they wait. Kubernetes' API Priority and Fairness combines priority levels, each with its own share of the server, with fair queuing among the clients inside a level.",
-     "Cuando la clase alta es chica y acotada, como chequeos de salud, mensajes de control o solicitudes interactivas que son una fracción de la carga, y el carril bajo puede esperar. Protégelo: limita la tasa del carril alto para que no pueda llevarse todo, dale al carril bajo una parte mínima (un peso en lugar de un orden estricto), o envejece los trabajos que esperan (aging) para que su prioridad suba mientras más esperan. API Priority and Fairness de Kubernetes combina niveles de prioridad, cada uno con su propia parte del servidor, con encolamiento justo entre los clientes dentro de cada nivel.")],
+     "Cuando la clase alta es pequeña y acotada, como chequeos de salud, mensajes de control o solicitudes interactivas que son una fracción de la carga, y el carril bajo puede esperar. Protégelo: limita la tasa del carril alto para que no pueda llevarse todo, dale al carril bajo una parte mínima (un peso en lugar de un orden estricto), o envejece los trabajos que esperan (aging) para que su prioridad suba mientras más esperan. API Priority and Fairness de Kubernetes combina niveles de prioridad, cada uno con su propia parte del servidor, con encolamiento justo entre los clientes dentro de cada nivel.")],
   [t("Your workers are split into fixed pools, one per customer tier. The workers are 40% busy overall, yet the free tier's queue is hours long. What's going on?",
      "Tus trabajadores están divididos en grupos fijos, uno por nivel de cliente. Los trabajadores están 40% ocupados en total, pero la cola del nivel gratuito tiene horas de atraso. ¿Qué está pasando?"),
    t("The pools are reserved capacity, so they aren't work-conserving: an idle paid-tier worker can't take a free-tier job. Let idle workers take work from other tiers (borrowing), and express the tiers as weights or minimum shares rather than walls, so each tier is guaranteed its share when busy but nobody's capacity sits idle. Keep hard partitions only where isolation is worth the waste.",
-     "Los grupos son capacidad reservada, así que no conservan el trabajo: un trabajador ocioso del nivel pago no puede tomar un trabajo del nivel gratuito. Deja que los trabajadores ociosos tomen trabajo de otros niveles (préstamo), y expresa los niveles como pesos o partes mínimas en lugar de muros, para que cada nivel tenga garantizada su parte cuando está ocupado pero la capacidad de nadie quede ociosa. Deja particiones estrictas solo donde el aislamiento vale lo que se desperdicia.")],
+     "Los grupos son capacidad reservada, así que no conservan el trabajo: un trabajador ocioso del nivel de pago no puede tomar un trabajo del nivel gratuito. Deja que los trabajadores ociosos tomen trabajo de otros niveles (préstamo), y expresa los niveles como pesos o partes mínimas en lugar de muros, para que cada nivel tenga garantizada su parte cuando está ocupado pero la capacidad de nadie quede ociosa. Deja particiones estrictas solo donde el aislamiento vale lo que se desperdicia.")],
   [t("What would you put on a dashboard to catch a noisy tenant before customers complain?",
      "¿Qué pondrías en un panel para detectar a un cliente ruidoso antes de que los clientes se quejen?"),
    t("Per tenant, not just in total: queue length, the age of the oldest waiting job, the share of worker time and wait percentiles (lesson 44). A total p95 can look fine while one small tenant waits minutes. Little's law (lesson 33) holds per lane too: a tenant's wait is about its queue length divided by the rate its jobs are being served, so a long lane with a small share is the warning sign.",
-     "Por cliente, no solo en total: largo de la cola, la edad del trabajo más antiguo que espera, la parte del tiempo del trabajador y los percentiles de espera (lección 44). Un p95 total puede verse bien mientras un cliente chico espera minutos. La ley de Little (Little's law, lección 33) también vale por carril: la espera de un cliente es más o menos el largo de su cola dividido por el ritmo al que se atienden sus trabajos, así que un carril largo con una parte chica es la señal de alerta.")],
+     "Por cliente, no solo en total: largo de la cola, la edad del trabajo más antiguo que espera, la parte del tiempo del trabajador y los percentiles de espera (lección 44). Un p95 total puede verse bien mientras un cliente pequeño espera minutos. La ley de Little (Little's law, lección 33) también vale por carril: la espera de un cliente es más o menos el largo de su cola dividido por el ritmo al que se atienden sus trabajos, así que un carril largo con una parte pequeña es la señal de alerta.")],
 ];
 
 export default defineLesson({
@@ -180,7 +180,7 @@ export default defineLesson({
     "Una sola cola FIFO compartida atiende el trabajo por orden de llegada, así que cuando un cliente (tenant), sea un proceso por lotes o un cliente ruidoso, la llena, todos los demás esperan la acumulación de ese cliente. Esta lección arma el encolamiento justo (fair queueing) de tres maneras: mira una máquina hacerlo, predice qué lo rompe y luego explícalo con tus palabras."),
   machine: {
     intro: t("Each tenant has its own lane, and the shuttle carries whichever job the scheduler picks to the one press. Every run starts with D's batch job dropping " + BATCH + " jobs. Switch the scheduler and watch how long A, B and C wait.",
-      "Cada cliente tiene su propio carril, y el carro lleva a la única prensa el trabajo que elige el planificador. Cada corrida empieza con el proceso por lotes de D soltando " + BATCH + " trabajos. Cambia el planificador y mira cuánto esperan A, B y C."),
+      "Cada cliente tiene su propio carril, y el carro lleva a la única prensa el trabajo que elige el planificador. Cada ejecución empieza con el proceso por lotes de D soltando " + BATCH + " trabajos. Cambia el planificador y mira cuánto esperan A, B y C."),
     plate: {
       title: t("Dispatch desk", "Mesa de despacho"),
       keys: [
@@ -213,7 +213,7 @@ export default defineLesson({
     ],
     note: t(
       "Changing a setting starts the run again, with D's batch (or the experiment you last watched). Weights apply to round robin, fair by work and fixed slots; strict priority puts A, B and C in the high lane and D in the low one. Max waits cover the last 30 s, including jobs still waiting.",
-      "Cambiar un ajuste reinicia la corrida, con el lote de D (o el último experimento que observaste). Los pesos aplican a round robin, justo por trabajo y franjas fijas; la prioridad estricta pone a A, B y C en el carril alto y a D en el bajo. Las esperas máximas cubren los últimos 30 s, incluidos los trabajos que todavía esperan.",
+      "Cambiar un ajuste reinicia la ejecución, con el lote de D (o el último experimento que observaste). Los pesos aplican a round robin, justo por trabajo y franjas fijas; la prioridad estricta pone a A, B y C en el carril alto y a D en el bajo. Las esperas máximas cubren los últimos 30 s, incluidos los trabajos que todavía esperan.",
     ),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.",
