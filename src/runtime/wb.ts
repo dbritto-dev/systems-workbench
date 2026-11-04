@@ -7,7 +7,8 @@ export type Projection = { origin: [number, number]; scale: number; azimuth?: nu
 type Point3 = [number, number, number];
 export type Bi = string | { en: string; es: string };
 
-export const still = matchMedia("(prefers-reduced-motion: reduce)");
+// Guarded so the module can also be imported at build time (Node has no matchMedia).
+export const still = (typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false }) as MediaQueryList;
 export { digitsOf };
 
 // ---------- language ----------

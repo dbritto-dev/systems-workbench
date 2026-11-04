@@ -1,7 +1,8 @@
 // <wb-experiment exp="burst" answer="2">: one predict-then-run card (markup from components/lesson/Experiments.astro).
-// A choice's data-choice is its index in the lesson's options, not its place on the card: the card shuffles its options
-// every time the page loads, so the right answer is never in a fixed place. Until this element is defined, lesson.css
-// keeps the options invisible (wb-experiment:not(:defined)), so the order the HTML was written in is never seen.
+// A choice's data-choice is its index in the lesson's options, not its place on the card: the options are shuffled every
+// time the page loads, so the right answer is never in a fixed place. shuffleChoices() below does it. The page runs it
+// inline right after each card's options, while the HTML is parsed, so the first paint already shows the new order
+// (this module only loads after parsing). The element runs it too, for a card that missed it.
 // The reader picks a prediction, runs it, and the card shows the verdict and the result bars.
 //
 // The result: the card's <script type="application/json" data-result>, worked out at build time by the lesson's
@@ -18,7 +19,28 @@ export type ResultBar = [label: string, share: number, text: string, after?: boo
 export interface Result { verdict: string; bars?: ResultBar[]; groups?: { title: string; bars: ResultBar[] }[] }
 export interface WatchDetail { id: string; watch: unknown }
 
-export class WbExperiment extends HTMLElement {
+/** Puts a card's options (the buttons in .choices) in a random order (Fisher–Yates), letters them A, B, C… in that
+ *  order, and marks the group data-shuffled so it happens once. Components/lesson/Experiments.astro inlines this
+ *  function's source into the page, so keep it self-contained: no imports, no outer variables. */
+export function shuffleChoices(group: Element) {
+  if (group.hasAttribute("data-shuffled")) return;
+  const items = Array.from(group.children);
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = items[i]; items[i] = items[j]; items[j] = t;
+  }
+  items.forEach((b, k) => {
+    group.appendChild(b);
+    const mark = b.querySelector(".mark");
+    if (mark) mark.textContent = "ABCDE".charAt(k);
+  });
+  group.setAttribute("data-shuffled", "");
+}
+
+// The base class is a stand-in at build time, when Experiments.astro imports shuffleChoices in Node.
+const Base = (globalThis.HTMLElement ?? Object) as typeof HTMLElement;
+
+export class WbExperiment extends Base {
   #picked: number | null = null;
   get id() { return this.getAttribute("exp") ?? ""; }
   get answer() { return Number(this.getAttribute("answer")); }
@@ -26,27 +48,15 @@ export class WbExperiment extends HTMLElement {
   get runButton() { return this.querySelector<HTMLButtonElement>("[data-run]")!; }
   get done() { return this.hasAttribute("data-done"); }
 
-  #shuffled = false;
-
   connectedCallback() {
     this.addEventListener("click", this.#click);
-    if (!this.#shuffled) { this.#shuffled = true; this.shuffle(); }
+    this.shuffle();
   }
 
-  /** Puts the options in a new random order (Fisher–Yates) and letters them A, B, C… in that order. */
+  /** Shuffles the options, unless the page already did (or the card has been run). */
   shuffle() {
     const group = this.querySelector(".choices");
-    if (!group || this.done) return;
-    const items = this.choices;
-    for (let i = items.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [items[i], items[j]] = [items[j], items[i]];
-    }
-    items.forEach((b, k) => {
-      group.append(b);
-      const mark = b.querySelector(".mark");
-      if (mark) mark.textContent = "ABCDE"[k] ?? "";
-    });
+    if (group && !this.done) shuffleChoices(group);
   }
   disconnectedCallback() { this.removeEventListener("click", this.#click); }
 
@@ -108,7 +118,7 @@ export class WbExperiment extends HTMLElement {
   }
 }
 
-if (!customElements.get("wb-experiment")) customElements.define("wb-experiment", WbExperiment);
+if (globalThis.customElements && !customElements.get("wb-experiment")) customElements.define("wb-experiment", WbExperiment);
 
 declare global {
   interface HTMLElementTagNameMap {

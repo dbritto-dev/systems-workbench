@@ -1,13 +1,16 @@
 ---
 // The five predict-then-run cards, each a <wb-experiment> (src/elements/wb-experiment.ts). A card carries its
 // build-time result (in the page's language) and the settings its Watch button sends to the live code.
-// <wb-experiment> shuffles the options on every page load (wb-experiment.ts). The order written here is the one shown
-// without JavaScript: the right option sits at a place hashed from the lesson and experiment ids, so even that order
-// doesn't give it away. data-choice keeps each option's index in page.ts, which is what `answer` refers to.
+// The options are shuffled on every page load by shuffleChoices() from wb-experiment.ts. Its source is inlined here
+// once, and a one-line call right after each card's options runs it while the HTML is parsed, before the card is first
+// painted, so the order never visibly jumps (the element's module only runs after parsing). The order written here is
+// the one shown without JavaScript: the right option sits at a place hashed from the lesson and experiment ids, so
+// even that order doesn't give it away. data-choice keeps each option's index in page.ts, which `answer` refers to.
 import { pick, type Locale } from "../../i18n";
 import { useUi } from "../../i18n/ui";
 import type { Lesson } from "../../lib/lessons";
 import type { ExperimentResult, ResultBar } from "../../lessons/types";
+import { shuffleChoices } from "../../elements/wb-experiment";
 
 interface Props { locale: Locale; slug: string; experiments: Lesson["page"]["predict"]["experiments"] }
 const { locale, slug, experiments } = Astro.props;
@@ -24,6 +27,7 @@ const bars = (list: ResultBar[]) => list.map(([label, share, text, after]) => (a
 const resultOf = (r: ExperimentResult | undefined) =>
   !r ? null : "groups" in r ? { verdict: L(r.verdict), groups: r.groups.map((g) => ({ title: L(g.title), bars: bars(g.bars) })) } : { verdict: L(r.verdict), bars: bars(r.bars) };
 ---
+<script is:inline set:html={`var wbShuffle = ${shuffleChoices};`} />
 {experiments.map((e, i) => (
   <wb-experiment class="exp" role="article" data-exp={e.id} exp={e.id} answer={String(e.answer)}>
     <div class="exp-head"><h3>{i + 1}. {L(e.title)}</h3><span class="eyebrow">{ui("exp.count", { i: i + 1, n: experiments.length })}</span></div>
@@ -34,6 +38,7 @@ const resultOf = (r: ExperimentResult | undefined) =>
         <button type="button" class="choice" data-choice={j} aria-pressed="false"><span class="mark">{"ABCDE"[k]}</span><span>{L(e.options[j])}</span></button>
       ))}
     </div>
+    <script is:inline>wbShuffle(document.currentScript.previousElementSibling)</script>
     <div class="actions"><button class="btn primary" type="button" data-run disabled>{ui("exp.pick")}</button><button class="btn" type="button" data-watch>{ui("exp.watch")}</button></div>
     <div class="result" aria-live="polite">
       <div class="verdict" data-outcome></div>
