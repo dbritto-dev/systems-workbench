@@ -43,7 +43,7 @@ const EXPERIMENTS = [
     title: t("Lose a hub", "Pierde un hub"),
     change: t("Hubs · the top-left hub is switched off", "Hubs · se apaga el hub de arriba a la izquierda"),
     question: t("Which nodes stop hearing new values?", "¿Qué nodos dejan de recibir valores nuevos?"),
-    options: [t("Only the dead hub", "Solo el hub muerto"), t("The dead hub's whole branch, and its leaves' values go nowhere", "Toda la rama del hub muerto, y los valores de sus hojas no llegan a ningún lado"), t("Everyone: the network stops", "Todos: la red se detiene")],
+    options: [t("Only the dead hub", "Solo el hub muerto"), t("The dead hub's whole branch", "Toda la rama del hub muerto"), t("Everyone: the network stops", "Todos: la red se detiene")],
     answer: 1,
     why: t("In the hub topology each leaf has exactly one path to the rest of the network: its hub. When the hub dies, its leaves are cut off in both directions. The grid has many paths between any two nodes, so the same failure costs it nothing. Fewer wires means fewer messages and fewer ways round a failure; production systems keep two parents per node or fall back to gossip (lesson 19, Gossip protocols).", "En la topología de hubs cada hoja tiene un solo camino al resto de la red: su hub. Cuando el hub muere, sus hojas quedan aisladas en ambas direcciones. La malla tiene muchos caminos entre dos nodos cualesquiera, así que la misma falla no le cuesta nada. Menos cables significa menos mensajes y menos formas de rodear una falla; los sistemas en producción mantienen dos padres por nodo o recurren a gossip (lección 19, Protocolos de gossip)."),
     watch: { topology: "hubs", batch: 0, retries: false, forward: "new", kill: true },

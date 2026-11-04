@@ -146,7 +146,7 @@ const EXPERIMENTS = [
     question: t("Only CartBadge shows the cart count. How many components render?", "Solo CartBadge muestra la cantidad del carrito. ¿Cuántos componentes se renderizan?"),
     options: [
       t("Just CartBadge, and App: React.memo stops the rest", "Solo CartBadge, y App: React.memo frena el resto"),
-      t("Every component that reads the context, whatever field it reads, and what those render", "Todo componente que lee el contexto, lea el campo que lea, y lo que esos renderizan"),
+      t("Every component that reads the context, and what it renders", "Todo componente que lee el contexto, y lo que renderiza"),
       t("All " + N + ": the provider re-renders the whole tree", "Los " + N + ": el proveedor vuelve a renderizar todo el árbol"),
     ],
     answer: 1,

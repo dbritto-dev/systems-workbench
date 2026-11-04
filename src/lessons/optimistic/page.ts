@@ -116,7 +116,7 @@ const EXPERIMENTS = [
     question: t("Ignoring stale answers (only the newest save's answer counts), how often does the server end up storing the wrong value?", "Ignorando las respuestas viejas (solo cuenta la respuesta del guardado más nuevo), ¿qué tan seguido termina el servidor guardando el valor equivocado?"),
     options: [
       t("Never: the screen ends right, so the data is right", "Nunca: la pantalla termina bien, así que los datos están bien"),
-      t("About as often as the two saves were reordered: ignoring an answer doesn't undo its write", "Más o menos tan seguido como se desordenaron los dos guardados: ignorar una respuesta no deshace su escritura"),
+      t("About as often as the two saves were reordered", "Más o menos tantas veces como se desordenaron los guardados"),
       t("Only when a save fails", "Solo cuando falla un guardado"),
     ],
     answer: 1,
