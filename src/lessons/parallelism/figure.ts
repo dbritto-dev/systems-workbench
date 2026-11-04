@@ -68,18 +68,21 @@ function bench(b) {
   return `<g data-bench="${b.i}">${out.join("")}<g data-cover style="display:none">${S(k.slabOf(k.insetPlan(top, -0.6), BENCH.h, 1.4, P, 3, 0.4), { tone: "lo" })}${L(k.planOutline(k.insetPlan(top, 3), BENCH.h + 1.4, P, 3), { tone: "faint" })}</g></g>`;
 }
 
+// A worker: a base, a body and a round head, tall enough to stand out over the bench tops.
+const HEAD_Z = 15.2, HEAD_R = 3;
 export function pawnSvg() {
-  return S(k.cylinder(0, 0, 3.2, 0, 1.2, P, 20), { tone: "lo" })
-    + S(k.cylinder(0, 0, 2.4, 1.2, 8.8, P, 20), { tone: "mid", crease: "none" })
-    + S(k.cylinder(0, 0, 2.1, 10.4, 3, P, 20, 0.3), { tone: "hi", crease: "lo" });
+  return S(k.cylinder(0, 0, 3.6, 0, 1.4, P, 20), { tone: "lo" })
+    + S(k.cylinder(0, 0, 2.8, 1.4, 10.6, P, 20, 0.6), { tone: "mid", crease: "none" })
+    + S(k.cylinder(0, 0, 3.4, 10.6, 1.4, P, 20, 0.5), { tone: "mid", crease: "lo" })
+    + S(k.sphereOf([0, 0, HEAD_Z], HEAD_R, P, { steps: 24 }), { tone: "hi", crease: "lo" });
 }
 
 // The shared tool: a heavy T-handle press on a square foot. One exists; whoever holds it, has it.
 // The foreman: a worker with a flat-brimmed cap, so he reads as the one in charge.
 function foremanSvg() {
   return pawnSvg()
-    + S(k.cylinder(0, 0, 4.6, 13.2, 0.8, P, 24), { tone: "mid", crease: "none" })
-    + S(k.cylinder(0, 0, 2.4, 14, 2, P, 20, 0.4), { tone: "mid", crease: "lo" });
+    + S(k.cylinder(0, 0, 5, HEAD_Z + 1.2, 0.8, P, 24), { tone: "mid", crease: "none" })
+    + S(k.cylinder(0, 0, 2.8, HEAD_Z + 1.8, 2.2, P, 20, 0.4), { tone: "mid", crease: "lo" });
 }
 
 export function toolSvg() {
@@ -122,7 +125,7 @@ function rack() {
 // Queue rail beside the rack: a worker who needs the tool drops a token in the next slot and waits its turn.
 export const QUEUE_SLOTS = (() => {
   const out = [];
-  for (let r = 0; r < 8; r++) for (const c of [0, 1]) out.push([-108 + c * 5, -9.5 + r * 4]);
+  for (let r = 0; r < 8; r++) for (const c of [0, 1]) out.push([-108 + c * 5, -9 + r * 4.1]);
   return out;
 })();
 function queueRail() {
@@ -130,7 +133,7 @@ function queueRail() {
   const out = [S(k.slabOf(rail, 0, 2.2, P, 3, 0.3), { tone: "lo" })];
   out.push(L(k.lineOnTop([-105.5, -11], [-105.5, 21], 2.2, P), { tone: "faint" }));
   out.push(D(QUEUE_SLOTS.map(([qx, qy]) => k.iso([qx, qy, 2.2], P)), { size: 0.35, tone: "faint" }));
-  out.push(`<g data-queue>${QUEUE_SLOTS.map(([qx, qy], i) => `<g data-token="${i}" style="display:none">${S(k.cylinder(qx, qy, 1.6, 2.2, 2.4, P, 14, 0.2), { tone: "hi", crease: "lo" })}</g>`).join("")}</g>`);
+  out.push(`<g data-queue>${QUEUE_SLOTS.map(([qx, qy], i) => `<g data-token="${i}" style="display:none">${S(k.cylinder(qx, qy, 1.9, 2.2, 4.4, P, 16, 0.3), { tone: "hi", crease: "lo", lit: true })}</g>`).join("")}</g>`);
   return out.join("");
 }
 
@@ -160,7 +163,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A workshop on a base plate. A foreman at a desk splits each job into chunks and sets them on a pallet. Workers at up to eight workbenches pick chunks up and work on them at the same time. One shared T-handled tool sits on a rack in the aisle and can only be used at one bench at a time; workers waiting for it drop tokens on a queue rail beside the rack. Every finished chunk goes to a single packing station, which merges them and presses the finished job alone.",
-      "Un taller sobre una placa base. Un capataz en un escritorio divide cada trabajo en bloques y los pone en un palé. Los trabajadores de hasta ocho bancos toman bloques y los trabajan al mismo tiempo. Una única herramienta compartida con mango en T está en un soporte del pasillo y solo se puede usar en un banco a la vez; los que la esperan dejan fichas en un riel de fila junto al soporte. Cada bloque terminado va a una sola estación de empaque, que los une y prensa el trabajo terminado sola."),
+      "Un taller sobre una placa base. Un capataz en un escritorio divide cada trabajo en bloques y los pone en un pallet. Los trabajadores de hasta ocho bancos toman bloques y los trabajan al mismo tiempo. Una única herramienta compartida con mango en T está en un soporte del pasillo y solo se puede usar en un banco a la vez; los que la esperan dejan fichas en un riel de fila junto al soporte. Cada bloque terminado va a una sola estación de empaque, que los une y prensa el trabajo terminado sola."),
     body: [
       plate(),
       foreman(),

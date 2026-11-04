@@ -6,10 +6,10 @@ import { translateAlong, solidSvg, slabOf, cylinder, lineOnTop } from "../../../
 import * as WB from "../../runtime/wb";
 import { L as tr } from "../../runtime/wb";
 import { playPause } from "../../runtime/dom";
-import { PAR, makeShop, amdahl, speedup } from "./sim";
+import { PAR, makeShop, amdahlLimit, speedup } from "./sim";
 import { secs1, msFromSecs } from "../../lib/format";
 
-export default function mount({ P, G, BASE, PAWN_SVG, EXP_ES }, root) {
+export default function mount({ P, G, BASE, PAWN_SVG, EXP_EN, EXP_ES }, root) {
   const NS = "http://www.w3.org/2000/svg";
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
@@ -52,7 +52,7 @@ export default function mount({ P, G, BASE, PAWN_SVG, EXP_ES }, root) {
 
   const current = { speedup: null, limit: null };
   function computeStats() {
-    current.limit = amdahl(cfg.serial, cfg.workers, cfg.cores);
+    current.limit = amdahlLimit(cfg);
     current.speedup = speedup(cfg);
     stat("limit", current.limit.toFixed(1) + "×");
     stat("speedup", current.speedup.toFixed(1) + "×");
@@ -149,7 +149,7 @@ export default function mount({ P, G, BASE, PAWN_SVG, EXP_ES }, root) {
     for (const name of ["workers", "cores", "serial", "chunks", "tool", "job", "data"]) set(name, String(w[name]), true);
     restart(); showStats();
     if (loop.paused) loop.setPaused(false);
-    say(tr("watching: " + id, "observando: " + EXP_ES[id]));
+    say(tr("watching: " + EXP_EN[id], "observando: " + EXP_ES[id]));
   });
 
   loop.setPaused(loop.paused);

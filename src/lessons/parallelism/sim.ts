@@ -38,6 +38,8 @@ export function chunkWeights(cfg) {
 }
 
 export function amdahl(serial, workers, cores) { const n = Math.min(workers, cores); return 1 / (serial + (1 - serial) / n); }
+// Amdahl's limit for the panel: with the shared tool on, the tool's share of every chunk is serial too.
+export function amdahlLimit(cfg) { const s = cfg.serial + (1 - cfg.serial) * (cfg.tool ? PAR.TOOL_SHARE : 0); return amdahl(s, cfg.workers, cfg.cores); }
 
 export function makeShop(cfg, seed = 1) {
   const random = rng(seed);
