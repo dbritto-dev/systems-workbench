@@ -1,5 +1,6 @@
 // <wb-experiment exp="burst" answer="2">: one predict-then-run card (markup from components/lesson/Experiments.astro).
-// A choice's data-choice is its index in the lesson's options, not its place on the card (the card shuffles them).
+// A choice's data-choice is its index in the lesson's options, not its place on the card: the card shuffles the options
+// every time the page loads, so the right answer is never in a fixed place.
 // The reader picks a prediction, runs it, and the card shows the verdict and the result bars.
 //
 // The result: the card's <script type="application/json" data-result>, worked out at build time by the lesson's
@@ -24,7 +25,28 @@ export class WbExperiment extends HTMLElement {
   get runButton() { return this.querySelector<HTMLButtonElement>("[data-run]")!; }
   get done() { return this.hasAttribute("data-done"); }
 
-  connectedCallback() { this.addEventListener("click", this.#click); }
+  #shuffled = false;
+
+  connectedCallback() {
+    this.addEventListener("click", this.#click);
+    if (!this.#shuffled) { this.#shuffled = true; this.shuffle(); }
+  }
+
+  /** Puts the options in a new random order (Fisher–Yates) and letters them A, B, C… in that order. */
+  shuffle() {
+    const group = this.querySelector(".choices");
+    if (!group || this.done) return;
+    const items = this.choices;
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    items.forEach((b, k) => {
+      group.append(b);
+      const mark = b.querySelector(".mark");
+      if (mark) mark.textContent = "ABCDE"[k] ?? "";
+    });
+  }
   disconnectedCallback() { this.removeEventListener("click", this.#click); }
 
   #click = (e: Event) => {
