@@ -3,7 +3,7 @@
 // five counters (servers), each with its own queue lane. Built with the Anatomy kit (MIT).
 import * as k from "../../../workbench/kit.mjs";
 import { t } from "../../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, faceText } from "../../../workbench/parts.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
@@ -18,6 +18,7 @@ export const LANE = { from: -18, to: 92, half: 10, z: 3 };
 export const SERVE_X = 84;
 export const SLOT = 12;
 export const PARCEL = { w: 10, h: 8 };
+const BIG = { w: 11.5, d: 16, h: 15 };
 export const TABLE = [-50, 0];
 const TABLE_R = 22;
 export const TABLE_Z = 8;
@@ -119,6 +120,8 @@ function counter(ly, index) {
   out.push(`<g data-lamp-on="${index}">${S(k.cylinder(lamp[0], lamp[1], 2.2, COUNTER.h + 1.4, 2.4, P, 20), { tone: "hi", crease: "lo" })}</g>`);
   out.push(`<g data-lamp-off="${index}" style="display:none">${S(k.cylinder(lamp[0], lamp[1], 2.2, COUNTER.h + 1.4, 0.8, P, 20), { tone: "lo", crease: "none" })}</g>`);
   out.push(D([at([COUNTER.x + 4, ly - 8, COUNTER.h]), at([COUNTER.x + 28, ly - 8, COUNTER.h])], { size: 0.4 }));
+  // The counter's number on its front face: the controls, readout and stats call counters 1-5.
+  out.push(faceText(P, [COUNTER.x + COUNTER.w, ly, 4.5], String(index + 1), { face: "x", size: 9, tone: "hi", anchor: "middle" }));
   return out.join("");
 }
 
@@ -157,6 +160,14 @@ export function parcelSvg() {
   const h = PARCEL.w / 2;
   return S(k.slabOf({ x: -h, y: -h, w: PARCEL.w, d: PARCEL.w, r: 0.6 }, 0, PARCEL.h, P, 2, 0.3), { tone: "hi", crease: "lo" })
     + L(k.lineOnTop([-h, 0], [h, 0], PARCEL.h, P), { tone: "faint" });
+}
+
+// A huge parcel ("1 in 10 huge"): as long as a queue slot allows, nearly the lane's width and twice as tall, and lit,
+// so a lane stuck behind one reads at a glance.
+export function bigParcelSvg() {
+  const w = BIG.w / 2, d = BIG.d / 2;
+  return S(k.slabOf({ x: -w, y: -d, w: BIG.w, d: BIG.d, r: 0.8 }, 0, BIG.h, P, 2, 0.4), { tone: "hi", crease: "lo", lit: true })
+    + L(k.lineOnTop([-w, 0], [w, 0], BIG.h, P), { tone: "faint" });
 }
 
 export function buildFigure() {

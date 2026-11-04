@@ -9,9 +9,9 @@ import { show, playPause } from "../../runtime/dom";
 import { lerp, easeInOutCubic } from "../../lib/tween";
 import { clamp, rankQuantile } from "../../lib/stats";
 import { pct } from "../../lib/format";
-import { TRANSFER, SLOW, createStation } from "./sim";
+import { TRANSFER, SLOW, SERVICE, createStation } from "./sim";
 
-export default function mount({ P, G, PARCEL_SVG }, root) {
+export default function mount({ P, G, PARCEL_SVG, BIG_PARCEL_SVG }, root) {
   const IN_TIME = 1.2;
 
   const { stage, svg } = root.figure;
@@ -69,10 +69,14 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
       const lane = lanes[job.server];
       const el = incoming ? incoming.el : makeParcel(lane.parcels);
       incoming = null;
+      // A huge parcel is only known once it has arrived (the model sizes it then): redraw it big as it leaves the turntable.
+      const huge = opts.sizes === "uneven" && job.size > 2 * SERVICE;
+      if (huge) el.innerHTML = BIG_PARCEL_SVG;
       lane.parcels.appendChild(el);
       visuals.set(job.id, { el, job, x: G.TABLE[0], phase: "live" });
       armTarget = Math.atan2(lane.ly - G.TABLE[1], G.LANE.from - G.TABLE[0]);
-      say(T("parcel " + job.id + " → counter " + (job.server + 1), "paquete " + job.id + " → mostrador " + (job.server + 1)));
+      say(huge ? T("huge parcel " + job.id + " → counter " + (job.server + 1), "paquete enorme " + job.id + " → mostrador " + (job.server + 1))
+        : T("parcel " + job.id + " → counter " + (job.server + 1), "paquete " + job.id + " → mostrador " + (job.server + 1)));
     } else if (event.type === "finish") {
       const v = visuals.get(job.id); if (v) { v.phase = "done"; v.t = 0; }
     } else if (event.type === "error") {

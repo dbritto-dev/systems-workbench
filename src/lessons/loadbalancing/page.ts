@@ -3,7 +3,7 @@
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { pct } from "../../lib/format";
-import { buildFigure, P, GEOMETRY, parcelSvg } from "./figure";
+import { buildFigure, P, GEOMETRY, parcelSvg, bigParcelSvg } from "./figure";
 import { experimentResults } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page ran them in
@@ -57,7 +57,7 @@ const EXPERIMENTS = [
     question: t("What happens to the slowest 5% of waits (p95)?", "¿Qué pasa con el 5% de esperas más lentas (p95)?"),
     options: [
       t("It drops by about a quarter, in line with the extra capacity", "Baja más o menos un cuarto, en línea con la capacidad extra"),
-      t("It drops by more than half", "Baja más de la mitad"),
+      t("It drops by half or more", "Baja a la mitad o menos"),
       t("It barely moves: the traffic is the same", "Casi no cambia: el tráfico es el mismo"),
     ],
     answer: 1,
@@ -72,7 +72,7 @@ const EXPERIMENTS = [
     question: t("With round robin, what happens to p95?", "Con round robin, ¿qué pasa con el p95?"),
     options: [
       t("It rises a little: we lost two-thirds of one counter", "Sube un poco: perdimos dos tercios de un mostrador"),
-      t("It explodes: the slow counter's queue grows for as long as traffic flows", "Se dispara: la cola del mostrador lento crece mientras siga llegando tráfico"),
+      t("It climbs for as long as traffic flows", "Sube sin parar mientras llegue tráfico"),
       t("It stays the same: the other counters pick up the slack", "Se mantiene igual: los otros mostradores compensan"),
     ],
     answer: 1,
@@ -82,7 +82,7 @@ const EXPERIMENTS = [
   },
   {
     id: "uneven",
-    title: t("Uneven parcels", "Paquetes desparejos"),
+    title: t("Uneven parcels", "Paquetes desiguales"),
     change: t("1 parcel in 10 takes 11× longer than the rest · same total work", "1 de cada 10 paquetes tarda 11× más que el resto · mismo trabajo total"),
     question: t("Switching from round robin to least connections changes p95 by…", "Pasar de round robin a menos conexiones cambia el p95…"),
     options: [
@@ -98,54 +98,54 @@ const EXPERIMENTS = [
   {
     id: "crash",
     title: t("A counter crashes", "Se cae un mostrador"),
-    change: t("Counter 2 dies · the balancer only finds out at its next health check", "El mostrador 2 se cae · el balanceador recién se entera en el siguiente chequeo de salud"),
+    change: t("Counter 2 dies · the balancer only finds out at its next health check", "El mostrador 2 se cae · el balanceador solo se entera en el siguiente chequeo de salud"),
     question: t("With a health check every 30 s, how many parcels fail?", "Con un chequeo de salud cada 30 s, ¿cuántos paquetes fallan?"),
     options: [
       t("None: the balancer notices at once", "Ninguno: el balanceador lo nota de inmediato"),
-      t("The parcels already inside it, plus everything sent to it until the next check", "Los paquetes que ya tenía, más todo lo que le mandan hasta el siguiente chequeo"),
+      t("Those inside, plus all it gets until the next check", "Los que tenía, más lo que reciba hasta el chequeo"),
       t("Every parcel until someone restarts the counter", "Todos los paquetes hasta que alguien reinicie el mostrador"),
     ],
     answer: 1,
-    why: t("Between the crash and the next check, the balancer still believes the counter is up and keeps sending it a quarter of the traffic. Faster checks shrink that window, but they cannot save the parcels that were already inside the counter when it died: that floor stays the same at any interval.",
-      "Entre la caída y el siguiente chequeo, el balanceador todavía cree que el mostrador está arriba y le sigue mandando un cuarto del tráfico. Chequeos más frecuentes achican esa ventana, pero no pueden salvar los paquetes que ya estaban dentro del mostrador cuando se cayó: ese piso es el mismo con cualquier intervalo."),
+    why: t("Between the crash and the next check, the balancer still believes the counter is up and keeps sending it a quarter of the traffic. Faster checks shrink that window, but they cannot save the parcels that were already inside the counter when it died: that floor stays the same at any interval. This balancer has no retries and no passive checks. Real L7 balancers (Envoy, NGINX, HAProxy) usually retry a refused connection on another server and eject one that keeps failing, which shrinks the loss to the parcels already inside.",
+      "Entre la caída y el siguiente chequeo, el balanceador todavía cree que el mostrador sigue funcionando y le sigue mandando un cuarto del tráfico. Chequeos más frecuentes achican esa ventana, pero no pueden salvar los paquetes que ya estaban dentro del mostrador cuando se cayó: ese piso es el mismo con cualquier intervalo. Este balanceador no tiene reintentos ni chequeos pasivos. Los balanceadores L7 reales (Envoy, NGINX, HAProxy) suelen reintentar en otro servidor una conexión rechazada y sacar al que sigue fallando, lo que reduce la pérdida a los paquetes que ya estaban dentro."),
     watch: { servers: 4, algorithm: "rr", rate: 0.9, sizes: "even", slow: false, sticky: false, heavy: false, check: 30, crash: true },
   },
   {
     id: "sticky",
-    title: t("Sticky customers", "Clientes pegados"),
-    change: t("Two customers send 40% of the parcels · sticky sessions pin each customer to one counter", "Dos clientes mandan el 40% de los paquetes · las sesiones persistentes (sticky sessions) atan cada cliente a un mostrador"),
+    title: t("Sticky customers", "Sesiones fijas"),
+    change: t("Two customers send 40% of the parcels · sticky sessions pin each customer to one counter", "Dos clientes mandan el 40% de los paquetes · las sesiones persistentes (sticky sessions) fijan cada cliente a un mostrador"),
     question: t("Twenty customers in total. What happens to the counters?", "Veinte clientes en total. ¿Qué pasa con los mostradores?"),
     options: [
-      t("Load still evens out: twenty customers is plenty", "La carga igual se empareja: veinte clientes son suficientes"),
-      t("One counter runs flat out while others idle, and p95 soars", "Un mostrador trabaja a tope mientras los demás descansan, y el p95 se dispara"),
-      t("Nothing changes: round robin is still on", "Nada cambia: round robin sigue activo"),
+      t("Load still evens out: twenty customers is plenty", "La carga igual se reparte: veinte clientes son suficientes"),
+      t("One runs flat out, the others under half busy", "Uno trabaja a tope, los demás a menos de la mitad"),
+      t("p95 rises a little: the other counters take up the slack", "El p95 sube un poco: los otros mostradores compensan"),
     ],
     answer: 1,
-    why: t("Sticky sessions decide by customer, not by load. Here both big customers hash to the same counter, so it gets half the traffic and more work than it can do, while the others sit at under half busy. The balancer's algorithm never gets a say for those parcels.",
-      "Las sesiones persistentes deciden por cliente, no por carga. Aquí el hash de los dos clientes grandes cae en el mismo mostrador, así que recibe la mitad del tráfico y más trabajo del que puede hacer, mientras los demás quedan por debajo de la mitad de ocupación. El algoritmo del balanceador nunca opina sobre esos paquetes."),
+    why: t("Sticky sessions decide by customer, not by load. Here both big customers were pinned to the same counter (by a hash of their address, or by a cookie set on their first request), so it gets 40% of the traffic plus its share of the rest: more work than it can do. The others sit under half busy. The balancer's algorithm only placed each customer once; after that it never gets a say, however busy the counter becomes.",
+      "Las sesiones persistentes deciden por cliente, no por carga. Aquí los dos clientes grandes quedaron fijados al mismo mostrador (por un hash de su dirección, o por una cookie puesta en su primera solicitud), así que recibe el 40% del tráfico más su parte del resto: más trabajo del que puede hacer. Los demás quedan por debajo de la mitad de ocupación. El algoritmo del balanceador ubicó a cada cliente una sola vez; después ya no opina, por más ocupado que esté el mostrador."),
     watch: { servers: 4, algorithm: "rr", rate: 0.9, sizes: "even", slow: false, sticky: true, heavy: true, check: 10 },
   },
 ];
 
 const QUESTIONS = [
   [t("At 90% busy, adding a third more capacity cut p95 by more than half. Why isn't the gain proportional?", "Con 90% de ocupación, sumar un tercio más de capacidad bajó el p95 más de la mitad. ¿Por qué la mejora no es proporcional?"),
-    t("Waiting time grows roughly like utilisation ÷ (1 − utilisation): at 0.9 that is 9, at 0.68 about 2. Near full, every burst queues behind the last one. Leave headroom (many teams aim for 60–70% at peak) and scale before you reach the steep part of the curve.",
-      "El tiempo de espera crece más o menos como utilización ÷ (1 − utilización): con 0.9 da 9, con 0.68 cerca de 2. Cerca del tope, cada ráfaga hace cola detrás de la anterior. Deja margen (muchos equipos apuntan a 60–70% en el pico) y escala antes de llegar a la parte empinada de la curva.")],
+    t("Waiting time grows roughly like utilisation ÷ (1 − utilisation): at 0.9 that is 9, at 0.68 about 2. Near full, every burst queues behind the last one. Leave headroom (many teams aim for 60–70% at peak) and scale before you reach the steep part of the curve. Past 100% no balancer helps: lesson 47, Load shedding and backpressure, shows what to do then.",
+      "El tiempo de espera crece más o menos como utilización ÷ (1 − utilización): con 0.9 da 9, con 0.68 cerca de 2. Cerca del tope, cada ráfaga hace cola detrás de la anterior. Deja margen (muchos equipos apuntan a 60–70% en el pico) y escala antes de llegar a la parte empinada de la curva. Por encima del 100% ningún balanceador ayuda: la lección 47, Descarte de carga y contrapresión, muestra qué hacer entonces.")],
   [t("Round robin is fine when servers are identical. When does it hurt, and why does least connections help?", "Round robin funciona bien cuando los servidores son idénticos. ¿Cuándo hace daño, y por qué ayuda menos conexiones?"),
-    t("It hurts when servers differ in speed (an old instance, a noisy neighbour, a server doing GC) or requests differ in cost. Round robin ignores both and keeps feeding a backed-up server. Least connections uses outstanding requests as a cheap signal of how busy each server really is.",
-      "Hace daño cuando los servidores tienen velocidades distintas (una instancia vieja, un vecino ruidoso, un servidor haciendo GC) o las solicitudes tienen costos distintos. Round robin ignora ambas cosas y sigue alimentando a un servidor atorado. Menos conexiones usa las solicitudes pendientes como una señal barata de qué tan ocupado está de verdad cada servidor.")],
+    t("It hurts when servers differ in speed (an old instance, a noisy neighbour, a server doing GC) or requests differ in cost. Round robin ignores both and keeps feeding a backed-up server. Least connections uses outstanding requests as a cheap signal of how busy each server really is. With many balancers, each counting only its own requests, they can all pick the same quiet server at once and herd onto it. That is why Envoy's least-request and NGINX's random two use the power of two choices: pick two servers at random and send to the less busy one.",
+      "Hace daño cuando los servidores tienen velocidades distintas (una instancia vieja, un vecino ruidoso, un servidor haciendo GC) o las solicitudes tienen costos distintos. Round robin ignora ambas cosas y sigue alimentando a un servidor atorado. Menos conexiones usa las solicitudes pendientes como una señal barata de qué tan ocupado está de verdad cada servidor. Con muchos balanceadores, cada uno contando solo sus propias solicitudes, todos pueden elegir a la vez el mismo servidor tranquilo y amontonarse en él. Por eso el least-request de Envoy y el random two de NGINX usan el poder de dos opciones (power of two choices): eligen dos servidores al azar y mandan al menos ocupado.")],
   [t("Least connections has a trap: a broken server that returns errors instantly has almost no outstanding requests. What happens?", "Menos conexiones tiene una trampa: un servidor roto que devuelve errores al instante casi no tiene solicitudes pendientes. ¿Qué pasa?"),
     t("It looks like the least busy server, so the balancer sends it more and more traffic, and most requests fail (a \"black hole\"). Health checks, outlier detection that ejects servers with high error rates, and counting errors as failures all guard against it.",
       "Parece el servidor menos ocupado, así que el balanceador le manda cada vez más tráfico, y la mayoría de las solicitudes fallan (un \"agujero negro\"). Los chequeos de salud, la detección de valores atípicos (outlier detection) que saca a los servidores con muchos errores y contar los errores como fallas protegen contra eso.")],
   [t("Someone proposes health checks every 100 ms on a 200-server fleet. What are the trade-offs?", "Alguien propone chequeos de salud cada 100 ms en una flota de 200 servidores. ¿Qué se gana y qué se pierde?"),
-    t("Faster detection, but checks become real load on every server, and one slow response can mark a healthy server down (flapping). Real setups combine an interval with thresholds (down after 3 failures, up after 2 passes) and passive checks that watch real traffic.",
-      "Detección más rápida, pero los chequeos se vuelven carga real en cada servidor, y una sola respuesta lenta puede marcar como caído a un servidor sano (flapping). Las configuraciones reales combinan un intervalo con umbrales (caído tras 3 fallas, arriba tras 2 éxitos) y chequeos pasivos que miran el tráfico real.")],
+    t("Faster detection, but checks become real load on every server, and one slow response can mark a healthy server down (flapping). Real setups combine an interval with thresholds (down after 3 failures, up after 2 passes) and passive checks that watch real traffic. Lesson 23, Health checks, goes deeper.",
+      "Detección más rápida, pero los chequeos se vuelven carga real en cada servidor, y una sola respuesta lenta puede marcar como caído a un servidor sano (flapping). Las configuraciones reales combinan un intervalo con umbrales (caído tras 3 fallas, de vuelta tras 2 éxitos) y chequeos pasivos que miran el tráfico real. La lección 23, Chequeos de salud, profundiza en esto.")],
   [t("Why use sticky sessions at all, and how would you avoid the hot counter from experiment 5?", "¿Para qué usar sesiones persistentes, y cómo evitarías el mostrador saturado del experimento 5?"),
-    t("They keep a user on the server that holds their session or warm cache. To avoid hot spots, move session state to a shared store (Redis, a database, a signed cookie) so any server can answer, or use consistent hashing with bounded load so a full server spills to the next one.",
-      "Mantienen a un usuario en el servidor que tiene su sesión o su caché caliente. Para evitar puntos calientes, mueve el estado de sesión a un almacén compartido (Redis, una base de datos, una cookie firmada) para que cualquier servidor pueda responder, o usa hashing consistente con carga acotada (consistent hashing with bounded load) para que un servidor lleno derive al siguiente.")],
+    t("They keep a user on the server that holds their session or warm cache. To avoid hot spots, move session state to a shared store (Redis, a database, a signed cookie) so any server can answer, or use consistent hashing with bounded load (lesson 07, Consistent hashing) so a full server spills to the next one.",
+      "Mantienen a un usuario en el servidor que tiene su sesión o su caché caliente. Para evitar puntos calientes, mueve el estado de sesión a un almacén compartido (Redis, una base de datos, una cookie firmada) para que cualquier servidor pueda responder, o usa hashing consistente con carga acotada (consistent hashing with bounded load; lección 07, Hashing consistente) para que un servidor lleno derive al siguiente.")],
   [t("Parcels inside a crashed counter fail no matter how fast the checks are. How do real systems protect those requests?", "Los paquetes dentro de un mostrador caído fallan sin importar qué tan frecuentes sean los chequeos. ¿Cómo protegen esas solicitudes los sistemas reales?"),
-    t("Retry idempotent requests on another server (at the balancer or the client, with a budget so retries can't multiply load), drain servers before planned restarts so they finish in-flight work, and set timeouts so a request doesn't hang on a dead connection.",
-      "Reintentan las solicitudes idempotentes en otro servidor (en el balanceador o en el cliente, con un presupuesto para que los reintentos no multipliquen la carga), drenan los servidores antes de reinicios planeados para que terminen el trabajo en curso y ponen timeouts para que una solicitud no quede colgada de una conexión muerta.")],
+    t("Retry idempotent requests on another server (lesson 25, Idempotency keys), at the balancer or the client, with a budget so retries can't multiply load (lesson 06, Retry storms). Drain servers before planned restarts so they finish in-flight work, and set timeouts so a request doesn't hang on a dead connection.",
+      "Reintentan las solicitudes idempotentes en otro servidor (lección 25, Claves de idempotencia), en el balanceador o en el cliente, con un presupuesto para que los reintentos no multipliquen la carga (lección 06, Tormentas de reintentos). Drenan los servidores antes de reinicios planeados para que terminen el trabajo en curso, y ponen tiempos límite (timeouts) para que una solicitud no quede colgada de una conexión muerta.")],
 ];
 
 export default defineLesson({
@@ -159,13 +159,13 @@ export default defineLesson({
     plate: {
       title: t("Sorting station", "Estación de clasificación"),
       keys: [
-        { mark: "lit", label: t("Turntable arm: the load balancer's choice", "Brazo del plato giratorio: la elección del balanceador de carga") },
+        { mark: "lit", label: t("Turntable arm: the load balancer's choice; a huge parcel", "Brazo del plato giratorio: la elección del balanceador de carga; un paquete enorme") },
         { mark: "raised", label: t("Counters: servers, one parcel at a time", "Mostradores: servidores, un paquete a la vez") },
         { mark: "flat", label: t("Lanes: each counter's queue", "Carriles: la cola de cada mostrador") },
       ],
       caption: t(
-        "Parcels arrive at random, about one a second, and the turntable sends each one down a lane. A counter takes 3 s on an average parcel. The gate at the start of a lane shows whether the balancer still sends parcels there; it only changes at a health check. A closed shutter means the counter is down.",
-        "Los paquetes llegan al azar, más o menos uno por segundo, y el plato giratorio manda cada uno por un carril. Un mostrador tarda 3 s con un paquete promedio. La barrera al inicio de un carril muestra si el balanceador todavía manda paquetes ahí; solo cambia en un chequeo de salud (health check). Una cortina cerrada significa que el mostrador está caído."),
+        "Parcels arrive at random, about one a second, and the turntable sends each one down a lane. A counter takes 3 s on an average parcel. The gate at the start of a lane shows whether the balancer still sends parcels there; it only changes at a health check. The lamp on a counter is lit while it is up; a closed shutter means it is down. A covered lane has no counter.",
+        "Los paquetes llegan al azar, más o menos uno por segundo, y el plato giratorio manda cada uno por un carril. Un mostrador tarda 3 s con un paquete promedio. La barrera al inicio de un carril muestra si el balanceador todavía manda paquetes ahí; solo cambia en un chequeo de salud (health check). La lámpara de un mostrador está encendida mientras funciona; una cortina cerrada significa que está caído. Un carril tapado no tiene mostrador."),
       stage: { "data-office": "" },
       label: t("Sorting station simulation. Space pauses or resumes.", "Simulación de la estación de clasificación. Espacio pausa o reanuda."),
     },
@@ -178,18 +178,19 @@ export default defineLesson({
       { seg: "sizes", label: t("Parcel sizes", "Tamaño de paquetes"), options: [["even", t("Similar", "Parecidos")], ["uneven", t("1 in 10 huge", "1 de 10 enorme")]], value: "even" },
       { seg: "slow", label: t("Counter 1", "Mostrador 1"), options: [["false", t("Normal", "Normal")], ["true", t("3× slower", "3× más lento")]], value: "false" },
       { seg: "check", label: t("Health check", "Chequeo de salud"), options: [[2, "2 s"], [10, "10 s"], [30, "30 s"]], value: 10 },
-      { seg: "heavy", label: t("Customers", "Clientes"), options: [["false", t("Many small", "Muchos chicos")], ["true", t("Two big", "Dos grandes")]], value: "false" },
+      { seg: "heavy", label: t("Customers", "Clientes"), options: [["false", t("Many small", "Muchos pequeños")], ["true", t("Two big", "Dos grandes")]], value: "false" },
       { seg: "sticky", label: t("Sticky sessions", "Sesiones persistentes"), options: [["false", t("Off", "No")], ["true", t("On", "Sí")]], value: "false" },
       { speed: true },
-      { actions: [["crash", t("Crash counter 2", "Tirar mostrador 2")], ["restart", t("Restart counters", "Reiniciar mostradores")], ["reset", t("Reset counts", "Reiniciar conteos")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
+      { actions: [["crash", t("Crash counter 2", "Tirar mostrador 2")], ["restart", t("Restart counters", "Reiniciar mostradores")], ["reset", t("Reset counts", "Poner conteos en cero")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
-  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over six runs of ten minutes each.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen del mismo modelo que la figura, promediados en seis corridas de diez minutos cada una."), experiments: withResults(EXPERIMENTS, RUNS) },
+  predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the figure, averaged over six runs of ten minutes each (the crash: 40 runs of two minutes).",
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la figura, promediados en seis ejecuciones de diez minutos cada una (la caída: 40 ejecuciones de dos minutos)."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P,
     G: GEOMETRY,
     PARCEL_SVG: parcelSvg(),
+    BIG_PARCEL_SVG: bigParcelSvg(),
   },
 });
