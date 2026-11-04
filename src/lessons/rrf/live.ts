@@ -158,11 +158,12 @@ export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG }, root) {
     if (cur && t >= cur.t1) {
       const name = tr(cur.list.toUpperCase(), NAME_ES[cur.list]);
       const rawShown = cur.list === "meaning" ? cur.raw.toFixed(2) : cur.raw;
-      const share = (cur.w !== 1 ? cur.w + " × " : "") + "1/(" + cfg.k + " + " + cur.rank + ") = " + cur.add.toFixed(5);
-      const worth = cfg.mode === "raw" ? tr("adds its raw score " + rawShown, "suma su puntaje crudo " + rawShown) : tr("adds ", "suma ") + share;
-      say(name + " #" + cur.rank + " · " + cur.id + " “" + QUERY.docs[cur.id].title + "” · " + worth);
-    } else if (!cur) say(tr("count done · " + (order[0] ? order[0].id + " leads with " + fmtScore(order[0].score) : "") + " · counting again shortly",
-      "conteo terminado · " + (order[0] ? order[0].id + " lidera con " + fmtScore(order[0].score) : "") + " · se vuelve a contar en un momento"));
+      // The share in the counters' unit (points, a first place = 100), with the fraction it comes from.
+      const share = "+" + Math.round(cur.pts) + " pts (" + (cur.w !== 1 ? cur.w + " × " : "") + "1/" + (cfg.k + cur.rank) + ")";
+      const worth = cfg.mode === "raw" ? tr("+" + rawShown + " raw", "+" + rawShown + " crudo") : share;
+      say(name + " #" + cur.rank + " · " + cur.id + " · " + worth);
+    } else if (!cur) say(tr("count done · " + (order[0] ? order[0].id + " leads with " + Math.round(order[0].pts) + " pts" : "") + " · counting again shortly",
+      "conteo terminado · " + (order[0] ? order[0].id + " lidera con " + Math.round(order[0].pts) + " pts" : "") + " · se vuelve a contar en un momento"));
     else say(tr("walking to the " + cur.list + " ballot for rank " + cur.rank, "caminando a la boleta de " + LIST_ES[cur.list] + " para el puesto " + cur.rank));
   }
   const stat = (key, value) => root.stat(key, value);
