@@ -3,7 +3,7 @@
 // move at the same pace (one step per tick of the clock) along a log-scale track, so a lane's finish post sits at
 // the number of steps its algorithm needed. Posts that move twice as far when n doubles grow twice as fast.
 //   Lanes, back to front: O(1) read an item, O(log n) binary search, O(n) scan, O(n log n) merge sort,
-//   O(n²) compare every pair. The ruler along the front marks powers of ten.
+//   O(n²) insertion sort (the same shuffled items as merge sort). The ruler along the front marks powers of ten.
 //   Back: a console showing n and the cost of one step, and a clock dial that sweeps the decades.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
@@ -103,7 +103,7 @@ function consoleBlock(first) {
 }
 
 // The first frame: n = 1,000, about 2,000 steps into the race. The three fast lanes have finished; merge sort and
-// the pair check are still running.
+// insertion sort are still running.
 export function buildFigure(first) {
   return k.figureSvg({
     width: WIDTH,

@@ -70,13 +70,6 @@ export function insertionSort(input) {
   return { sorted: a, cmp, move };
 }
 
-// O(n²): is any value repeated? Compare every pair.
-export function pairsDuplicate(a) {
-  let steps = 0;
-  for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) { steps++; if (a[i] === a[j]) return { steps, dup: true }; }
-  return { steps, dup: false };
-}
-
 // For each order, is its customer on the list? Array scan per order (a loop hiding inside .includes) vs a Set.
 export function includesInLoop(orders, list) {
   let steps = 0, hits = 0;
@@ -91,7 +84,8 @@ export function setLookups(orders, list) {
   return { steps, hits };
 }
 
-// The five lanes of the machine, each a real algorithm run on n items.
+// The five lanes of the machine, each a real algorithm run on n items. The two sorts sort the same shuffled items
+// and count comparisons, so the merge-sort constant on the machine can show where insertion sort wins.
 export const LANES = ["1", "log", "n", "nlog", "n2"];
 export function laneSteps(n, seed = 7) {
   const data = makeData(n, seed);
@@ -102,7 +96,7 @@ export function laneSteps(n, seed = 7) {
     log: binarySearch(sorted, absent).steps,
     n: linearSearch(data, absent).steps,
     nlog: mergeSort(data).cmp,
-    n2: pairsDuplicate(data).steps,
+    n2: insertionSort(data).cmp,
   };
 }
 
