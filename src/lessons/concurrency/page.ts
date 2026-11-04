@@ -16,8 +16,8 @@ const RUNS = {
     const { a, b } = RESULTS.waiting;
     const top = a.total * 1.05, less = Math.round(100 * (1 - b.total / a.total));
     return { verdict: t("All four served in " + secs1(a.total) + " one at a time, " + secs1(b.total) + " switching while pans simmer: " + less + "% less. The cook was idle " + pct(a.idle) + " of the time one at a time, " + pct(b.idle) + " switching.",
-        "Los cuatro servidos en " + secs1(a.total) + " una a la vez y en " + secs1(b.total) + " cambiando mientras las sartenes hierven: " + less + "% menos. El cocinero estuvo inactivo el " + pct(a.idle) + " del tiempo una a la vez y el " + pct(b.idle) + " cambiando."),
-      bars: [[t("One at a time", "Una a la vez"), a.total / top, secs1(a.total)], [t("Switch on simmer", "Cambiar al hervir"), b.total / top, secs1(b.total), true]] };
+        "Los cuatro servidos en " + secs1(a.total) + " una a la vez y en " + secs1(b.total) + " cambiando mientras las sartenes están a fuego lento: " + less + "% menos. El cocinero estuvo inactivo el " + pct(a.idle) + " del tiempo una a la vez y el " + pct(b.idle) + " cambiando."),
+      bars: [[t("One at a time", "Una a la vez"), a.total / top, secs1(a.total)], [t("Switch on simmer", "Cambiar al tapar"), b.total / top, secs1(b.total), true]] };
   },
   busy: () => {
     const { a, b } = RESULTS.busy;
@@ -52,18 +52,18 @@ const RUNS = {
 const EXPERIMENTS = [
   {
     id: "waiting",
-    title: t("Dishes that mostly simmer", "Platos que casi solo hierven"),
-    change: t("4 dishes, each 3 s of stirring and 70% simmering · one at a time → switch when a pan starts simmering", "4 platos, cada uno con 3 s de revolver y 70% a fuego lento · una a la vez → cambiar cuando una sartén empieza a hervir"),
+    title: t("Dishes that mostly simmer", "Platos que pasan casi todo a fuego lento"),
+    change: t("4 dishes, each 3 s of stirring and 70% simmering · one at a time → switch when it simmers", "4 platos, cada uno con 3 s de revolver y 70% a fuego lento · una a la vez → cambiar al tapar (cuando la sartén queda a fuego lento)"),
     question: t("How much sooner is everything served?", "¿Cuánto antes se sirve todo?"),
     options: [t("A little: the cook still does the same 12 s of stirring", "Un poco: el cocinero sigue revolviendo los mismos 12 s"), t("Far sooner: under half the time", "Mucho antes: en menos de la mitad del tiempo"), t("Not at all: one cook can only do one thing at a time", "Nada: un cocinero solo puede hacer una cosa a la vez")],
     answer: 1,
     why: t("One at a time, the cook stands beside each pan while it simmers, so most of the run is waiting. Switching lets the cook stir another pan during every simmer. The stirring work is the same; what disappears is the idle standing. This is what concurrency buys: overlapping the waits of many tasks with one worker.",
-      "Una a la vez, el cocinero se queda junto a cada sartén mientras hierve, así que casi toda la ejecución es espera. Cambiar le permite revolver otra sartén durante cada hervor. El trabajo de revolver es el mismo; lo que desaparece es el tiempo parado. Eso es lo que compra la concurrencia: superponer las esperas de muchas tareas con un solo trabajador."),
+      "Una a la vez, el cocinero se queda junto a cada sartén mientras está a fuego lento, así que casi toda la ejecución es espera. Cambiar le permite revolver otra sartén cada vez que una queda tapada. El trabajo de revolver es el mismo; lo que desaparece es el tiempo parado. Eso es lo que compra la concurrencia: superponer las esperas de muchas tareas con un solo trabajador."),
     watch: { pans: 4, wait: 0.7, policy: "wait", slice: 1, cost: 0.3, stockpot: false },
   },
   {
     id: "busy",
-    title: t("Dishes that never simmer", "Platos que nunca hierven"),
+    title: t("Dishes that never simmer", "Platos que nunca van a fuego lento"),
     change: t("4 dishes, each 3 s of nonstop stirring · one at a time → round robin, 1 s each", "4 platos, cada uno con 3 s de revolver sin parar · una a la vez → por turnos (round robin), 1 s cada uno"),
     question: t("Does taking turns help when there is no waiting at all?", "¿Turnarse ayuda cuando no hay ninguna espera?"),
     options: [t("Yes: everything is done sooner", "Sí: todo termina antes"), t("No: the total is the same and so is each dish", "No: el total es el mismo y cada plato también"), t("No: everything takes longer, and every dish finishes later", "No: todo tarda más y cada plato termina después")],
@@ -77,7 +77,7 @@ const EXPERIMENTS = [
     title: t("A very short turn", "Un turno muy corto"),
     change: t("Round robin, 4 nonstop dishes, switching costs 0.3 s · turns of 3 s → 0.3 s", "Por turnos, 4 platos sin pausa, cambiar cuesta 0.3 s · turnos de 3 s → 0.3 s"),
     question: t("What share of the cook's time goes on moving between pans?", "¿Qué parte del tiempo del cocinero se va en moverse entre sartenes?"),
-    options: [t("Around a tenth", "Cerca de una décima parte"), t("Around half", "Cerca de la mitad"), t("None: shorter turns are just fairer", "Nada: los turnos cortos solo son más justos")],
+    options: [t("Around a tenth", "Cerca de una décima parte"), t("Around half", "Cerca de la mitad"), t("Around a quarter", "Cerca de una cuarta parte")],
     answer: 1,
     why: t("Each turn is followed by a switch. When a turn is as short as a switch, the cook spends as long moving as stirring, so half the time is overhead and the batch takes about twice as long. Operating systems face the same trade-off: short time slices feel responsive but each context switch costs time and cache.",
       "Cada turno va seguido de un cambio. Cuando un turno dura lo mismo que un cambio, el cocinero pasa tanto tiempo moviéndose como revolviendo, así que la mitad del tiempo es sobrecarga y la tanda tarda cerca del doble. Los sistemas operativos enfrentan el mismo dilema: los intervalos de tiempo (time slices) cortos se sienten ágiles, pero cada cambio de contexto (context switch) cuesta tiempo y caché."),
@@ -86,12 +86,12 @@ const EXPERIMENTS = [
   {
     id: "fair",
     title: t("One huge stew", "Un guiso enorme"),
-    change: t("A 12 s stew and four 1 s dishes, all nonstop, stew first in line · finish each step before moving → round robin, 1 s turns", "Un guiso de 12 s y cuatro platos de 1 s, todos sin pausa, el guiso primero en la fila · terminar cada paso antes de moverse → por turnos de 1 s"),
+    change: t("A 12 s stew and four 1 s dishes, none ever simmers, stew first in line · switch when it simmers (here: never) → take turns, 1 s", "Un guiso de 12 s y cuatro platos de 1 s, ninguno va a fuego lento, el guiso primero en la fila · cambiar al tapar (aquí: nunca) → por turnos, 1 s"),
     question: t("What happens to the four small dishes?", "¿Qué pasa con los cuatro platos pequeños?"),
     options: [t("They come out far sooner with round robin", "Salen mucho antes por turnos"), t("About the same either way", "Más o menos igual de cualquier forma"), t("Later with round robin, because of all the switching", "Más tarde por turnos, por todos los cambios")],
     answer: 0,
-    why: t("Without turns, the stew holds the cook for 12 s and every small dish waits behind it (head-of-line blocking). With 1 s turns the cook finishes each small dish on its first visit. The stew itself is served later, and the batch takes a little longer, but the short jobs stop paying for the long one. That is why schedulers preempt.",
-      "Sin turnos, el guiso retiene al cocinero 12 s y cada plato pequeño espera detrás (bloqueo en la cabeza de la fila, head-of-line blocking). Con turnos de 1 s, el cocinero termina cada plato pequeño en su primera visita. El guiso se sirve más tarde y la tanda tarda un poco más, pero los trabajos cortos dejan de pagar por el largo. Por eso los planificadores interrumpen tareas (preemption)."),
+    why: t("Without turns, the stew holds the cook for 12 s and every small dish waits behind it (head-of-line blocking). With 1 s turns the cook finishes each small dish on its first visit. The stew itself is served later, and the batch takes a little longer, but the short jobs stop paying for the long one. That is why schedulers preempt. Lesson 33, Queues, shows the same blocking with one slow parcel at the front of a line.",
+      "Sin turnos, el guiso retiene al cocinero 12 s y cada plato pequeño espera detrás (bloqueo en la cabeza de la fila, head-of-line blocking). Con turnos de 1 s, el cocinero termina cada plato pequeño en su primera visita. El guiso se sirve más tarde y la tanda tarda un poco más, pero los trabajos cortos dejan de pagar por el largo. Por eso los planificadores interrumpen tareas (preemption). La lección 33, Colas, muestra el mismo bloqueo con un paquete lento al frente de una fila."),
     watch: { pans: 5, wait: 0, policy: "rr", slice: 1, cost: 0.3, stockpot: true },
   },
   {
@@ -99,7 +99,7 @@ const EXPERIMENTS = [
     title: t("More pans on the stove", "Más sartenes en la cocina"),
     change: t("Keep every pan busy, 70% simmering · 4 pans → 8 pans", "Todas las sartenes ocupadas, 70% a fuego lento · 4 sartenes → 8 sartenes"),
     question: t("What happens to dishes served per minute, and to the time each dish takes?", "¿Qué pasa con los platos servidos por minuto y con el tiempo que tarda cada plato?"),
-    options: [t("Twice as many dishes per minute", "El doble de platos por minuto"), t("About the same per minute, but each dish takes about twice as long", "Más o menos los mismos por minuto, pero cada plato tarda cerca del doble"), t("Fewer per minute, because the cook is overloaded", "Menos por minuto, porque el cocinero está sobrecargado")],
+    options: [t("About twice as many per minute; each dish takes as long", "Cerca del doble por minuto; cada plato tarda lo mismo"), t("About the same per minute; each dish takes twice as long", "Más o menos los mismos por minuto; cada plato tarda el doble"), t("About the same per minute; each dish takes as long", "Más o menos los mismos por minuto; cada plato tarda lo mismo")],
     answer: 1,
     why: t("With 4 pans the cook is already busy all the time, stirring or moving. Extra pans add nothing the cook can serve; they only queue for the cook, so each dish waits longer. Dishes in progress = dishes per minute × time per dish (Little's law): with the rate fixed, twice the pans means twice the time.",
       "Con 4 sartenes el cocinero ya está ocupado todo el tiempo, revolviendo o moviéndose. Más sartenes no agregan nada que el cocinero pueda servir; solo hacen fila para el cocinero, así que cada plato espera más. Platos en curso = platos por minuto × tiempo por plato (ley de Little, Little's law): con la tasa fija, el doble de sartenes significa el doble de tiempo."),
@@ -124,15 +124,15 @@ const QUESTIONS = [
     t("The worker is already saturated; the bottleneck is the worker, not the number of tasks in flight. Extra concurrency only adds queueing, so latency rises (Little's law). Find the bottleneck or add workers instead.",
       "El trabajador ya está saturado; el cuello de botella es el trabajador, no la cantidad de tareas en curso. Más concurrencia solo agrega espera en fila, así que la latencia sube (ley de Little). Busca el cuello de botella o agrega trabajadores.")],
   [t("Where do you see this one-worker pattern in real systems?", "¿Dónde ves este patrón de un solo trabajador en sistemas reales?"),
-    t("A Node.js or Python asyncio process interleaving requests on one thread; a single database connection multiplexing queries; an OS scheduling many threads on one core; a goroutine scheduler. The same trade-offs apply: overlap waits, pay for switches, beware long tasks.",
-      "Un proceso de Node.js o de asyncio en Python que intercala solicitudes en un solo hilo; una sola conexión a la base de datos que multiplexa consultas; un sistema operativo que planifica muchos hilos en un núcleo; el planificador de goroutines. Aplican los mismos dilemas: superponer esperas, pagar por los cambios, cuidado con las tareas largas.")],
+    t("A Node.js or Python asyncio process interleaving requests on one thread (lesson 15, Async I/O); Redis serving thousands of clients from one command thread; an OS scheduling many threads on one core; Go with GOMAXPROCS=1. The same trade-offs apply: overlap waits, pay for switches, beware long tasks.",
+      "Un proceso de Node.js o de asyncio en Python que intercala solicitudes en un solo hilo (lección 15, E/S asíncrona); Redis atendiendo miles de clientes desde un solo hilo de comandos; un sistema operativo que planifica muchos hilos en un núcleo; Go con GOMAXPROCS=1. Aplican los mismos dilemas: superponer esperas, pagar por los cambios, cuidado con las tareas largas.")],
 ];
 
 export default defineLesson({
   title: t("Concurrency Workbench", "Banco de trabajo: concurrencia"),
   eyebrow: t("Systems lesson 13 · Concurrency", "Lección de sistemas 13 · Concurrencia"),
-  lede: t("Concurrency is one worker keeping many tasks in progress by switching between them. It hides waiting, but it never adds a second pair of hands. This lesson builds that idea three ways: watch a machine do it, predict what breaks it, then explain it back.",
-    "La concurrencia es un solo trabajador que mantiene muchas tareas en curso alternando entre ellas. Oculta la espera, pero nunca agrega un segundo par de manos. Esta lección construye esa idea de tres formas: mira cómo lo hace una máquina, predice qué la rompe y después explícalo."),
+  lede: t("In its simplest form, concurrency is one worker keeping many tasks in progress by switching between them. It hides waiting, but it never adds a second pair of hands. This lesson builds that idea three ways: watch a machine do it, predict what breaks it, then explain it back.",
+    "En su forma más simple, la concurrencia es un solo trabajador que mantiene muchas tareas en curso alternando entre ellas. Oculta la espera, pero nunca agrega un segundo par de manos. Esta lección construye esa idea de tres formas: mira cómo lo hace una máquina, predice qué la rompe y después explícalo."),
   machine: {
     intro: t("One stirring head serves every pan on the range. Watch it move to whichever pan is waiting, then change how many pans there are, how much they simmer and how the cook picks the next one.", "Un solo cabezal mezclador atiende todas las sartenes de la cocina. Mira cómo se mueve hacia la sartén que espera, y luego cambia cuántas sartenes hay, cuánto tiempo pasan a fuego lento y cómo elige el cocinero la siguiente."),
     plate: {
@@ -140,7 +140,7 @@ export default defineLesson({
       keys: [
         { mark: "lit", label: t("The cook: one stirring head, one pan at a time", "El cocinero: un cabezal mezclador, una sartén a la vez") },
         { mark: "raised", label: t("Pans: a lid means simmering, a ticket means waiting for the cook", "Sartenes: con tapa están a fuego lento; con comanda esperan al cocinero") },
-        { mark: "flat", label: t("Knobs: each pan's simmer timer", "Perillas: el temporizador de fuego lento de cada sartén") },
+        { mark: "flat", label: t("Knobs: each pan's simmer timer (left knob: back pan, right knob: front pan)", "Perillas: el temporizador de fuego lento de cada sartén (izquierda: sartén de atrás; derecha: sartén de adelante)") },
       ],
       caption: t(
         "Each dish needs the cook for its stirring steps and nobody while it simmers. The single head on the gantry is the only worker: it stirs one pan, then travels to the next, and every trip costs time. Served dishes pile up on the pass at the right.",
@@ -153,12 +153,12 @@ export default defineLesson({
     controls: [
       { seg: "pans", label: t("Pans", "Sartenes"), options: [[1, "1"], [2, "2"], [4, "4"], [5, "5"], [8, "8"]], value: 4 },
       { seg: "wait", label: t("Simmering", "A fuego lento"), options: [[0, "0%"], [0.4, "40%"], [0.7, "70%"]], value: 0.7 },
-      { seg: "policy", label: t("Cook", "Cocinero"), options: [["seq", t("One at a time", "Una a la vez")], ["wait", t("Switch when it simmers", "Cambiar cuando hierve")], ["rr", t("Take turns", "Por turnos")]], value: "wait" },
+      { seg: "policy", label: t("Cook", "Cocinero"), options: [["seq", t("One at a time", "Una a la vez")], ["wait", t("Switch when it simmers", "Cambiar al tapar")], ["rr", t("Take turns", "Por turnos")]], value: "wait" },
       { seg: "slice", label: t("Turn length", "Duración del turno"), options: [[0.3, "0.3 s"], [1, "1 s"], [3, "3 s"]], value: 1 },
       { seg: "cost", label: t("Moving costs", "Moverse cuesta"), options: [[0.1, "0.1 s"], [0.3, "0.3 s"], [1, "1 s"]], value: 0.3 },
       { seg: "stockpot", label: t("First pan", "Primera sartén"), options: [["false", "Normal"], ["true", t("Big stew", "Guiso grande")]], value: "false" },
       { speed: true },
-      { actions: [["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Acciones") },
+      { actions: [["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
     note: t('Changing a setting starts the kitchen over. "Turn length" only matters when the cook takes turns.', 'Cambiar un ajuste reinicia la cocina. "Duración del turno" solo importa cuando el cocinero va por turnos.'),
   },

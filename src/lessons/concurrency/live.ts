@@ -84,7 +84,7 @@ export default function mount({ P, G }, root) {
     const esp = waiting === 1 ? " espera" : " esperan";
     if (c.mode === "work") say(es ? "revolviendo " + n(c.at) + " · " + waiting + esp + " al cocinero · " + simmering + " a fuego lento" : "stirring " + n(c.at) + " · " + waiting + " waiting for the cook · " + simmering + " simmering");
     else if (c.mode === "switch") say(es ? "yendo a " + n(c.target) + " · " + waiting + esp : "moving to " + n(c.target) + " · " + waiting + " waiting");
-    else if (c.mode === "hold") say(es ? "parado junto a " + n(c.at) + " mientras hierve · " + waiting + esp : "standing at " + n(c.at) + " while it simmers · " + waiting + " waiting");
+    else if (c.mode === "hold") say(es ? "parado junto a " + n(c.at) + " a fuego lento · " + waiting + esp : "standing at " + n(c.at) + " while it simmers · " + waiting + " waiting");
     else say(es ? "inactivo · todas las sartenes están a fuego lento" : "idle · every pan is simmering");
   }
 

@@ -138,7 +138,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A range with eight burners and a single stirring head on a gantry behind it. Pans sit on the burners; a pan with its lid on is simmering and needs nobody, a pan with an order ticket up is waiting for the cook. The head travels from pan to pan and stirs one at a time; plates pile up on the pass as dishes are served.",
-      "Una cocina con ocho hornillas y un solo cabezal mezclador en un pórtico detrás. Las sartenes están sobre las hornillas; una sartén con tapa está a fuego lento y no necesita a nadie, una sartén con comanda espera al cocinero. El cabezal viaja de sartén en sartén y revuelve una a la vez; los platos se apilan en el pase a medida que se sirven."),
+      "Una cocina con ocho quemadores y un solo cabezal mezclador en un pórtico detrás. Las sartenes están sobre los quemadores; una sartén con tapa está a fuego lento y no necesita a nadie, una sartén con comanda espera al cocinero. El cabezal viaja de sartén en sartén y revuelve una a la vez; los platos se apilan en el pase a medida que se sirven."),
     body: [plate(), gantryBack(), stove(), knobs(), back, front, pass(), `<g data-plates>${plateStack(0)}</g>`, `<g data-rig>${rigSvg(PARK[0], PARK[1], PAN_TOP + 24, false)}</g>`],
   });
 }
