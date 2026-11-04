@@ -19,6 +19,7 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
   const lamp = { on: q('[data-lamp="on"]'), off: q('[data-lamp="off"]') };
   const flag = { on: q('[data-flag="on"]'), off: q('[data-flag="off"]') };
   const plates = [...svg.querySelectorAll("[data-policy]")];
+  const prod2 = q("[data-prod2]");
   const counters = Object.fromEntries(["fill", "lag", "lost", "gaps", "read", "waiting", "stall"].map((n) => [n, WB.counter(svg, n, P)]));
 
   // ---------- items: one pooled element per item on screen, eased toward where the model has it ----------
@@ -31,7 +32,7 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
   const recs = new Map();   // item id -> { el, pos, target, layer, leaving, until, item }
   function dress(r, lit) {
     const s = r.el.shown, it = r.item;
-    const label = it.seq === undefined ? "" : String(it.seq);
+    const n = it.seq ?? it.claimed, label = n === undefined ? "" : String(n);   // a claimed item shows the slot number it read
     if (s.label !== label) { s.label = label; r.el.seq.textContent = label; r.el.seq.setAttribute("font-size", label.length <= 2 ? 3 : label.length === 3 ? 2.4 : 1.9); }
     if (s.lit !== lit) { s.lit = lit; r.el.body.toggleAttribute("data-lit", lit); r.el.seq.setAttribute("data-tone", lit ? "on-lit" : "hi"); }
   }
@@ -48,10 +49,11 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
   }
   function drop(id) { const r = recs.get(id); r.el.g.remove(); r.el.g.style.opacity = ""; free.push(r.el); recs.delete(id); }
 
-  const cfg = { rate: 6, reader: "one", policy: "overwrite", check: "yes", speed: 0.5 };
+  const cfg = { rate: 6, reader: "one", policy: "overwrite", check: "yes", producers: "one", speed: 0.5 };
   const WARM = 20;
   let model, clock, logAt, note, seed = 5, snapping = false, binned = [];
-  const modelCfg = () => ({ cap: G.CAP, rate: cfg.rate, policy: cfg.policy, check: cfg.check === "yes", overhead: 0.15, per: 0.1, batch: cfg.reader === "batch", maxBatch: 16 });
+  const modelCfg = () => ({ cap: G.CAP, rate: cfg.rate, policy: cfg.policy, check: cfg.check === "yes", overhead: 0.15, per: 0.1, batch: cfg.reader === "batch", maxBatch: 16,
+    producers: cfg.producers === "one" ? 1 : 2, claim: cfg.producers === "atomic" ? "atomic" : "racy", window: 0.1 });
 
   function restart(warm = WARM) {
     for (const id of [...recs.keys()]) drop(id);
@@ -60,6 +62,7 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
     clock = warm; logAt = 0; note = null; binned = [];
     model.runTo(clock);
     plates.forEach((p) => show(p, p.dataset.policy === cfg.policy));
+    show(prod2, cfg.producers !== "one");
     snapping = true; paint(0, true); snapping = false;
   }
 
@@ -67,7 +70,10 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
   function scanLog() {
     for (; logAt < model.log.length; logAt++) {
       const e = model.log[logAt];
-      if (e.type === "overwrite") { binned.push(e.item); note = { t: e.t, text: T("ring full · item " + e.by + " overwrote item " + e.seq + " before it was read", "anillo lleno · el elemento " + e.by + " sobrescribió al " + e.seq + " antes de que se leyera") }; }
+      if (e.type === "overwrite") { binned.push(e.item); note = { t: e.t, text: e.behind
+        ? T("item " + e.seq + " was left behind the reader · item " + e.by + " writes over it", "el elemento " + e.seq + " quedó detrás del lector · el " + e.by + " lo sobrescribe")
+        : T("ring full · item " + e.by + " overwrote item " + e.seq + " before it was read", "anillo lleno · el elemento " + e.by + " sobrescribió al " + e.seq + " antes de que se leyera") }; }
+      if (e.type === "clobber") { binned.push(e.item); note = { t: e.t, text: T("both producers took slot " + e.slot + " · item " + e.seq + " was written over before it was read", "los dos productores tomaron el hueco " + e.slot + " · el elemento " + e.seq + " se sobrescribió antes de leerse") }; }
       if (e.type === "drop") { binned.push(e.item); note = { t: e.t, text: T("ring full · the new item was dropped at the producer", "anillo lleno · el elemento nuevo se descartó en el productor") }; }
       if (e.type === "wait" && model.backlog.length === 1) note = { t: e.t, text: T("ring full · the producer waits with its item", "anillo lleno · el productor espera con su elemento") };
       if (e.type === "gap") note = { t: e.t, text: T("reader expected " + e.from + ", found a newer item · skipped " + (e.to - e.from) + ", goes on from " + e.to, "el lector esperaba el " + e.from + " y encontró uno más nuevo · saltó " + (e.to - e.from) + ", sigue desde el " + e.to) };
@@ -83,6 +89,8 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
     const m = model;
     // the ring: unread items sit in their pockets
     m.slots.forEach((it, i) => { if (it && !it.read && !it.lost) place(it, [...G.SLOT[i]], "ring", false); });
+    // two producers: an item claimed but not yet stored waits, lit, in its producer's hands
+    (m.pending || []).forEach((p) => place(p.item, [...(p.item.prod ? G.PROD2_SPOT : G.PROD_SPOT)], "prod", true));
     // the reader's hand
     m.reader.hand.forEach((it, k) => { const s = G.HAND_SPOTS[k % G.HAND_SPOTS.length]; place(it, [s[0], s[1], s[2] + Math.floor(k / G.HAND_SPOTS.length) * (G.TOKEN.h + 0.3)], "desk", true); });
     // the blocked producer's pile
@@ -165,6 +173,7 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
     if (quiet) return;
     // the producer's rate, the reader and the checks change the running ring; the policy starts a new run
     if (name === "rate") model.setRate(cfg.rate);
+    else if (name === "producers") restart();
     else if (name === "reader") model.cfg.batch = cfg.reader === "batch";
     else if (name === "check") model.cfg.check = cfg.check === "yes";
     else restart();
@@ -180,7 +189,7 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
 
   // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (w) => {
-    set("rate", String(w.rate), true); set("policy", w.policy, true); set("reader", w.reader, true); set("check", w.check, true);
+    set("rate", String(w.rate), true); set("policy", w.policy, true); set("reader", w.reader, true); set("check", w.check, true); set("producers", w.producers || "one", true);
     restart(w.burst ? 4 : WARM);
     if (loop.paused) loop.setPaused(false);
     if (w.burst) setTimeout(burst, 1200);

@@ -21,28 +21,39 @@
 //   per        seconds of work per item read
 //   batch      a read operation takes every item available (up to maxBatch), not just one
 //   maxBatch   the most items one batched read takes
+//   producers  1, or 2 producers sharing the ring, each getting half of `rate`
+//   claim      with 2 producers, how a producer takes a slot; it stores the item `window` seconds after reading the
+//              write counter (on a CPU that's nanoseconds, but at millions of writes a second the race is as real):
+//                "racy"    i = w; ...; slots[i % cap] = item; w = i + 1. Two producers that read w inside the same
+//                          window write the same slot: the first item is overwritten unread and w goes up by one.
+//                "atomic"  i = fetch-and-add(w, 1): each producer gets its own slot at once, stores the item after the
+//                          window and publishes it; the reader waits until the slot it needs is published.
+//   window     seconds between reading the write counter and storing the item
 
 import { xorshift32 } from "../../lib/random";
 import { averageOver } from "../../lib/stats";
 
-export const DEFAULTS = { cap: 16, rate: 3, even: false, policy: "overwrite", check: true, overhead: 0.15, per: 0.1, batch: false, maxBatch: 64 };
+export const DEFAULTS = { cap: 16, rate: 3, even: false, policy: "overwrite", check: true, overhead: 0.15, per: 0.1, batch: false, maxBatch: 64, producers: 1, claim: "racy", window: 0.1 };
 
 export function makeRing(cfgIn, seed = 1) {
   const cfg = { ...DEFAULTS, ...cfgIn };
   const rnd = xorshift32(seed);
-  const gap = () => (cfg.even ? 1 / cfg.rate : -Math.log(1 - rnd()) / cfg.rate);
+  const two = () => cfg.producers === 2;
+  const gap = () => { const rate = two() ? cfg.rate / 2 : cfg.rate; return cfg.even ? 1 / rate : -Math.log(1 - rnd()) / rate; };
   let t = 0, nextSeq = 0;
   let nextArrival = cfg.rate > 0 ? gap() : Infinity;
+  let nextArrival2 = cfg.rate > 0 && two() ? gap() : Infinity;   // the second producer's stream
+  const pending = [];            // two producers: { at, item, i } stores waiting for the end of their window
   const slots = Array.from({ length: cfg.cap }, () => null);   // { seq, born, read }
   const backlog = [];            // items the blocked producer holds, oldest first
   const log = [];                // { t, type, seq, ... } for the figure
   let w = 0, r = 0;              // writer's next seq, reader's next seq (what the reader believes)
   const reader = { busyUntil: -1, hand: [], pausedUntil: -1 };
   let stallFrom = -1;
-  const st = { arrived: 0, written: 0, read: 0, overwritten: 0, dropped: 0, gapsSeen: 0, silent: 0, twice: 0, stall: 0,
+  const st = { arrived: 0, written: 0, read: 0, distinct: 0, overwritten: 0, dropped: 0, clobbered: 0, gapsSeen: 0, silent: 0, twice: 0, stall: 0,
     maxFill: 0, maxLag: 0, ops: 0, opItems: 0, busy: 0, waitSum: 0, waitN: 0, maxBacklog: 0 };
 
-  const fill = () => Math.min(cfg.cap, w - r);
+  const fill = () => Math.max(0, Math.min(cfg.cap, w - r));
   const full = () => w - r >= cfg.cap;
 
   // Put one item in the ring (the producer already has it).
@@ -56,9 +67,31 @@ export function makeRing(cfgIn, seed = 1) {
     st.maxLag = Math.max(st.maxLag, w - r);
   }
 
-  function arrive(at) {
-    const item = { id: nextSeq++, born: at, read: false };
+  // Two producers: claim a slot now, store the item when the window ends.
+  function claim(item, at) {
+    if (cfg.claim === "atomic") { const i = w++; item.claimed = i; pending.push({ at: at + cfg.window, item, i }); }
+    else { item.claimed = w; pending.push({ at: at + cfg.window, item, i: w }); }
+    log.push({ t: at, type: "claim", id: item.id, i: pending[pending.length - 1].i, prod: item.prod, item });
+  }
+  function store(p, at) {
+    pending.splice(pending.indexOf(p), 1);
+    const { item, i } = p, s = i % cfg.cap, old = slots[s];
+    if (old && !old.read && !old.lost) {
+      old.lost = true;
+      if (old.seq === i) { st.clobbered++; log.push({ t: at, type: "clobber", seq: i, slot: s, item: old, by: item.prod }); }
+      else { st.overwritten++; log.push({ t: at, type: "overwrite", seq: old.seq, by: i, slot: s, item: old, behind: old.seq < r }); }
+    }
+    item.seq = i; item.slot = s; item.wrote = at; item.published = true;
+    slots[s] = item; st.written++;
+    if (cfg.claim !== "atomic") w = i + 1;           // the plain store: it may undo the other producer's advance
+    log.push({ t: at, type: "write", seq: i, slot: s, item });
+    st.maxFill = Math.max(st.maxFill, fill());
+  }
+
+  function arrive(at, prod = 0) {
+    const item = { id: nextSeq++, born: at, read: false, prod };
     st.arrived++;
+    if (two()) { claim(item, at); return; }
     if (backlog.length || (full() && cfg.policy === "block")) {
       backlog.push(item);
       st.maxBacklog = Math.max(st.maxBacklog, backlog.length);
@@ -84,7 +117,11 @@ export function makeRing(cfgIn, seed = 1) {
     const hand = [];
     while (hand.length < want && r < w) {
       let item = slots[r % cfg.cap];
-      if (item.seq !== r) {
+      if (two()) {
+        // atomic: wait until slot r is published; racy: read whatever the slot holds
+        if (cfg.claim === "atomic" && (!item || item.seq !== r || !item.published)) break;
+        if (!item) break;
+      } else if (item.seq !== r) {
         // lapped: the slot holds a newer item than the one expected
         if (cfg.check) {
           const oldest = w - cfg.cap;
@@ -94,12 +131,13 @@ export function makeRing(cfgIn, seed = 1) {
           item = slots[r % cfg.cap];
         } else { st.silent++; log.push({ t: at, type: "silent", expected: r, found: item.seq }); }
       }
-      if (item.read) st.twice++;
+      if (item.read) st.twice++; else st.distinct++;
       item.read = true;
       hand.push(item);
       st.waitSum += at - item.born; st.waitN++;
       r++;
     }
+    if (!hand.length) return;
     st.read += hand.length; st.ops++; st.opItems += hand.length;
     const dur = cfg.overhead + cfg.per * hand.length;
     st.busy += dur;
@@ -112,10 +150,14 @@ export function makeRing(cfgIn, seed = 1) {
     for (;;) {
       const done = reader.busyUntil > t ? reader.busyUntil : Infinity;
       const wake = reader.pausedUntil > t ? reader.pausedUntil : Infinity;
-      const when = Math.min(nextArrival, done, wake);
+      let next = null;
+      for (const p of pending) if (!next || p.at < next.at) next = p;
+      const when = Math.min(nextArrival, nextArrival2, done, wake, next ? next.at : Infinity);
       if (when > until) break;
       t = when;
-      if (when === nextArrival) { arrive(t); nextArrival = cfg.rate > 0 ? t + gap() : Infinity; }
+      if (next && when === next.at) store(next, t);
+      else if (when === nextArrival) { arrive(t, 0); nextArrival = cfg.rate > 0 ? t + gap() : Infinity; }
+      else if (when === nextArrival2) { arrive(t, 1); nextArrival2 = cfg.rate > 0 && two() ? t + gap() : Infinity; }
       if (when === done) { reader.hand = []; log.push({ t, type: "done" }); }
       startRead(t);
     }
@@ -124,15 +166,15 @@ export function makeRing(cfgIn, seed = 1) {
   }
 
   return {
-    cfg, slots, backlog, reader, log, st, runTo,
+    cfg, slots, backlog, pending, reader, log, st, runTo,
     get t() { return t; }, get w() { return w; }, get r() { return r; },
     fill, full,
-    lost() { return st.overwritten + st.dropped; },
+    lost() { return st.overwritten + st.dropped + st.clobbered; },
     stalled() { return st.stall + (stallFrom >= 0 ? t - stallFrom : 0); },
     // n items arriving at once (a burst), or one at a time from a script
     inject(at, n = 1) { runTo(at); for (let i = 0; i < n; i++) arrive(at); },
     pauseReader(at, secs) { runTo(at); reader.pausedUntil = Math.max(reader.pausedUntil, at + secs); },
-    setRate(rate) { cfg.rate = rate; nextArrival = rate > 0 ? t + gap() : Infinity; },
+    setRate(rate) { cfg.rate = rate; nextArrival = rate > 0 ? t + gap() : Infinity; nextArrival2 = rate > 0 && two() ? t + gap() : Infinity; },
   };
 }
 
@@ -179,14 +221,19 @@ export function sizeRun() {
   return { c64: run(64), c128: run(128), c256: run(256) };
 }
 
-// 4. A producer at 8/s against a reader at 5/s for 60 s, ring of 16: block vs overwrite.
-export function blockRun() {
-  const run = (policy) => avg((seed) => {
-    const m = makeRing({ cap: 16, rate: 8, policy, overhead: 0.1, per: 0.1 }, seed);
+// 4. Two producers, 3 items a second each, share a ring of 16; the reader reads in batches and keeps up. Each producer
+//    stores its item 0.1 s after reading the write counter. Plain read-then-store vs fetch-and-add, 60 s, then the
+//    producers stop and the reader drains the ring. Lost: items that arrived but never reached the reader.
+export const RACE = { cap: 16, rate: 6, producers: 2, window: 0.1, policy: "overwrite", check: false, overhead: 0.15, per: 0.1, batch: true, maxBatch: 16 };
+export function raceRun() {
+  const run = (claim) => avg((seed) => {
+    const m = makeRing({ ...RACE, claim }, seed);
     m.runTo(60);
-    return { written: m.st.written, read: m.st.read, lost: m.lost(), stall: m.stalled(), backlog: m.backlog.length, wait: m.backlog.length ? 60 - m.backlog[0].born : 0 };
+    m.setRate(0);
+    m.runTo(70);
+    return { arrived: m.st.arrived, reached: m.st.distinct, lost: m.st.arrived - m.st.distinct, clobbered: m.st.clobbered, overwritten: m.st.overwritten, twice: m.st.twice };
   });
-  return { block: run("block"), overwrite: run("overwrite") };
+  return { racy: run("racy"), atomic: run("atomic") };
 }
 
 // 5. 60 items a second, a reader with 20 ms fixed cost per read and 5 ms per item: one at a time vs batches.

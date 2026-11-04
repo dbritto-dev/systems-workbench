@@ -38,6 +38,7 @@ const READ_Z = 15.2, WRITE_Z = 19.2, HAND_T = 1.5;
 const PTABLE = { x: -108, y: -72, w: 42, d: 22, r: 1.6 };
 const PTABLE_H = 14;
 export const PROD_SPOT = [PTABLE.x + PTABLE.w - 6, PTABLE.y + 10, PTABLE_H];                 // where a new item appears
+export const PROD2_SPOT = [PTABLE.x + PTABLE.w - 6, PTABLE.y + 17, PTABLE_H];                // the second producer's item
 export const BACKLOG = { xs: [-92, -84, -76], ys: [-66, -57], z: PTABLE_H, step: 3.4, layers: 3 };
 
 const DESK = { x: 50, y: -74, w: 44, d: 22, r: 1.6 };
@@ -123,6 +124,8 @@ function hubCap() {
 // ---------- the producer ----------
 function producer() {
   const out = [person(P, [PTABLE.x + 21, PTABLE.y - 7, 0], { scale: 0.85, hat: "cap" })];
+  // the second producer, shown only when two producers share the ring
+  out.push(`<g data-prod2 style="display:none">${person(P, [PTABLE.x + 35, PTABLE.y - 7, 0], { scale: 0.85, hat: "brim" })}</g>`);
   out.push(S(k.slabOf(PTABLE, 0, PTABLE_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(PTABLE, 1.8), PTABLE_H, P), { tone: "faint" }) }));
   const front = PTABLE.y + PTABLE.d;
   out.push(digitCounter(P, { x: PTABLE.x + 4, y: front, z: 8, count: 3, w: 3.6, h: 4.4, gap: 0.5, pad: 0.8, name: "waiting" }));
@@ -175,8 +178,8 @@ function binFront() {
 
 // ---------- the console ----------
 const POLICIES = {
-  overwrite: t("OVERWRITE OLDEST", "SOBRESCRIBE EL VIEJO"),
-  drop: t("DROP NEWEST", "DESCARTA EL NUEVO"),
+  overwrite: t("OVERWRITE OLDEST", "SOBRESCRIBE EL MÁS VIEJO"),
+  drop: t("DROP NEWEST", "DESCARTA EL MÁS NUEVO"),
   block: t("BLOCK PRODUCER", "FRENA AL PRODUCTOR"),
 };
 function consoleBox() {
@@ -210,8 +213,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A ring buffer on a base plate: a round table with 16 numbered pockets in a circle and two hands on a central hub. The long solid hand points at the pocket the writer fills next; the shorter hand with a ring at its tip points at the pocket the reader takes next. Each item is a puck with its sequence number on top. At the back left a producer stands at a table where items it cannot place yet pile up, with a flag that rises when it is blocked. At the back right a reader holds the items it is reading at a desk and drops finished ones into a tray. At the front left a bin collects lost items. A console at the front shows the policy, how full the ring is, how far the reader lags behind the writer, and a lamp that lights when the ring is full.",
-      "Un búfer circular sobre una placa base: una mesa redonda con 16 huecos numerados en círculo y dos manecillas en un eje central. La manecilla larga y sólida apunta al hueco que el escritor llena después; la más corta, con un anillo en la punta, al hueco que el lector toma después. Cada elemento es una ficha con su número de secuencia arriba. Atrás a la izquierda, un productor está en una mesa donde se apilan los elementos que todavía no puede poner, con un banderín que se levanta cuando está bloqueado. Atrás a la derecha, un lector sostiene en un escritorio los elementos que está leyendo y deja los terminados en una bandeja. Adelante a la izquierda, un cesto junta los elementos perdidos. Una consola al frente muestra la política, qué tan lleno está el anillo, cuánto se atrasa el lector respecto del escritor y una lámpara que se enciende cuando el anillo está lleno.",
+      "A ring buffer on a base plate: a round table with 16 numbered pockets in a circle and two hands on a central hub. The long solid hand points at the pocket the writer fills next; the shorter hand with a ring at its tip points at the pocket the reader takes next. Each item is a puck with its sequence number on top. At the back left a producer stands at a table where items it cannot place yet pile up, with a flag that rises when it is blocked; a second producer joins it when two share the ring. At the back right a reader holds the items it is reading at a desk and drops finished ones into a tray. At the front left a bin collects lost items. A console at the front shows the policy, how full the ring is, how far the reader lags behind the writer, and a lamp that lights when the ring is full.",
+      "Un búfer circular sobre una placa base: una mesa redonda con 16 huecos numerados en círculo y dos manecillas en un eje central. La manecilla larga y sólida apunta al hueco que el escritor llena después; la más corta, con un anillo en la punta, al hueco que el lector toma después. Cada elemento es una ficha con su número de secuencia arriba. Atrás a la izquierda, un productor está en una mesa donde se apilan los elementos que todavía no puede poner, con un banderín que se levanta cuando está bloqueado; un segundo productor se le une cuando dos comparten el anillo. Atrás a la derecha, un lector sostiene en un escritorio los elementos que está leyendo y deja los terminados en una bandeja. Adelante a la izquierda, una caja de descarte junta los elementos perdidos. Una consola al frente muestra la política, qué tan lleno está el anillo, cuánto se atrasa el lector respecto del escritor y una lámpara que se enciende cuando el anillo está lleno.",
     ),
     body: [
       plate(),
@@ -237,4 +240,4 @@ export function buildFigure() {
   });
 }
 
-export const GEOMETRY = { CAP, SLOT, PROD_SPOT, BACKLOG, HAND_SPOTS, TRAY_SPOT, BIN_SPOTS, TOKEN };
+export const GEOMETRY = { CAP, SLOT, PROD_SPOT, PROD2_SPOT, BACKLOG, HAND_SPOTS, TRAY_SPOT, BIN_SPOTS, TOKEN };
