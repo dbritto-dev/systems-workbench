@@ -126,7 +126,7 @@ function cabinet() {
   out.push(text(CAB.x + 32.5, front, 15.4, t("IN THE DOM", "EN EL DOM"), 2.4));
   out.push(digitCounter(P, { x: CAB.x + 4, y: front, z: 3.4, count: 4, w: 4.4, h: 6, gap: 0.6, pad: 1.1, name: "first" }));
   out.push(text(CAB.x + 27.5, front, 7.4, t("FIRST RENDER", "PRIMER RENDER"), 2.4));
-  out.push(text(CAB.x + 27.5, front, 4.2, "MS", 2.4));
+  out.push(text(CAB.x + 27.5, front, 4.2, "ms", 2.4));
   return out.join("");
 }
 
