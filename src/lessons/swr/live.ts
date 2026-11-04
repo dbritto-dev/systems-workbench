@@ -132,7 +132,8 @@ export default function mount({ P, G, RES_LABEL, CARD_SVG, CAPSULE_SVG, ENVELOPE
       // gc countdown while nobody uses it
       const counting = !!(e && !e.observers.size && e.gcAt !== null);
       setText(gcText[i], counting ? L(T("GC IN ", "GC EN ")) + Math.max(0, e.gcAt - clock).toFixed(e.gcAt - clock < 10 ? 1 : 0) + " s" : "");
-      show(inUse[i], !counting);
+      // "IN USE" only under a column whose entry has someone using it
+      show(inUse[i], !!(e && e.observers.size));
       // the card: shown while the entry exists; slides forward as its gc countdown runs; falls off when dropped
       if (c.drop) {
         const u = clamp((performance.now() - c.drop) / 700);
@@ -195,7 +196,7 @@ export default function mount({ P, G, RES_LABEL, CARD_SVG, CAPSULE_SVG, ENVELOPE
       if (e.type === "goto") msg = T("→ " + PAGES[e.page].path, "→ " + PAGES[e.page].path);
       else if (e.type === "fetch") {
         const k = KEY(e.key);
-        if (!e.background) msg = cfg.fetch === "shared" ? T(k + ": nothing cached · spinner · request sent", k + ": nada en caché · cargando · solicitud enviada") : T(label(e.res) + ": the component fetches for itself · spinner", label(e.res) + ": el componente pide por su cuenta · cargando");
+        if (!e.background) msg = cfg.fetch === "shared" ? T(k + ": nothing cached · spinner · request sent", k + ": sin caché · cargando · solicitud enviada") : T(label(e.res) + ": the component fetches for itself · spinner", label(e.res) + ": el componente pide por su cuenta · cargando");
         else if (e.why === "mount") msg = T(k + ": cached copy shown at once · it is stale, so refetching in the background", k + ": copia en caché mostrada al instante · está vieja, así que se vuelve a pedir en segundo plano");
         else if (e.why === "focus") msg = T("back in the tab · " + k + " is stale · refetching", "de vuelta en la pestaña · " + k + " está vieja · se vuelve a pedir");
         else if (e.why === "reconnect") msg = T("network back · " + k + " is stale · refetching", "volvió la red · " + k + " está vieja · se vuelve a pedir");
@@ -260,7 +261,7 @@ export default function mount({ P, G, RES_LABEL, CARD_SVG, CAPSULE_SVG, ENVELOPE
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = String(raw);
-    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · corrida reiniciada")); }
+    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };
