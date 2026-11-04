@@ -24,25 +24,26 @@ const BUS_Y = -79;
 // Single components: centre x, row, width, depth, height, label.
 export const BLOCKS = {
   App: { cx: -40, row: 0, w: 40, d: 10, h: 7, label: "APP" },
-  Header: { cx: -121.5, row: 1, w: 24, d: 8, h: 6, label: "HEADER" },
-  Sidebar: { cx: -66, row: 1, w: 24, d: 8, h: 6, label: "SIDEBAR" },
-  SearchPanel: { cx: -9.5, row: 1, w: 24, d: 8, h: 6, label: "SEARCH" },
+  Header: { cx: -128, row: 1, w: 24, d: 8, h: 6, label: "HEADER" },
+  Sidebar: { cx: -75, row: 1, w: 24, d: 8, h: 6, label: "SIDEBAR" },
+  SearchPanel: { cx: -17.5, row: 1, w: 26, d: 8, h: 6, label: "SEARCHPANEL" },
   Footer: { cx: 44, row: 1, w: 24, d: 8, h: 6, label: "FOOTER" },
-  Logo: { cx: -144, row: 2, w: 13, d: 8, h: 5, label: "LOGO" },
-  Nav: { cx: -129, row: 2, w: 13, d: 8, h: 5, label: "NAV" },
-  UserMenu: { cx: -114, row: 2, w: 13, d: 8, h: 5, label: "USER" },
-  CartBadge: { cx: -99, row: 2, w: 13, d: 8, h: 5, label: "CART" },
-  PriceChart: { cx: -77, row: 2, w: 18, d: 10, h: 9, label: "CHART" },
-  SearchInput: { cx: -30, row: 2, w: 15, d: 8, h: 5, label: "INPUT" },
-  Suggestions: { cx: -11, row: 2, w: 19, d: 8, h: 5, label: "SUGGEST" },
-  ResultList: { cx: 12, row: 2, w: 15, d: 8, h: 5, label: "LIST" },
+  // Row 2 blocks carry the components' own names, as the text uses them; each is just wide enough for its name.
+  Logo: { cx: -151, row: 2, w: 10, d: 8, h: 5, label: "LOGO" },
+  Nav: { cx: -140, row: 2, w: 8, d: 8, h: 5, label: "NAV" },
+  UserMenu: { cx: -126.5, row: 2, w: 15, d: 8, h: 5, label: "USERMENU" },
+  CartBadge: { cx: -108.5, row: 2, w: 17, d: 8, h: 5, label: "CARTBADGE" },
+  PriceChart: { cx: -85.5, row: 2, w: 19, d: 10, h: 9, label: "PRICECHART" },
+  SearchInput: { cx: -39, row: 2, w: 20, d: 8, h: 5, label: "SEARCHINPUT" },
+  Suggestions: { cx: -17, row: 2, w: 20, d: 8, h: 5, label: "SUGGESTIONS" },
+  ResultList: { cx: 4.5, row: 2, w: 19, d: 8, h: 5, label: "RESULTLIST" },
 };
 // Components that come many at a time: a tray of studs, one stud per component.
 export const BANKS = {
-  NavLink: { cx: -129, row: 3, cols: 3, rows: 2, pitch: 4.2, label: "LINK ×6" },
-  Filter: { cx: -55, row: 2, cols: 4, rows: 3, pitch: 4.2, label: "FILTER ×12" },
-  ResultCard: { cx: 12, row: 3, cols: 8, rows: 6, pitch: 4.2, label: "CARD ×48" },
-  FooterLink: { cx: 44, row: 2, cols: 4, rows: 2, pitch: 4.2, label: "LINK ×8" },
+  NavLink: { cx: -140, row: 3, cols: 3, rows: 2, pitch: 4.2, label: "NAVLINK ×6" },
+  Filter: { cx: -64, row: 2, cols: 4, rows: 3, pitch: 4.2, label: "FILTER ×12" },
+  ResultCard: { cx: 4.5, row: 3, cols: 8, rows: 6, pitch: 4.2, label: "RESULTCARD ×48" },
+  FooterLink: { cx: 44, row: 2, cols: 4, rows: 2, pitch: 4.2, label: "FOOTERLINK ×8" },
 };
 const STUD = 3.1, TRAY_PAD = 1.8, TRAY_H = 1.6, STUD_H = 1.5;
 const trayOf = (b) => {
@@ -128,7 +129,7 @@ function block(name) {
     const bars = [0.35, 0.6, 0.9, 0.55, 0.75, 0.4];
     out.push(L(bars.map((v, i) => k.lineOnTop([plan.x + 3 + i * 2.4, plan.y + plan.d - 2.5], [plan.x + 3 + i * 2.4, plan.y + plan.d - 2.5 - v * 6], b.h, P)).join(""), { tone: "lo" }));
   }
-  out.push(text(b.cx, front, b.h / 2 - 1.1, b.label, name === "App" ? 3.4 : 2.7, { anchor: "middle", tone: "hi" }));
+  out.push(text(b.cx, front, b.h / 2 - 1.1, b.label, name === "App" ? 3.4 : b.row === 2 ? 2.6 : 2.7, { anchor: "middle", tone: "hi" }));
   out.push(`</g>`);
   return out.join("");
 }
@@ -224,7 +225,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A component board on a base plate: a shop page's React component tree laid out in rows, App at the back, then Header, Sidebar, SearchPanel and Footer, then their children nearer the front, with trays of small studs for the components that come many at a time: " + links + " nav links, " + filters + " filters, " + cards + " result cards and " + footer + " footer links. Wires run from each component to its children. When a component renders its block lights, and the light runs down the wires to everything it renders. Plaques marked STATE lie on the components that hold state; gates on some wires are React.memo; a store stands at the back right. At the front lies the page itself, where only the parts whose DOM changed flash, and a console counts renders and DOM changes and shows the work of the last update against one frame.",
-      "Un tablero de componentes sobre una placa base: el árbol de componentes de React de la página de una tienda dispuesto en filas, App al fondo, luego Header, Sidebar, SearchPanel y Footer, y sus hijos más adelante, con bandejas de pequeños tacos para los componentes que vienen de a muchos: " + links + " enlaces de navegación, " + filters + " filtros, " + cards + " tarjetas de resultados y " + footer + " enlaces del pie. Cables van de cada componente a sus hijos. Cuando un componente se renderiza su bloque se ilumina, y la luz baja por los cables hasta todo lo que renderiza. Placas marcadas ESTADO están sobre los componentes que guardan estado; compuertas en algunos cables son React.memo; un store está al fondo a la derecha. Adelante está la página misma, donde solo destellan las partes cuyo DOM cambió, y una consola cuenta renders y cambios en el DOM y muestra el trabajo de la última actualización frente a un cuadro.",
+      "Un tablero de componentes sobre una placa base: el árbol de componentes de React de la página de una tienda dispuesto en filas, App al fondo, luego Header, Sidebar, SearchPanel y Footer, y sus hijos más adelante, con bandejas de pequeños pernos para los componentes que vienen en grupo: " + links + " enlaces de navegación, " + filters + " filtros, " + cards + " tarjetas de resultados y " + footer + " enlaces del pie. Cables van de cada componente a sus hijos. Cuando un componente se renderiza su bloque se ilumina, y la luz baja por los cables hasta todo lo que renderiza. Placas marcadas ESTADO están sobre los componentes que guardan estado; compuertas en algunos cables son React.memo; un store está al fondo a la derecha. Adelante está la página misma, donde solo destellan las partes cuyo DOM cambió, y una consola cuenta renders y cambios en el DOM y muestra el trabajo de la última actualización frente a un cuadro.",
     ),
     body: [
       plate(),
