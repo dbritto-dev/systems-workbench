@@ -16,8 +16,9 @@
 //   rrf       reciprocal rank fusion, score = Σ 1 / (60 + rank)
 //   minmax    α · semantic + (1 − α) · lexical, each list's scores min-max normalised to 0..1 first
 //   raw       α · cosine + (1 − α) · BM25 with no normalisation
-// Optional rerank: a cross-encoder reads the query and each of the top 100 fused candidates together and rescores
-// them; modelled as one that sees exact identifiers, product names and meaning at once, at 2.2 ms a candidate.
+// Optional rerank: a cross-encoder reads the query and each of the top `rerankN` (20 or 100) fused candidates together
+// and rescores them; modelled as one that sees exact identifiers, product names and meaning at once, at 2.2 ms a candidate.
+// Optional routing: a query that contains an identifier (E-…, SKU-…) skips the meaning lane and uses the keyword lane alone.
 //
 // Queries (30 of each type, each with its labelled relevant documents):
 //   exact       an identifier plus one word ("E-4072 firmware"): one relevant article
@@ -182,7 +183,9 @@ export function buildQueries(docs, seed = 5) {
 }
 
 // ---------- the search engine ----------
-export const DEFAULTS = { lexical: true, semantic: true, fusion: "rrf", alpha: 0.5, depth: 20, rerank: false, rerankN: 100, k: 60 };
+export const DEFAULTS = { lexical: true, semantic: true, route: false, fusion: "rrf", alpha: 0.5, depth: 20, rerank: false, rerankN: 100, k: 60 };
+// An identifier, as a router would spot it in a query: an error code or a part number.
+export const isIdentifier = (w) => /^(e|sku)-\d+$/i.test(w);
 export const LATENCY = { lexical: 4, semantic: 9, fuse: 1, perRerank: 2.2 };
 
 export function makeEngine(seed = 11) {
@@ -217,11 +220,13 @@ export function makeEngine(seed = 11) {
   function search(q, cfgIn = {}) {
     const cfg = { ...DEFAULTS, ...cfgIn };
     const L = lists(q);
-    const lexTop = cfg.lexical ? L.lexRank.slice(0, cfg.depth).filter((i) => L.lex[i] > 0) : [];
-    const semTop = cfg.semantic ? L.semRank.slice(0, cfg.depth) : [];
+    const routed = cfg.route && q.words.some(isIdentifier);
+    const lexOn = cfg.lexical, semOn = cfg.semantic && !routed;
+    const lexTop = lexOn ? L.lexRank.slice(0, cfg.depth).filter((i) => L.lex[i] > 0) : [];
+    const semTop = semOn ? L.semRank.slice(0, cfg.depth) : [];
     const pool = [...new Set([...lexTop, ...semTop])];
     const fused = new Map();
-    if (cfg.fusion === "rrf" || !(cfg.lexical && cfg.semantic)) {
+    if (cfg.fusion === "rrf" || !(lexOn && semOn)) {
       lexTop.forEach((i, r) => fused.set(i, (fused.get(i) || 0) + 1 / (cfg.k + r + 1)));
       semTop.forEach((i, r) => fused.set(i, (fused.get(i) || 0) + 1 / (cfg.k + r + 1)));
     } else {
@@ -241,8 +246,8 @@ export function makeEngine(seed = 11) {
       const rs = new Map(head.map((i) => [i, rerankScore(q, docs[i])]));
       final = [...head].sort((x, y) => rs.get(y) - rs.get(x) || x - y).concat(final.slice(cfg.rerankN));
     }
-    const ms = (cfg.lexical && cfg.semantic ? Math.max(LATENCY.lexical, LATENCY.semantic) + LATENCY.fuse : cfg.lexical ? LATENCY.lexical : LATENCY.semantic) + reranked * LATENCY.perRerank;
-    return { lexTop, semTop, pool, final, ms, reranked };
+    const ms = (lexOn && semOn ? Math.max(LATENCY.lexical, LATENCY.semantic) + LATENCY.fuse : lexOn ? LATENCY.lexical : LATENCY.semantic) + reranked * LATENCY.perRerank;
+    return { lexTop, semTop, pool, final, ms, reranked, routed };
   }
 
   const rankOf = (list, id) => { const r = list.indexOf(id); return r < 0 ? null : r + 1; };
@@ -267,7 +272,6 @@ export function makeEngine(seed = 11) {
 }
 
 // ---------- the five experiments ----------
-export const DEPTHS = [5, 20, 100];
 const pct = (x) => Math.round(x * 100);
 export const SEEDS = [11, 12, 13, 14, 15];
 export function experimentResults() {
@@ -277,11 +281,12 @@ export function experimentResults() {
     const mean = (f) => meanBy(rs, f);
     return { exact: pct(mean((r) => r.exact.recall)), paraphrase: pct(mean((r) => r.paraphrase.recall)), mixed: pct(mean((r) => r.mixed.recall)), all: pct(mean((r) => r.all.recall)), pool: pct(mean((r) => r.all.pool)), ms: Math.round(mean((r) => r.all.ms) * 10) / 10 };
   };
+  // k is the cut: is a wanted article in the top k? (top 10 for the lanes, first result for routing and α, top 5 for reranking)
   return {
     three: { lexical: by({ semantic: false }), semantic: by({ lexical: false }), hybrid: by({ fusion: "rrf" }) },
-    fusion: { raw: by({ fusion: "raw", alpha: 0.5 }), minmax: by({ fusion: "minmax", alpha: 0.5 }), rrf: by({ fusion: "rrf" }) },
-    alpha: [0, 0.3, 0.5, 0.7, 1].map((a) => ({ alpha: a, ...by({ fusion: "minmax", alpha: a }) })),
-    depth: DEPTHS.map((d) => ({ depth: d, ...by({ fusion: "rrf", depth: d, rerank: true }) })),
+    route: { plain: by({ fusion: "rrf" }, 1), routed: by({ fusion: "rrf", route: true }, 1) },
+    alpha: [0, 0.3, 0.5, 0.7, 1].map((a) => ({ alpha: a, ...by({ fusion: "minmax", alpha: a }, 1) })),
     rerank: { off: by({ fusion: "rrf", depth: 100 }, 5), on: by({ fusion: "rrf", depth: 100, rerank: true }, 5) },
+    rerankN: { n20: by({ fusion: "rrf", depth: 100, rerank: true, rerankN: 20 }, 5), n100: by({ fusion: "rrf", depth: 100, rerank: true }, 5) },
   };
 }

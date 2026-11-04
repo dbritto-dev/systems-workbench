@@ -28,7 +28,8 @@ export default function mount({ P, G }, root) {
   const stat = (key, value) => root.stat(key, value);
 
   const cfg = { qtype: "all", lanes: "both", fusion: "rrf", alpha: "0.5", depth: "20", rerank: "off", speed: 1 };
-  const engCfg = () => ({ lexical: cfg.lanes !== "sem", semantic: cfg.lanes !== "lex", fusion: cfg.fusion, alpha: Number(cfg.alpha), depth: Number(cfg.depth), rerank: cfg.rerank === "on" });
+  // lanes: both, route (identifiers go to the keyword lane alone), lex or sem; rerank: off, 20 or on (the top 100).
+  const engCfg = () => ({ lexical: cfg.lanes !== "sem", semantic: cfg.lanes !== "lex", route: cfg.lanes === "route", fusion: cfg.fusion, alpha: Number(cfg.alpha), depth: Number(cfg.depth), rerank: cfg.rerank !== "off", rerankN: cfg.rerank === "20" ? 20 : 100 });
   let scores = null, order = [], at = 0, cur = null, t = 0;
 
   function rescore() {
@@ -48,12 +49,13 @@ export default function mount({ P, G }, root) {
     const query = E.queries[id];
     const res = E.search(query, engCfg());
     const L = E.lists(query);
-    const rankA = cfg.lanes === "sem" ? 0 : (L.lex[query.target] > 0 ? L.lexRank.indexOf(query.target) + 1 : 0);
-    const rankB = cfg.lanes === "lex" ? 0 : L.semRank.indexOf(query.target) + 1;
+    const lexOff = cfg.lanes === "sem", semOff = cfg.lanes === "lex" || res.routed;
+    const rankA = lexOff ? 0 : (L.lex[query.target] > 0 ? L.lexRank.indexOf(query.target) + 1 : 0);
+    const rankB = semOff ? 0 : L.semRank.indexOf(query.target) + 1;
     const rf = res.final.indexOf(query.target) + 1;
     const rel = new Set(query.rel);
     const rr = res.reranked ? 0.6 + 1.4 * Math.min(1, res.reranked / 100) : 0;
-    cur = { query, res, rankA, rankB, rf, rel, rr, shelf0: 3 + rr };
+    cur = { query, res, rankA, rankB, rf, rel, rr, shelf0: 3 + rr, lexOff, semOff };
     t = startAt;
     const terms = tokens(query.words);
     cur.terms = terms;
@@ -67,15 +69,15 @@ export default function mount({ P, G }, root) {
     order = queue();
     const want = first ? START : order[0];
     at = Math.max(0, order.indexOf(want));
-    WB.pose(svg, "fusion", cfg.fusion === "rrf" || cfg.lanes !== "both" ? "rrf" : "a" + cfg.alpha);
-    closed.style.display = cfg.rerank === "on" ? "none" : "";
+    WB.pose(svg, "fusion", cfg.fusion === "rrf" || (cfg.lanes !== "both" && cfg.lanes !== "route") ? "rrf" : "a" + cfg.alpha);
+    closed.style.display = cfg.rerank !== "off" ? "none" : "";
     begin(order[at], startAt);
   }
 
   // the words on the sieve and the hopper
   function words() {
-    setText(sieveText, cfg.lanes === "sem" ? tr("lane off", "carril apagado") : cur.terms.join(" · "));
-    setText(fuseText, cfg.lanes !== "both" ? tr("ONE LANE", "UN CARRIL") : cfg.fusion === "rrf" ? "RRF" : (cfg.fusion === "raw" ? tr("RAW ", "CRUDO ") : "α ") + cfg.alpha);
+    setText(sieveText, cur.lexOff ? tr("lane off", "carril apagado") : cur.terms.join(" · "));
+    setText(fuseText, cur.lexOff || cur.semOff ? tr("ONE LANE", "UN CARRIL") : cfg.fusion === "rrf" ? "RRF" : (cfg.fusion === "raw" ? tr("RAW ", "CRUDO ") : "α ") + cfg.alpha);
   }
 
   function dress(tile, docId) {
@@ -110,7 +112,7 @@ export default function mount({ P, G }, root) {
     // reranking: the inspector re-reads the head of the merged list
     const rrK = c.rr ? (t - 3) / c.rr : -1;
     const reading_ = c.rr && rrK >= 0 && rrK < 1;
-    WB.pose(svg, "inspector", cfg.rerank !== "on" ? "off" : reading_ ? "lit" : "on");
+    WB.pose(svg, "inspector", cfg.rerank === "off" ? "off" : reading_ ? "lit" : "on");
     if (reading_) {
       const n = Math.floor(rrK * r.reranked);
       const id = r.final[Math.min(r.final.length - 1, n % Math.min(r.final.length, 100))];
@@ -131,14 +133,15 @@ export default function mount({ P, G }, root) {
     counters.ms.set(done ? Math.round(r.ms) : 0);
     const show = (x) => (x ? "#" + x : tr("not found", "no encontrado")), off = tr("off", "apagado");
     stat("query", tr(c.query.type, KIND_ES[c.query.type]) + ": " + c.query.text);
-    stat("ra", cfg.lanes === "sem" ? off : laneDone ? show(c.rankA) : "…");
-    stat("rb", cfg.lanes === "lex" ? off : laneDone ? show(c.rankB) : "…");
+    stat("ra", c.lexOff ? off : laneDone ? show(c.rankA) : "…");
+    stat("rb", c.semOff ? off : laneDone ? show(c.rankB) : "…");
     stat("rf", done ? show(c.rf) + (c.rel.size > 1 ? tr(" (" + c.rel.size + " articles count)", " (cuentan " + c.rel.size + " artículos)") : "") : "…");
     stat("recall", scores ? pct(scores[c.query.type].recall) : "");
     stat("ms", done ? Math.round(r.ms) + " ms" : "…");
     const head = '"' + c.query.text + '"';
-    const ra = cfg.lanes === "sem" ? off : show(c.rankA), rb = cfg.lanes === "lex" ? off : show(c.rankB);
-    if (t < 0.5) say(tr(c.query.type + " query " + head + " · down both lanes", QUERY_ES[c.query.type] + " " + head + " · por los dos carriles"));
+    const ra = c.lexOff ? off : show(c.rankA), rb = c.semOff ? off : show(c.rankB);
+    if (t < 0.5) say(c.res.routed ? tr(c.query.type + " query " + head + " · an identifier: keyword lane only", QUERY_ES[c.query.type] + " " + head + " · un identificador: solo el carril de palabras clave")
+      : tr(c.query.type + " query " + head + " · down both lanes", QUERY_ES[c.query.type] + " " + head + " · por los dos carriles"));
     else if (!laneDone) say(head + tr(" · lanes filling their racks", " · los carriles llenan sus estantes"));
     else if (t < 3) say(head + tr(" · keywords " + ra + " · meaning " + rb + " · merging", " · palabras clave " + ra + " · significado " + rb + " · fusionando"));
     else if (reading_) say(head + tr(" · reranker re-reading " + r.reranked + " candidates", " · el reranker relee " + r.reranked + " candidatos"));
