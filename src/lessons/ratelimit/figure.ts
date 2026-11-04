@@ -2,21 +2,23 @@
 // A token-bucket ticket dispenser: client lanes run under a gate whose coin tubes hold the tokens.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, faceText } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
 
-const PLATE = { x: -152, y: -102, w: 304, d: 198, r: 8 };
+// Each app instance is its own machine on its own plate: the back one always runs, the front one only with two
+// instances (the live code hides it, and frames the back plate alone, while there is one).
+const PLATES = [{ x: -152, y: -102, w: 304, d: 106, r: 8 }, { x: -152, y: 10, w: 304, d: 90, r: 8 }];
 const PLATE_H = 12;
 const FOOT_H = 5;
 
 export const LANE_X0 = -112;      // ticket leaves the client here
 export const GATE_X = -6;         // decision point (flap)
 export const TRAY_X = 106;        // served tray centre
-const GROUPS = [[-76, -56, -36], [4, 24, 44]];
+const GROUPS = [[-76, -56, -36], [34, 54, 74]];
 export const LANES = GROUPS.flatMap((ys, instance) => ys.map((y, client) => ({ y, instance, client })));
 const GATE = { x: -18, w: 24 };
 export const DISC = { r: 5.4, h: 2.3 };
@@ -25,20 +27,30 @@ export const GLOBAL_MAX = 16;
 export const CLIENT_MAX = 6;
 export const TICKET = { w: 9, d: 7, h: 3, z: 2 };
 
-export const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [GATE.x, -90, TUBE_BASE + GLOBAL_MAX * DISC.h + 18], [GATE.x + GATE.w, 60, 30]],
-  WIDTH,
-  HEIGHT,
-  { pad: 22, azimuth: 52 },
-);
+const TALL = TUBE_BASE + GLOBAL_MAX * DISC.h + 18;
+const extent = (plate, back) => [...k.boxCorners(plate, -PLATE_H - FOOT_H, 0), [GATE.x, back, TALL], [GATE.x + GATE.w, back, TALL]];
+export const P = k.fitProjection([...extent(PLATES[0], -90), ...extent(PLATES[1], 20)], WIDTH, HEIGHT, { pad: 22, azimuth: 52 });
+
+// The viewBox that frames the back machine alone, at the figure's aspect ratio.
+function frame(points, pad = 22) {
+  const flat = points.map((p) => k.iso(p, P));
+  let [x0, y0, x1, y1] = [Math.min(...flat.map((p) => p[0])), Math.min(...flat.map((p) => p[1])), Math.max(...flat.map((p) => p[0])), Math.max(...flat.map((p) => p[1]))];
+  let w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad;
+  if (w / h > WIDTH / HEIGHT) h = (w * HEIGHT) / WIDTH; else w = (h * WIDTH) / HEIGHT;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, r = (v) => Math.round(v * 10) / 10;
+  return [r(cx - w / 2), r(cy - h / 2), r(w), r(h)].join(" ");
+}
+export const VIEW_ONE = frame(extent(PLATES[0], -90));
+export const VIEW_ALL = `0 0 ${WIDTH} ${HEIGHT}`;
 
 const { S, L, D, at } = shorthand(P);
 const byDepth = (points) => [...points].sort((a, b) => k.depthOf([a[0], a[1], 0], P) - k.depthOf([b[0], b[1], 0], P));
 
-function plate() {
-  return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
-    + rulerStrip(P, { x: -132, y: 70, w: 160, d: 7, r: 1 })
-    + labelPlate(P, { x: 72, y: 66, w: 50, d: 18, r: 1.5 }, [[78, 71, 30], [78, 75, 38], [78, 79, 22]]);
+function plate(instance) {
+  const pl = PLATES[instance], front = pl.y + pl.d;
+  return basePlate(P, pl, { height: PLATE_H, foot: FOOT_H })
+    + rulerStrip(P, { x: -132, y: front - 15, w: 100, d: 7, r: 1 })
+    + labelPlate(P, { x: 72, y: front - 19, w: 50, d: 14, r: 1.5 }, [[78, front - 15, 30], [78, front - 11.5, 38]]);
 }
 
 function lane(y) {
@@ -51,13 +63,13 @@ function lane(y) {
 }
 
 // The client's sender: a block with a slot the tickets come out of and go back into.
-function sender(y) {
+// The client's sender: a block with a slot the tickets come out of and go back into, and its letter on top.
+function sender(y, client) {
   const plan = { x: LANE_X0 - 22, y: y - 6.5, w: 16, d: 13, r: 1.5 };
   const out = [S(k.slabOf(plan, 0, 12, P, 3, 0.5), { tone: "mid" })];
   const xf = plan.x + plan.w;
   out.push(L(`M${at([xf, y - 4.5, 2.4]).join(" ")}L${at([xf, y + 4.5, 2.4]).join(" ")}L${at([xf, y + 4.5, 6.6]).join(" ")}L${at([xf, y - 4.5, 6.6]).join(" ")}Z`, { tone: "lo" }));
-  out.push(S(k.cylinder(plan.x + 8, y, 2.4, 12, 1.2, P, 18), { tone: "mid" }));
-  out.push(D([at([plan.x + 3, plan.y + 3, 12]), at([plan.x + 13, plan.y + 3, 12])], { size: 0.4, tone: "lo" }));
+  out.push(faceText(P, [plan.x + 8, y + 3.6, 12], "ABC"[client], { face: "top", size: 9, tone: "hi", anchor: "middle" }));
   return out.join("");
 }
 
@@ -133,9 +145,10 @@ export function ticketSvg() {
 
 function group(instance) {
   const ys = GROUPS[instance];
-  return `<g data-group="${instance}">`
+  return `<g data-group="${instance}"${instance ? " data-off" : ""}>`
+    + plate(instance)
     + ys.map((y) => lane(y)).join("")
-    + ys.map((y) => sender(y)).join("")
+    + ys.map((y, client) => sender(y, client)).join("")
     + `<g data-up="${instance}"></g>`
     + gate(instance)
     + tray(ys)
@@ -148,11 +161,11 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A ticket dispenser on a base plate. Three client senders on the left push tickets along lanes under a gate. On the gate stand coin tubes holding tokens, refilled one at a time by a dropper. A ticket that finds a token lifts the flap and rides on to the served tray; a ticket that finds the tube empty is sent back to its client. A second, identical gate at the front stands for a second app instance with its own tubes.",
-      "Un dispensador de boletos sobre una placa base. Tres emisores de clientes a la izquierda empujan boletos por carriles bajo una compuerta. Sobre la compuerta hay tubos de monedas con tokens, que un dosificador recarga de uno en uno. Un boleto que encuentra un token levanta la aleta y sigue hasta la bandeja de atendidos; un boleto que encuentra el tubo vacío vuelve a su cliente. Una segunda compuerta idéntica, adelante, representa una segunda instancia de la app con sus propios tubos.",
+      "A ticket dispenser on a base plate. Three client senders on the left, lettered A, B and C, push tickets along lanes under a gate, which carries a dial for the fixed window. On the gate stand coin tubes holding tokens, refilled one at a time by a dropper. A ticket that finds a token lifts the flap and rides on to the served tray; a ticket that finds the tube empty is sent back to its client. With two app instances, a second, identical machine at the front stands for the second instance, with its own tubes.",
+      "Un dispensador de boletos sobre una placa base. Tres emisores de clientes a la izquierda, con las letras A, B y C, empujan boletos por carriles bajo una compuerta, que lleva un dial para la ventana fija. Sobre la compuerta hay tubos de monedas con tokens, que un dosificador recarga de uno en uno. Un boleto que encuentra un token levanta la aleta y sigue hasta la bandeja de atendidos; un boleto que encuentra el tubo vacío vuelve a su cliente. Con dos instancias de la app, una segunda máquina idéntica, adelante, representa la segunda instancia, con sus propios tubos.",
     ),
-    body: [plate(), group(0), group(1)],
-  });
+    body: [group(0), group(1)],
+  }).replace(`viewBox="${VIEW_ALL}"`, `viewBox="${VIEW_ONE}"`);
 }
 
-export const GEOMETRY = { LANES, LANE_X0, GATE_X, TRAY_X, TICKET, DISC, TUBE_BASE, GLOBAL_MAX, CLIENT_MAX, DIALS, SENDER_X: LANE_X0 - 6 };
+export const GEOMETRY = { VIEW_ONE, VIEW_ALL, LANES, LANE_X0, GATE_X, TRAY_X, TICKET, DISC, TUBE_BASE, GLOBAL_MAX, CLIENT_MAX, DIALS, SENDER_X: LANE_X0 - 6 };

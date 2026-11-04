@@ -98,6 +98,26 @@ function boundary(algorithm) {
   const s = makeSim({ ...BASE, algorithm, script, retry: false }, 1); s.runTo(2.25);
   return s.log.filter((d) => d.ok && d.attempt === 1).length;
 }
+// Clients A and B's requests (not attempts: a rejected request retries, and its retries are the same request): the
+// share that got through within 1 s of being sent, and the share turned away on their first try. Requests sent in the
+// last 10 s are left out, so every one counted had time to get through.
+function quietRequests(cfg) {
+  let sent = 0, quick = 0, firstNo = 0;
+  for (const seed of [3, 5, 7, 11, 13, 17]) {
+    const s = makeSim(cfg, seed); s.runTo(60);
+    const reqs = new Map();
+    for (const d of s.log) {
+      if (d.client === 2 || d.born >= 50) continue;
+      const key = d.client + ":" + d.born;
+      if (!reqs.has(key)) reqs.set(key, { born: d.born, first: null, ok: null });
+      const r = reqs.get(key);
+      if (d.attempt === 1) r.first = d.ok;
+      if (d.ok && r.ok === null) r.ok = d.t;
+    }
+    for (const r of reqs.values()) { sent++; if (r.ok !== null && r.ok - r.born <= 1) quick++; if (r.first === false) firstNo++; }
+  }
+  return { quick: quick / sent, firstNo: firstNo / sent };
+}
 function retryRun(behaviour) {
   const script = Array.from({ length: 30 }, (_, i) => [5 + i * 0.01, 0]);
   let rejected = 0; const seeds = [3, 5, 7, 11, 13, 17];
@@ -110,7 +130,7 @@ export function experimentResults() {
   return {
     size: { a: average({ ...heavy, capacity: 8 }), b: average({ ...heavy, capacity: 16 }), b8: burstThrough(8), b16: burstThrough(16) },
     window: { w: boundary("window"), b: boundary("bucket") },
-    noisy: { g: average({ ...noisy, mode: "global" }), p: average({ ...noisy, mode: "client" }) },
+    noisy: { g: quietRequests({ ...noisy, mode: "global" }), p: quietRequests({ ...noisy, mode: "client" }), gNoRetry: quietRequests({ ...noisy, mode: "global", retry: false }) },
     retry: { now: retryRun("now"), after: retryRun("after") },
     instances: { one: average({ ...heavy, instances: 1 }), two: average({ ...heavy, instances: 2 }) },
   };

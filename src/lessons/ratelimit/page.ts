@@ -19,13 +19,16 @@ const RUNS = {
   },
   window: () => { const { w, b } = RESULTS.window; return { verdict: t("In 0.4 s around the boundary, the fixed window let " + w + " through; the token bucket let " + b + " through. The limit is 8.", "En 0.4 s alrededor del borde, la ventana fija dejó pasar " + w + "; la cubeta de tokens dejó pasar " + b + ". El límite es 8."), bars: [[t("Fixed window", "Ventana fija"), w / 32, String(w), true], [t("Token bucket", "Cubeta de tokens"), b / 32, String(b)]] }; },
   noisy: () => {
+    // Requests, not attempts: a rejected request retries, and its retries count once with it.
     const { g, p } = RESULTS.noisy;
-    return { verdict: t("A and B's attempts rejected: " + pct(g.quietRejected) + " with one shared limit, " + pct(p.quietRejected) + " with a limit per client.", "Intentos de A y B rechazados: " + pct(g.quietRejected) + " con un límite compartido, " + pct(p.quietRejected) + " con un límite por cliente."), bars: [[t("Shared limit", "Límite compartido"), g.quietRejected, pct(g.quietRejected), true], [t("Per client", "Por cliente"), p.quietRejected, pct(p.quietRejected)]] };
+    return { verdict: t("A and B's requests that got through within 1 s: " + pct(g.quick) + " with one shared limit, " + pct(p.quick) + " with a limit per client. With the shared limit, " + pct(g.firstNo) + " of them were turned away on their first try.",
+        "Solicitudes de A y B que pasaron en menos de 1 s: " + pct(g.quick) + " con un límite compartido, " + pct(p.quick) + " con un límite por cliente. Con el límite compartido, al " + pct(g.firstNo) + " lo rechazaron en su primer intento."),
+      bars: [[t("Through within 1 s, shared", "Pasaron en 1 s, compartido"), g.quick, pct(g.quick), true], [t("Through within 1 s, per client", "Pasaron en 1 s, por cliente"), p.quick, pct(p.quick)], [t("Turned away on the first try, shared", "Rechazadas al primer intento, compartido"), g.firstNo, pct(g.firstNo)]] };
   },
   retry: () => { const { now, after } = RESULTS.retry, top = Math.max(now, after); return { verdict: t("Rejected attempts in the minute after the burst: " + Math.round(now) + " retrying every 0.25 s, " + Math.round(after) + " waiting the Retry-After time.", "Intentos rechazados en el minuto después de la ráfaga: " + Math.round(now) + " reintentando cada 0.25 s, " + Math.round(after) + " esperando el tiempo de Retry-After."), bars: [[t("Retry now", "Reintentar ya"), now / top, String(Math.round(now)), true], [t("Wait Retry-After", "Esperar Retry-After"), after / top, String(Math.round(after))]] }; },
   instances: () => {
     const { one, two } = RESULTS.instances, top = Math.max(one.perMinute, two.perMinute);
-    return { verdict: t("Allowed per minute: " + Math.round(one.perMinute) + " with one instance, " + Math.round(two.perMinute) + " with two. The \"4/s\" limit is now about 8/s.", "Permitidas por minuto: " + Math.round(one.perMinute) + " con una instancia, " + Math.round(two.perMinute) + " con dos. El límite de \"4/s\" ahora es de unos 8/s."), bars: [[t("1 instance", "1 instancia"), one.perMinute / top, Math.round(one.perMinute)], [t("2 instances", "2 instancias"), two.perMinute / top, Math.round(two.perMinute), true]] };
+    return { verdict: t("Allowed per minute: " + Math.round(one.perMinute) + " with one instance, " + Math.round(two.perMinute) + " with two: all of the 7.5/s that clients asked for got through. Two buckets of 4/s allow up to 8/s.", "Permitidas por minuto: " + Math.round(one.perMinute) + " con una instancia, " + Math.round(two.perMinute) + " con dos: pasó todo lo que pedían los clientes, 7.5/s. Dos cubetas de 4/s permiten hasta 8/s."), bars: [[t("1 instance", "1 instancia"), one.perMinute / top, Math.round(one.perMinute)], [t("2 instances", "2 instancias"), two.perMinute / top, Math.round(two.perMinute), true]] };
   },
 };
 
@@ -62,10 +65,10 @@ const EXPERIMENTS = [
     ],
     answer: 1,
     why: t(
-      "A fixed window only counts within its own window. 8 fit at the end of one window and 8 more at the start of the next, so twice the limit passes in less than half a second. A token bucket (or a sliding window) has no boundary to exploit: after the first 8 it only lets through what drips in.",
-      "Una ventana fija solo cuenta dentro de su propia ventana. Caben 8 al final de una ventana y 8 más al inicio de la siguiente, así que pasa el doble del límite en menos de medio segundo. Una cubeta de tokens (o una ventana deslizante, sliding window) no tiene un borde que aprovechar: después de las primeras 8 solo deja pasar lo que va goteando.",
+      "A fixed window only counts within its own window. 8 fit at the end of one window and 8 more at the start of the next, so twice the limit passes in less than half a second. A token bucket has no boundary to exploit: after the first 8 it only lets through what drips in. Over a full 2 s, though, a bucket of 8 at 4/s also allows 16 (8 + 4 × 2): what it prevents is the 16 landing in a fraction of a second. For a hard \"8 in any 2 s\", use a sliding-window log.",
+      "Una ventana fija solo cuenta dentro de su propia ventana. Caben 8 al final de una ventana y 8 más al inicio de la siguiente, así que pasa el doble del límite en menos de medio segundo. Una cubeta de tokens no tiene un borde que aprovechar: después de las primeras 8 solo deja pasar lo que va goteando. Eso sí, en 2 s completos una cubeta de 8 a 4/s también deja pasar 16 (8 + 4 × 2): lo que evita es que las 16 lleguen en una fracción de segundo. Para un tope estricto de \"8 en cualquier lapso de 2 s\", usa un registro de ventana deslizante (sliding-window log).",
     ),
-    watch: { capacity: 8, rate: 4, algorithm: "window", mode: "global", noisy: false, behaviour: "after", instances: 1 },
+    watch: { capacity: 8, rate: 4, algorithm: "window", mode: "global", noisy: false, behaviour: "after", instances: 1, boundary: true },
   },
   {
     id: "noisy",
@@ -74,16 +77,16 @@ const EXPERIMENTS = [
       "Client C sends 8 requests/s, A and B send 1/s · one shared limit of 6/s vs a third of it per client",
       "El cliente C envía 8 solicitudes/s, A y B envían 1/s · un límite compartido de 6/s vs un tercio de él por cliente",
     ),
-    question: t("With one shared limit, what happens to A and B?", "Con un límite compartido, ¿qué les pasa a A y B?"),
+    question: t("With one shared limit, what happens to A and B's requests?", "Con un límite compartido, ¿qué les pasa a las solicitudes de A y B?"),
     options: [
       t("Nothing: they send so little they always get a token", "Nada: envían tan poco que siempre consiguen un token"),
-      t("Many of their requests are rejected too", "Muchas de sus solicitudes también se rechazan"),
+      t("Many are rejected too, and wait to get through", "Muchas también se rechazan y tardan en pasar"),
       t("Only C is slowed down", "Solo C se frena"),
     ],
     answer: 1,
     why: t(
-      "A shared bucket doesn't know who is asking. C takes most of the tokens, so A and B find the tube empty as often as C does. A limit per client (per API key, per user, per IP) gives each its own tube, so C only drains its own.",
-      "Una cubeta compartida no sabe quién pide. C se lleva la mayoría de los tokens, así que A y B encuentran el tubo vacío tan seguido como C. Un límite por cliente (por API key, por usuario, por IP) le da a cada uno su propio tubo, así que C solo vacía el suyo.",
+      "A shared bucket doesn't know who is asking. Demand is 10/s against 6/s, so even with no retries it would turn away 4 requests in 10, A and B's as often as C's. Here every rejected request comes back after its Retry-After, so the retries pile up on top of the new requests, and A and B find the tube empty most of the time. A limit per client (per API key, per user, per IP) gives each its own tube, so C only drains its own.",
+      "Una cubeta compartida no sabe quién pide. La demanda es de 10/s contra 6/s, así que aun sin reintentos rechazaría 4 de cada 10 solicitudes, las de A y B tan seguido como las de C. Aquí cada solicitud rechazada vuelve después de su Retry-After, así que los reintentos se acumulan encima de las solicitudes nuevas, y A y B encuentran el tubo vacío casi siempre. Un límite por cliente (por API key, por usuario, por IP) le da a cada uno su propio tubo, así que C solo vacía el suyo.",
     ),
     watch: { capacity: 12, rate: 6, algorithm: "bucket", mode: "global", noisy: true, behaviour: "after", instances: 1 },
   },
@@ -92,7 +95,7 @@ const EXPERIMENTS = [
     title: t("Retrying on 429", "Reintentar ante un 429"),
     change: t(
       "Client A bursts 30 requests at once · impatient clients retry every 0.25 s vs clients that wait the Retry-After time (plus jitter)",
-      "El cliente A envía una ráfaga de 30 solicitudes de golpe · clientes impacientes que reintentan cada 0.25 s vs clientes que esperan el tiempo de Retry-After (más jitter)",
+      "El cliente A envía una ráfaga de 30 solicitudes de golpe · clientes impacientes que reintentan cada 0.25 s vs clientes que esperan el tiempo de Retry-After más una variación aleatoria (jitter)",
     ),
     question: t("How many rejected attempts does the limiter see?", "¿Cuántos intentos rechazados ve el limitador?"),
     options: [
@@ -102,8 +105,8 @@ const EXPERIMENTS = [
     ],
     answer: 1,
     why: t(
-      "A rejected request costs the server something even if it does no work: a connection, parsing, a lookup. Clients that hammer every 0.25 s turn one burst into a stream of rejections. Waiting the Retry-After time, with jitter so they don't all return at once, sends far fewer. Impatient clients also grab tokens first, which is why well-behaved clients need the server to enforce fairness.",
-      "Una solicitud rechazada le cuesta algo al servidor aunque no haga trabajo: una conexión, el parseo, una búsqueda. Los clientes que insisten cada 0.25 s convierten una ráfaga en un chorro de rechazos. Esperar el tiempo de Retry-After, con jitter (una variación aleatoria) para que no vuelvan todos a la vez, envía muchos menos. Los clientes impacientes además se quedan primero con los tokens; por eso los clientes que se portan bien necesitan que el servidor imponga la equidad.",
+      "A rejected request costs the server something even if it does no work: a connection, parsing, a lookup. Clients that hammer every 0.25 s turn one burst into a stream of rejections. Waiting the Retry-After time, with jitter so they don't all return at once, sends far fewer. Impatient clients also grab tokens first, which is why well-behaved clients need the server to enforce fairness. Lesson 06, Retry storms, shows what retries without backoff do to a whole chain of services.",
+      "Una solicitud rechazada le cuesta algo al servidor aunque no haga trabajo: una conexión, el parseo, una búsqueda. Los clientes que insisten cada 0.25 s convierten una ráfaga en un chorro de rechazos. Esperar el tiempo de Retry-After, con variación aleatoria para que no vuelvan todos a la vez, envía muchos menos. Los clientes impacientes además se quedan primero con los tokens; por eso los clientes que se portan bien necesitan que el servidor imponga la equidad. La lección 06, Tormentas de reintentos, muestra lo que les hacen los reintentos sin espera a toda una cadena de servicios.",
     ),
     watch: { capacity: 8, rate: 4, algorithm: "bucket", mode: "global", noisy: false, behaviour: "now", instances: 1, burst: true },
   },
@@ -118,7 +121,7 @@ const EXPERIMENTS = [
     options: [
       t("The same: the limit is 4/s", "Las mismas: el límite es 4/s"),
       t("About twice as many", "Aproximadamente el doble"),
-      t("Fewer, because each instance sees only half the traffic", "Menos, porque cada instancia ve solo la mitad del tráfico"),
+      t("Fewer: each instance sees only half the traffic", "Menos: cada instancia ve solo la mitad del tráfico"),
     ],
     answer: 1,
     why: t(
@@ -136,16 +139,16 @@ const QUESTIONS = [
      "La tasa de recarga es el límite a largo plazo: nunca más de 5/s con el tiempo, 300 por minuto. El tamaño de la cubeta es la tolerancia a ráfagas: después de un periodo tranquilo, pueden pasar hasta 20 de golpe. Duplicar la cubeta no sube el rendimiento (throughput); duplicar la recarga sí.")],
   [t("Why is a fixed window easy to exploit, and what fixes it?",
      "¿Por qué es fácil aprovecharse de una ventana fija y qué lo soluciona?"),
-   t("It resets at fixed times, so a client can spend the whole limit just before the boundary and again just after, getting twice the limit in a moment. A token bucket or a sliding window (counting the last N seconds at any moment) doesn't have a boundary to exploit.",
-     "Se reinicia en momentos fijos, así que un cliente puede gastar todo el límite justo antes del borde y otra vez justo después, y obtener el doble del límite en un instante. Una cubeta de tokens o una ventana deslizante (sliding window, que cuenta los últimos N segundos en cualquier momento) no tiene un borde que aprovechar.")],
+   t("It resets at fixed times, so a client can spend the whole limit just before the boundary and again just after, getting twice the limit in a moment. A token bucket or a sliding window (counting the last N seconds at any moment) doesn't have a boundary to exploit. They differ over a whole window: a bucket still lets its size plus the refill through (a bucket of 8 at 4/s passes 16 in 2 s, just not in one instant), while a sliding-window log caps every window at the limit.",
+     "Se reinicia en momentos fijos, así que un cliente puede gastar todo el límite justo antes del borde y otra vez justo después, y obtener el doble del límite en un instante. Una cubeta de tokens o una ventana deslizante (sliding window, que cuenta los últimos N segundos en cualquier momento) no tiene un borde que aprovechar. Se diferencian en una ventana completa: una cubeta igual deja pasar su tamaño más la recarga (una cubeta de 8 a 4/s deja pasar 16 en 2 s, solo que no en un instante), mientras que un registro de ventana deslizante (sliding-window log) limita cada ventana al límite.")],
   [t("Your API has one global limit and one customer starts a batch job. What do other customers see, and how would you design the limit instead?",
      "Tu API tiene un solo límite global y un cliente arranca un proceso por lotes (batch job). ¿Qué ven los demás clientes y cómo diseñarías el límite en su lugar?"),
-   t("They get 429s too, because they share the same tokens. Limit per API key or per user (often with a global limit behind it to protect the service), so a noisy customer only exhausts their own allowance.",
-     "También reciben 429, porque comparten los mismos tokens. Limita por API key o por usuario (a menudo con un límite global detrás para proteger el servicio), así un cliente ruidoso solo agota su propia cuota.")],
+   t("They get 429s too, because they share the same tokens. Limit per API key or per user (often with a global limit behind it to protect the service), so a noisy customer only exhausts their own allowance. A limit decides who gets in; lesson 50, Fair queueing and priority, shares out the work already let in.",
+     "También reciben 429, porque comparten los mismos tokens. Limita por API key o por usuario (a menudo con un límite global detrás para proteger el servicio), así un cliente ruidoso solo agota su propia cuota. Un límite decide quién entra; la lección 50, Encolamiento justo y prioridad, reparte el trabajo que ya entró.")],
   [t("What should a well-behaved client do when it gets a 429?",
      "¿Qué debe hacer un cliente que se porta bien cuando recibe un 429?"),
    t("Stop, wait at least the Retry-After time, add random jitter so many clients don't come back at the same instant, and back off further if it keeps getting 429s. Retrying immediately multiplies the load on a server that is already saying it's busy.",
-     "Detenerse, esperar al menos el tiempo de Retry-After, agregar un jitter aleatorio para que muchos clientes no vuelvan en el mismo instante, y esperar cada vez más (backoff) si sigue recibiendo 429. Reintentar de inmediato multiplica la carga de un servidor que ya está diciendo que está ocupado.")],
+     "Detenerse, esperar al menos el tiempo de Retry-After, agregar una variación aleatoria para que muchos clientes no vuelvan en el mismo instante, y esperar cada vez más (backoff) si sigue recibiendo 429. Reintentar de inmediato multiplica la carga de un servidor que ya está diciendo que está ocupado.")],
   [t("You run 4 replicas, each with an in-memory limiter of 100 requests/s. What is the real limit, and how do you get a true 100/s?",
      "Tienes 4 réplicas, cada una con un limitador en memoria de 100 solicitudes/s. ¿Cuál es el límite real y cómo consigues 100/s de verdad?"),
    t("About 400/s, and it changes whenever you scale. Keep the counter in a shared store such as Redis (an atomic increment or a small Lua script per request), or rate limit at the gateway in front of the replicas.",
@@ -172,8 +175,8 @@ export default defineLesson({
         { mark: "flat", label: t("Lanes for clients A, B, C, back to front", "Carriles de los clientes A, B, C, de atrás hacia adelante") },
       ],
       caption: t(
-        "Each client pushes tickets (requests) along its lane. At the gate a ticket takes one disc from the tube above it and rides on to the served tray; if the tube is empty it goes back to its client with a 429. The dropper adds one disc at the refill rate until the tube is full. The front gate is a second app instance: it only runs with two instances, and has its own tubes.",
-        "Cada cliente empuja boletos (solicitudes) por su carril. En la compuerta, un boleto toma un disco del tubo de arriba y sigue hasta la bandeja de atendidos; si el tubo está vacío, vuelve a su cliente con un 429. El dosificador agrega un disco a la tasa de recarga hasta que el tubo se llena. La compuerta de adelante es una segunda instancia de la app: solo funciona con dos instancias y tiene sus propios tubos.",
+        "Each client pushes tickets (requests) along its lane. At the gate a ticket takes one disc from the tube above it and rides on to the served tray; if the tube is empty it goes back to its client with a 429. The dropper adds one disc at the refill rate until the tube is full. With a fixed window, the dial on the gate sweeps once per window, and the tube refills all at once each time the hand comes round. With two app instances, a second machine with its own tubes appears in front.",
+        "Cada cliente empuja boletos (solicitudes) por su carril. En la compuerta, un boleto toma un disco del tubo de arriba y sigue hasta la bandeja de atendidos; si el tubo está vacío, vuelve a su cliente con un 429. El dosificador agrega un disco a la tasa de recarga hasta que el tubo se llena. Con una ventana fija, el dial de la compuerta da una vuelta por ventana, y el tubo se llena de golpe cada vez que la aguja completa la vuelta. Con dos instancias de la app, adelante aparece una segunda máquina con sus propios tubos.",
       ),
       stage: { "data-office": "" },
       label: t("Rate limiter simulation. Space pauses or resumes.", "Simulación del limitador de tasa. Espacio pausa o reanuda."),
@@ -193,7 +196,7 @@ export default defineLesson({
     ],
     note: t(
       'Changing a setting starts the run again with full tubes. With "Each client", every client gets a third of the rate and of the bucket.',
-      'Cambiar un ajuste reinicia la corrida con los tubos llenos. Con "Cada cliente", cada cliente recibe un tercio de la tasa y de la cubeta.',
+      'Cambiar un ajuste reinicia la ejecución con los tubos llenos. Con "Cada cliente", cada cliente recibe un tercio de la tasa y de la cubeta.',
     ),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over six seeded runs (60 s each unless noted).",
@@ -207,5 +210,6 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     TICKET_SVG: ticketSvg(),
+    TITLES: Object.fromEntries(EXPERIMENTS.map(({ id, title }) => [id, title])),
   },
 });

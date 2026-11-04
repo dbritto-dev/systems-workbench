@@ -9,7 +9,7 @@ import { playPause } from "../../runtime/dom";
 import { easeInOutCubic as ease } from "../../lib/tween";
 import { makeSim, levelOf, TRAVEL } from "./sim";
 
-export default function mount({ P, G, TICKET_SVG }, root) {
+export default function mount({ P, G, TICKET_SVG, TITLES }, root) {
   const POOL = 70, PASS_TIME = 0.9, BACK_TIME = 0.6, DROP_TIME = 0.3;
 
   const { stage, svg } = root.figure;
@@ -38,6 +38,8 @@ export default function mount({ P, G, TICKET_SVG }, root) {
     initial = sim.limiters.map((row) => row.map((l) => ({ ...l })));
     pool.forEach((p) => { p.busy = false; p.g.style.display = "none"; });
     groups[1].toggleAttribute("data-off", cfg.instances < 2);
+    // One instance: frame the back machine only; two: the whole plate.
+    svg.setAttribute("viewBox", cfg.instances < 2 ? G.VIEW_ONE : G.VIEW_ALL);
     for (const [key, t] of Object.entries(tubes)) {
       const [inst, which] = key.split("-");
       const shown = cfg.mode === "client" ? which !== "g" : which === "g";
@@ -170,13 +172,25 @@ export default function mount({ P, G, TICKET_SVG }, root) {
     const value = NUMERIC.includes(name) ? Number(raw) : name === "noisy" ? raw === true || raw === "true" : raw;
     cfg[name] = value;
     root.press(name, raw);
-    if (name !== "speed" && !quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · corrida reiniciada")); }
+    if (name !== "speed" && !quiet) {
+      // Leaving the boundary demo: back to the steady background clients.
+      if (cfg.boundaryDemo) { cfg.boundaryDemo = false; cfg.demand = [1, 1, 1]; cfg.retry = true; }
+      restart(); say(T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada"));
+    }
   }
   function burst(client = 0, n = 20) {
     const t0 = clock + TRAVEL + 0.05;
     for (let i = 0; i < n; i++) sim.add(t0 + i * 0.02, client);
     say(T("client " + "ABC"[client] + " · burst of " + n, "cliente " + "ABC"[client] + " · ráfaga de " + n));
     if (loop.paused) loop.setPaused(false);
+  }
+  // Experiment 2 on the machine: with no other traffic, client A sends 16 in the 0.2 s before a window boundary and 16
+  // in the 0.2 s after it, as the experiment does, at the boundaries at 4 s, 10 s, 16 s and 22 s. Rejected tickets don't retry.
+  function boundaryBursts() {
+    for (const edge of [4, 10, 16, 22]) {
+      for (let i = 0; i < 16; i++) sim.add(edge - 0.2 + i * 0.012, 0);
+      for (let i = 0; i < 16; i++) sim.add(edge + 0.02 + i * 0.012, 0);
+    }
   }
   root.on("change", (name, value) => set(name, value));
   const actions = {
@@ -188,11 +202,16 @@ export default function mount({ P, G, TICKET_SVG }, root) {
   // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (w, id) => {
     for (const name of ["rate", "capacity", "algorithm", "mode", "noisy", "behaviour", "instances"]) set(name, String(w[name]), true);
-    cfg.demand = w.heavy ? [2.5, 2.5, 2.5] : [1, 1, 1];
+    cfg.boundaryDemo = !!w.boundary;
+    cfg.demand = w.heavy ? [2.5, 2.5, 2.5] : w.boundary ? [0, 0, 0] : [1, 1, 1];
+    cfg.retry = !w.boundary;
     restart();
+    if (w.boundary) boundaryBursts();
     if (loop.paused) loop.setPaused(false);
     if (w.burst) setTimeout(() => burst(0, id === "retry" ? 30 : 20), 2500);
-    say(T("watching: " + id, "observando: " + id));
+    say(w.boundary
+      ? T("watching: the window boundary · 16 just before it, 16 just after", "observando: el borde de la ventana · 16 justo antes, 16 justo después")
+      : T("watching: " + TITLES[id].en.toLowerCase(), "observando: " + TITLES[id].es.toLowerCase()));
   });
 
   loop.setPaused(loop.paused);
