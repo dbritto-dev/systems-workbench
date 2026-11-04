@@ -22,7 +22,7 @@ export const BOOK = { w: 3, d: 10, h: 11 };
 
 export const CAB = { w: 34, d: 24, h: 28, y0: -6 };
 export const CABS = INDEXES.map((index, i) => ({ id: index.id, x0: -112 + i * 40, cx: -112 + i * 40 + 17 }));
-export const CAB_NAMES = { isbn: ["ISBN"], author: [t("AUTHOR", "AUTOR")], authorYear: [t("AUTHOR", "AUTOR"), t("+ YEAR", "+ AÑO")], loan: [t("ON LOAN", "PRESTADO")], authorTitle: [t("AUTHOR", "AUTOR"), t("+ TITLE", "+ TÍTULO")] };
+export const CAB_NAMES = { isbn: ["ISBN"], author: [t("AUTHOR", "AUTOR")], authorYear: [t("AUTHOR,", "AUTOR,"), t("YEAR", "AÑO")], loan: [t("ON LOAN", "PRESTADO")], authorTitle: [t("AUTHOR", "AUTOR"), t("+ TITLE", "+ TÍTULO")] };
 // The top drawer of every cabinet stands open: a tray of sorted cards, its tabs stepping across like A to Z.
 export const TRAY = { out: 14, z0: 20, h: 6, cards: 8, gap: 1.3, cardH: 6.6, slot: 11.6, rise: 9 };
 const CAB_FRONT = CAB.y0 + CAB.d;

@@ -37,9 +37,9 @@ export default function mount({ P, G }, root) {
   const fmtMs = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + " s" : ms >= 10 ? ms.toFixed(0) + " ms" : ms.toFixed(1) + " ms");
   // Live words are kept as { en, es } and picked when written.
   const say = (msg) => root.figure.say(L(msg));
-  const planNameT = (p) => (p.kind === "scan" ? T("Full scan", "Escaneo completo") : p.kind === "covering" ? T("Index only", "Solo índice") : T("Index + lookups", "Índice + búsquedas"));
+  const planNameT = (p) => (p.kind === "scan" ? T("Full scan", "Escaneo completo") : p.kind === "covering" ? T("Index only", "Solo índice") : T("Index + shelf trips", "Índice + viajes a estantes"));
   const planName = (p) => L(planNameT(p));
-  const INDEX_ES = { isbn: "ISBN", author: "Autor", authorYear: "Autor, año", loan: "Prestado", authorTitle: "Autor + título" };
+  const INDEX_ES = { isbn: "ISBN", author: "Autor", authorYear: "Autor, año", loan: "Prestado", authorTitle: "Autor (+ título)" };
   const indexLabelT = (id) => T(INDEXES.find((x) => x.id === id).label, INDEX_ES[id]);
   const QUERY_ES = { isbn: "ISBN = 978-0-441-…", author: "autor = Le Guin", year: "año = 1969", authorYear: "autor = Le Guin y año = 1969", loan: "prestado = sí", titles: "títulos de Le Guin" };
   const queryLabelT = (id) => T(QUERIES[id].label, QUERY_ES[id]);
@@ -192,7 +192,7 @@ export default function mount({ P, G }, root) {
     travel([shelf.x, G.SHELF_LANE_Y]);
     reading(RAND, 1, (t) => flyAt([pos[0], lerp(pos[1], G.CASE.y0 + 8, ease(t)), lerp(14, shelf.level, ease(t))], 1 - Math.max(0, t - 0.8) * 5), () => { carrying = false; say(T("a new book · shelved on shelf " + (last + 1), "un libro nuevo · guardado en el estante " + (last + 1))); }, () => { setRoute(null); onShelf(shelf); });
     travel([G.HOME[0], G.HOME[1]]);
-    call(() => { lastInsert = { ms: insertCost(cfg.rows, on.length) }; carrying = false; fly.style.opacity = "0"; clearScene(); showStats(); say(T("a new book · " + fmtMs(lastInsert.ms) + " · " + insertReads(cfg.rows, on.length) + " page writes", "un libro nuevo · " + fmtMs(lastInsert.ms) + " · " + insertReads(cfg.rows, on.length) + " escrituras de página")); });
+    call(() => { lastInsert = { ms: insertCost(cfg.rows, on.length) }; carrying = false; fly.style.opacity = "0"; clearScene(); showStats(); say(T("a new book · " + fmtMs(lastInsert.ms) + " · " + insertReads(cfg.rows, on.length) + " page reads and writes", "un libro nuevo · " + fmtMs(lastInsert.ms) + " · " + insertReads(cfg.rows, on.length) + " lecturas y escrituras de página")); });
     steps.push({ dur: 0.6 });
   }
 

@@ -18,7 +18,7 @@ export const INDEXES = [
   { id: "author", cols: ["author"], covers: [], label: "Author" },
   { id: "authorYear", cols: ["author", "year"], covers: [], label: "Author, year" },
   { id: "loan", cols: ["loan"], covers: [], label: "On loan" },
-  { id: "authorTitle", cols: ["author"], covers: ["title"], label: "Author + title" },
+  { id: "authorTitle", cols: ["author"], covers: ["title"], label: "Author (+ title)" },
 ];
 
 export const QUERIES = {
