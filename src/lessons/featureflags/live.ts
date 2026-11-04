@@ -97,8 +97,9 @@ export default function mount({ P, G, CABLES, TOKEN_SVG }, root) {
     sim.servers.forEach((s, i) => {
       const c = s.cache, cx = G.STAGES[i];
       const showing = s.codeHasFeature && c.on && (c.pct > 0 || c.staffFirst);
-      lampNew[i] && lampNew[i].toggleAttribute("data-lit", showing);
       const share = !s.codeHasFeature || !c.on ? 0 : c.staffFirst ? 0.05 : c.pct / 100;
+      // The new-show lamp is lit while anyone gets the feature, brighter the larger the share.
+      if (lampNew[i]) { lampNew[i].toggleAttribute("data-lit", showing); lampNew[i].style.opacity = showing ? String(0.35 + 0.65 * share) : ""; }
       const x0 = cx + G.CARD.dx - 6, y = G.CARD.y + 1.4, z0 = G.DECK_H + 4.5, z1 = G.DECK_H + 7.5;
       cues[i].setAttribute("d", share > 0.005 ? WB.faceRectY(P, x0, x0 + 12 * share, y, z0, z1) : "");
       const turn = Math.min(1, (sim.t - s.fetchedAt) / sim.ttl), a = turn * Math.PI * 2, dx = cx + G.DIAL.dx, dy = G.DIAL.y, r = G.DIAL.r - 1.8;
