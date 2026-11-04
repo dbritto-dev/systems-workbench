@@ -150,13 +150,13 @@ export default function mount({ P, G, RIB, CARD_SVG, CARD_LIT, PENNANT, PENNANT_
       let missed = 0; for (const k of model.ticks) if (k.t > from && k.t <= clock && !k.fresh) missed++;
       const what = cfg.work.startsWith("chunk") ? T(ms(now.end - now.start) + " chunk", "pedazo de " + ms(now.end - now.start)) : T("task", "tarea");
       if (waiting) say(T(L(what) + " · click waiting " + ms(clock - waiting.t), L(what) + " · clic esperando " + ms(clock - waiting.t)));
-      else say(T(L(what) + " · " + missed + " frames missed so far", L(what) + " · " + missed + " frames perdidos"));
+      else say(T(L(what) + " · " + missed + " frames missed so far", L(what) + " · " + missed + " cuadros perdidos"));
       return;
     }
     if (now && now.kind === "input") { const w = ms(now.start - model.clicks[now.ia].t); say(T("click handler · waited " + w, "handler del clic · esperó " + w)); return; }
     if (now && now.frame >= 0) {
-      const f = model.frames[now.frame], name = { js: "JS", style: L(T("style", "estilo")), layout: "layout", paint: L(T("paint", "pintura")) }[now.kind];
-      say(T("frame · " + name + " · " + ms(f.end - f.start) + " of " + budgetOf(model.P), "frame · " + name + " · " + ms(f.end - f.start) + " de " + budgetOf(model.P)));
+      const f = model.frames[now.frame], name = { js: "JS", style: L(T("style", "estilo")), layout: "layout", paint: L(T("paint", "pintado")) }[now.kind];
+      say(T("frame · " + name + " · " + ms(f.end - f.start) + " of " + budgetOf(model.P), "cuadro · " + name + " · " + ms(f.end - f.start) + " de " + budgetOf(model.P)));
       return;
     }
     if (now && now.kind === "js") { say(T("setTimeout step · a new position", "paso de setTimeout · posición nueva")); return; }
@@ -173,7 +173,7 @@ export default function mount({ P, G, RIB, CARD_SVG, CARD_LIT, PENNANT, PENNANT_
     stat("missed", total ? tally.missed + " (" + Math.round((100 * tally.missed) / total) + "%)" : "–");
     let last = null;
     for (let i = model.frames.length - 1; i >= 0; i--) { const f = model.frames[i]; if (f.end <= clock) { last = f; break; } }
-    stat("work", last ? ms(last.end - last.start) + L(T(" of ", " de ")) + budgetOf(P_) : "–");
+    stat("work", last ? (last.end - last.start).toFixed(1) + " / " + budgetOf(P_) : "–");
     let busy = 0;
     for (const b of model.blocks) { const s = Math.max(b.start, from), e = Math.min(b.end, clock); if (e > s) busy += e - s; }
     stat("busy", clock - from > 200 ? Math.round((100 * busy) / (clock - from)) + "%" : "–");
@@ -198,7 +198,7 @@ export default function mount({ P, G, RIB, CARD_SVG, CARD_LIT, PENNANT, PENNANT_
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = String(raw);
-    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · corrida reiniciada")); }
+    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };

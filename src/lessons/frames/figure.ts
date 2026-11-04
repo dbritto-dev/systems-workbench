@@ -36,7 +36,7 @@ export const TRACK = { x0: 91, x1: 117, y: SCREEN.y + SCREEN.d, z: 28 };
 export const BALL_R = 2.4;
 export const BUTTON = { x: 99, y: 31 };
 const GAUGE = { x: 109, y: 22, w: 23, d: 10, h: 14 };
-const STAGE_WORDS = [t("TASK", "TAREA"), t("INPUT", "ENTRADA"), "JS", t("STYLE", "ESTILO"), "LAYOUT", t("PAINT", "PINTURA")];
+const STAGE_WORDS = [t("TASK", "TAREA"), t("INPUT", "ENTRADA"), "JS", t("STYLE", "ESTILO"), "LAYOUT", t("PAINT", "PINTADO")];
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [SCREEN.x, SCREEN.y, SCREEN.z1 + 2], [SCREEN.x + SCREEN.w, SCREEN.y, SCREEN.z1 + 2], [NOW_X, BELT.y0 - 3, 30], [WORKER[0], WORKER[1], 24]],
@@ -85,7 +85,7 @@ function lane() {
   const x200 = NOW_X - 200 * MS;
   out.push(S(slab({ x: x200 - 0.5, y: LANE.y0 + 0.4, w: 1, d: LANE.y1 - LANE.y0 - 0.8, r: 0.2 }, LANE.z, 1.4, 2), { tone: "hi", crease: "lo" }));
   out.push(faceText(P, [x200, LANE.y1 + 4.4, 0], "200 ms", { face: "top", size: 3, tone: "mid", anchor: "middle" }));
-  out.push(faceText(P, [NOW_X - 8, LANE.y1 + 9.6, 0], t("CLICK → NEXT PAINT", "CLIC → SIGUIENTE PINTURA"), { face: "top", size: 3, tone: "mid", anchor: "end" }));
+  out.push(faceText(P, [NOW_X - 8, LANE.y1 + 9.6, 0], t("CLICK → NEXT PAINT", "CLIC → SIGUIENTE PINTADO"), { face: "top", size: 3, tone: "mid", anchor: "end" }));
   out.push(faceText(P, [BX0 - 2, LANE.y1 + 9.6, 0], t("← EARLIER", "← ANTES"), { face: "top", size: 3, tone: "lo" }));
   return out.join("");
 }
@@ -118,7 +118,7 @@ function bench() {
   });
   // the frame's stages, JS to paint, bracketed under their lamps
   out.push(L(k.segment([LAMP_X[2] - 5, front, 4.6], [LAMP_X[5] + 5, front, 4.6], P), { tone: "lo" }));
-  out.push(text((LAMP_X[2] + LAMP_X[5]) / 2, front, 1.6, t("ONE FRAME", "UN FRAME"), 2.6, { anchor: "middle", tone: "lo" }));
+  out.push(text((LAMP_X[2] + LAMP_X[5]) / 2, front, 1.6, t("ONE FRAME", "UN CUADRO"), 2.6, { anchor: "middle", tone: "lo" }));
   out.push(text((LAMP_X[0] + LAMP_X[1]) / 2, front, 1.6, t("MAIN THREAD", "HILO PRINCIPAL"), 2.6, { anchor: "middle", tone: "lo" }));
   return out.join("");
 }
@@ -127,7 +127,7 @@ function bench() {
 function cabinet() {
   const c = CABINET, front = c.y + c.d, out = [S(slab(c, 0, c.h, 3, 0.5), { tone: "mid" })];
   out.push(digitCounter(P, { x: c.x + 4, y: front, z: 2, count: 4, w: 3.6, h: 4.8, gap: 0.5, pad: 1, name: "frames" }));
-  out.push(text(c.x + 4, front, 8.6, "FRAMES", 2.6));
+  out.push(text(c.x + 4, front, 8.6, t("FRAMES", "CUADROS"), 2.6));
   out.push(digitCounter(P, { x: c.x + 24, y: front, z: 2, count: 4, w: 3.6, h: 4.8, gap: 0.5, pad: 1, name: "missed" }));
   out.push(text(c.x + 24, front, 8.6, t("MISSED", "PERDIDOS"), 2.6));
   out.push(faceText(P, [c.x + c.w - 3, front - 5, c.h], "COMPOSITOR", { face: "top", size: 2.8, tone: "mid", anchor: "end" }));
@@ -163,7 +163,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A frame conveyor on a base plate. A long belt runs from right to left at a steady speed, driven by a drum at its right end whose dial turns once per vsync, so distance along the belt is time. At the NOW gantry over the belt's head, the main thread, a worker, lays its work onto the belt as it does it: tall blocks are tasks, a medium block is a click handler, and low steps are a frame's JavaScript, style, layout and paint. Behind the worker, a bench has a lamp for each stage, lit while that stage runs. At every vsync a rib is pressed into the belt, and when a new picture reaches the screen at that tick a card stands at the rib; a rib without a card is a missed frame. In front, a lane marks each click with a pennant and draws a bar from it to the paint that showed its result, against a ruler of milliseconds with a line at 200 ms. At the right, the compositor's console counts frames shown and missed and has a meter for the last click's latency, and behind it the screen shows a ball moving along a track. A user stands at a click button in front.",
-      "Una cinta de frames sobre una placa base. Una cinta larga corre de derecha a izquierda a velocidad constante, movida por un tambor en su extremo derecho cuyo dial da una vuelta por cada vsync, así que la distancia a lo largo de la cinta es tiempo. En el pórtico AHORA, sobre la cabeza de la cinta, el hilo principal, un trabajador, va dejando su trabajo sobre la cinta mientras lo hace: los bloques altos son tareas, un bloque mediano es un handler de clic, y los escalones bajos son el JavaScript, el estilo, el layout y la pintura de un frame. Detrás del trabajador, un banco tiene una lámpara por etapa, encendida mientras esa etapa corre. En cada vsync se marca una costilla en la cinta, y cuando una imagen nueva llega a la pantalla en ese tick, una tarjeta se para junto a la costilla; una costilla sin tarjeta es un frame perdido. Al frente, un carril marca cada clic con un banderín y traza una barra desde él hasta la pintura que mostró su resultado, sobre una regla de milisegundos con una línea en 200 ms. A la derecha, la consola del compositor cuenta los frames mostrados y perdidos y tiene un medidor de la latencia del último clic, y detrás de ella la pantalla muestra una bola que se mueve por un riel. Una persona está frente a un botón de clic.",
+      "Una cinta de cuadros sobre una placa base. Una cinta larga corre de derecha a izquierda a velocidad constante, movida por un tambor en su extremo derecho cuyo dial da una vuelta por cada vsync, así que la distancia a lo largo de la cinta es tiempo. En el pórtico AHORA, sobre la cabeza de la cinta, el hilo principal, un trabajador, va dejando su trabajo sobre la cinta mientras lo hace: los bloques altos son tareas, un bloque mediano es un handler de clic, y los escalones bajos son el JavaScript, el estilo, el layout y el pintado de un cuadro. Detrás del trabajador, un banco tiene una lámpara por etapa, encendida mientras esa etapa corre. En cada vsync se marca una costilla en la cinta, y cuando una imagen nueva llega a la pantalla en ese tick, una tarjeta se para junto a la costilla; una costilla sin tarjeta es un cuadro perdido. Al frente, un carril marca cada clic con un banderín y traza una barra desde él hasta el pintado que mostró su resultado, sobre una regla de milisegundos con una línea en 200 ms. A la derecha, la consola del compositor cuenta los cuadros mostrados y perdidos y tiene un medidor de la latencia del último clic, y detrás de ella la pantalla muestra una bola que se mueve por un riel. Una persona está frente a un botón de clic.",
     ),
     body: [
       basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H }),
