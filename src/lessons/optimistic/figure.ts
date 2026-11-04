@@ -56,7 +56,8 @@ export const P = k.fitProjection(
 
 const { S, L, D } = shorthand(P);
 const text = (x, y, z, words, size = 2.4, opts = {}) => faceText(P, [x, y, z], words, { size, tone: "mid", ...opts });
-const LIKE = t("LIKE", "ME GUSTA");
+// "like" is the word the Spanish text uses too ("un botón de like"), so the pill says LIKE in both languages.
+const LIKE = "LIKE";
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -138,6 +139,10 @@ function counter() {
   out.push(col(-36, "taps", 3, t("TAPS", "TOQUES")));
   out.push(col(-2, "notSaved", 2, t("NOT SAVED", "NO GUARDADOS")));
   out.push(col(38, "late", 2, t("TOO LATE", "TARDE")));
+  // on the right face: how often a late answer or read put the old value back on the screen
+  const side = COUNTER.x + COUNTER.w;
+  out.push(digitCounter(P, { x: side, y: COUNTER_FRONT - 4, z: 3.4, count: 3, face: "x", w: 4, h: 5.2, gap: 0.5, pad: 1, name: "stale" }));
+  out.push(faceText(P, [side, COUNTER_FRONT - 20.4, 4.6], t("OLD VALUE", "VALOR VIEJO"), { face: "x", size: 2.4, tone: "mid" }));
   return out.join("");
 }
 // The like button the user taps: lit when their last tap asked for a like.
@@ -195,8 +200,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A front counter and a records office on a base plate. At the front, a person stands at the counter with a like button in front of them; it lights when their last tap asked for a like. On the counter, a monitor, the screen, shows a LIKE pill, lit when the app shows the post as liked, a SAVING lamp and a NOT SAVED notice. At the back, the records office, the server, has a board with the same pill, lit when the server has stored a like, and a counter of writes. Between them runs a walkway: small couriers carry each save out on the left lane to the server window, wait there while the server works, and come back on the right lane with the answer; a slip they carry lights when it sets the like. Answers the app ignores go into the IGNORED bin. A lamp lights when nothing is in flight and the screen and the server disagree. Counters on the front of the counter show taps, failures the user was told about, and failures they had already moved on from.",
-      "Un mostrador y una oficina de registros sobre una placa base. Adelante, una persona está frente al mostrador con un botón de like; se enciende cuando su último toque pidió un like. Sobre el mostrador, un monitor, la pantalla, muestra una pastilla ME GUSTA, encendida cuando la app muestra la publicación con like, una lámpara GUARDANDO y un aviso NO SE GUARDÓ. Al fondo, la oficina de registros, el servidor, tiene un tablero con la misma pastilla, encendida cuando el servidor guardó un like, y un contador de escrituras. Entre ambos corre un pasillo: pequeños mensajeros llevan cada guardado por el carril izquierdo hasta la ventanilla del servidor, esperan ahí mientras el servidor trabaja y vuelven por el carril derecho con la respuesta; el papel que llevan se enciende cuando pone el like. Las respuestas que la app ignora caen en el cajón IGNORADAS. Una lámpara se enciende cuando no hay nada en vuelo y la pantalla y el servidor no coinciden. Contadores al frente del mostrador muestran los toques, los fallos que se le avisaron al usuario y los fallos de los que ya había seguido de largo.",
+      "A front counter and a records office on a base plate. At the front, a person stands at the counter with a like button in front of them; it lights when their last tap asked for a like. On the counter, a monitor, the screen, shows a LIKE pill, lit when the app shows the post as liked, a SAVING lamp and a NOT SAVED notice. At the back, the records office, the server, has a board with the same pill, lit when the server has stored a like, and a counter of writes. Between them runs a walkway: small couriers carry each save out on the left lane to the server window, wait there while the server works, and come back on the right lane with the answer; a slip they carry lights when it sets the like. Answers the app ignores go into the IGNORED bin. A lamp lights when nothing is in flight and the screen and the server disagree. Counters on the front of the counter show taps, failures the user was told about, and failures they had already moved on from; one on its right side counts the times the screen went back to an old value.",
+      "Un mostrador y una oficina de registros sobre una placa base. Adelante, una persona está frente al mostrador con un botón de like; se enciende cuando su último toque pidió un like. Sobre el mostrador, un monitor, la pantalla, muestra una pastilla LIKE, encendida cuando la app muestra la publicación con like, una lámpara GUARDANDO y un aviso NO SE GUARDÓ. Al fondo, la oficina de registros, el servidor, tiene un tablero con la misma pastilla, encendida cuando el servidor guardó un like, y un contador de escrituras. Entre ambos corre un pasillo: pequeños mensajeros llevan cada guardado por el carril izquierdo hasta la ventanilla del servidor, esperan ahí mientras el servidor trabaja y vuelven por el carril derecho con la respuesta; el papel que llevan se enciende cuando pone el like. Las respuestas que la app ignora caen en el cajón IGNORADAS. Una lámpara se enciende cuando no hay nada en vuelo y la pantalla y el servidor no coinciden. Contadores al frente del mostrador muestran los toques, los fallos que se le avisaron al usuario y los fallos de los que ya había seguido de largo; uno en su lado derecho cuenta las veces que la pantalla volvió a un valor viejo.",
     ),
     body: [
       plate(),

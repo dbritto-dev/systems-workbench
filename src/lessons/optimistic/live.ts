@@ -21,7 +21,7 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
   const capMove = q("[data-cap]"), cap = q("[data-button]");
   const toastEl = q("[data-toast]");
   const lamps = { savingOn: q('[data-saving="on"]'), savingOff: q('[data-saving="off"]'), syncOn: q('[data-sync="on"]'), syncOff: q('[data-sync="off"]') };
-  const counters = Object.fromEntries(["taps", "notSaved", "late", "ignored", "writes"].map((n) => [n, WB.counter(svg, n, P)]));
+  const counters = Object.fromEntries(["taps", "notSaved", "late", "ignored", "writes", "stale"].map((n) => [n, WB.counter(svg, n, P)]));
   const H = 0.8;                                  // the walkway's top
   const LINGER = 0.06;                            // model seconds a courier stays after handing in its answer
 
@@ -62,7 +62,7 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
   }
 
   // ---------- narration: the model's log ----------
-  const like = (v) => (v ? T("LIKE", "ME GUSTA") : T("no like", "sin like"));
+  const like = (v) => (v ? T("LIKE", "LIKE") : T("no like", "sin like"));
   let held = null;
   function say(rank, text) {
     // a message stays up at least 1.2 s of page time unless a more important one comes; a less important one waits
@@ -85,7 +85,7 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
         case "tap": {
           const m = "#" + e.tap.req.n;
           if (cfg.ui === "pess") say(1, T("tap · " + m + " walks out · the screen waits", "toque · sale " + m + " · la pantalla espera"));
-          else say(1, e.tap.value ? T("tap · LIKE shown at once · " + m + " walks out", "toque · ME GUSTA al instante · sale " + m)
+          else say(1, e.tap.value ? T("tap · LIKE shown at once · " + m + " walks out", "toque · LIKE al instante · sale " + m)
             : T("tap · like removed at once · " + m + " walks out", "toque · like quitado al instante · sale " + m));
           break;
         }
@@ -199,6 +199,7 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
     counters.late.setClamped(c.late);
     counters.ignored.setClamped(binCount);
     counters.writes.setClamped(s.writes);
+    counters.stale.setClamped(c.stale);
   }
 
   // ---------- stats ----------
@@ -210,6 +211,8 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
     stat("wait", !last ? "–" : last.shownAt !== null ? msText(last.shownAt - last.t) : cfg.ui === "pess" && model.inflight.length ? "…" : "–");
     stat("told", c.toasts);
     stat("late", c.late);
+    stat("ignored", binCount);
+    stat("writes", model.server.writes);
     stat("stale", c.stale);
     stat("sync", model.outOfSync.toFixed(1) + " s");
   }
@@ -229,7 +232,7 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = String(raw);
-    if (!quiet) { restart(); say(9, T("settings applied · run restarted", "ajustes aplicados · corrida reiniciada")); }
+    if (!quiet) { restart(); say(9, T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };
