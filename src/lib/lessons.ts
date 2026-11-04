@@ -36,6 +36,16 @@ export async function allLessons(): Promise<Lesson[]> {
     .sort((a, b) => a.n - b.n);
 }
 
+/** The lessons to show under "Related lessons": the ones this lesson lists in the registry plus the ones that list it,
+ *  in lesson order. A link is written once, on either side. An unknown slug fails the build. */
+export function relatedOf(lesson: Lesson, all: Lesson[]): Lesson[] {
+  const bySlug = new Map(all.map((l) => [l.slug, l]));
+  for (const l of all) for (const s of l.related ?? []) if (!bySlug.has(s)) throw new Error(`lessons.json: "${l.slug}" lists unknown related lesson "${s}"`);
+  const slugs = new Set([...(lesson.related ?? []), ...all.filter((l) => l.related?.includes(lesson.slug)).map((l) => l.slug)]);
+  slugs.delete(lesson.slug);
+  return all.filter((l) => slugs.has(l.slug));
+}
+
 export const two = (n: number) => String(n).padStart(2, "0");
 const lastPart = (s: string) => s.split("·").pop()!.trim();
 const stripTags = (s: string) => s.replace(/<[^>]+>/g, "");

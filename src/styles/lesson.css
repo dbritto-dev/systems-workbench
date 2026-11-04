@@ -28,3 +28,11 @@ wb-experiment { display: block; }
 /* A result's bars in titled groups. */
 .bar-group { font-family: var(--anatomy-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--anatomy-muted); margin-top: 6px; }
 .bar-group:first-child { margin-top: 0; }
+
+/* Related lessons, between the questions and the footer. */
+.related { margin-top: 56px; }
+.related h2 { font-size: 1.1rem; margin: 0 0 12px; }
+.related ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.related a { display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 12px; min-height: 24px; border: 1px solid var(--anatomy-mid); color: var(--anatomy-strong); text-decoration: none; }
+.related a:hover { border-color: var(--anatomy-strong); }
+.related .n { font-family: var(--anatomy-mono); font-size: 11px; color: var(--anatomy-muted); }

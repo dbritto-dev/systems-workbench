@@ -15,7 +15,11 @@ const MUTED = [["--anatomy-muted:#8c8c90", "--anatomy-muted:#656569"], ["--anato
 export const ISO_CSS = MUTED.reduce((css, [from, to]) => {
   if (!css.includes(from)) throw new Error(`kit.mjs: the kit's palette changed, ${from} not found`);
   return css.replace(from, to);
-}, KIT_CSS);
+}, KIT_CSS) +
+  // The live readout wraps instead of running off the plate's left edge: it keeps clear of the hint on wide plates and,
+  // on phones, where there is no Space key to pause with, takes the hint's place and the full width.
+  '.iso-plate-corner[data-corner="readout"]{left:12em;white-space:normal;text-align:right;line-height:1.3}' +
+  '@media (max-width:560px){.iso-plate-corner[data-corner="hint"]{display:none}.iso-plate-corner[data-corner="readout"]{left:0}}';
 // Round parts: a shaded sphere (heads, bulbs, knobs) from the kit's lathe module.
 export { sphereOf } from "./vendor-anatomy/kit/lathe.mjs";
 

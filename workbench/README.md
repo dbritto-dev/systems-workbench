@@ -67,6 +67,6 @@ Build and serve the site, then `node tools/site-check.cjs` (every lesson in both
 
 The collection is an Astro page (`src/pages/[...lang]/index.astro`); it reads `collection/lessons.json`:
 
-1. Add the lesson to `collection/lessons.json` (number, slug, area, `blurb` and `blurb_es`: the card subtitles, at most about 120 characters so they fit three lines on a phone). New lessons have no `html` (that field is the old standalone URL some lessons redirect from).
+1. Add the lesson to `collection/lessons.json` (number, slug, area, `blurb` and `blurb_es`: the card subtitles, at most about 120 characters so they fit three lines on a phone; `related`: slugs of the lessons to link under "Related lessons", shown on both lessons, so list each pair once). New lessons have no `html` (that field is the old standalone URL some lessons redirect from).
 2. Shoot the running machine into `collection/previews/<slug>-light.webp` and `-dark.webp`: build and serve the site (`pnpm build && pnpm preview`), then `CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm previews <slug>` (`SITE=` for another address). `normalize.cjs` fits every shot onto the same 1200×800 canvas, trimmed and centred, so all cards share one 3:2 image.
 3. `pnpm build`: the card, search and both languages pick it up.

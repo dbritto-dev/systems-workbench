@@ -42,7 +42,8 @@ export interface Experiment {
   change: Bi;
   question: Bi;
   options: Bi[];
-  /** Index of the option that the model bears out. */
+  /** Index of the option that the model bears out. The card shows the options in a seeded order (the answer at a place
+   *  hashed from the lesson and experiment ids), so write them in any order and keep them about the same length. */
   answer: number;
   why: Bi;
   /** Whatever the live code needs to put the figure in this experiment's state ("Watch it on the machine"): sent

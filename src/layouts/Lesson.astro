@@ -11,12 +11,12 @@ import FigurePlate from "../components/lesson/FigurePlate.astro";
 import Panel from "../components/lesson/Panel.astro";
 import { pick, type Locale } from "../i18n";
 import { useUi } from "../i18n/ui";
-import { plain, type Lesson } from "../lib/lessons";
+import { plain, conceptOf, two, type Lesson } from "../lib/lessons";
 import "virtual:workbench.css";
 import "../styles/lesson.css";
 
-interface Props { lesson: Lesson; locale: Locale }
-const { lesson, locale } = Astro.props;
+interface Props { lesson: Lesson; locale: Locale; related: Lesson[] }
+const { lesson, locale, related } = Astro.props;
 const p = lesson.page;
 const def = lesson.def;
 const ui = useUi(locale);
@@ -50,7 +50,7 @@ const path = `lessons/${lesson.slug}/`;
 
     <section id="predict">
       <div class="section-head"><span class="eyebrow">02</span><h2>{ui("lesson.predict")}</h2><p set:html={L(p.predict.intro)} /></div>
-      <Experiments locale={locale} experiments={p.predict.experiments} />
+      <Experiments locale={locale} slug={lesson.slug} experiments={p.predict.experiments} />
     </section>
     <script type="application/json" data-lesson-data set:html={JSON.stringify(def.data).replace(/</g, "\\u003c")} />
     </wb-lesson>
@@ -59,6 +59,17 @@ const path = `lessons/${lesson.slug}/`;
       <div class="section-head"><span class="eyebrow">03</span><h2>{ui("lesson.explain")}</h2><p set:html={p.explain.intro ? L(p.explain.intro) : ui("lesson.explainIntro")} /></div>
       <Questions locale={locale} questions={p.explain.questions} />
     </section>
+
+    {related.length > 0 && (
+      <nav class="related" aria-labelledby="related-title">
+        <h2 id="related-title">{ui("lesson.related")}</h2>
+        <ul>
+          {related.map((r) => (
+            <li><a href={getRelativeLocaleUrl(locale, `lessons/${r.slug}/`)}><span class="n">{two(r.n)}</span>{plain(conceptOf(r), locale)}</a></li>
+          ))}
+        </ul>
+      </nav>
+    )}
 
     <footer set:html={p.footer ? L(p.footer) : ui("lesson.footer")} />
   </main>

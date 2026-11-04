@@ -1,4 +1,5 @@
 // <wb-experiment exp="burst" answer="2">: one predict-then-run card (markup from components/lesson/Experiments.astro).
+// A choice's data-choice is its index in the lesson's options, not its place on the card (the card shuffles them).
 // The reader picks a prediction, runs it, and the card shows the verdict and the result bars.
 //
 // The result: the card's <script type="application/json" data-result>, worked out at build time by the lesson's
@@ -37,7 +38,7 @@ export class WbExperiment extends HTMLElement {
   pick(i: number) {
     if (this.done) return;
     this.#picked = i;
-    this.choices.forEach((x, j) => x.setAttribute("aria-pressed", String(j === i)));
+    this.choices.forEach((x) => x.setAttribute("aria-pressed", String(Number(x.dataset.choice) === i)));
     this.runButton.disabled = false;
     this.runButton.textContent = L("Run the experiment", "Ejecutar el experimento");
   }
@@ -50,7 +51,7 @@ export class WbExperiment extends HTMLElement {
     if (!data) { console.error(`experiment "${this.id}" has no result`); btn.disabled = false; return; }
     const result: Result = JSON.parse(data);
     const right = this.#picked === this.answer;
-    this.choices.forEach((x, j) => { x.disabled = true; if (j === this.answer) x.dataset.verdict = "right"; else if (j === this.#picked) x.dataset.verdict = "wrong"; });
+    this.choices.forEach((x) => { const j = Number(x.dataset.choice); x.disabled = true; if (j === this.answer) x.dataset.verdict = "right"; else if (j === this.#picked) x.dataset.verdict = "wrong"; });
     this.#show(result, right);
     btn.textContent = L("Done", "Listo");
     this.setAttribute("data-done", "");

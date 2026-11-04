@@ -1,13 +1,13 @@
 ---
 import Lesson from "../../../../layouts/Lesson.astro";
-import { allLessons } from "../../../../lib/lessons";
+import { allLessons, relatedOf } from "../../../../lib/lessons";
 import { langParams, type Locale } from "../../../../i18n";
 
 export async function getStaticPaths() {
   const lessons = await allLessons();
-  return langParams().flatMap(({ lang }) => lessons.map((lesson) => ({ params: { lang, slug: lesson.slug }, props: { lesson } })));
+  return langParams().flatMap(({ lang }) => lessons.map((lesson) => ({ params: { lang, slug: lesson.slug }, props: { lesson, related: relatedOf(lesson, lessons) } })));
 }
-const { lesson } = Astro.props;
+const { lesson, related } = Astro.props;
 const locale = (Astro.currentLocale ?? "en") as Locale;
 ---
-<Lesson lesson={lesson} locale={locale} />
+<Lesson lesson={lesson} locale={locale} related={related} />

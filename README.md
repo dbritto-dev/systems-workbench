@@ -62,7 +62,7 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 40 | [Hash Table](https://dbritto-dev.github.io/systems-workbench/lessons/hashtable/) | Fundamentals | Pigeonhole rack | A hash table jumps straight to a bucket. It stays fast only while the hash spreads keys and buckets stay uncrowded. |
 | 41 | [Priority Queue](https://dbritto-dev.github.io/systems-workbench/lessons/heap/) | Fundamentals | Triage tree | A priority queue always serves the most important item next. A heap keeps it cheap: O(log n) to add or take the top. |
 | 42 | [Ring Buffer](https://dbritto-dev.github.io/systems-workbench/lessons/ringbuffer/) | Fundamentals | Ring table | A fixed array used as a queue: fast and allocation-free, until the writer catches the reader and something must give. |
-| 43 | [Latency Numbers](https://dbritto-dev.github.io/systems-workbench/lessons/latency/) | Fundamentals | Courier depot | Each step out from the CPU costs 10 to 1,000 times more. Where data lives often matters more than the code. |
+| 43 | [Latency Numbers](https://dbritto-dev.github.io/systems-workbench/lessons/latency/) | Fundamentals | Courier depot | Each step out from the CPU costs a few to 1,000 times more. Where data lives often matters more than the code. |
 | 44 | [Tail Latency](https://dbritto-dev.github.io/systems-workbench/lessons/percentiles/) | Fundamentals | Timing hall | Most requests are fast; users remember the slow ones. Percentiles show the tail, and fan-out multiplies it. |
 | 45 | [Big-O](https://dbritto-dev.github.io/systems-workbench/lessons/bigo/) | Fundamentals | Race track | Big-O is how work grows with input size. Five real algorithms race on the same data: doubling, constants, worst case. |
 | 46 | [Timeouts & Deadlines](https://dbritto-dev.github.io/systems-workbench/lessons/deadlines/) | Traffic | Relay desks | Fixed timeouts leave inner services working after the caller quits. One deadline, passed on, tells each when to stop. |
@@ -153,6 +153,7 @@ Set `CHROMIUM_PATH` if Playwright should use a browser other than its own.
    `queues` and import shared code instead of copying it (the table in `src/lessons/README.md`).
 2. Check the machine reads from a still frame: with no labels, a viewer should be able to name every part that
    matters and its state. Use or add shared parts in `workbench/parts.mjs` rather than drawing one-offs.
-3. Add it to `workbench/collection/lessons.json` (with `blurb` and `blurb_es` of at most ~120 characters), then
+3. Add it to `workbench/collection/lessons.json` (with `blurb` and `blurb_es` of at most ~120 characters, and
+   `related`, the slugs of the lessons it builds on or overlaps with; links show both ways), then
    `pnpm build`, `pnpm preview`, `pnpm previews <slug>` and `pnpm check:site <slug>`. The collection, search and both
    language routes pick it up.

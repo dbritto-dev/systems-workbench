@@ -44,6 +44,7 @@ const en = {
   "lesson.footer":
     'Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson.',
   "lesson.back": "All lessons",
+  "lesson.related": "Related lessons",
   "exp.count": "Experiment {i} of {n}",
   "exp.prediction": "Your prediction",
   "exp.pick": "Pick a prediction, then run",
@@ -97,6 +98,7 @@ const es: Record<UiKey, string> = {
   "lesson.footer":
     'Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección.',
   "lesson.back": "Todas las lecciones",
+  "lesson.related": "Lecciones relacionadas",
   "exp.count": "Experimento {i} de {n}",
   "exp.prediction": "Tu predicción",
   "exp.pick": "Elige una predicción y ejecuta",
