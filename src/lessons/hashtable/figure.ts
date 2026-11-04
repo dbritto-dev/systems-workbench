@@ -149,7 +149,7 @@ function front(state) {
   out.push(S(k.slabOf(BENCH, 0, BENCH_H, P, 4, 0.5), { tone: "mid" }));
   out.push(meter(P, { x: METER.x, y: METER.y, z: METER.z, r: METER.r, ticks: 6, zone: 0.75 / METER.max, name: "load", value: state.load / METER.max }));
   out.push(text(METER.x + METER.r + 2.4, METER.y, 3.4, t("LOAD", "CARGA"), { size: 2.4, tone: "mid" }));
-  const labels = { keys: t("KEYS", "CLAVES"), probes: t("PROBES", "SONDEOS"), longest: t("LONGEST", "MÁS LARGA"), moved: t("MOVED", "MOVIDAS") };
+  const labels = { keys: t("KEYS", "CLAVES"), probes: t("CHECKS", "REVISIONES"), longest: t("LONGEST", "MÁS LARGA"), moved: t("MOVED", "MOVIDAS") };
   for (const [name, c] of Object.entries(COUNTERS)) {
     if (name === "bucket") continue;
     out.push(digitCounter(P, { ...c, housing: false, name, value: state[name] }));
