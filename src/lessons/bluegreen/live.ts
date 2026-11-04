@@ -33,12 +33,15 @@ export default function mount({ P, G, TITLES }, root) {
   const cards = { blue: [...q('[data-cache="blue"]').children], green: [...q('[data-cache="green"]').children] };
   const lamps = { blue: q('[data-lamp="blue"] .iso-solid'), green: q('[data-lamp="green"] .iso-solid') };
   const armEl = q("[data-arm]"), schemaEl = q("[data-schema]");
-  const settings = { release: "good", warm: "on", draining: "on", migration: "compatible" };
+  const lineGroups = { blue: [...svg.querySelectorAll('[data-line="blue"]')], green: [...svg.querySelectorAll('[data-line="green"]')] };
+  const dies = { blue: heads.blue.map((h) => h.querySelectorAll(".iso-solid")[1]), green: heads.green.map((h) => h.querySelectorAll(".iso-solid")[1]) };
+  const settings = { release: "good", warm: "on", draining: "on", migration: "compatible", keep: "on" };
   let speed = 1;
-  let w, vis, slotOf, free, script, armAngle, latencies, incident, lastErrors, note;
+  let w, vis, slotOf, free, script, armAngle, latencies, incident, lastErrors, note, seenLive, seenDown;
 
   function start() {
-    w = createWorld({ seed: (Date.now() % 1e6) + 1, release: settings.release, warm: settings.warm === "on", draining: settings.draining === "on", migration: settings.migration });
+    w = createWorld({ seed: (Date.now() % 1e6) + 1, release: settings.release, warm: settings.warm === "on", draining: settings.draining === "on", migration: settings.migration, keepBlue: settings.keep === "on" });
+    seenLive = w.live; seenDown = false;
     vis = new Map(); slotOf = new Map(); free = items.map((_, i) => i).reverse(); script = [];
     armAngle = G.LANE_ANGLE.blue; latencies = []; incident = null; lastErrors = 0; note = null;
     items.forEach((el) => { el.style.display = "none"; });
@@ -116,6 +119,8 @@ export default function mount({ P, G, TITLES }, root) {
       const n = Math.round(side.fill * 10);
       cards[name].forEach((card, i) => { card.style.display = i < n ? "" : "none"; });
       lamps[name].toggleAttribute("data-lit", w.live === name);
+      dies[name].forEach((el) => el && el.toggleAttribute("data-lit", w.live === name && !side.down));
+      lineGroups[name].forEach((el) => { el.toggleAttribute("data-idle", w.live !== name); el.toggleAttribute("data-down", side.down); });
     }
     const target = G.LANE_ANGLE[w.live];
     if (Math.abs(target - armAngle) > 0.002) {
@@ -141,12 +146,17 @@ export default function mount({ P, G, TITLES }, root) {
     stat("p95", latencies.length ? secs1(rankQuantile(latencies, 0.95)) : "–");
     stat("recover", !incident ? "–" : w.t - incident.last < 10 ? L("ongoing", "en curso") : Math.max(1, Math.round(incident.last - incident.start)) + " s");
     const busy = w.sides.blue.workers.filter((x) => x.job).length + w.sides.green.workers.filter((x) => x.job).length;
-    stat("running", "6 · " + busy + L(" busy", " ocupados"));
+    const running = ["blue", "green"].reduce((n, name) => n + (w.sides[name].down ? 0 : w.o.workers), 0);
+    stat("running", running);
+    stat("busy", busy);
     if (note && w.t < note.until) say(L(note.text));
     else {
       const side = w.sides[w.live];
-      say(L(SIDE[w.live].en + " live · queue " + side.queue.length + " · " + busy + " of 6 presses busy",
-        SIDE[w.live].es + " en vivo · cola " + side.queue.length + " · " + busy + " de 6 prensas ocupadas"));
+      const rebuilding = ["blue", "green"].find((name) => w.sides[name].rebuildAt !== null);
+      if (rebuilding) say(L("rebuilding " + SIDE[rebuilding].en + " · " + Math.ceil(w.sides[rebuilding].rebuildAt - w.t) + " s left · " + SIDE[w.live].en + " still live",
+        "reconstruyendo " + SIDE[rebuilding].es + " · faltan " + Math.ceil(w.sides[rebuilding].rebuildAt - w.t) + " s · " + SIDE[w.live].es + " sigue en vivo"));
+      else say(L(SIDE[w.live].en + " live · queue " + side.queue.length + " · " + busy + " of " + running + " presses busy",
+        SIDE[w.live].es + " en vivo · cola " + side.queue.length + " · " + busy + " de " + running + " prensas ocupadas"));
     }
   }
   function tell(text) { note = { text, until: w.t + 3 }; say(L(text)); }
@@ -155,6 +165,12 @@ export default function mount({ P, G, TITLES }, root) {
     const from = w.live;
     const migrating = w.live === "blue" && w.schema === 1;
     const to = flip(w);
+    if (to === null) {
+      tell(T(SIDE[from === "blue" ? "green" : "blue"].en + " was shut down · rebuilding it, " + w.o.redeploy + " s", SIDE[from === "blue" ? "green" : "blue"].es + " estaba apagado · reconstruyéndolo, " + w.o.redeploy + " s"));
+      updateFlipButton();
+      return;
+    }
+    seenLive = to;
     let en = "flipped to " + SIDE[to].en, es = "cambio a " + SIDE[to].es;
     if (migrating) { en += " · migration ran, schema v2"; es += " · se ejecutó la migración, esquema v2"; }
     if (w.o.draining) { en += " · " + SIDE[from].en + " draining"; es += " · " + SIDE[from].es + " drenando"; }
@@ -163,7 +179,12 @@ export default function mount({ P, G, TITLES }, root) {
     updateFlipButton();
   }
   const flipBtn = root.button("flip"), redeployBtn = root.button("redeploy");
-  function updateFlipButton() { flipBtn.textContent = w.live === "blue" ? L("Flip to green", "Cambiar a verde") : L("Flip to blue", "Cambiar a azul"); redeployBtn.disabled = w.live === "green"; }
+  function updateFlipButton() {
+    const other = w.live === "blue" ? "green" : "blue";
+    flipBtn.textContent = w.sides[other].down ? (other === "blue" ? L("Rebuild blue", "Reconstruir azul") : L("Rebuild green", "Reconstruir verde")) : w.live === "blue" ? L("Flip to green", "Cambiar a verde") : L("Flip to blue", "Cambiar a azul");
+    flipBtn.disabled = w.sides[other].rebuildAt !== null;
+    redeployBtn.disabled = w.live === "green";
+  }
   const redeployed = () => w.o.warm ? T("green redeployed · cache warmed", "verde redesplegado · caché precalentada") : T("green redeployed · cache empty", "verde redesplegado · caché vacía");
 
   function advance(dt) {
@@ -171,6 +192,10 @@ export default function mount({ P, G, TITLES }, root) {
     while (left > 1e-9) {
       const d = Math.min(0.02, left); left -= d;
       step(w, d);
+      // Changes the model makes on its own: blue shut down after the flip, a rebuilt side taking the traffic.
+      if (w.sides.blue.down && !seenDown) { seenDown = true; tell(T("blue shut down to save money · " + w.o.workers + " servers running", "azul apagado para ahorrar · " + w.o.workers + " servidores activos")); updateFlipButton(); }
+      if (!w.sides.blue.down) seenDown = false;
+      if (w.live !== seenLive) { seenLive = w.live; tell(T(SIDE[w.live].en + " rebuilt, cache empty · traffic flipped to it", SIDE[w.live].es + " reconstruido, caché vacía · el tráfico pasó a él")); updateFlipButton(); }
       while (script.length && w.t >= script[0][0]) { const [, act] = script.shift(); if (act === "flip") doFlip(); }
     }
     if (w.log.length > 4000) { const cut = w.log.length - 2000; w.log.splice(0, cut); seenLog = Math.max(0, seenLog - cut); }
@@ -186,6 +211,7 @@ export default function mount({ P, G, TITLES }, root) {
       if (name === "release") w.o.release = value;
       if (name === "draining") w.o.draining = value === "on";
       if (name === "migration") w.o.migration = value;
+      if (name === "keep") w.o.keepBlue = value === "on";
       if (name === "warm") { w.o.warm = value === "on"; if (prepareGreen(w)) tell(redeployed()); }
     }
     root.press(name, value);
@@ -200,7 +226,7 @@ export default function mount({ P, G, TITLES }, root) {
 
   // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (wt, id) => {
-    for (const name of ["release", "warm", "draining", "migration"]) { settings[name] = wt[name]; root.press(name, wt[name]); }
+    for (const name of ["release", "warm", "draining", "migration", "keep"]) { settings[name] = wt[name] ?? (name === "keep" ? "on" : settings[name]); root.press(name, settings[name]); }
     start(); seenLog = 0;
     script = wt.script.map(([at, act]) => [w.t + at, act]);
     const title = TITLES[id];

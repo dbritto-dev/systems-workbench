@@ -33,7 +33,7 @@ export const P = k.fitProjection(
   WIDTH, HEIGHT, { pad: 22, azimuth: 52 },
 );
 
-const { S, L, D, at, faceY } = shorthand(P);
+const { S, L, D, at, faceY, text } = shorthand(P);
 const faceRectX = (x, y0, y1, z0, z1) => k.faceRectX(P, x, y0, y1, z0, z1);
 
 function plate() {
@@ -82,7 +82,8 @@ function lineBase(name) {
 function lineHeads(name) {
   const ys = LINES[name];
   return STATIONS.map((sx, i) => {
-    const head = `<g data-head="${name}-${i}">${S(k.cylinder(sx, ys, 1.3, HEAD.rest + 6, 9, P, 14), { tone: "mid", crease: "none" })}${S(k.cylinder(sx, ys, 4.5, HEAD.rest, 6, P, 28, 0.4), { tone: "hi", crease: "lo", lit: name === "green" })}</g>`;
+    // The die lights while its line is live (live.ts); the still frame shows blue live.
+    const head = `<g data-head="${name}-${i}">${S(k.cylinder(sx, ys, 1.3, HEAD.rest + 6, 9, P, 14), { tone: "mid", crease: "none" })}${S(k.cylinder(sx, ys, 4.5, HEAD.rest, 6, P, 28, 0.4), { tone: "hi", crease: "lo", lit: name === "blue" })}</g>`;
     const arm = S(k.slabOf({ x: sx - 3, y: ys - 18, w: 6, d: 22, r: 1 }, 34, 4, P, 2, 0.4), { tone: "mid" });
     return head + arm + D([at([sx, ys - 15, 38]), at([sx, ys, 38])], { size: 0.4, tone: "lo" });
   }).join("");
@@ -162,6 +163,11 @@ function cabinet() {
   return out.join("");
 }
 
+// The line's name, engraved on the bench top in front of its belt.
+function lineName(name) {
+  return text(-14, LINES[name] + 17, BENCH_Z, name === "blue" ? t("BLUE", "AZUL") : t("GREEN", "VERDE"), { face: "top", size: 8, tone: "mid", anchor: "middle" });
+}
+
 export function itemSvg() {
   return S(k.slabOf({ x: -ITEM.size / 2, y: -ITEM.size / 2, w: ITEM.size, d: ITEM.size, r: 1 }, 0, ITEM.h, P, 2, 0.4), { tone: "hi", crease: "lo" });
 }
@@ -172,19 +178,22 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label: t("Two identical press lines on one base plate, fed by a single infeed belt through a turntable gate. The gate's arm points at the live line; every request goes to that line. The back line is blue, the version in production; the front line is green, the new version. A records cabinet at the back right is the shared database, with a schema plate on its face. Each line has a cache tray, three presses, an outfeed tray and a reject bin.", "Dos líneas de prensas idénticas sobre una misma base, alimentadas por una sola banda de entrada a través de una compuerta giratoria. El brazo de la compuerta apunta a la línea en vivo; cada solicitud va a esa línea. La línea del fondo es azul, la versión en producción; la del frente es verde, la versión nueva. Un archivero de registros al fondo a la derecha es la base de datos compartida, con una placa de esquema en su frente. Cada línea tiene una bandeja de caché, tres prensas, una bandeja de salida y un cesto de rechazos."),
+    label: t("Two identical press lines on one base plate, fed by a single infeed belt through a turntable gate. The gate's arm points at the live line; every request goes to that line, and the idle line is dimmed. The back line, engraved BLUE, is the version in production; the front line, engraved GREEN, is the new version. A records cabinet at the back right is the shared database, with a schema plate on its face. Each line has a cache tray, three presses, an outfeed tray and a reject bin.", "Dos líneas de prensas idénticas sobre una misma base, alimentadas por una sola banda de entrada a través de una compuerta giratoria. El brazo de la compuerta apunta a la línea en vivo; cada solicitud va a esa línea, y la línea inactiva se ve atenuada. La línea del fondo, grabada AZUL, es la versión en producción; la del frente, grabada VERDE, es la versión nueva. Un archivero de registros al fondo a la derecha es la base de datos compartida, con una placa de esquema en su frente. Cada línea tiene una bandeja de caché, tres prensas, una bandeja de salida y una caja de descarte."),
     body: [
       plate(),
-      duct("blue"), lane("blue"), lineBase("blue"),
+      // Each line's parts sit in a group the live code dims while that line is idle.
+      `<g data-line="blue">${duct("blue")}${lane("blue")}${lineBase("blue")}</g>`,
+      lineName("blue"),
       pool("blue"),
-      lineHeads("blue"),
+      `<g data-line="blue">${lineHeads("blue")}</g>`,
       infeed(),
       pool("mid"),
       `<g data-arm>${gateArm(LANE_ANGLE.blue, false)}</g>`,
       cabinet(),
-      duct("green"), lane("green"), lineBase("green"),
+      `<g data-line="green" data-idle="">${duct("green")}${lane("green")}${lineBase("green")}</g>`,
+      lineName("green"),
       pool("green"),
-      lineHeads("green"),
+      `<g data-line="green" data-idle="">${lineHeads("green")}</g>`,
       `<g data-pool hidden>${Array.from({ length: POOL }, (_, i) => `<g data-item="${i}" style="display:none">${itemSvg()}</g>`).join("")}</g>`,
     ],
   });

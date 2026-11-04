@@ -20,15 +20,16 @@ export const BASE = {
   learn: 0.05,      // each miss closes this share of the gap to a full cache
   badError: 0.4,    // share of requests a bad release fails
   detect: 15,       // seconds from a bad flip until the alarm makes someone roll back
-  redeploy: 60,     // seconds to redeploy one server in a rolling rollback
+  redeploy: 60,     // seconds to redeploy one server in a rolling rollback, or to rebuild a shut-down side
+  keepFor: 20,      // with keepBlue off, blue is shut down this long after the flip to green
 };
 
 function makeSide(name, version, fill, workers) {
-  return { name, version, fill, queue: [], workers: Array.from({ length: workers }, () => ({ job: null, version })), busyTime: 0 };
+  return { name, version, fill, queue: [], workers: Array.from({ length: workers }, () => ({ job: null, version })), busyTime: 0, down: false, rebuildAt: null };
 }
 
 export function createWorld(options = {}) {
-  const o = { ...BASE, release: "good", warm: true, draining: true, migration: "compatible", seed: 7, ...options };
+  const o = { ...BASE, release: "good", warm: true, draining: true, migration: "compatible", keepBlue: true, seed: 7, ...options };
   const random = rng(o.seed);
   const w = {
     o, random, t: 0, id: 0, live: "blue", schema: 1,
@@ -57,9 +58,12 @@ function finish(w, job, outcome) {
 }
 
 // Send all new traffic to the other side. Without draining, everything already routed to the old
-// side (on its lane, in its queue, being served) is cut off.
+// side (on its lane, in its queue, being served) is cut off. If the other side was shut down, it has to be
+// rebuilt first: the flip happens when the rebuild is done (o.redeploy seconds later), and returns null now.
 export function flip(w) {
   const old = w.live;
+  const other = w.sides[old === "blue" ? "green" : "blue"];
+  if (other.down) { if (other.rebuildAt === null) other.rebuildAt = w.t + w.o.redeploy; return null; }
   w.live = old === "blue" ? "green" : "blue";
   if (w.live === "green" && w.schema === 1) w.schema = 2; // green's migration runs as it goes live
   w.flips.push({ at: w.t, to: w.live });
@@ -87,9 +91,29 @@ function startJob(w, side, worker, job) {
   worker.job = job;
 }
 
+// Blue is shut down to save money: its servers are gone, and rolling back means rebuilding them.
+export function shutDown(w, name) {
+  const side = w.sides[name];
+  if (w.live === name || side.down) return false;
+  side.down = true; side.queue = []; side.workers.forEach((k) => { k.job = null; });
+  return true;
+}
+
 export function step(w, dt) {
   const o = w.o;
   w.t += dt;
+  // keepBlue off: blue is shut down keepFor seconds after traffic moved to green.
+  const lastFlip = w.flips[w.flips.length - 1];
+  if (!o.keepBlue && w.live === "green" && lastFlip && w.t >= lastFlip.at + o.keepFor) shutDown(w, "blue");
+  // A shut-down side being rebuilt comes back with the old version and an empty cache, and takes the traffic.
+  for (const name of ["blue", "green"]) {
+    const side = w.sides[name];
+    if (side.rebuildAt !== null && w.t >= side.rebuildAt) {
+      side.down = false; side.rebuildAt = null; side.fill = 0;
+      side.workers.forEach((k) => { k.version = name === "blue" ? "v1" : "v2"; });
+      if (w.live !== name) flip(w);
+    }
+  }
   while (w.nextArrival <= w.t) {
     const born = w.nextArrival;
     w.active.push({ id: ++w.id, born, gateAt: born + o.infeed, queueAt: born + o.infeed + o.lane, stage: "infeed", side: null });
@@ -105,6 +129,7 @@ export function step(w, dt) {
   }
   for (const name of ["blue", "green"]) {
     const side = w.sides[name];
+    if (side.down) continue;
     for (const worker of side.workers) {
       if (worker.job && w.t >= worker.job.endAt) { finish(w, worker.job, worker.job.fails ? "error" : "ok"); worker.job = null; }
       if (!worker.job && side.queue.length) startJob(w, side, worker, side.queue.shift());
@@ -166,6 +191,20 @@ export const EXP = {
       return (w.sides.green.busyTime - green0) / (110 * w.o.workers);
     });
     return { idleBusy: busy, liveBusy: live, blueGreenServers: 2 * BASE.workers, rollingServers: BASE.workers + 1, normal: BASE.workers };
+  },
+  // Green is bad, and the alarm fires 40 s after the flip. Blue kept running vs shut down 20 s after the flip:
+  // time from the alarm until errors stop, and requests failed after the alarm.
+  shutdown() {
+    const ALARM = 40, FLIP = 30;
+    const measure = (keepBlue) => {
+      const runs = SEEDS.map((seed) => {
+        const w = runScenario({ seed, release: "bad", rollback: "flip", detect: ALARM, keepBlue, until: FLIP + ALARM + 120 });
+        const after = w.log.filter((j) => j.outcome !== "ok" && j.doneAt >= FLIP + ALARM);
+        return { stop: after.length ? Math.max(...after.map((j) => j.doneAt)) - (FLIP + ALARM) : 0, failed: after.length };
+      });
+      return { stop: meanBy(runs, (r) => r.stop), failed: meanBy(runs, (r) => r.failed) };
+    };
+    return { kept: measure(true), down: measure(false), keepFor: BASE.keepFor, redeploy: BASE.redeploy };
   },
   cold() {
     const measure = (warm) => {
