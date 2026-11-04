@@ -58,6 +58,15 @@ export const JOBS = {
       : how === "ten" ? [{ station: "wan", count: 100, wide: 10, each: STATION.wan.ns + KB_NET, note: "call" }]
       : [{ station: "wan", count: 1, each: STATION.wan.ns + 100 * KB_NET, note: "batch" }],
   },
+  // One transfer overseas on a connection that's already open and at full speed: one round trip to ask, then the
+  // bytes stream at 1 Gbps (10 µs a KB). Slow start on a fresh connection would add round trips; this leaves it out.
+  send: {
+    hows: ["kb", "mb", "gb"],
+    legs: (how) => {
+      const kb = how === "kb" ? 1 : how === "mb" ? 10e3 : 1e6;   // 1 KB, 10 MB, 1 GB
+      return [{ station: "wan", count: 1, each: STATION.wan.ns, note: "trip" }, { station: "wan", count: 1, each: kb * KB_NET, note: "send" }];
+    },
+  },
   page: {
     hows: ["primary", "replica", "cache"],
     legs: (how) => [{ station: how === "primary" ? "wan" : how === "replica" ? "dc" : "ram", count: 20, each: STATION[how === "primary" ? "wan" : how === "replica" ? "dc" : "ram"].ns, note: "read" }],
@@ -127,3 +136,12 @@ export function readRun() { return Object.fromEntries(JOBS.read.hows.map((h) => 
 export function sumRun() { return { array: avgJob("sum", "array"), list: avgJob("sum", "list") }; }
 export function batchRun() { return { one: avgJob("batch", "one"), ten: avgJob("batch", "ten"), batch: avgJob("batch", "batch") }; }
 export function pageRun() { return { primary: avgJob("page", "primary"), replica: avgJob("page", "replica"), cache: avgJob("page", "cache") }; }
+// The send job, split into the round trip and the time spent sending the bytes.
+export function sendRun() {
+  const one = (how) => {
+    let trip = 0, send = 0;
+    for (let s = 1; s <= 8; s++) { const o = runJob("send", how, s * 7919, 0); trip += o.legs[0].total / 8; send += o.legs[1].total / 8; }
+    return { trip, send, total: trip + send };
+  };
+  return { kb: one("kb"), mb: one("mb"), gb: one("gb") };
+}

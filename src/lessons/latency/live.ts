@@ -35,7 +35,7 @@ export default function mount({ P, G, COURIER_SVG, DEFAULT_HOW }, root) {
     r.legs.forEach((leg) => {
       const waves = Math.ceil(leg.count / leg.wide);
       const n = Math.min(waves, MAXA);
-      for (let i = 0; i < n; i++) list.push({ station: leg.station, ns: leg.total / n, count: leg.count / n, rep: waves / n, wide: leg.wide, each: leg.each });
+      for (let i = 0; i < n; i++) list.push({ station: leg.station, ns: leg.total / n, count: leg.count / n, rep: waves / n, wide: leg.wide, each: leg.each, note: leg.note });
     });
     return { r, list };
   }
@@ -83,8 +83,10 @@ export default function mount({ P, G, COURIER_SVG, DEFAULT_HOW }, root) {
     if (done) { say(L("done · " + int(run.r.trips) + " trips · " + fmt(run.r.total) + " · " + Math.round((100 * run.r.by[top]) / run.r.total) + "% at " + NAME[top].en,
       "listo · " + int(run.r.trips) + " viajes · " + fmt(run.r.total) + " · " + Math.round((100 * run.r.by[top]) / run.r.total) + "% en " + NAME[top].es)); return; }
     const n = run.list.length, wide = trip.wide > 1 ? L(" · " + trip.wide + " calls in flight", " · " + trip.wide + " llamadas en curso") : "";
-    const rep = trip.rep > 1 ? L(" · each trip shown stands for " + int(trip.rep), " · cada viaje que ves representa " + int(trip.rep)) : "";
-    say(L("trip " + (idx + 1) + " of " + n + " · " + NAME[trip.station].en, "viaje " + (idx + 1) + " de " + n + " · " + NAME[trip.station].es) + wide + rep + " · " + fmt(total));
+    const rep = trip.rep > 1 ? L(" · each stands for " + int(trip.rep), " · cada uno vale por " + int(trip.rep)) : "";
+    // a transfer's second leg is the bytes streaming over the link, not another round trip
+    const where = trip.note === "send" ? T("sending the data at 1 Gbps", "enviando los datos a 1 Gbps") : NAME[trip.station];
+    say(L("trip " + (idx + 1) + " of " + n + " · " + where.en, "viaje " + (idx + 1) + " de " + n + " · " + where.es) + wide + rep + " · " + fmt(total));
   }
 
   const pause = playPause(root);
