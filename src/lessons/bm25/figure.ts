@@ -90,8 +90,9 @@ function scale(i) {
   const out = [`<g data-scale="${i}">`];
   out.push(S(k.slabOf(plan, 0, BASE.h, P, 3, 0.5), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(plan, 2), BASE.h, P), { tone: "faint" }));
-  out.push(faceText(P, [x0 + 2.2, FRONT, 8.4], "#" + (i + 1), { size: 4.4, tone: "mid" }));
-  out.push(faceText(P, [x0 + 10.6, FRONT, 8.4], "", { size: 4.4, tone: "hi", attr: `data-doc="${i}"` }));
+  // Rank and document above the wheels' housing, clear of it.
+  out.push(faceText(P, [x0 + 2.2, FRONT, 9.6], "#" + (i + 1), { size: 3.8, tone: "mid" }));
+  out.push(faceText(P, [x0 + 9.8, FRONT, 9.6], "", { size: 3.8, tone: "hi", attr: `data-doc="${i}"` }));
   out.push(digitCounter(P, { x: x0 + 2.6, y: FRONT, z: 1.6, count: 2, w: 3.6, h: 4.8, gap: 0.5, pad: 1, name: "si" + i }));
   out.push(k.dotsSvg([k.iso([x0 + 12.6, FRONT + 0.1, 1.9], P)], { size: 1.1, tone: "hi" }));
   out.push(digitCounter(P, { x: x0 + 15, y: FRONT, z: 1.6, count: 1, w: 3.6, h: 4.8, gap: 0.5, pad: 1, name: "sf" + i }));
