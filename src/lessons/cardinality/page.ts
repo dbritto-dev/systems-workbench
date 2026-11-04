@@ -21,7 +21,6 @@ const RESULTS = {
   raw: series("status", "raw", N_HOUR),
   rawDay: series("status", "raw", N_HOUR * 24),
   head12: sampleHours({ mode: "head", head: 0.01 }, 12),
-  head6: sampleHours({ mode: "head", head: 0.01 }, 6),
   tail6: sampleHours({ mode: "tail" }, 6),
 };
 
@@ -35,14 +34,14 @@ const RUNS = {
   },
   user: () => {
     const a = RESULTS.status, h = RESULTS.user, d = RESULTS.userDay;
-    return { verdict: t("After an hour: " + int(h) + " series (×" + int(h / a) + "), about " + fmtBytes(seriesBytes(h)) + ". After a day: " + int(d) + ", " + fmtBytes(seriesBytes(d)) + ". All for one counter.",
-        "Después de una hora: " + int(h) + " series (×" + int(h / a) + "), unos " + fmtBytes(seriesBytes(h)) + ". Después de un día: " + int(d) + ", " + fmtBytes(seriesBytes(d)) + ". Todo para un solo contador."),
+    return { verdict: t("After an hour: " + int(h) + " series (×" + int(h / a) + "), about " + fmtBytes(seriesBytes(h)) + " of memory. After a day: " + int(d) + " series created, and every query over the day has to touch them. All for one counter.",
+        "Después de una hora: " + int(h) + " series (×" + int(h / a) + "), unos " + fmtBytes(seriesBytes(h)) + " de memoria. Después de un día: " + int(d) + " series creadas, y cada consulta sobre el día tiene que recorrerlas. Todo para un solo contador."),
       bars: [[t("Without user_id", "Sin user_id"), a / d, int(a)], [t("With user_id, 1 hour", "Con user_id, 1 hora"), h / d, int(h), true], [t("With user_id, 1 day", "Con user_id, 1 día"), 1, int(d), true]] };
   },
   raw: () => {
     const t1 = RESULTS.statusDay, r1 = RESULTS.raw, r24 = RESULTS.rawDay;
-    return { verdict: t("Template: " + int(t1) + " series after a day. Raw paths: " + int(r1) + " after an hour and " + int(r24) + " after a day (" + fmtBytes(seriesBytes(r24)) + "), still climbing.",
-        "Plantilla: " + int(t1) + " series después de un día. Rutas crudas: " + int(r1) + " después de una hora y " + int(r24) + " después de un día (" + fmtBytes(seriesBytes(r24)) + "), y siguen subiendo."),
+    return { verdict: t("Template: " + int(t1) + " series after a day. Raw paths: " + int(r1) + " after an hour (about " + fmtBytes(seriesBytes(r1)) + " of memory) and " + int(r24) + " created after a day, still climbing.",
+        "Plantilla: " + int(t1) + " series después de un día. Rutas crudas: " + int(r1) + " después de una hora (unos " + fmtBytes(seriesBytes(r1)) + " de memoria) y " + int(r24) + " creadas después de un día, y siguen subiendo."),
       bars: [[t("Template, 1 day", "Plantilla, 1 día"), t1 / r24, int(t1)], [t("Raw path, 1 hour", "Ruta cruda, 1 hora"), r1 / r24, int(r1), true], [t("Raw path, 1 day", "Ruta cruda, 1 día"), 1, int(r24), true]] };
   },
   head: () => {
@@ -54,7 +53,7 @@ const RUNS = {
       bars: [[t("Errors kept", "Errores guardados"), meanBy(hours, (h) => h.errorsKept / h.errors), t(errK + " of " + err, errK + " de " + err)], [t("Rare bug kept", "Bug raro guardado"), meanBy(hours, (h) => h.rareKept / Math.max(1, h.rare)), t(rareK + " of " + rare, rareK + " de " + rare), true], [t("Hours with no example", "Horas sin ningún ejemplo"), none / 12, t(none + " of 12", none + " de 12"), true]] };
   },
   tail: () => {
-    const head = RESULTS.head6, tail = RESULTS.tail6;
+    const head = RESULTS.head12, tail = RESULTS.tail6;
     const hk = meanBy(head, (h) => h.kept), tk = meanBy(tail, (h) => h.kept);
     const ehk = one(meanBy(head, (h) => h.errorsKept)), etk = int(meanBy(tail, (h) => h.errorsKept)), et = int(meanBy(tail, (h) => h.errors));
     return { verdict: t("Traces stored per hour: " + int(hk) + " with head 1%, " + int(tk) + " with tail (×" + one(tk / hk) + "). Errors kept: " + ehk + " vs " + etk + " of " + et + ". The tail sampler holds about 1,000 traces at any moment (10 s each at 100/s) while it waits.",
@@ -70,7 +69,7 @@ const EXPERIMENTS = [
     change: t("http_requests_total{method, route} → {method, route, status} · 2 methods × 8 routes, status has 5 values · 100 requests/s for an hour",
       "http_requests_total{method, route} → {method, route, status} · 2 métodos × 8 rutas, status tiene 5 valores · 100 solicitudes/s durante una hora"),
     question: t("The metric had 16 series. After adding status, how many series does it have?", "La métrica tenía 16 series. Después de agregar status, ¿cuántas series tiene?"),
-    options: [t("21: five more, one per status", "21: cinco más, una por status"), t("About 80: every existing series splits into one per status", "Unas 80: cada serie que ya existía se divide en una por status"), t("Still 16: the status is stored inside each sample", "Siguen siendo 16: el status se guarda dentro de cada muestra")],
+    options: [t("21: five more, one per status", "21: cinco más, una por status"), t("About 80: each series splits five ways", "Unas 80: cada serie se divide en cinco"), t("Still 16: the status is stored inside each sample", "Siguen siendo 16: el status se guarda dentro de cada muestra")],
     answer: 1,
     why: t("A series is one combination of label values, so the count is the product of how many values each label takes: 2 × 8 × 5 = 80. Every label multiplies. Here that's fine: 80 series is a few hundred kilobytes, and every value is bounded.",
       "Una serie es una combinación de valores de etiquetas, así que la cantidad es el producto de cuántos valores toma cada etiqueta: 2 × 8 × 5 = 80. Cada etiqueta multiplica. Aquí no hay problema: 80 series son unos cientos de kilobytes, y todos los valores están acotados."),
@@ -94,10 +93,10 @@ const EXPERIMENTS = [
     change: t("route=\"/orders/{id}\" → route=\"/orders/58213\" · ids come from a catalogue of a million · {method, route, status} · 100 requests/s",
       "route=\"/orders/{id}\" → route=\"/orders/58213\" · los ids salen de un catálogo de un millón · {method, route, status} · 100 solicitudes/s"),
     question: t("How many series after one hour, and after a day?", "¿Cuántas series hay después de una hora, y después de un día?"),
-    options: [t("About 80 both times, like the template", "Unas 80 en los dos casos, como con la plantilla"), t("A lot more after an hour, then it levels off", "Muchas más después de una hora, y luego se estabiliza"), t("Far more after an hour and many times more again after a day: it never levels off", "Muchísimas más después de una hora y varias veces más después de un día: nunca se estabiliza")],
+    options: [t("About 80 both times, like the template", "Unas 80 en los dos casos, como con la plantilla"), t("A lot more after an hour, then it levels off", "Muchas más después de una hora, y luego se estabiliza"), t("A lot more after an hour, and many times more after a day", "Muchas más después de una hora, y varias veces más después de un día")],
     answer: 2,
-    why: t("An id in a label is an unbounded label: there is no last value, so new series keep appearing for as long as new ids are requested. This is the most common way cardinality leaks into a metrics system: raw URLs, error messages, query strings, IP addresses. Template the route before it becomes a label.",
-      "Un id en una etiqueta la vuelve no acotada: no hay un último valor, así que siguen apareciendo series nuevas mientras se pidan ids nuevos. Es la forma más común en que la cardinalidad se cuela en un sistema de métricas: URLs crudas, mensajes de error, query strings, direcciones IP. Convierte la ruta en plantilla antes de que se vuelva etiqueta."),
+    why: t("An id in a label makes it effectively unbounded: new series keep appearing for as long as new ids are requested. Even this catalogue of a million ids would only level off in the millions of series, far more than one metric should ever cost. This is the most common way cardinality leaks into a metrics system: raw URLs, error messages, query strings, IP addresses. Template the route before it becomes a label.",
+      "Un id en una etiqueta la vuelve, en la práctica, no acotada: siguen apareciendo series nuevas mientras se pidan ids nuevos. Incluso este catálogo de un millón de ids solo se estabilizaría en millones de series, mucho más de lo que debería costar una métrica. Es la forma más común en que la cardinalidad se cuela en un sistema de métricas: URLs crudas, mensajes de error, query strings, direcciones IP. Convierte la ruta en plantilla antes de que se vuelva etiqueta."),
     watch: { labels: "status", route: "raw" },
   },
   {
@@ -119,10 +118,10 @@ const EXPERIMENTS = [
     change: t("Wait until each trace finishes, then keep every error, every slow trace (0.5%) and 1% of the rest · same traffic as before",
       "Espera a que termine cada traza y luego guarda todos los errores, todas las trazas lentas (0.5%) y el 1% del resto · el mismo tráfico que antes"),
     question: t("Compared with head sampling at 1%, what does tail sampling cost?", "Comparado con head sampling al 1%, ¿cuánto cuesta el tail sampling?"),
-    options: [t("Somewhat more storage, every error kept, but every trace must wait in a buffer until it finishes", "Algo más de almacenamiento, se guardan todos los errores, pero cada traza tiene que esperar en un búfer hasta terminar"), t("About 100 times the storage: it has to keep everything", "Unas 100 veces el almacenamiento: tiene que guardarlo todo"), t("Less storage: it drops more of the ordinary traces", "Menos almacenamiento: descarta más trazas comunes")],
+    options: [t("Somewhat more storage, but every trace waits in a buffer first", "Algo más de almacenamiento, pero cada traza espera primero en un búfer"), t("About 100 times the storage: it has to keep everything", "Unas 100 veces el almacenamiento: tiene que guardarlo todo"), t("Less storage: it drops more of the ordinary traces", "Menos almacenamiento: descarta más trazas comunes")],
     answer: 0,
-    why: t("Errors and slow requests are a small share of traffic, so keeping all of them adds little to the 1% baseline, and you keep exactly the traces you'll want to open. The price moves elsewhere: the sampler must hold every trace in memory until it is complete (all its spans have arrived) before it can decide, and all spans of a trace must reach the same sampler.",
-      "Los errores y las solicitudes lentas son una parte pequeña del tráfico, así que guardarlos todos suma poco a la base del 1%, y guardas justo las trazas que vas a querer abrir. El precio se va a otro lado: el muestreador (sampler) tiene que mantener cada traza en memoria hasta que esté completa (hasta que llegaron todos sus spans) antes de poder decidir, y todos los spans de una traza tienen que llegar al mismo muestreador."),
+    why: t("Errors and slow requests (the tail that lesson 44, Percentiles, measures) are a small share of traffic, so keeping all of them adds little to the 1% baseline, and you keep exactly the traces you'll want to open. The price moves elsewhere: the sampler must hold every trace in memory until it is complete (all its spans have arrived) before it can decide, and all spans of a trace must reach the same sampler.",
+      "Los errores y las solicitudes lentas (la cola que mide la lección 44, Percentiles) son una parte pequeña del tráfico, así que guardarlos todos suma poco a la base del 1%, y guardas justo las trazas que vas a querer abrir. El precio se va a otro lado: el muestreador (sampler) tiene que mantener cada traza en memoria hasta que esté completa (hasta que llegaron todos sus spans) antes de poder decidir, y todos los spans de una traza tienen que llegar al mismo muestreador."),
     watch: { labels: "status", route: "template", sampling: "tail" },
   },
 ];
@@ -163,14 +162,14 @@ export default defineLesson({
       keys: [
         { mark: "lit", label: t("A failed request's trace, and a pigeonhole a card just landed in", "La traza de una solicitud fallida, y un casillero donde acaba de caer una tarjeta") },
         { mark: "raised", label: t("Tally cards, traces (tall when slow), counters and kept trace cards", "Tarjetas de conteo, trazas (altas si son lentas), contadores y tarjetas de trazas guardadas") },
-        { mark: "flat", label: t("Belts, the buffer rack and the drop bins", "Cintas, el estante búfer y los cestos de descarte") },
+        { mark: "flat", label: t("Belts, the buffer rack and the drop bins", "Cintas, el estante búfer y los contenedores de descarte") },
       ],
       caption: t(
         "For every request the service cabinet sends a tally card up the back belt and a trace along the front belt. Each distinct combination of label values owns one pigeonhole in the wall: that is one time series. The series counter and the memory dial (one tick per ×10, from 10 KB to 10 GB) stand beside the wall; when every hole is taken, new series fall into the overflow bin. A gate with an open bin is the sampler in use: the head gate decides as the trace starts, the tail gate after it has waited in the buffer rack until it finished. Kept traces stand in the archive drawer, error traces lit, and its front counts traces kept, errors seen and errors kept.",
-        "Por cada solicitud, el gabinete del servicio manda una tarjeta de conteo por la cinta del fondo y una traza por la cinta del frente. Cada combinación distinta de valores de etiquetas tiene su propio casillero en la pared: eso es una serie de tiempo (time series). El contador de series y el dial de memoria (una marca por cada ×10, de 10 KB a 10 GB) están junto a la pared; cuando todos los casilleros están ocupados, las series nuevas caen al cesto de desborde. Una compuerta con un cesto abierto es el muestreador en uso: la compuerta head decide cuando empieza la traza; la compuerta tail, después de que la traza esperó en el estante búfer hasta terminar. Las trazas guardadas quedan de pie en el cajón del archivo, las de error iluminadas, y su frente cuenta las trazas guardadas, los errores vistos y los errores que quedan.",
+        "Por cada solicitud, el gabinete del servicio manda una tarjeta de conteo por la cinta del fondo y una traza por la cinta del frente. Cada combinación distinta de valores de etiquetas tiene su propio casillero en la pared: eso es una serie de tiempo (time series). El contador de series y el dial de memoria (una marca por cada ×10, de 10 KB a 10 GB) están junto a la pared; cuando todos los casilleros están ocupados, las series nuevas caen al contenedor de desborde. Una compuerta con su contenedor de descarte abierto es el muestreador en uso: la compuerta head decide cuando empieza la traza; la compuerta tail, después de que la traza esperó en el estante búfer hasta terminar. Las trazas guardadas quedan de pie en el cajón del archivo, las de error iluminadas, y su frente cuenta las trazas guardadas, los errores vistos y los errores guardados.",
       ),
       stage: { "data-hall": "" },
-      label: t("Sampling and cardinality simulation. Space pauses or resumes.", "Simulación de muestreo y cardinalidad. Espacio pausa o reanuda."),
+      label: t("Sampling and cardinality simulation. Space pauses or resumes.", "Simulación de muestreo y cardinalidad. La barra espaciadora pausa o reanuda."),
     },
     svg: buildFigure(),
     stats: [["requests", t("Requests", "Solicitudes")], ["series", "Series"], ["memory", t("Series memory", "Memoria de series"), "–"], ["kept", t("Traces kept", "Trazas guardadas")], ["errors", t("Errors kept", "Errores guardados"), "–"], ["buffer", t("Waiting in buffer", "Esperando en el búfer")]],
