@@ -216,9 +216,10 @@ export function crashRun() {
 }
 
 // 4. One parcel in 50 can never be processed: retry forever vs 3 tries then the dead-letter cage.
+// The machine's own settings (4 clerks, 3 s a parcel, 1.2 arriving a second), so Watch shows the same run.
 export function poisonRun() {
   const run = (maxTries) => avg((seed) => {
-    const m = makeQueue({ rate: 2, clerks: 4, service: 1.5, crash: 0, poison: 0.02, maxTries, visibility: 6 }, seed);
+    const m = makeQueue({ rate: 1.2, clerks: 4, service: 3, crash: 0, poison: 0.02, maxTries, visibility: 6 }, seed);
     m.runTo(300);
     return { len: m.queue.length, wait: m.oldestWait(), done: m.st.done, poisonTries: m.st.poisonTries, dead: m.st.deadN };
   });

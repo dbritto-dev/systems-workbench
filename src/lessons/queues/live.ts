@@ -196,6 +196,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
   root.on("watch", (w) => {
     set("rate", String(w.rate), true); set("crash", String(w.crash), true); set("poison", String(w.poison), true); set("order", w.order, true);
     set("cap", w.cap, true); set("clerks", String(w.clerks), true); set("tries", w.tries || "3", true); set("handler", w.handler || "after", true);
+    if (w.speed) set("speed", String(w.speed));
     restart(w.burst || w.slow ? 6 : WARM);
     if (loop.paused) loop.setPaused(false);
     if (w.burst) setTimeout(() => { model.burst(clock, 30); note = { t: clock, text: T("30 parcels dropped at once", "30 paquetes soltados de golpe") }; }, 1500);
