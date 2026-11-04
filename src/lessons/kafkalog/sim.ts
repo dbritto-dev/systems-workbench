@@ -167,8 +167,8 @@ export function crashRun(commit) {
   return { duplicates: mean(runs.map((r) => r.duplicates)), lost: mean(runs.map((r) => r.lost)), crashes: mean(runs.map((r) => r.crashes)) };
 }
 export function groupRun(consumers) {
-  const runs = SEEDS.map((seed) => { const s = makeSim({ ...BASE, consumers, rate: 8 }, seed); s.runTo(60); const before = s.processed; s.runTo(120); return { perMinute: s.processed - before, idle: s.idle(), lag: s.totalLag() }; });
-  return { perMinute: mean(runs.map((r) => r.perMinute)), idle: mean(runs.map((r) => r.idle)), lag: mean(runs.map((r) => r.lag)) };
+  const runs = SEEDS.map((seed) => { const s = makeSim({ ...BASE, consumers, rate: 8 }, seed); s.runTo(60); const before = s.processed, made = s.produced; s.runTo(120); return { perMinute: s.processed - before, arrived: s.produced - made, idle: s.idle(), lag: s.totalLag() }; });
+  return { perMinute: mean(runs.map((r) => r.perMinute)), arrived: mean(runs.map((r) => r.arrived)), idle: mean(runs.map((r) => r.idle)), lag: mean(runs.map((r) => r.lag)) };
 }
 export function hotRun(keying) {
   const runs = SEEDS.map((seed) => { const s = makeSim({ ...BASE, keying }, seed); s.runTo(60); return s.logs.map((_, p) => s.lag(p)); });

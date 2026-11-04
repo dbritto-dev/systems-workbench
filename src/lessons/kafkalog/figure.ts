@@ -30,10 +30,10 @@ const SHED = { x: -150, y: -78, w: 46, d: 134, r: 2 };
 const SHED_H = 32;
 export const CABIN = { w: 20, d: 12, h: 10, y: 64 };
 export const CABIN_X = [-40, -10, 20, 50, 80, 110];
-// Bookmark gantry: two posts either side of the track, a cross beam, and a number board over the next car to read.
-export const GANTRY = { half: 8.5, h: 19, board: { x0: 1.2, w: 12, z: 13 } };
+// Bookmark gantry: two posts either side of the track, a cross beam, and two boards over the next car to read:
+// the committed offset (lower) and the track's lag, the cars from here to the newest one (upper).
+export const GANTRY = { half: 8.5, h: 25, board: { x0: 1.2, w: 16, z: 13, h: 5 }, lag: { z: 18.6, h: 4.8 } };
 export const MAST = { dx: -6, dy: 3, top: 22 };   // the cabin's wire mast
-export const LAG_WINDOW = { half: 7.5, z0: 18, z1: 26 };   // lag counter above each shed door
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [SHED.x, SHED.y, SHED_H + 3], [DOCK.x + DOCK.w, DOCK.y, DOCK_H + 3], [TAIL_X + 22, TRACK_Y[0] - GANTRY.half, GANTRY.h]],
@@ -69,13 +69,6 @@ function shed() {
   out.push(`<path class="door" d="${doors}"/>`);
   out.push(L(doors, { tone: "lo" }));
   out.push(D(k.corners(k.insetPlan(SHED, -2), 4).map(([x, y]) => at([x, y, SHED_H + 3])), { size: 0.45 }));
-  // Above each door, a digit counter: how many cars on that track are past its bookmark (the lag).
-  TRACK_Y.forEach((y, i) => {
-    const W = LAG_WINDOW, win = k.faceRectX(P, face, y - W.half, y + W.half, W.z0, W.z1);
-    out.push(`<g data-shed-lag="${i}"><path class="window" d="${win}"/>${L(win, { tone: "lo" })}`
-      + k.faceTextSvg(k.sideMatrix([face, y - W.half + 1.6], W.z0 + 1.8, P, "right"), "0", { size: 5.4, tone: "hi", anchor: "end" }).replace("<text ", "<text data-lag ")
-      + D([at([face, y - W.half - 1.4, W.z1 - 1]), at([face, y + W.half + 1.4, W.z1 - 1])], { size: 0.45, tone: "lo" }) + `</g>`);
-  });
   return out.join("");
 }
 
@@ -94,9 +87,12 @@ function bookmark(y, index) {
   const G = GANTRY, B = G.board;
   const post = (py) => S(k.cylinder(0, py, 0.9, 0, G.h, P, 14), { tone: "mid", crease: "none" }) + S(k.cylinder(0, py, 1.8, 0, 1, P, 16), { tone: "mid" });
   const beam = S(k.slabOf({ x: -1.2, y: y - G.half - 1, w: 2.4, d: G.half * 2 + 2, r: 0.4 }, G.h - 1.6, 1.6, P, 2, 0.3), { tone: "mid" });
-  const board = S(k.slabOf({ x: B.x0, y: y - 0.6, w: B.w, d: 1.2, r: 0.3 }, B.z, G.h - B.z, P, 2), { tone: "hi", crease: "lo" })
-    + k.faceTextSvg(k.sideMatrix([B.x0 + B.w / 2, y + 0.6], B.z + 1.4, P, "left"), "0", { size: 4.6, tone: "hi", anchor: "middle" }).replace("<text ", "<text data-num ");
-  return `<g data-bookmark="${index}">${post(y - G.half)}${beam}<g data-flag>${board}</g>${post(y + G.half)}${D([at([0, y + G.half, G.h])], { size: 0.5, tone: "lo" })}</g>`;
+  const board = S(k.slabOf({ x: B.x0, y: y - 0.6, w: B.w, d: 1.2, r: 0.3 }, B.z, B.h, P, 2), { tone: "hi", crease: "lo" })
+    + k.faceTextSvg(k.sideMatrix([B.x0 + B.w / 2, y + 0.6], B.z + 1.1, P, "left"), "0", { size: 4.2, tone: "hi", anchor: "middle" }).replace("<text ", "<text data-num ");
+  // The lag board stays up even when the bookmark sits inside the shed: lag is what the reader needs then.
+  const lag = S(k.slabOf({ x: B.x0, y: y - 0.6, w: B.w, d: 1.2, r: 0.3 }, G.lag.z, G.lag.h, P, 2), { tone: "mid", crease: "lo" })
+    + k.faceTextSvg(k.sideMatrix([B.x0 + B.w / 2, y + 0.6], G.lag.z + 1.2, P, "left"), "LAG 0", { size: 3.5, tone: "hi", anchor: "middle" }).replace("<text ", "<text data-lag ");
+  return `<g data-bookmark="${index}">${post(y - G.half)}${beam}${lag}<g data-flag>${board}</g>${post(y + G.half)}${D([at([0, y + G.half, G.h])], { size: 0.5, tone: "lo" })}</g>`;
 }
 
 // One wagon at the origin (centre of its slot, on the rails); live code moves it with translateAlong.
@@ -162,8 +158,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A rail yard on a base plate. Up to four parallel tracks are the partitions of a topic. At the right, a loading dock and a transfer table couple each new numbered car (a record) to the near end of one track, pushing the older cars back towards an archive shed at the left, where they are kept. Along the front stand up to six reading cabins: the consumers of one group. An overhead wire runs from each cabin's mast to the bookmark gantry on every track it owns; the gantry's board shows the committed offset. Every car carries its offset on a number plate, and a counter above each shed door shows that track's lag; the car being read lights up.",
-      "Un patio de maniobras sobre una placa base. Hasta cuatro vías paralelas son las particiones de un topic. A la derecha, un muelle de carga y un carro transbordador enganchan cada vagón nuevo numerado (un registro) al extremo cercano de una vía, empujando los vagones más viejos hacia un cobertizo de archivo a la izquierda, donde se guardan. Al frente hay hasta seis cabinas de lectura: los consumidores de un grupo. Un cable aéreo va del mástil de cada cabina al pórtico del marcador en cada vía que le pertenece; el tablero del pórtico muestra el offset confirmado. Cada vagón lleva su offset en una placa numerada, y un contador sobre cada puerta del cobertizo muestra el lag de esa vía; el vagón que se está leyendo se ilumina."),
+      "A rail yard on a base plate. Up to four parallel tracks are the partitions of a topic. At the right, a loading dock and a transfer table couple each new numbered car (a record) to the near end of one track, pushing the older cars back towards an archive shed at the left, where they are kept. Along the front stand up to six reading cabins: the consumers of one group. An overhead wire runs from each cabin's mast to the bookmark gantry on every track it owns; the gantry's lower board shows the committed offset and its upper board the track's lag, the cars between the bookmark and the newest car. Every car carries its offset on a number plate; the car being read lights up.",
+      "Un patio de maniobras sobre una placa base. Hasta cuatro vías paralelas son las particiones de un topic. A la derecha, un muelle de carga y un carro transbordador enganchan cada vagón nuevo numerado (un registro) al extremo cercano de una vía, empujando los vagones más viejos hacia un cobertizo de archivo a la izquierda, donde se guardan. Al frente hay hasta seis cabinas de lectura: los consumidores de un grupo. Un cable aéreo va del mástil de cada cabina al pórtico del marcador en cada vía que le pertenece; el tablero inferior del pórtico muestra el offset confirmado y el superior, el lag de la vía: los vagones entre el marcador y el más nuevo. Cada vagón lleva su offset en una placa numerada; el vagón que se está leyendo se ilumina."),
     body: [
       plate(),
       pads(),

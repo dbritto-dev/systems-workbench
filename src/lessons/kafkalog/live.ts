@@ -19,8 +19,7 @@ export default function mount({ P, G, CAR_SVG }, root) {
   const bookmarks = G.TRACK_Y.map((_, i) => q('[data-bookmark="' + i + '"]'));
   const flags = bookmarks.map((b) => b.querySelector("[data-flag]"));
   const flagNums = bookmarks.map((b) => b.querySelector("[data-num]"));
-  const lagBoxes = G.TRACK_Y.map((_, i) => q('[data-shed-lag="' + i + '"]'));
-  const lagNums = lagBoxes.map((b) => b.querySelector("[data-lag]"));
+  const lagNums = bookmarks.map((b) => b.querySelector("[data-lag]"));
   const WARM = 20;
   const cabins = G.CABIN_X.map((_, i) => q('[data-cabin="' + i + '"]'));
   const lamps = cabins.map((c) => c.querySelector("[data-lamp] .iso-solid"));
@@ -47,7 +46,6 @@ export default function mount({ P, G, CAR_SVG }, root) {
     travY = G.TRACK_Y[sim.lastProduced ? sim.lastProduced.p : 1];
     script = []; note = null; seenEvents = 0;
     tracks.forEach((t, i) => t.toggleAttribute("data-off", i >= cfg.partitions));
-    lagBoxes.forEach((b, i) => (b.style.display = i >= cfg.partitions ? "none" : ""));
     cabins.forEach((c, i) => c.toggleAttribute("data-off", i >= cfg.consumers));
     showStats(); paint();
   }
@@ -82,7 +80,7 @@ export default function mount({ P, G, CAR_SVG }, root) {
       for (; n < pool.length; n++) hideCar(pool[n]);
       // Bookmark post: between the last committed car and the next one.
       setText(flagNums[p], sim.committed[p]);
-      setText(lagNums[p], Math.min(999, sim.lag(p)));
+      setText(lagNums[p], "LAG " + Math.min(999, sim.lag(p)));
       const minX = G.SHED_X + 3;
       const bx = xOf(sim.committed[p]) - G.SPACING / 2;
       const clamped = bx < minX;
