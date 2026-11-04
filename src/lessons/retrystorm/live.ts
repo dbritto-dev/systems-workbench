@@ -8,7 +8,10 @@ import { L, T } from "../../runtime/wb";
 import { playPause, setLit } from "../../runtime/dom";
 import { createOffice } from "./sim";
 
-export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET }, root) {
+export default function mount({ P, G, PAWN, STAND, TICKET, LEDGE_TICKET }, root) {
+  // Only the first few clients in line are drawn as standing pawns; the rest show as bases on the floor, so a storm
+  // doesn't pile into one block over the line and the abandoned tickets stay visible.
+  const PAWNS_IN_LINE = 10;
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const say = (v) => root.figure.say(L(v));
@@ -22,6 +25,7 @@ export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET }, root) {
 
   function group(markup) { const g = document.createElementNS(NS, "g"); g.innerHTML = markup; return g; }
   const ticketPool = Array.from({ length: G.QUEUE_SHOWN }, () => { const g = group(TICKET); g.style.display = "none"; ticketsLayer.appendChild(g); return g; });
+  const standPool = Array.from({ length: G.QUEUE_SHOWN }, () => { const g = group(STAND); g.style.display = "none"; ticketsLayer.appendChild(g); return { g, lit: false }; });
   const ledgePool = G.LEDGE_SPOTS.map(() => { const g = group(LEDGE_TICKET); g.style.display = "none"; ledgeLayer.appendChild(g); return g; });
   G.LEDGE_SPOTS.forEach((p, i) => ledgePool[i].setAttribute("transform", translateAlong(P, [p[0], p[1], 0])));
 
@@ -60,6 +64,7 @@ export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET }, root) {
   function paintPeople(dt) {
     const index = new Map(); office.queue.forEach((id, i) => index.set(id, i));
     const alive = new Set();
+    let stands = 0;
     for (const c of office.clients) {
       alive.add(c.id);
       let p = pawns.get(c.id);
@@ -69,13 +74,23 @@ export default function mount({ P, G, PAWN, TICKET, LEDGE_TICKET }, root) {
         people.appendChild(p.el); pawns.set(c.id, p);
       }
       const [tx, ty] = targetOf(c, index);
+      const lit = (c.phase === "waiting" || c.phase === "bench") && c.used.some((u) => u > 0);
+      // Far back in the line: hide the pawn where it stands and draw its base instead.
+      const at = c.phase === "waiting" && office.slots.indexOf(c.ticket) < 0 ? index.get(c.ticket) : undefined;
+      if (at !== undefined && at >= PAWNS_IN_LINE) {
+        p.x = tx; p.y = ty; p.el.style.display = "none";
+        const s = standPool[stands++];
+        if (s) { s.g.style.display = ""; s.g.setAttribute("transform", translateAlong(P, [tx, ty, 0])); if (s.lit !== lit) { s.lit = lit; setLit(s.g, lit); } }
+        continue;
+      }
+      p.el.style.display = "";
       const dx = tx - p.x, dy = ty - p.y, dist = Math.hypot(dx, dy), stepLen = 140 * dt;
       if (dist <= stepLen || still.matches) { p.x = tx; p.y = ty; } else { p.x += dx / dist * stepLen; p.y += dy / dist * stepLen; }
       p.el.setAttribute("transform", translateAlong(P, [p.x, p.y, 0]));
-      const lit = (c.phase === "waiting" || c.phase === "bench") && c.used.some((u) => u > 0);
       if (lit !== p.lit) { p.lit = lit; setLit(p.el, lit); }
       p.el.style.opacity = c.phase === "leaving" ? String(Math.max(0, Math.min(1, (c.until - office.t) / 1.2))) : "";
     }
+    for (let i = stands; i < standPool.length; i++) standPool[i].g.style.display = "none";
     for (const [id, p] of pawns) if (!alive.has(id)) { p.el.remove(); pawns.delete(id); }
     const sorted = [...pawns.values()].sort((a, b) => depthOf([a.x, a.y, 0], P) - depthOf([b.x, b.y, 0], P));
     sorted.forEach((p) => people.appendChild(p.el));

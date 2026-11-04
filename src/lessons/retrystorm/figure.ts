@@ -189,6 +189,10 @@ export function pawnSvg() {
     + S(k.cylinder(0, 0, 2.3, 1.4, 6.4, P, 16), { tone: "hi", crease: "none" })
     + S(k.cylinder(0, 0, 2.9, 7.8, 3.2, P, 18, 0.3), { tone: "hi" });
 }
+// A client waiting further back in a long line: only the pawn's base, a flat disc, so a crowded line stays readable.
+export function standSvg() {
+  return S(k.cylinder(0, 0, 3.4, 0, 1.4, P, 18), { tone: "mid" });
+}
 // A ticket left behind: a flat card on the floor.
 export function ticketSvg(z = 0) {
   return S(k.slabOf({ x: -3.6, y: -2.4, w: 7.2, d: 4.8, r: 0.5 }, z, 0.7, P, 2), { tone: "lo", crease: "none" }) + L(k.lineOnTop([-2.2, 0], [1.6, 0], z + 0.7, P), { tone: "faint", free: true });

@@ -3,7 +3,7 @@
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { pct } from "../../lib/format";
-import { buildFigure, P, GEOMETRY, pawnSvg, ticketSvg } from "./figure";
+import { buildFigure, P, GEOMETRY, pawnSvg, standSvg, ticketSvg } from "./figure";
 import { experimentResults } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
@@ -205,8 +205,8 @@ export default defineLesson({
         { mark: "raised", label: t("Waiting garden: distance from the line is the backoff delay", "Jardín de espera: la distancia a la fila es el retraso de la espera") },
       ],
       caption: t(
-        "Regular clients come from the plaza, join the line and wait up to the timeout for one of the three windows. A client that gives up leaves its ticket in the line and, if it may retry, rejoins the line or waits in the garden first: the further along the ruler, the longer the wait. The gauge on the roof shows attempts per second; the pin marks what the windows can serve, 3 per second. Send a rush to start a storm.",
-        "Los clientes habituales vienen de la plaza, se forman en la fila y esperan hasta el tiempo límite (timeout) a que los atienda una de las tres ventanillas. Un cliente que se rinde deja su boleto en la fila y, si puede reintentar, vuelve a formarse o antes espera en el jardín: cuanto más lejos sobre la regla, más larga la espera. El indicador del techo muestra intentos por segundo; el tope marca lo que las ventanillas pueden atender, 3 por segundo. Envía una avalancha para iniciar una tormenta.",
+        "Regular clients come from the plaza, join the line and wait up to the timeout for one of the three windows. Past the first ten in line, a waiting client is drawn as just its pawn's base, so the line and its tickets stay readable. A client that gives up leaves its ticket in the line and, if it may retry, rejoins the line or waits in the garden first: the further along the ruler, the longer the wait. The gauge on the roof shows attempts per second; the pin marks what the windows can serve, 3 per second. Send a rush to start a storm.",
+        "Los clientes habituales vienen de la plaza, se forman en la fila y esperan hasta el tiempo límite (timeout) a que los atienda una de las tres ventanillas. Después de los diez primeros de la fila, un cliente que espera se dibuja solo con la base de su peón, para que la fila y sus boletos se puedan leer. Un cliente que se rinde deja su boleto en la fila y, si puede reintentar, vuelve a formarse o antes espera en el jardín: cuanto más lejos sobre la regla, más larga la espera. El indicador del techo muestra intentos por segundo; el tope marca lo que las ventanillas pueden atender, 3 por segundo. Envía una avalancha para iniciar una tormenta.",
       ),
       stage: { "data-office": "" },
       label: t("Ticket office simulation. Space pauses or resumes.", "Simulación de la taquilla. Espacio pausa o reanuda."),
@@ -231,6 +231,7 @@ export default defineLesson({
     P,
     G: GEOMETRY,
     PAWN: pawnSvg(),
+    STAND: standSvg(),
     TICKET: ticketSvg(0),
     LEDGE_TICKET: ticketSvg(GEOMETRY.LEDGE_Z),
   },
