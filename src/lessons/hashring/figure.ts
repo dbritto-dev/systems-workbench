@@ -22,7 +22,7 @@ export const HOPPER = { x: -4, y: -97, w: 28, d: 22, r: 2, h: 20 };
 export const MOUTH = [HOPPER.x + HOPPER.w / 2, HOPPER.y + HOPPER.d / 2, HOPPER.h + 2];
 export const LEVER = { x: 30, y: -26, w: 26, d: 8, ring: 35, modulo: 51 };
 export const BINS = [-130, -78, -26, 26, 78, 130].map((cx) => ({ cx, y: 53, w: 32, d: 24 }));
-export const TRAY_H = 5;
+export const TRAY_H = 8;   // tall enough to carry the node letter on its front
 export const CARD = { w: 6, d: 4, h: 1.4 };
 export const STACK_SCALE = 70;
 

@@ -33,7 +33,13 @@ export default function mount({ P, G, CARD_SVG }, root) {
     }
     const sorted = [...points].sort((a, b) => depthOf([...onRing(a.angle, RING.peg), 0], P) - depthOf([...onRing(b.angle, RING.peg), 0], P));
     const r = points.length > 24 ? 1.2 : 1.8;
-    return sorted.map((p) => {
+    // One marker per node: engrave the owner's letter on the disc just inside its peg, so "C" can be found on the ring.
+    const letters = points.length <= 6 ? points.map((p) => {
+      const [x, y] = onRing(p.angle, RING.groove[0] - 7);
+      const lit = litAngle !== null && Math.abs(p.angle - litAngle) < 1e-6;
+      return k.faceTextSvg(k.topMatrix([x, y + 2.3], RING.top, P, "x"), p.node, { size: 6.5, tone: lit ? "lit" : "hi", anchor: "middle" });
+    }).join("") : "";
+    return letters + sorted.map((p) => {
       const [x, y] = onRing(p.angle, RING.peg);
       const lit = litAngle !== null && Math.abs(p.angle - litAngle) < 1e-6;
       return S(cylinder(x, y, r, RING.top, 4.5, P, 14), { tone: "hi", lit });
@@ -67,10 +73,12 @@ export default function mount({ P, G, CARD_SVG }, root) {
     let out = `<path class="iso-halo" d="${haloOf(insetPlan(tray, 2), 0, 0.1, P)}" style="filter:blur(4px)"/>`;
     out += S(slabOf(tray, 0, TRAY_H, P, 3, 0.5), { tone: "mid" });
     out += L(planOutline(insetPlan(tray, 2.5), TRAY_H, P, 3), { tone: "lo" });
+    // The node's letter, engraved on the tray's front face.
+    const letter = k.faceTextSvg(k.sideMatrix([b.cx, tray.y + tray.d + 0.05], 1.4, P, "left"), NODE_IDS[index], { size: 6.6, tone: lit ? "lit" : "hi", anchor: "middle" });
     if (state === "down") {
       out += S(slabOf(insetPlan(tray, 1), TRAY_H, 2.5, P, 3, 0.4), { tone: "lo" });
       out += L(lineOnTop([tray.x + 5, tray.y + 5], [tray.x + tray.w - 5, tray.y + tray.d - 5], TRAY_H + 2.5, P) + lineOnTop([tray.x + tray.w - 5, tray.y + 5], [tray.x + 5, tray.y + tray.d - 5], TRAY_H + 2.5, P), { tone: "mid" });
-      return out;
+      return out + letter;
     }
     const h = stackHeight(share);
     if (h > 0.2) {
@@ -79,7 +87,7 @@ export default function mount({ P, G, CARD_SVG }, root) {
       for (let z = TRAY_H + 6; z < TRAY_H + h - 1; z += 6) seams.push(sideSeam(stack, z, P, 2));
       out += S(slabOf(stack, TRAY_H, h, P, 2, 0.4), { tone: "hi", crease: "lo", lit, inner: seams.length ? L(seams.join(""), { tone: "faint" }) : "" });
     }
-    return out;
+    return out + letter;
   }
 
   const SALT = 25;
@@ -119,6 +127,7 @@ export default function mount({ P, G, CARD_SVG }, root) {
   function drawFly(list) { flyEl.innerHTML = list.map(cardAt).join(""); }
   function drawTrack(list) { trackEl.innerHTML = list.map(cardAt).join(""); }
 
+  function ratioNow() { return spread(Object.fromEntries(activeNodes().map((n) => [n, share[n]]))).ratio; }
   function showStats() {
     const nodes = activeNodes(), s = spread(Object.fromEntries(nodes.map((n) => [n, share[n]])));
     const busiest = nodes.reduce((a, b) => (share[b] > share[a] ? b : a)), quietest = nodes.reduce((a, b) => (share[b] < share[a] ? b : a));
@@ -159,21 +168,25 @@ export default function mount({ P, G, CARD_SVG }, root) {
   }
 
   // Change the cluster: recompute the model, then fly only the cards whose owner changed.
-  function reconfigure(label, change) {
-    const beforeOwners = owners, beforeShare = { ...share };
+  function reconfigure(label, change, rebuild = false) {
+    const beforeOwners = owners, beforeShare = { ...share }, beforeRatio = ratioNow();
     change();
     recompute();
     const mv = moved(beforeOwners, owners);
-    lastMove = mv;
+    lastMove = rebuild ? null : mv;
     const sources = Object.entries(mv.from).sort((a, b) => b[1] - a[1]).map(([n]) => n);
     const fromText = mv.count === 0 ? "" : sources.length === 1 ? " · all from " + sources[0] : " · from " + sources.length + " nodes";
     const fromEs = mv.count === 0 ? "" : sources.length === 1 ? " · todas de " + sources[0] : " · de " + sources.length + " nodos";
     steps = []; current = null; drawFly([]); drawTrack([]); drawPegs(null); drawLever(); drawDrum(false); litBin = -1;
     const sample = [];
-    for (let key = 0; key < KEYS; key += 25) if (beforeOwners[key] !== owners[key]) sample.push(key);
+    // A new marker count re-places every marker: a rebuild of the ring, not a live change, so no cards fly.
+    if (!rebuild) for (let key = 0; key < KEYS; key += 25) if (beforeOwners[key] !== owners[key]) sample.push(key);
     const target = { ...share };
     const total = 1.1 + 0.035 * sample.length;
-    tell(T(label.en + " · " + mv.count + " of 1,000 keys moved (" + pctTenths(mv.share) + ")" + fromText, label.es + " · " + mv.count + " de 1,000 claves se movieron (" + pctTenths(mv.share) + ")" + fromEs));
+    if (rebuild) {
+      const ratios = beforeRatio.toFixed(2) + "× → " + ratioNow().toFixed(2) + "×";
+      tell(T(label.en + " · ring rebuilt, not changed live · busiest ÷ fair " + ratios, label.es + " · anillo reconstruido, no cambiado en vivo · más ocupado ÷ justo " + ratios));
+    } else tell(T(label.en + " · " + mv.count + " of 1,000 keys moved (" + pctTenths(mv.share) + ")" + fromText, label.es + " · " + mv.count + " de 1,000 claves se movieron (" + pctTenths(mv.share) + ")" + fromEs));
     steps.push({ dur: total, run: (t) => {
       const time = t * total;
       for (const id of NODE_IDS) shown[id] = lerp(shareOf(beforeShare, id), shareOf(target, id), ease(Math.min(1, time / total)));
@@ -211,7 +224,7 @@ export default function mount({ P, G, CARD_SVG }, root) {
   const loop = WB.loop({ stage, step: (dt) => advance(dt * cfg.speed), onPause: pause.onPause });
   pause.bind(loop);
   const LABELS = {
-    mode: (v) => v === "ring" ? T("switched to the hash ring", "cambio al anillo de hash") : T("switched to hash mod n", "cambio a hash mod n"),
+    mode: (v) => v === "ring" ? T("switched to the hash ring", "cambió al anillo de hash") : T("switched to hash mod n", "cambió a hash mod n"),
     count: (v, before) => v > before
       ? (v - before === 1 ? T(NODE_IDS[v - 1] + " added", NODE_IDS[v - 1] + " agregado") : T("nodes " + before + " → " + v, "nodos " + before + " → " + v))
       : (before - v === 1 ? T(NODE_IDS[before - 1] + " removed", NODE_IDS[before - 1] + " quitado") : T("nodes " + before + " → " + v, "nodos " + before + " → " + v)),
@@ -229,7 +242,7 @@ export default function mount({ P, G, CARD_SVG }, root) {
     if (!real.length) return;
     const parts = real.map(([name, v]) => LABELS[name](v, cfg[name]));
     const label = T(parts.map((x) => x.en).join(" · "), parts.map((x) => x.es).join(" · "));
-    reconfigure(label, () => { for (const [name, v] of real) cfg[name] = v; });
+    reconfigure(label, () => { for (const [name, v] of real) cfg[name] = v; }, real.some(([name]) => name === "vnodes"));
     if (loop.paused) loop.setPaused(false);
   }
   root.on("change", (name, value) => {

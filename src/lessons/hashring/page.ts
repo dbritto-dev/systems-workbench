@@ -113,13 +113,13 @@ const EXPERIMENTS = [
     question: t("Does consistent hashing spread a hot key's traffic?", "¿El hashing consistente reparte el tráfico de una clave caliente (hot key)?"),
     options: [
       t("Yes: its requests are spread around the ring", "Sí: sus solicitudes se reparten por el anillo"),
-      t("No: one node serves all of that key, and adding nodes barely helps", "No: un solo nodo atiende toda esa clave, y agregar nodos casi no ayuda"),
-      t("Yes, as long as you add enough nodes", "Sí, siempre que agregues suficientes nodos"),
+      t("No: one node serves all of it", "No: un solo nodo la atiende entera"),
+      t("Yes, once there are enough nodes to share it", "Sí, cuando hay suficientes nodos para compartirla"),
     ],
     answer: 1,
     why: t(
-      "Consistent hashing decides where each key lives, and a key lives on one node. The node that owns key 7 carries 30% of the traffic plus its own share of the rest, however many nodes you add. Hot keys need a different tool: replicate that key to several nodes, cache it closer to the callers, or split it into sub-keys.",
-      "El hashing consistente decide dónde vive cada clave, y una clave vive en un solo nodo. El nodo dueño de la clave 7 carga el 30% del tráfico más su propia parte del resto, sin importar cuántos nodos agregues. Las claves calientes necesitan otra herramienta: replicar esa clave en varios nodos, cachearla más cerca de quienes la llaman o dividirla en subclaves.",
+      "Consistent hashing decides where each key lives, and a key lives on one node. The node that owns key 7 carries 30% of the traffic plus its own share of the rest, however many nodes you add: more nodes only shrink its part of the rest, never the 30%. Hot keys need a different tool: replicate that key to several nodes, cache it closer to the callers, or split it into sub-keys.",
+      "El hashing consistente decide dónde vive cada clave, y una clave vive en un solo nodo. El nodo dueño de la clave 7 carga el 30% del tráfico más su propia parte del resto, sin importar cuántos nodos agregues: más nodos solo achican su parte del resto, nunca ese 30%. Las claves calientes necesitan otra herramienta: replicar esa clave en varios nodos, cachearla más cerca de quienes la llaman o dividirla en subclaves.",
     ),
     watch: { mode: "ring", count: 3, vnodes: 100, hot: true, then: { count: 6 } },
   },
@@ -140,16 +140,16 @@ const QUESTIONS = [
      "Equilibrio: unos pocos marcadores al azar cortan el anillo en arcos muy desiguales (con un marcador, el nodo más ocupado tenía unas 2.3× su parte justa); muchos marcadores por nodo se compensan. Fallas: con un marcador, todo el arco de un nodo caído va a parar a un solo vecino; con muchos, sus arcos se reparten entre todos los sobrevivientes. También permiten que una máquina más grande tome más marcadores.")],
   [t("You run a cache cluster in front of a database and add a node. Compare modulo and a ring.",
      "Tienes un clúster de caché delante de una base de datos y agregas un nodo. Compara módulo y un anillo."),
-   t("With modulo about 80% of keys now map to a different node, so 80% of reads miss at once and hit the database: the same stampede as emptying the cache. With a ring only about 1 in n + 1 keys move, so the miss spike is small and lands on the keys of one neighbour.",
-     "Con módulo, cerca del 80% de las claves pasan a otro nodo, así que el 80% de las lecturas fallan de golpe y van a la base de datos: la misma estampida que vaciar la caché. Con un anillo solo se mueve más o menos 1 de cada n + 1 claves, así que el pico de fallos es pequeño y cae sobre las claves de un solo vecino.")],
+   t("With modulo about 80% of keys now map to a different node, so 80% of reads miss at once and hit the database: the same stampede as emptying the cache (lesson 01, Caching, and lesson 28, Cache stampede). With a ring only about 1 in n + 1 keys move, so the miss spike is small and lands on the keys of one neighbour.",
+     "Con módulo, cerca del 80% de las claves pasan a otro nodo, así que el 80% de las lecturas fallan de golpe y van a la base de datos: la misma estampida que vaciar la caché (lección 01, Caché, y lección 28, Cache stampede). Con un anillo solo se mueve más o menos 1 de cada n + 1 claves, así que el pico de fallos es pequeño y cae sobre las claves de un solo vecino.")],
   [t("One key gets 30% of all requests and its node is overloaded. What would you do?",
      "Una clave recibe el 30% de todas las solicitudes y su nodo está sobrecargado. ¿Qué harías?"),
    t("Consistent hashing won't help: a key lives on one node. Replicate the hot key to several nodes and read from any of them, cache it closer to the callers (in-process), or split it into sub-keys (key#1…key#n) and combine the results. Also find out why one key is that hot.",
      "El hashing consistente no va a ayudar: una clave vive en un solo nodo. Replica la clave caliente en varios nodos y lee de cualquiera de ellos, cachéala más cerca de quienes la llaman (en el mismo proceso) o divídela en subclaves (key#1…key#n) y combina los resultados. Averigua también por qué una clave está tan caliente.")],
   [t("Where have you met consistent hashing in real systems?",
      "¿Dónde te has encontrado con el hashing consistente en sistemas reales?"),
-   t("Memcached and Redis client-side sharding, Cassandra and DynamoDB partitioning, load balancers that keep a user on the same backend (Envoy ring hash, Maglev), and CDNs choosing which edge server holds an object. A good answer also notes that moving a key means moving its data, which is why moving fewer keys matters.",
-     "En el sharding del lado del cliente de Memcached y Redis, el particionado de Cassandra y DynamoDB, los balanceadores de carga que mantienen a un usuario en el mismo backend (ring hash de Envoy, Maglev) y las CDN que eligen qué servidor de borde guarda un objeto. Una buena respuesta también señala que mover una clave significa mover sus datos; por eso importa mover menos claves.")],
+   t("Memcached client libraries (ketama) and other client-side sharding, partitioning in Cassandra, Riak and other Dynamo-style stores, load balancers that keep a user on the same backend (Envoy ring hash, Maglev; lesson 03, Load balancing), and CDNs choosing which edge server holds an object. Redis Cluster itself uses 16,384 fixed hash slots, a different scheme. A good answer also notes that moving a key means moving its data, which is why moving fewer keys matters.",
+     "En las bibliotecas cliente de Memcached (ketama) y otros esquemas de sharding del lado del cliente, en el particionamiento de Cassandra, Riak y otros almacenes al estilo Dynamo, en los balanceadores de carga que mantienen a un usuario en el mismo backend (ring hash de Envoy, Maglev; lección 03, Balanceo de carga) y en las CDN que eligen qué servidor de borde guarda un objeto. Redis Cluster, en cambio, usa 16,384 ranuras de hash fijas (hash slots), un esquema distinto. Una buena respuesta también señala que mover una clave significa mover sus datos; por eso importa mover menos claves.")],
 ];
 
 export default defineLesson({
@@ -164,15 +164,15 @@ export default defineLesson({
       title: t("Sorting carousel", "Carrusel clasificador"),
       keys: [
         { mark: "lit", label: t("The card in play, and cards that move", "La tarjeta en juego y las tarjetas que se mueven") },
-        { mark: "raised", label: t("Turntable: the hash ring, 0–360°", "Plataforma giratoria: el anillo de hash, 0–360°") },
-        { mark: "flat", label: t("Bins A–F, left to right: stack height is each node's share", "Cajones A–F, de izquierda a derecha: la altura de la pila es la parte de cada nodo") },
+        { mark: "raised", label: t("Turntable: the hash ring, 0–360°, with each marker's node letter; the drum (right) picks the bin in modulo mode", "Plataforma giratoria: el anillo de hash, 0–360°, con la letra del nodo de cada marcador; el tambor (derecha) elige el cajón en modo módulo") },
+        { mark: "flat", label: t("Bins A–F, lettered on the front: stack height is each node's share", "Cajones A–F, con la letra al frente: la altura de la pila es la parte de cada nodo") },
       ],
       caption: t(
         "Each card is one of 1,000 keys. In ring mode it lands at its hash angle, slides clockwise to the next marker peg and goes to that peg's bin. Flip the lever to modulo and the drum picks bin number hash mod n instead. Change the cluster and only the cards that must move fly to their new bin.",
         "Cada tarjeta es una de 1,000 claves. En modo anillo cae en su ángulo de hash, se desliza en sentido horario hasta la siguiente clavija marcadora y va al cajón de esa clavija. Mueve la palanca a módulo y el tambor elige en su lugar el cajón número hash mod n. Cambia el clúster y solo las tarjetas que deben moverse vuelan a su nuevo cajón.",
       ),
       stage: { "data-office": "" },
-      label: t("Sorting carousel simulation. Space pauses or resumes.", "Simulación del carrusel clasificador. Espacio pausa o reanuda."),
+      label: t("Sorting carousel simulation. Space pauses or resumes.", "Simulación del carrusel clasificador. La barra espaciadora pausa o reanuda."),
     },
     svg: buildFigure(),
     stats: [["nodes", t("Nodes", "Nodos"), "4"], ["moved", t("Moved, last change", "Movidas, último cambio"), "–"], ["ratio", t("Busiest ÷ fair", "Más ocupado ÷ justo"), "–"], ["busiest", t("Busiest node", "Nodo más ocupado"), "–"], ["quietest", t("Quietest node", "Nodo menos ocupado"), "–"], ["sorted", t("Cards sorted", "Tarjetas clasificadas")]],
@@ -189,6 +189,8 @@ export default defineLesson({
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results use the machine's own model with 1,000 keys; ring results are averaged over 200 clusters, because they depend on where the markers happen to land.",
     "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados usan el mismo modelo de la máquina con 1,000 claves; los del anillo se promedian sobre 200 clústeres, porque dependen de dónde caen los marcadores."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
+  // Node letters on the ring and the bins light with the card in play.
+  css: '.iso-face-text[data-tone="lit"]{fill:var(--anatomy-lit)}',
   data: {
     P,
     G: GEOMETRY,
