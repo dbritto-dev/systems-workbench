@@ -18,7 +18,7 @@ const PLATE_H = 12, FOOT_H = 5;
 
 // Desks: 0 client, 1 gateway, 2 service, 3 database. Two rows of trays, PITCH apart.
 const PITCH = 9, ROW = 9;
-const DESK_Y = -30, DESK_D = 23, DESK_H = 14;
+const DESK_Y = -30, DESK_D = 23, DESK_H = 16;
 const COLS = [5, 5, 5, 3];
 const DESK_X = [-123, -54, 15, 92];
 export const DESKS = COLS.map((cols, i) => ({ x: DESK_X[i], y: DESK_Y, w: cols * PITCH + 4, d: DESK_D, r: 1.5 }));
@@ -38,7 +38,7 @@ export const LANES = [1, 2, 3].map((i) => {
 });
 // The database's overflow table: where its line goes once the lane is full.
 const TABLE = { x: 63, y: -1, w: 28, d: 28, r: 1.5 };
-const TABLE_H = 7;
+const TABLE_H = 11;
 export const PILE = (() => {
   const out = [];
   for (let layer = 0; layer < 5; layer++) for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) out.push([TABLE.x + 5.5 + col * 8.5, TABLE.y + 5.5 + row * 8.5, TABLE_H + 0.3 + layer * 2.6]);
@@ -77,11 +77,12 @@ function table() {
   const out = [S(k.slabOf(TABLE, 0, TABLE_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TABLE, 2), TABLE_H, P), { tone: "faint" }) })];
   const front = TABLE.y + TABLE.d;
   out.push(digitCounter(P, { x: TABLE.x + 2.6, y: front, z: 1.2, count: 3, w: 3.4, h: 4.4, gap: 0.5, pad: 0.8, name: "queue" }));
-  out.push(faceText(P, [TABLE.x + 16.8, front, 3.8], t("IN", "EN"), { size: 2.1, tone: "mid" }), faceText(P, [TABLE.x + 16.8, front, 1.4], t("QUEUE", "COLA"), { size: 2.1, tone: "mid" }));
+  out.push(faceText(P, [TABLE.x + 2, front, 8.6], t("IN QUEUE", "EN COLA"), { size: 2.9, tone: "mid" }));
   return out.join("");
 }
 
-const NAMES = [t("CLIENT", "CLIENTE"), t("GATEWAY", "GATEWAY"), t("SERVICE", "SERVICIO"), t("DATABASE", "BASE DE DATOS")];
+// "BASE DE DATOS" doesn't fit the side at a readable size; the texts also call it "la base".
+const NAMES = [t("CLIENT", "CLIENTE"), t("GATEWAY", "GATEWAY"), t("SERVICE", "SERVICIO"), t("DATABASE", "BASE")];
 
 // A desk: the body, a tray per worker, the station's name and its timeout on the right face, counters on the front.
 function desk(i) {
@@ -91,18 +92,18 @@ function desk(i) {
   out.push(PADS[i].map(([x, y]) => S(k.slabOf({ x: x - 4.1, y: y - 3.9, w: 8.2, d: 7.8, r: 0.6 }, DESK_H, 0.6, P, 2, 0.2), { tone: "lo", crease: "none" })).join(""));
   // right face: name, then what this hop waits for its call (live)
   // (kept above z 5, clear of the lane that leaves this face)
-  out.push(faceText(P, [right, mid, 11.6], NAMES[i], { face: "x", size: 2.6, tone: "hi", anchor: "middle" }));
-  out.push(faceText(P, [right, mid, 8.5], "TIMEOUT", { face: "x", size: 2.2, tone: "mid", anchor: "middle", attr: `data-tlabel="${i}"` }));
-  out.push(faceText(P, [right, mid, 5.3], "", { face: "x", size: 2.8, tone: "hi", anchor: "middle", attr: `data-tvalue="${i}"` }));
+  out.push(faceText(P, [right, mid, 12.8], NAMES[i], { face: "x", size: 3, tone: "hi", anchor: "middle" }));
+  out.push(faceText(P, [right, mid, 9.2], "TIMEOUT", { face: "x", size: 2.8, tone: "mid", anchor: "middle", attr: `data-tlabel="${i}"` }));
+  out.push(faceText(P, [right, mid, 5.5], "", { face: "x", size: 3, tone: "hi", anchor: "middle", attr: `data-tvalue="${i}"` }));
   // front face: counters
   if (i === 0) {
     out.push(digitCounter(P, { x: d.x + 4, y: front, z: 2, count: 4, w: 4, h: 5.4, gap: 0.6, pad: 1.2, name: "ok" }));
-    out.push(faceText(P, [d.x + 3, front, 10], t("IN TIME", "A TIEMPO"), { size: 2.3, tone: "mid" }));
+    out.push(faceText(P, [d.x + 3, front, 11.2], t("IN TIME", "A TIEMPO"), { size: 3.2, tone: "mid" }));
     out.push(digitCounter(P, { x: d.x + 29, y: front, z: 2, count: 3, w: 4, h: 5.4, gap: 0.6, pad: 1.2, name: "late" }));
-    out.push(faceText(P, [d.x + 28, front, 10], t("GAVE UP", "SE RINDIÓ"), { size: 2.3, tone: "mid" }));
+    out.push(faceText(P, [d.x + 28, front, 11.2], t("GAVE UP", "SE RINDIÓ"), { size: 3.2, tone: "mid" }));
   } else {
     out.push(digitCounter(P, { x: d.x + 4, y: front, z: 2, count: 3, w: 4, h: 5.4, gap: 0.6, pad: 1.2, name: "waste" + i }));
-    out.push(faceText(P, [d.x + 3, front, 10], t("WASTED S", "S PERDIDOS"), { size: 2.3, tone: "mid" }));
+    out.push(faceText(P, [d.x + 3, front, 11.2], t("WASTED S", "S PERDIDOS"), { size: 3.2, tone: "mid" }));
   }
   out.push(`</g>`);
   return out.join("");
