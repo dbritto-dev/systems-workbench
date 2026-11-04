@@ -3,10 +3,10 @@
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { buildFigure, chipSvg, heightOf, P, GEOMETRY, POINTERS } from "./figure";
-import { rng, userRequest, summary, binOf, binPos, tailRun, fanoutRun, mergeRun, hedgeRun, gcRun, hedgeAtP95, fmt } from "./sim";
+import { rng, userRequest, summary, binOf, binPos, tailRun, fanoutRun, mergeRun, omissionRun, gcRun, hedgeAtP95, fmt } from "./sim";
 
 // ---------- results (computed once here from the same model the page runs) ----------
-const R = { tail: tailRun(), fanout: fanoutRun(), merge: mergeRun(), hedge: hedgeRun(), gc: gcRun() };
+const R = { tail: tailRun(), fanout: fanoutRun(), merge: mergeRun(), omission: omissionRun(), gc: gcRun() };
 const HEDGE_AT = hedgeAtP95();
 
 // ---------- the first frame: fan-out to 10, one call in 100 stalls, a request waiting on tower 7 ----------
@@ -45,11 +45,11 @@ const RUNS = {
         "p99 de los hosts sanos: cerca de " + fmt(m.goodP99) + "; el del host malo: " + fmt(m.maxP99) + ". Promedio de los diez p99: " + fmt(m.avgP99) + ". El p99 de las 50,000 llamadas combinadas: " + fmt(m.fleetP99) + "."),
       bars: [[t("Average of ten p99s", "Promedio de diez p99"), m.avgP99 / top, fmt(m.avgP99)], [t("Real p99, merged", "p99 real, combinado"), m.fleetP99 / top, fmt(m.fleetP99), true], [t("Worst host's p99", "p99 del peor host"), 1, fmt(m.maxP99)]] };
   },
-  hedge: () => {
-    const { plain, hedged, at } = R.hedge, top = plain.p99;
-    return { verdict: t("No hedge: p50 " + fmt(plain.p50) + ", p99 " + fmt(plain.p99) + ", p99.9 " + fmt(plain.p999) + ". Hedge after " + fmt(at) + ": p50 " + fmt(hedged.p50) + ", p99 " + fmt(hedged.p99) + ", p99.9 " + fmt(hedged.p999) + ", for " + pc(hedged.extraShare) + " more calls.",
-        "Sin respaldo: p50 " + fmt(plain.p50) + ", p99 " + fmt(plain.p99) + ", p99.9 " + fmt(plain.p999) + ". Respaldo después de " + fmt(at) + ": p50 " + fmt(hedged.p50) + ", p99 " + fmt(hedged.p99) + ", p99.9 " + fmt(hedged.p999) + ", con un " + pc(hedged.extraShare) + " más de llamadas."),
-      bars: [[t("p99, no hedge", "p99, sin respaldo"), 1, fmt(plain.p99), true], [t("p99, hedged", "p99, con respaldo"), hedged.p99 / top, fmt(hedged.p99)], [t("Extra calls, hedged", "Llamadas extra, con respaldo"), hedged.extraShare, pc(hedged.extraShare)]] };
+  omission: () => {
+    const { open, closed } = R.omission, top = open.p99, n = (x) => Math.round(x).toLocaleString("en");
+    return { verdict: t("Waits for each reply: " + n(closed.n) + " requests, p99 " + fmt(closed.p99) + ", p99.9 " + fmt(closed.p999) + "; " + n(closed.hit) + " request met the pause. Fixed rate: " + n(open.n) + " requests, p99 " + fmt(open.p99) + ", p99.9 " + fmt(open.p999) + "; " + pc(open.slow) + " took over 100 ms.",
+        "Espera cada respuesta: " + n(closed.n) + " solicitudes, p99 " + fmt(closed.p99) + ", p99.9 " + fmt(closed.p999) + "; " + n(closed.hit) + " solicitud se topó con la pausa. Tasa fija: " + n(open.n) + " solicitudes, p99 " + fmt(open.p99) + ", p99.9 " + fmt(open.p999) + "; el " + pc(open.slow) + " tardó más de 100 ms."),
+      bars: [[t("p99, waits for each reply", "p99, espera cada respuesta"), closed.p99 / top, fmt(closed.p99), true], [t("p99, fixed rate", "p99, tasa fija"), 1, fmt(open.p99)], [t("Over 100 ms, waits for each reply", "Más de 100 ms, espera cada respuesta"), closed.hit / 100, n(closed.hit), true], [t("Over 100 ms, fixed rate", "Más de 100 ms, tasa fija"), (open.slow * open.n) / 100, n(open.slow * open.n)]] };
   },
   gc: () => {
     const { calm, pause } = R.gc, top = pause.max;
@@ -68,8 +68,8 @@ const EXPERIMENTS = [
     question: t("With 1 call in 50 stalled, what happens to the mean, the p50 and the p99?", "Con 1 llamada de cada 50 trabada, ¿qué pasa con la media, el p50 y el p99?"),
     options: [
       t("All three rise by about 2%, since only 2% of calls changed", "Los tres suben cerca de un 2%, porque solo cambió el 2% de las llamadas"),
-      t("The p50 doesn't move, the mean grows a few times over, and the p99 grows dozens of times over", "El p50 no se mueve, la media crece unas pocas veces y el p99 crece decenas de veces"),
-      t("The p99 stays put, because 98% of calls are still fast", "El p99 se queda igual, porque el 98% de las llamadas siguen siendo rápidas"),
+      t("p50 holds; the mean rises a few times, the p99 dozens", "El p50 se queda; la media sube unas veces, el p99 decenas"),
+      t("The p99 stays put: 98% of calls are still fast", "El p99 se queda igual: el 98% sigue siendo rápido"),
     ],
     answer: 1,
     why: t(
@@ -84,14 +84,14 @@ const EXPERIMENTS = [
     change: t("Every backend stalls 1 call in 100, so its own p99 is a stall · a user request calls 1, 10 or 100 backends in parallel and waits for all of them", "Cada backend traba 1 llamada de cada 100, así que su propio p99 es una traba · una solicitud de usuario llama a 1, 10 o 100 backends en paralelo y espera a todos"),
     question: t("At a fan-out of 100, what does the typical (p50) user request see?", "Con un fan-out de 100, ¿qué ve la solicitud típica (p50) de un usuario?"),
     options: [
-      t("About 10 ms, the same as one call: the stalls are still rare", "Unos 10 ms, lo mismo que una llamada: las trabas siguen siendo raras"),
-      t("A little slower, around 20 ms: it waits for the slowest of 100 fast calls", "Un poco más lenta, unos 20 ms: espera a la más lenta de 100 llamadas rápidas"),
-      t("A stall: most user requests hit at least one stalled call, so the p50 is over half a second", "Una traba: la mayoría de las solicitudes tocan al menos una llamada trabada, así que el p50 pasa del medio segundo"),
+      t("About 10 ms: stalls are still rare", "Unos 10 ms: las trabas siguen siendo raras"),
+      t("Around 20 ms: the slowest of 100 fast calls", "Unos 20 ms: la más lenta de 100 llamadas rápidas"),
+      t("Over half a second: it waits on a stall", "Más de medio segundo: espera una traba"),
     ],
     answer: 2,
     why: t(
-      "A request that waits for all its calls is as slow as the slowest one. The chance that none of 100 calls stalls is 0.99^100 ≈ 37%, so about 63% of user requests wait on a stall: one backend's p99 has become the user's median. This is the example in Dean and Barroso's \"The Tail at Scale\". At scale you can't hide a rare slow call; you have to make the tail itself short, or stop waiting for it.",
-      "Una solicitud que espera todas sus llamadas es tan lenta como la más lenta. La probabilidad de que ninguna de 100 llamadas se trabe es 0.99^100 ≈ 37%, así que cerca del 63% de las solicitudes de usuario esperan una traba: el p99 de un backend se volvió la mediana del usuario. Es el ejemplo de \"The Tail at Scale\", de Dean y Barroso. A gran escala no puedes esconder una llamada lenta rara; tienes que acortar la cola misma o dejar de esperarla.",
+      "A request that waits for all its calls is as slow as the slowest one. The chance that none of 100 calls stalls is 0.99^100 ≈ 37%, so about 63% of user requests wait on a stall: one backend's p99 has become the user's median. This is the example in Dean and Barroso's \"The Tail at Scale\". At scale you can't hide a rare slow call; you have to make the tail itself short, or stop waiting for it (hedged requests, lesson 48).",
+      "Una solicitud que espera todas sus llamadas es tan lenta como la más lenta. La probabilidad de que ninguna de 100 llamadas se trabe es 0.99^100 ≈ 37%, así que cerca del 63% de las solicitudes de usuario esperan una traba: el p99 de un backend se volvió la mediana del usuario. Es el ejemplo de \"The Tail at Scale\", de Dean y Barroso. A gran escala no puedes esconder una llamada lenta rara; tienes que acortar la cola misma o dejar de esperarla (solicitudes con respaldo, lección 48).",
     ),
     watch: { fanout: 100, share: 0.01, hedge: "off" },
   },
@@ -101,50 +101,51 @@ const EXPERIMENTS = [
     change: t("10 hosts, 5,000 calls each · 9 healthy hosts stall 1 call in 500 · one bad host stalls 3 in 20 · the dashboard averages the ten p99s", "10 hosts, 5,000 llamadas cada uno · 9 hosts sanos traban 1 llamada de cada 500 · un host malo traba 3 de cada 20 · el tablero promedia los diez p99"),
     question: t("How does the average of the ten p99s compare with the p99 of all 50,000 calls?", "¿Cómo se compara el promedio de los diez p99 con el p99 de las 50,000 llamadas?"),
     options: [
-      t("About the same: the average of p99s is the fleet's p99", "Más o menos igual: el promedio de los p99 es el p99 de toda la flota"),
-      t("Far too low: percentiles don't average; merge the hosts' histograms and take the p99 once", "Demasiado bajo: los percentiles no se promedian; junta los histogramas de los hosts y calcula el p99 una sola vez"),
-      t("Too high: the bad host drags the average above the real p99", "Demasiado alto: el host malo arrastra el promedio por encima del p99 real"),
+      t("About the same: it is the fleet's p99", "Más o menos igual: es el p99 de la flota"),
+      t("Far too low: the fleet's p99 is a stall", "Demasiado bajo: el p99 de la flota es una traba"),
+      t("Too high: the bad host drags the average up", "Demasiado alto: el host malo sube el promedio"),
     ],
     answer: 1,
     why: t(
-      "A percentile is a position in a sorted list, not a quantity you can add. Nine healthy p99s near 20 ms pull the average down, but the bad host's stalls are 1.5% of all calls, more than 1%, so the fleet's real p99 is a stall. The fix is to keep histograms (fixed buckets, HdrHistogram, t-digest), add the bucket counts across hosts or minutes, and read the percentile from the merged counts. The same goes for averaging minutes into an hour.",
-      "Un percentil es una posición en una lista ordenada, no una cantidad que se pueda sumar. Nueve p99 sanos cerca de 20 ms bajan el promedio, pero las trabas del host malo son el 1.5% de todas las llamadas, más del 1%, así que el p99 real de la flota es una traba. La solución es guardar histogramas (buckets fijos, HdrHistogram, t-digest), sumar los conteos de cada bucket entre hosts o minutos y leer el percentil de los conteos combinados. Lo mismo vale para promediar minutos en una hora.",
+      "A percentile is a position in a sorted list, not a quantity you can add. Nine healthy p99s near 20 ms pull the average down, but the bad host's stalls are 1.5% of all calls, more than 1%, so the fleet's real p99 is a stall. Here the average is too low; with a smaller bad host, whose stalls were under 1% of all calls, it would be too high. The average of p99s isn't any percentile of anything. The fix is to keep histograms (fixed buckets, HdrHistogram, t-digest), add the bucket counts across hosts or minutes, and read the percentile from the merged counts. The same goes for averaging minutes into an hour.",
+      "Un percentil es una posición en una lista ordenada, no una cantidad que se pueda sumar. Nueve p99 sanos cerca de 20 ms bajan el promedio, pero las trabas del host malo son el 1.5% de todas las llamadas, más del 1%, así que el p99 real de la flota es una traba. Aquí el promedio queda demasiado bajo; con un host malo más chico, cuyas trabas fueran menos del 1% de todas las llamadas, quedaría demasiado alto. El promedio de los p99 no es ningún percentil de nada. La solución es guardar histogramas (buckets fijos, HdrHistogram, t-digest), sumar los conteos de cada bucket entre hosts o minutos y leer el percentil de los conteos combinados. Lo mismo vale para promediar minutos en una hora.",
     ),
     watch: { fanout: 1, share: 0.02, hedge: "off" },
   },
   {
-    id: "hedge",
-    title: t("Send a backup after the p95", "Enviar un respaldo después del p95"),
-    change: t(`Fan-out 10, 1 call in 100 stalls · any call still out after ${Math.round(HEDGE_AT)} ms (the backends' p95) is sent again to another host; the first answer wins`, `Fan-out de 10, 1 llamada de cada 100 se traba · toda llamada que siga pendiente después de ${Math.round(HEDGE_AT)} ms (el p95 de los backends) se envía otra vez a otro host; gana la primera respuesta`),
-    question: t("What does hedging cost, and what does it buy?", "¿Cuánto cuesta enviar respaldos (hedged requests) y qué se gana?"),
+    id: "omission",
+    title: t("A load test that waits for each reply", "Una prueba de carga que espera cada respuesta"),
+    change: t("One server, about 10 ms a request, for a minute · at 30 s it stops for a 1-second pause · a tester that sends the next request when the last one returns vs one that sends a request every 10 ms whatever happens, timing each from when it was due",
+      "Un servidor, unos 10 ms por solicitud, durante un minuto · a los 30 s se detiene por una pausa de 1 segundo · un generador que envía la siguiente solicitud cuando vuelve la anterior vs uno que envía una cada 10 ms pase lo que pase, y mide cada una desde que debía salir"),
+    question: t("What p99 does the tester that waits for each reply report?", "¿Qué p99 reporta el generador que espera cada respuesta?"),
     options: [
-      t("It doubles the calls and roughly halves the p99", "Duplica las llamadas y baja el p99 más o menos a la mitad"),
-      t("About 5% more calls, and the p99 falls from over a second to tens of milliseconds", "Cerca de un 5% más de llamadas, y el p99 baja de más de un segundo a decenas de milisegundos"),
-      t("Nothing: the stalled call is still out, so the request still waits for it", "Nada: la llamada trabada sigue pendiente, así que la solicitud la sigue esperando"),
+      t("The same as the fixed-rate one: the pause is the same", "El mismo que el de tasa fija: la pausa es la misma"),
+      t("A healthy one: the pause shows up in one request", "Uno sano: la pausa aparece en una sola solicitud"),
+      t("A worse one: its requests pile up behind the pause", "Uno peor: sus solicitudes se acumulan tras la pausa"),
     ],
     answer: 1,
     why: t(
-      "Only calls slower than the p95 get a backup, so at most about 5% more calls go out. A stall is rare and independent, so the backup on another host almost always comes back in about 10 ms, and the request stops waiting for the stalled one. Dean and Barroso report a BigTable benchmark where a hedge after 10 ms cut the 99.9th percentile from 1,800 ms to 74 ms for 2% more requests. Hedge only calls that are safe to repeat, and cancel the loser if you can.",
-      "Solo las llamadas más lentas que el p95 reciben un respaldo, así que salen como mucho un 5% más de llamadas. Una traba es rara e independiente, así que el respaldo en otro host casi siempre vuelve en unos 10 ms, y la solicitud deja de esperar a la trabada. Dean y Barroso reportan una prueba en BigTable donde un respaldo después de 10 ms bajó el percentil 99.9 de 1,800 ms a 74 ms con un 2% más de solicitudes. Envía respaldos solo de llamadas que se pueden repetir sin riesgo, y cancela la perdedora si puedes.",
+      "While the server is paused, the tester that waits for each reply is waiting too, so it sends nothing: the whole second becomes one slow sample among thousands, and the p99 stays near 20 ms. Real users don't wait for each other; at 100 a second, about 100 of them arrive during that second and each waits out the rest of it. The fixed-rate tester keeps sending, times each request from when it was due, and sees them. That's coordinated omission: the tester coordinates with the system it measures and leaves out the samples that matter. Use an open-loop generator (wrk2, k6 with an arrival-rate executor) or correct for it (HdrHistogram can).",
+      "Mientras el servidor está en pausa, el generador que espera cada respuesta también espera, así que no envía nada: el segundo entero se vuelve una sola muestra lenta entre miles, y el p99 queda cerca de 20 ms. Los usuarios reales no se esperan entre sí; a 100 por segundo, unos 100 llegan durante ese segundo y cada uno espera lo que queda de él. El generador de tasa fija sigue enviando, mide cada solicitud desde que debía salir y los ve. Eso es la omisión coordinada (coordinated omission): el generador se coordina con el sistema que mide y deja fuera justo las muestras que importan. Usa un generador de lazo abierto (wrk2, k6 con un executor de tasa de llegada) o corrígelo (HdrHistogram puede).",
     ),
-    watch: { fanout: 10, share: 0.01, hedge: "p95" },
+    watch: { fanout: 1, share: 0, hedge: "off", tester: "closed", gc: true },
   },
   {
     id: "gc",
     title: t("A 1-second GC pause", "Una pausa de GC de 1 segundo"),
-    change: t("One server, 400 requests a second for a minute, no stalls · at 30 s it stops for a 1-second garbage-collection pause; requests that arrive during it wait it out", "Un servidor, 400 solicitudes por segundo durante un minuto, sin trabas · a los 30 s se detiene por una pausa de recolección de basura (GC) de 1 segundo; las solicitudes que llegan durante la pausa la esperan"),
+    change: t("One server, 100 requests a second for a minute, no stalls · at 30 s it stops for a 1-second garbage-collection pause; requests that arrive during it wait it out", "Un servidor, 100 solicitudes por segundo durante un minuto, sin trabas · a los 30 s se detiene por una pausa de recolección de basura (GC) de 1 segundo; las solicitudes que llegan durante la pausa la esperan"),
     question: t("The dashboard shows the minute's mean. What does it say, and what did the slowest 1% see?", "El tablero muestra la media del minuto. ¿Qué dice, y qué vio el 1% más lento?"),
     options: [
-      t("The mean stays under 20 ms and looks fine; the slowest 1% waited 0.4 s or more", "La media queda por debajo de 20 ms y se ve bien; el 1% más lento esperó 0.4 s o más"),
-      t("The mean jumps to about half a second, so the pause is obvious", "La media salta a cerca de medio segundo, así que la pausa es obvia"),
-      t("Both look fine: one second out of sixty is too little to show anywhere", "Ambos se ven bien: un segundo de sesenta es muy poco para notarse"),
+      t("The mean looks fine; the slowest 1% waited 0.4 s+", "La media se ve bien; el 1% más lento esperó 0.4 s o más"),
+      t("The mean jumps to about half a second", "La media salta a cerca de medio segundo"),
+      t("Both look fine: one second in sixty is too little", "Los dos se ven bien: un segundo de sesenta es muy poco"),
     ],
     answer: 0,
     why: t(
-      "Only 400 of 24,000 requests arrived during the pause, under 2%, so the mean rises by a few milliseconds and stays under any sensible alert. Those 400 people waited up to a whole second, and the p99 lands among them. Alert on high percentiles, or on the share of requests over a threshold, never on the mean. And measure from when a request was due, not when your load generator got round to sending it, or a pause also hides from your benchmark (coordinated omission).",
-      "Solo 400 de 24,000 solicitudes llegaron durante la pausa, menos del 2%, así que la media sube unos pocos milisegundos y queda por debajo de cualquier alerta razonable. Esas 400 personas esperaron hasta un segundo entero, y el p99 cae entre ellas. Alerta sobre percentiles altos, o sobre la proporción de solicitudes por encima de un umbral, nunca sobre la media. Y mide desde que la solicitud debía salir, no desde que tu generador de carga alcanzó a enviarla; si no, la pausa también se esconde de tu benchmark (coordinated omission).",
+      "Only about 100 of 6,000 requests arrived during the pause, under 2%, so the mean rises by a few milliseconds and stays under any sensible alert. Those 100 people waited up to a whole second, and the p99 lands among them. Alert on high percentiles, or on the share of requests over a threshold, never on the mean.",
+      "Solo unas 100 de 6,000 solicitudes llegaron durante la pausa, menos del 2%, así que la media sube unos pocos milisegundos y queda por debajo de cualquier alerta razonable. Esas 100 personas esperaron hasta un segundo entero, y el p99 cae entre ellas. Alerta sobre percentiles altos, o sobre la proporción de solicitudes por encima de un umbral, nunca sobre la media.",
     ),
-    watch: { fanout: 10, share: 0, hedge: "off", gc: true },
+    watch: { fanout: 1, share: 0, hedge: "off", tester: "open", gc: true },
   },
 ];
 
@@ -156,11 +157,11 @@ const QUESTIONS = [
     t("The request finishes when its slowest call does, so it is slow if any call is slow. With a 1% chance per call, the chance that all N are fast is 0.99^N: 90% at 10, 37% at 100. Rare slowness on one machine becomes common slowness for the user. A page that makes 50 requests behaves the same way, which is why per-request p99s understate what a user feels.",
       "La solicitud termina cuando termina su llamada más lenta, así que es lenta si cualquier llamada lo es. Con un 1% de probabilidad por llamada, la probabilidad de que las N sean rápidas es 0.99^N: 90% con 10, 37% con 100. La lentitud rara en una máquina se vuelve lentitud común para el usuario. Una página que hace 50 solicitudes se comporta igual, por eso el p99 por solicitud subestima lo que siente un usuario.")],
   [t("Why can't you average p99s across hosts or across minutes? What do you store instead?", "¿Por qué no puedes promediar los p99 entre hosts o entre minutos? ¿Qué guardas en su lugar?"),
-    t("A percentile is a rank in one sorted set; two sets' p99s don't combine into the p99 of both. Averages hide a bad host behind good ones, and quiet minutes weigh as much as busy ones. Store histograms (Prometheus buckets, HdrHistogram, t-digest, DDSketch), add the counts, and compute percentiles from the merged histogram.",
-      "Un percentil es una posición en un conjunto ordenado; los p99 de dos conjuntos no se combinan en el p99 de ambos. Los promedios esconden un host malo detrás de los buenos, y los minutos tranquilos pesan lo mismo que los ocupados. Guarda histogramas (buckets de Prometheus, HdrHistogram, t-digest, DDSketch), suma los conteos y calcula los percentiles del histograma combinado.")],
+    t("A percentile is a rank in one sorted set; two sets' p99s don't combine into the p99 of both. The average of p99s can be too low (a bad host hidden behind good ones) or too high (a bad host whose stalls are under 1% of the fleet's calls), and quiet minutes weigh as much as busy ones. Store histograms (Prometheus buckets, HdrHistogram, t-digest, DDSketch), add the counts, and compute percentiles from the merged histogram.",
+      "Un percentil es una posición en un conjunto ordenado; los p99 de dos conjuntos no se combinan en el p99 de ambos. El promedio de los p99 puede quedar demasiado bajo (un host malo escondido detrás de los buenos) o demasiado alto (un host malo cuyas trabas son menos del 1% de las llamadas de la flota), y los minutos tranquilos pesan lo mismo que los ocupados. Guarda histogramas (buckets de Prometheus, HdrHistogram, t-digest, DDSketch), suma los conteos y calcula los percentiles del histograma combinado.")],
   [t("Hedged requests send a second copy of a slow call. When is that safe, and how do you keep it from becoming a load problem?", "Las solicitudes de respaldo (hedged requests) envían una segunda copia de una llamada lenta. ¿Cuándo es seguro y cómo evitas que se vuelva un problema de carga?"),
-    t("It's safe for reads and idempotent operations, where doing the work twice is harmless. Wait until the p95 (or a fixed delay) before hedging, so only about 5% of calls get a copy; send the copy to a different host; cancel the loser when the first answer arrives; and stop hedging when the whole service is slow, because then the extra copies only add load. Unlike a retry after a timeout, a hedge doesn't wait for failure.",
-      "Es seguro para lecturas y operaciones idempotentes, donde hacer el trabajo dos veces no hace daño. Espera hasta el p95 (o un retraso fijo) antes de enviar el respaldo, así solo cerca del 5% de las llamadas reciben copia; envía la copia a otro host; cancela la perdedora cuando llegue la primera respuesta; y deja de enviar respaldos cuando todo el servicio está lento, porque ahí las copias solo agregan carga. A diferencia de un reintento después de un timeout, el respaldo no espera a que algo falle.")],
+    t("It's safe for reads and idempotent operations, where doing the work twice is harmless. Wait until the p95 (or a fixed delay) before hedging, so only about 5% of calls get a copy; send the copy to a different host; cancel the loser when the first answer arrives; and stop hedging when the whole service is slow, because then the extra copies only add load. Unlike a retry after a timeout, a hedge doesn't wait for failure. Lesson 48, Hedged requests, measures the trade-offs.",
+      "Es seguro para lecturas y operaciones idempotentes, donde hacer el trabajo dos veces no hace daño. Espera hasta el p95 (o un retraso fijo) antes de enviar el respaldo, así solo cerca del 5% de las llamadas reciben copia; envía la copia a otro host; cancela la perdedora cuando llegue la primera respuesta; y deja de enviar respaldos cuando todo el servicio está lento, porque ahí las copias solo agregan carga. A diferencia de un reintento después de un tiempo límite (timeout), el respaldo no espera a que algo falle. La lección 48, Solicitudes con respaldo, mide los costos y beneficios.")],
   [t("Your load test reports a p99 of 15 ms, but production users see 1-second stalls. One likely reason in the test itself?", "Tu prueba de carga reporta un p99 de 15 ms, pero en producción los usuarios ven trabas de 1 segundo. ¿Una razón probable en la propia prueba?"),
     t("Coordinated omission: a tester that sends the next request only after the previous one returns stops sending during a stall, so the stall is counted once instead of for every request that would have arrived during it. Use an open-loop generator at a fixed rate and measure from each request's intended start time (wrk2, k6 with arrival-rate executors, HdrHistogram's correction).",
       "Omisión coordinada (coordinated omission): un generador que envía la siguiente solicitud solo cuando vuelve la anterior deja de enviar durante una traba, así que la traba se cuenta una vez en lugar de una por cada solicitud que habría llegado durante ella. Usa un generador de lazo abierto a tasa fija y mide desde la hora prevista de inicio de cada solicitud (wrk2, k6 con executors de tasa de llegada, la corrección de HdrHistogram).")],
@@ -175,8 +176,8 @@ export default defineLesson({
   lede: t("Latency isn't one number. Most requests are fast; a few are slow, and those few are what users remember. Percentiles say how slow the slow ones are, and fan-out decides how many users meet them. This lesson runs a timing hall: watch requests land in a histogram, predict what the mean and the p99 will do, then explain it back.",
     "La latencia no es un solo número. La mayoría de las solicitudes son rápidas; unas pocas son lentas, y esas pocas son las que los usuarios recuerdan. Los percentiles dicen qué tan lentas son las lentas, y el fan-out decide cuántos usuarios se las encuentran. Esta lección usa una sala de tiempos para estudiar la latencia de cola (tail latency): mira cómo caen las solicitudes en un histograma, predice qué harán la media y el p99, y después explícalo."),
   machine: {
-    intro: t("Each user request calls its backends in parallel and is done when the last one answers. Most calls take about 10 ms; a stalled call takes most of a second. Try the fan-out and the stalled calls, turn on hedging, or pause tower 7 for garbage collection, and watch which pointer moves.",
-      "Cada solicitud de usuario llama a sus backends en paralelo y termina cuando responde el último. La mayoría de las llamadas tardan unos 10 ms; una llamada trabada tarda casi un segundo. Prueba el fan-out y las llamadas trabadas, activa los respaldos o pausa la torre 7 por recolección de basura, y mira qué puntero se mueve."),
+    intro: t("Each user request calls its backends in parallel and is done when the last one answers. Most calls take about 10 ms; a stalled call takes most of a second. Try the fan-out and the stalled calls, turn on hedging, pause tower 7 for garbage collection, or switch the load tester to wait for each reply, and watch which pointer moves. With a fan-out of 1, every call goes to tower 7.",
+      "Cada solicitud de usuario llama a sus backends en paralelo y termina cuando responde el último. La mayoría de las llamadas tardan unos 10 ms; una llamada trabada tarda casi un segundo. Prueba el fan-out y las llamadas trabadas, activa los respaldos, pausa la torre 7 por recolección de basura o cambia el generador de carga para que espere cada respuesta, y mira qué puntero se mueve. Con un fan-out de 1, todas las llamadas van a la torre 7."),
     plate: {
       title: t("Timing hall", "Sala de tiempos"),
       keys: [
@@ -198,10 +199,11 @@ export default defineLesson({
       { seg: "fanout", label: t("Fan-out", "Fan-out"), options: [[1, "1"], [10, "10"], [100, "100"]], value: 10 },
       { seg: "share", label: t("Stalled calls", "Llamadas trabadas"), options: [[0, t("None", "Ninguna")], [0.01, t("1 in 100", "1 de cada 100")], [0.02, t("1 in 50", "1 de cada 50")]], value: 0.01 },
       { seg: "hedge", label: t("Hedge", "Respaldo"), options: [["off", t("Off", "No")], ["p95", t(`After p95 (${Math.round(HEDGE_AT)} ms)`, `Después del p95 (${Math.round(HEDGE_AT)} ms)`)]], value: "off" },
+      { seg: "tester", label: t("Load tester", "Generador de carga"), options: [["open", t("Fixed rate", "Tasa fija")], ["closed", t("Waits for each reply", "Espera cada respuesta")]], value: "open" },
       { speed: true },
       { actions: [["gc", t("GC pause on tower 7 (1 s)", "Pausa de GC en la torre 7 (1 s)")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
-    note: t("A backend call takes about 10 ms. A stalled one takes 0.4 to 1.2 s. The stream runs 100 user requests a second; the request on the rig plays slowed down. Changing a setting starts the histogram again.", "Una llamada a un backend tarda unos 10 ms. Una trabada tarda de 0.4 a 1.2 s. El flujo corre 100 solicitudes de usuario por segundo; la solicitud del mostrador se muestra en cámara lenta. Cambiar un ajuste reinicia el histograma."),
+    note: t("A backend call takes about 10 ms. A stalled one takes 0.4 to 1.2 s. The stream runs 100 user requests a second (a tester that waits for each reply sends the next one when the last returns); the request on the rig plays slowed down. Changing a setting starts the histogram again.", "Una llamada a un backend tarda unos 10 ms. Una trabada tarda de 0.4 a 1.2 s. El flujo corre 100 solicitudes de usuario por segundo (un generador que espera cada respuesta envía la siguiente cuando vuelve la anterior); la solicitud del mostrador se muestra en cámara lenta. Cambiar un ajuste reinicia el histograma."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },

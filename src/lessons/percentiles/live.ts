@@ -23,13 +23,13 @@ export default function mount({ P, G, CHIP, POINTER_KEYS, HEDGE_AT }, root) {
   const each = q("[data-each]");
   const stat = (key, value) => root.stat(key, value);
 
-  const cfg = { fanout: 10, share: 0.01, hedge: "off", speed: 1 };
+  const cfg = { fanout: 10, share: 0.01, hedge: "off", tester: "open", speed: 1 };
   const RATE = 100, WINDOW = 3000, SLOWMO = 2.5, GC_HOST = 6;
-  let r, clock, made, win, winAt, bins, extra, calls, gc, shown, feat, chips, sumAt, last, note, seed = 3;
+  let r, clock, made, nextAt, win, winAt, bins, extra, calls, gc, shown, feat, chips, sumAt, last, note, seed = 3;
 
   function restart() {
     r = rng(seed); seed = (Date.now() % 1e6) + 1;
-    clock = 0; made = 0; win = []; winAt = 0; bins = Array(10).fill(0); extra = 0; calls = 0; gc = null; chips = []; sumAt = 0; note = null;
+    clock = 0; made = 0; nextAt = 1 / RATE; win = []; winAt = 0; bins = Array(10).fill(0); extra = 0; calls = 0; gc = null; chips = []; sumAt = 0; note = null;
     shown = { heights: Array(10).fill(-1), pos: {} };
     chipsLayer.textContent = "";
     feat = { phase: "idle", wait: 0.4 };
@@ -42,12 +42,16 @@ export default function mount({ P, G, CHIP, POINTER_KEYS, HEDGE_AT }, root) {
   }
 
   const hedgeAt = () => (cfg.hedge === "p95" ? HEDGE_AT : null);
-  function oneRequest(rr, t) { return userRequest(rr, { fanout: cfg.fanout, share: cfg.share, hedgeAt: hedgeAt(), t, gc }); }
+  // Fan-out 1 is one backend: every call goes to tower 7, the one the GC pause stops.
+  function oneRequest(rr, t) { return userRequest(rr, { fanout: cfg.fanout, share: cfg.share, hedgeAt: hedgeAt(), t, gc, single: cfg.fanout === 1 ? GC_HOST : null }); }
+  // A fixed-rate tester sends a request every 1/RATE s whatever happens; one that waits for each reply sends the
+  // next request when the last one returns, so it sends nothing while a call is stuck.
   function advance(dt) {
     const end = clock + dt;
-    while ((made + 1) / RATE <= end) {
-      const t = (made + 1) / RATE;
+    while (nextAt <= end) {
+      const t = nextAt;
       const req = oneRequest(r, t);
+      nextAt = cfg.tester === "closed" ? t + req.ms / 1000 : t + 1 / RATE;
       made++; extra += req.extra; calls += req.calls.length;
       if (win.length < WINDOW) win.push(req.ms); else { bins[binOf(win[winAt])]--; win[winAt] = req.ms; winAt = (winAt + 1) % WINDOW; }
       bins[binOf(req.ms)]++;
@@ -167,7 +171,7 @@ export default function mount({ P, G, CHIP, POINTER_KEYS, HEDGE_AT }, root) {
   function set(name, raw, quiet) {
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
-    cfg[name] = name === "hedge" ? raw : Number(raw);
+    cfg[name] = name === "hedge" || name === "tester" ? raw : Number(raw);
     if (!quiet) restart();
   }
   root.on("change", (name, value) => set(name, value));
@@ -182,7 +186,7 @@ export default function mount({ P, G, CHIP, POINTER_KEYS, HEDGE_AT }, root) {
 
   // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (w) => {
-    set("fanout", String(w.fanout), true); set("share", String(w.share), true); set("hedge", w.hedge, true);
+    set("fanout", String(w.fanout), true); set("share", String(w.share), true); set("hedge", w.hedge, true); set("tester", w.tester || "open", true);
     restart();
     if (loop.paused) loop.setPaused(false);
     if (w.gc) setTimeout(pauseHost, 1200);

@@ -26,12 +26,13 @@ export function callMs(r, share) {
 //   share: stall chance per call (a number, or a function of the host)
 //   hedgeAt: ms after which a call still out is sent again to another host (null: no hedging)
 //   gc: { host, from, until } a stop-the-world pause on one host: calls that reach it in [from, until) wait it out
-export function userRequest(r, { fanout = 1, share = 0.01, hedgeAt = null, t = 0, gc = null }) {
+//   single: a host index; every call goes to that one host (the live figure's "one backend")
+export function userRequest(r, { fanout = 1, share = 0.01, hedgeAt = null, t = 0, gc = null, single = null }) {
   const shareOf = typeof share === "function" ? share : () => share;
   const calls = [];
   let ms = 0, extra = 0, stalled = 0;
   for (let i = 0; i < fanout; i++) {
-    const host = fanout >= HOSTS ? i % HOSTS : Math.floor(r() * HOSTS);
+    const host = single !== null ? single : fanout >= HOSTS ? i % HOSTS : Math.floor(r() * HOSTS);
     let a = callMs(r, shareOf(host));
     if (gc && host === gc.host && t >= gc.from && t < gc.until) a += (gc.until - t) * 1000;
     if (hedgeAt !== null && a > hedgeAt) {
@@ -101,19 +102,27 @@ export function mergeRun() {
     return { avgP99: mean(p99s), maxP99: Math.max(...p99s), goodP99: mean(p99s.slice(1)), fleetP99: summary(per.flat()).p99 };
   });
 }
-// 4. Fan-out to 10, one call in 100 stalls. Hedge any call still out after the backends' p95.
+// The hedge delay the machine offers: the backends' p95, with one call in 100 stalling.
 export function hedgeAtP95() { const r = rng(5), v = []; for (let i = 0; i < 50000; i++) v.push(callMs(r, 0.01)); return summary(v).p95; }
-export function hedgeRun() {
-  const at = hedgeAtP95();
-  return { at, plain: over((seed) => run({ seed, fanout: 10, share: 0.01 })), hedged: over((seed) => run({ seed, fanout: 10, share: 0.01, hedgeAt: at })) };
-}
-// 5. One server, 400 requests a second for a minute. At 30 s it stops for a 1-second garbage-collection pause.
-export function gcRun() {
-  const base = { n: 24000, rate: 400, fanout: 1, share: 0 };
-  const one = (gc) => over((seed) => {
+
+// One server, 100 requests a second for a minute (the machine's rate). At 30 s it stops for a 1-second
+// garbage-collection pause; a request that arrives during it waits for the pause to end.
+const PAUSE = [30, 31];
+const paused = (r, t) => { let a = callMs(r, 0); if (t >= PAUSE[0] && t < PAUSE[1]) a += (PAUSE[1] - t) * 1000; return a; };
+// 4. A load tester measures that minute. Fixed rate (open loop): a request every 10 ms, timed from when it was due.
+//    Waits for each reply (closed loop): one request at a time, the next sent when the last one returns.
+export function omissionRun() {
+  const open = over((seed) => { const r = rng(seed), ms = []; for (let i = 0; i < 6000; i++) ms.push(paused(r, i / 100)); return summary(ms); });
+  const closed = over((seed) => {
     const r = rng(seed), ms = [];
-    for (let i = 0; i < base.n; i++) { const t = i / base.rate; let a = callMs(r, 0); if (gc && t >= 30 && t < 31) a += (31 - t) * 1000; ms.push(a); }
-    return summary(ms);
+    let hit = 0;
+    for (let t = 0; t < 60; ) { const a = paused(r, t); if (a > SLOW_MS) hit++; ms.push(a); t += a / 1000; }
+    return { ...summary(ms), hit };
   });
+  return { open, closed };
+}
+// 5. The same minute on a dashboard: the mean, the p50 and the p99, with and without the pause.
+export function gcRun() {
+  const one = (gc) => over((seed) => { const r = rng(seed), ms = []; for (let i = 0; i < 6000; i++) ms.push(gc ? paused(r, i / 100) : callMs(r, 0)); return summary(ms); });
   return { calm: one(false), pause: one(true) };
 }
