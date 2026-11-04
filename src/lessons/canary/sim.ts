@@ -117,9 +117,10 @@ export function tightRun() {
   const share = (rule) => seedsOf(200).filter((seed) => runDeploy({ seed, pct: 10, build: "good", rule, duration: 7200 }).decision === "rolled back").length / 200;
   return { a: share("normal"), b: share("tight") };
 }
-export function stickyRun() {
-  const share = (routing) => mean(seedsOf(30).map((seed) => { const x = runDeploy({ seed, pct: 25, build: "good", routing, duration: 600 }); return x.mixed / Math.max(1, x.active); }));
-  return { a: share("random"), b: share("sticky") };
+// The pipeline promotes a bad build after a 30-minute bake unless the rollback arm stops it first.
+export function autoRun() {
+  const at = (auto) => { const runs = seedsOf(60).map((seed) => runDeploy({ seed, pct: 5, build: "bad", auto, duration: 3600, promoteAt: 1800 })); return { failed: meanBy(runs, (x) => x.nw.err), promoted: runs.filter((x) => x.decision === "promoted").length / runs.length, rolledBack: runs.filter((x) => x.decision === "rolled back").length / runs.length, at: meanBy(runs.filter((x) => x.decision === "rolled back"), (x) => x.decidedAt) }; };
+  return { off: at(false), on: at(true) };
 }
 export function silentRun() {
   const wrong = (check) => { const runs = seedsOf(30).map((seed) => runDeploy({ seed, pct: 10, build: "silent", check, duration: 3600, promoteAt: 1800 })); return { n: meanBy(runs, (x) => x.nw.wrong), promoted: runs.filter((x) => x.decision === "promoted").length / runs.length }; };

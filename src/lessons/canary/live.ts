@@ -121,7 +121,7 @@ export default function mount({ P, G }, root) {
     else if (d.decision === "promoted") text = T("promoted · every order on the new build", "promovida · todos los pedidos en la versión nueva");
     else if (promoteAt !== null && d.decision === "watching" && d.pct > 0) text = T("canary " + d.pct + "% · " + fails + " failed, " + d.nw.wrong + " wrong prices · promote in " + Math.max(0, Math.ceil(promoteAt - d.t)) + " s", "canario " + d.pct + "% · " + fails + " fallidos, " + d.nw.wrong + " precios erróneos · se promueve en " + Math.max(0, Math.ceil(promoteAt - d.t)) + " s");
     else if (d.pct === 0) text = T("canary at 0% · nothing to watch", "canario en 0% · nada que vigilar");
-    else text = T("canary " + d.pct + "% · " + fails + " of " + d.nw.req + " failed (" + pctTenths(canaryRate(d)) + ") · check in " + left + " s" + (d.auto ? "" : " · arm off"), "canario " + d.pct + "% · " + fails + " de " + d.nw.req + " fallidos (" + pctTenths(canaryRate(d)) + ") · revisión en " + left + " s" + (d.auto ? "" : " · brazo apagado"));
+    else text = T("canary " + d.pct + "% · " + fails + " of " + d.nw.req + " failed (" + pctTenths(canaryRate(d)) + ") · check in " + left + " s" + (d.auto ? "" : " · arm off"), "canario " + d.pct + "% · fallidos: " + fails + " de " + d.nw.req + " (" + pctTenths(canaryRate(d)) + ") · revisión en " + left + " s" + (d.auto ? "" : " · brazo apagado"));
     say(L(text));
   }
 
@@ -164,7 +164,7 @@ export default function mount({ P, G }, root) {
   root.on("watch", (w, id) => {
     for (const name of ["pct", "build", "auto", "rule", "routing", "check", "speed"]) { cfg[name] = name === "pct" || name === "speed" ? Number(w[name]) : w[name]; root.press(name, w[name]); }
     deploy();
-    if (id === "silent") promoteAt = 1800;
+    if (id === "silent" || id === "auto") promoteAt = 1800;
     if (clock.paused) clock.setPaused(false);
   });
 

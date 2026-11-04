@@ -4,11 +4,11 @@ import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { pct as pctOf } from "../../lib/format";
 import { buildFigure, P, GEOMETRY } from "./figure";
-import { blastRun, rareRun, tightRun, stickyRun, silentRun } from "./sim";
+import { blastRun, rareRun, tightRun, autoRun, silentRun } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (the standalone page computed them in
 // the browser; they're seeded, so the numbers are the same).
-const RESULTS = { blast: blastRun(), rare: rareRun(), tight: tightRun(), sticky: stickyRun(), silent: silentRun() };
+const RESULTS = { blast: blastRun(), rare: rareRun(), tight: tightRun(), auto: autoRun(), silent: silentRun() };
 
 // What each card shows after a run.
 const minutes = (s) => (s >= 5400 ? (s / 3600).toFixed(1) + " h" : Math.round(s / 60) + " min");
@@ -25,9 +25,12 @@ const RUNS = {
     const { a, b } = RESULTS.tight;
     return { verdict: t("A good build was rolled back in " + pctOf(b) + " of deploys with the tight rule, " + pctOf(a) + " with the normal one.", "Una versión buena se revirtió en el " + pctOf(b) + " de los despliegues con la regla estricta y en el " + pctOf(a) + " con la estándar."), bars: [[t("Normal rule", "Regla estándar"), a, pctOf(a)], [t("Tight rule", "Regla estricta"), b, pctOf(b), true]] };
   },
-  sticky: () => {
-    const { a, b } = RESULTS.sticky;
-    return { verdict: t(pctOf(a) + " of users saw both versions with per-request routing, " + pctOf(b) + " with per-user routing.", "El " + pctOf(a) + " de los usuarios vio ambas versiones con enrutamiento por solicitud y el " + pctOf(b) + " con enrutamiento por usuario."), bars: [[t("Per request", "Por solicitud"), a, pctOf(a), true], [t("Per user", "Por usuario"), b, pctOf(b)]] };
+  auto: () => {
+    const { off, on } = RESULTS.auto, top = Math.max(off.failed, on.failed) * 1.05;
+    const n = (x) => String(Math.round(x));
+    return { verdict: t("Failed orders in the hour: " + n(off.failed) + " with the arm off (promoted to everyone at 30 min in " + pctOf(off.promoted) + " of runs), " + n(on.failed) + " with it on (rolled back in " + pctOf(on.rolledBack) + " of runs, after " + minutes(on.at) + " on average). The arm prevented " + pctOf(1 - on.failed / off.failed) + " of the failures.",
+        "Pedidos fallidos en la hora: " + n(off.failed) + " con el brazo apagado (promovida a todos a los 30 min en el " + pctOf(off.promoted) + " de las ejecuciones), " + n(on.failed) + " con el brazo encendido (revertida en el " + pctOf(on.rolledBack) + " de las ejecuciones, a los " + minutes(on.at) + " en promedio). El brazo evitó el " + pctOf(1 - on.failed / off.failed) + " de los fallos."),
+      bars: [[t("Arm off", "Brazo apagado"), off.failed / top, n(off.failed)], [t("Arm on", "Brazo encendido"), on.failed / top, n(on.failed), true]] };
   },
   silent: () => {
     const { a, b } = RESULTS.silent, top = Math.max(a.n, b.n) * 1.05;
@@ -46,13 +49,13 @@ const EXPERIMENTS = [
     ),
     options: [
       t("About 25 times fewer: under 1", "Unas 25 veces menos: menos de 1"),
-      t("Fewer, but nowhere near 25 times fewer, and it takes far longer to catch", "Menos, pero ni de cerca 25 veces menos, y tarda mucho más en detectarla"),
+      t("Fewer, but not 25 times fewer", "Menos, pero no 25 veces menos"),
       t("The same number, just as fast", "La misma cantidad, igual de rápido"),
     ],
     answer: 1,
     why: t(
-      "The rollback arm needs evidence: at least 3 failures before it acts. At 25% those arrive in seconds, but the check only runs every 3 minutes, so more orders fail while it waits. At 1% the canary pays roughly the evidence price and little more, but collecting it takes about 25 minutes. A small canary limits damage per minute, not the minimum damage needed to notice.",
-      "El brazo de reversión necesita evidencia: al menos 3 fallos antes de actuar. Con 25% llegan en segundos, pero la revisión solo corre cada 3 minutos, así que fallan más pedidos mientras espera. Con 1%, el canario paga más o menos el precio de la evidencia y poco más, pero juntarla toma unos 25 minutos. Un canario pequeño limita el daño por minuto, no el daño mínimo necesario para darse cuenta.",
+      "The rollback arm needs evidence: at least 3 failures before it acts. At 25% those arrive in seconds, but the check only runs every 3 minutes, so more orders fail while it waits. At 1% the canary pays roughly the evidence price and little more, but collecting it takes about 25 minutes. So the 1% canary hurts fewer people but takes far longer to catch the build. A small canary limits damage per minute, not the minimum damage needed to notice.",
+      "El brazo de reversión necesita evidencia: al menos 3 fallos antes de actuar. Con 25% llegan en segundos, pero la revisión solo corre cada 3 minutos, así que fallan más pedidos mientras espera. Con 1%, el canario paga más o menos el precio de la evidencia y poco más, pero juntarla toma unos 25 minutos. Así que el canario de 1% afecta a menos gente, pero tarda mucho más en detectar la versión. Un canario pequeño limita el daño por minuto, no el daño mínimo necesario para darse cuenta.",
     ),
     watch: { pct: 25, build: "bad", auto: "on", rule: "normal", routing: "random", check: "errors", speed: 4 },
   },
@@ -63,8 +66,8 @@ const EXPERIMENTS = [
     question: t("At 10% the arm needs about 2 hours to be sure. At 1%, how long?", "Con 10%, el brazo necesita unas 2 horas para estar seguro. Con 1%, ¿cuánto?"),
     options: [
       t("About the same: the bug is equally rare", "Más o menos lo mismo: el bug es igual de raro"),
-      t("Many hours: it needs the same number of failures from far fewer orders", "Muchas horas: necesita la misma cantidad de fallos con muchos menos pedidos"),
-      t("It is caught sooner, because the canary is quieter", "Lo detecta antes, porque el canario está más tranquilo"),
+      t("Many hours: same failures, fewer orders", "Muchas horas: mismos fallos, menos pedidos"),
+      t("Sooner: the quieter canary stands out", "Antes: el canario más tranquilo resalta"),
     ],
     answer: 1,
     why: t(
@@ -97,21 +100,21 @@ const EXPERIMENTS = [
     watch: { pct: 10, build: "good", auto: "on", rule: "tight", routing: "random", check: "errors", speed: 20 },
   },
   {
-    id: "sticky",
-    title: t("Who sees what", "Quién ve qué"),
-    change: t("Good build at 25% for 10 minutes · 100 users, each ordering about 7 times", "Versión buena con 25% durante 10 minutos · 100 usuarios, cada uno con unos 7 pedidos"),
-    question: t("With random routing, how many users see both the old and the new version?", "Con enrutamiento aleatorio, ¿cuántos usuarios ven tanto la versión vieja como la nueva?"),
+    id: "auto",
+    title: t("Nobody watching", "Nadie mirando"),
+    change: t("Bad build (1 in 5 orders fail) at 5% · the pipeline promotes it after a 30-minute bake · automatic rollback off → on", "Versión mala (falla 1 de cada 5 pedidos) con 5% · el pipeline la promueve tras 30 minutos de observación · reversión automática no → sí"),
+    question: t("Nobody is looking at the dashboard. Of the failed orders in the hour, how many does the rollback arm prevent?", "Nadie está mirando el tablero. De los pedidos fallidos en la hora, ¿cuántos evita el brazo de reversión?"),
     options: [
-      t("Almost none", "Casi ninguno"),
-      t("About a quarter, the canary share", "Más o menos una cuarta parte, el porcentaje canario"),
-      t("Most of them", "La mayoría"),
+      t("Few: at 5%, the canary can't hurt many", "Pocos: con 5%, el canario no afecta a muchos"),
+      t("Almost all: otherwise it reaches everyone", "Casi todos: si no, les llega a todos"),
+      t("About half: it only checks every 3 minutes", "Más o menos la mitad: solo revisa cada 3 minutos"),
     ],
-    answer: 2,
+    answer: 1,
     why: t(
-      "Random routing decides per request, so a user with 7 orders flips between versions several times: a button moves, a cart format changes, a session written by one version is read by the other. Sticky routing decides per user, so each person stays on one version and the canary share means a share of people.",
-      "El enrutamiento aleatorio decide por solicitud, así que un usuario con 7 pedidos salta entre versiones varias veces: un botón se mueve, cambia el formato del carrito, una sesión que escribió una versión la lee la otra. El enrutamiento fijo (sticky) decide por usuario, así que cada persona se queda en una versión y el porcentaje canario significa un porcentaje de personas.",
+      "A canary limits damage only if something acts on what it shows. With the arm off, the build fails 1 order in 5 at 5% for half an hour, and then the pipeline promotes it and every order goes through it. With the arm on, three failures above the threshold at the next 3-minute check push the lever back to 0, and the build never gets past 5%. The check interval costs a few failures; the missing check costs the outage.",
+      "Un canario limita el daño solo si algo actúa sobre lo que muestra. Con el brazo apagado, la versión hace fallar 1 de cada 5 pedidos con 5% durante media hora, y luego el pipeline la promueve y todos los pedidos pasan por ella. Con el brazo encendido, tres fallos por encima del umbral en la siguiente revisión de 3 minutos devuelven la palanca a 0, y la versión nunca pasa del 5%. El intervalo de revisión cuesta unos pocos fallos; la revisión que falta cuesta la caída.",
     ),
-    watch: { pct: 25, build: "good", auto: "on", rule: "normal", routing: "random", check: "errors", speed: 4 },
+    watch: { pct: 5, build: "bad", auto: "on", rule: "normal", routing: "random", check: "errors", speed: 20 },
   },
   {
     id: "silent",
@@ -127,7 +130,7 @@ const EXPERIMENTS = [
     options: [
       t("A handful: the canary caught it", "Unos pocos: el canario lo detectó"),
       t("About 70: only the canary's share was hurt", "Unos 70: solo se afectó la parte del canario"),
-      t("About 700: it was promoted and everyone got it", "Unos 700: se promovió y les llegó a todos"),
+      t("About 700: it was promoted to everyone", "Unos 700: se promovió a todos"),
     ],
     answer: 2,
     why: t(
@@ -153,16 +156,16 @@ const QUESTIONS = [
      "La regla trata el ruido normal de fondo como una regresión: pide muy pocos fallos o tiene un umbral por debajo de la propia tasa de errores de la versión vieja. Exige varios fallos, compara con la línea base que corre al mismo tiempo y mira una ventana lo bastante larga para compensar la mala suerte.")],
   [t("When would you route the canary by user instead of by request?",
      "¿Cuándo enrutarías el canario por usuario en vez de por solicitud?"),
-   t("Whenever the experience must be consistent for a person: UI changes, multi-step flows, sessions or caches written by one version and read by another, or when you want to say \"5% of users\" rather than \"5% of requests\". Request-level routing is fine for stateless backend changes.",
-     "Siempre que la experiencia tenga que ser consistente para una persona: cambios de interfaz, flujos de varios pasos, sesiones o cachés que escribe una versión y lee la otra, o cuando quieres decir \"5% de los usuarios\" en vez de \"5% de las solicitudes\". El enrutamiento por solicitud está bien para cambios de backend sin estado.")],
+   t("Whenever the experience must be consistent for a person: UI changes, multi-step flows, sessions or caches written by one version and read by another, or when you want to say \"5% of users\" rather than \"5% of requests\". Request-level routing is fine for stateless backend changes. Lesson 22, Feature flags, shows how sticky bucketing works.",
+     "Siempre que la experiencia tenga que ser consistente para una persona: cambios de interfaz, flujos de varios pasos, sesiones o cachés que escribe una versión y lee la otra, o cuando quieres decir \"5% de los usuarios\" en vez de \"5% de las solicitudes\". El enrutamiento por solicitud está bien para cambios de backend sin estado. La lección 22, Feature flags, muestra cómo funciona la asignación fija por usuario (sticky bucketing).")],
   [t("Name two things a canary analysis should watch besides HTTP 5xx errors.",
      "Nombra dos cosas que un análisis canario debería vigilar además de los errores HTTP 5xx."),
    t("Business and correctness signals: orders or sign-ups per minute, payment success, values that must match (prices against the catalogue), latency percentiles, and resource use. Silent bugs only show up in what you choose to measure.",
      "Señales de negocio y de corrección: pedidos o registros por minuto, pagos exitosos, valores que deben coincidir (precios contra el catálogo), percentiles de latencia y uso de recursos. Los bugs silenciosos solo aparecen en lo que eliges medir.")],
   [t("The canary is rolled back automatically. What has happened to the users who already got an error, and what does that mean for database changes?",
      "El canario se revierte automáticamente. ¿Qué les pasó a los usuarios que ya recibieron un error y qué significa eso para los cambios en la base de datos?"),
-   t("Rollback only stops new damage; failed orders stay failed and data the new version wrote stays written. That's why schema changes are split (expand, deploy, then contract) so either version can run against the same data, and why rollback has to be safe to do at any time.",
-     "La reversión solo detiene el daño nuevo; los pedidos fallidos siguen fallidos y los datos que escribió la versión nueva siguen escritos. Por eso los cambios de esquema se dividen (expandir, desplegar y luego contraer), para que cualquiera de las dos versiones pueda correr con los mismos datos, y por eso la reversión tiene que ser segura en cualquier momento.")],
+   t("Rollback only stops new damage; failed orders stay failed and data the new version wrote stays written. That's why schema changes are split (expand, migrate, then contract) so either version can run against the same data, and why rollback has to be safe to do at any time. Lessons 09, Blue-green deploys, and 10, Rolling deploys, show what a breaking schema does.",
+     "La reversión solo detiene el daño nuevo; los pedidos fallidos siguen fallidos y los datos que escribió la versión nueva siguen escritos. Por eso los cambios de esquema se dividen (expandir, migrar y luego contraer), para que cualquiera de las dos versiones pueda ejecutarse con los mismos datos, y por eso la reversión tiene que ser segura en cualquier momento. Las lecciones 09, Despliegues azul-verde, y 10, Despliegues graduales, muestran lo que hace un esquema incompatible.")],
 ];
 
 export default defineLesson({
@@ -176,13 +179,13 @@ export default defineLesson({
     plate: {
       title: t("Railway junction", "Empalme ferroviario"),
       keys: [
-        { mark: "lit", label: t("New build: canary track, its trains and its failure needle", "Versión nueva: la vía canario, sus trenes y su aguja de fallos") },
+        { mark: "lit", label: t("New build: canary track, its trains and its failure needle", "Versión nueva: la vía canario, sus trenes y su indicador de fallos") },
         { mark: "raised", label: t("Old build: the old track and its trains", "Versión vieja: la vía vieja y sus trenes") },
         { mark: "flat", label: t("Lever frame: canary share, and the rollback pusher", "Bastidor de palancas: el porcentaje canario y el empujador de reversión") },
       ],
       caption: t(
-        "Each train is one customer order. The lever sets the share of trains switched onto the new track (0, 1, 5, 25, 50 or 100%). A failed order derails before the station; a wrong-price order arrives without its crate. The console shows the old failure rate, the canary failure rate against the threshold mark (scale to 2%), and a timer: every 3 minutes the rollback arm checks the canary and, if it has enough failures above the threshold, pushes the lever back to 0.",
-        "Cada tren es un pedido de un cliente. La palanca fija el porcentaje de trenes desviados a la vía nueva (0, 1, 5, 25, 50 o 100%). Un pedido fallido se descarrila antes de la estación; un pedido con precio erróneo llega sin su caja. La consola muestra la tasa de fallos vieja, la tasa de fallos del canario contra la marca del umbral (escala hasta 2%) y un temporizador: cada 3 minutos el brazo de reversión revisa el canario y, si tiene suficientes fallos por encima del umbral, empuja la palanca de vuelta a 0.",
+        "Each train is one customer order. The lever sets the share of trains switched onto the new track (0, 1, 5, 25, 50 or 100%). A failed order derails before the station; a wrong-price order arrives without its crate. The console's three dials show the OLD failure rate, the CANARY failure rate against the threshold mark (scale to 2%), and the CHECK timer: every 3 minutes the rollback arm checks the canary and, if it has enough failures above the threshold, pushes the lever back to 0.",
+        "Cada tren es un pedido de un cliente. La palanca fija el porcentaje de trenes desviados a la vía nueva (0, 1, 5, 25, 50 o 100%). Un pedido fallido se descarrila antes de la estación; un pedido con precio erróneo llega sin su caja. Los tres relojes de la consola muestran la tasa de fallos VIEJA, la tasa de fallos del CANARIO contra la marca del umbral (escala hasta 2%) y el temporizador de REVISIÓN: cada 3 minutos el brazo de reversión revisa el canario y, si tiene suficientes fallos por encima del umbral, empuja la palanca de vuelta a 0.",
       ),
       stage: { "data-office": "" },
       label: t("Railway junction simulation. Space pauses or resumes.", "Simulación del empalme ferroviario. Espacio pausa o reanuda."),

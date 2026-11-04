@@ -51,7 +51,7 @@ export const P = k.fitProjection(
   { pad: 18, azimuth: 63 },
 );
 
-const { S, L, D, at } = shorthand(P);
+const { S, L, D, at, text } = shorthand(P);
 
 // ---------- track geometry ----------
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
@@ -72,7 +72,7 @@ function offset(points, by) {
   });
 }
 
-function bed(points, skip = 0) {
+function bed(points, skip = 0, railTone = "mid") {
   const ring = [...offset(points, BED), ...offset(points, -BED).reverse()];
   const out = [S(k.extrude(ring, 0, BED_H, P, { convex: false }), { tone: "lo", crease: "none" })];
   const rails = [offset(points, RAIL), offset(points, -RAIL)].map((line) => k.onTop(line, BED_H, P)).join("");
@@ -85,7 +85,7 @@ function bed(points, skip = 0) {
     sleepers.push(k.lineOnTop([a[0] + n[0] * (BED - 0.6), a[1] + n[1] * (BED - 0.6)], [a[0] - n[0] * (BED - 0.6), a[1] - n[1] * (BED - 0.6)], BED_H, P));
   }
   out.push(L(sleepers.join(""), { tone: "faint" }));
-  out.push(L(rails, { tone: "mid" }));
+  out.push(L(rails, { tone: railTone }));
   return out.join("");
 }
 
@@ -96,7 +96,8 @@ function plate() {
 }
 
 function tracks() {
-  return bed(PATHS.old) + bed(PATHS.new.slice(1), 12) + buffers();
+  // The canary track's rails are drawn lit, from the points to its buffer stop.
+  return bed(PATHS.old) + bed(PATHS.new.slice(1), 12, "lit") + buffers();
 }
 
 function buffers() {
@@ -127,6 +128,8 @@ function frame() {
   const strip = { x: -146, y: -44.5, w: 102, d: 5, r: 1 };
   out.push(S(k.slabOf(strip, FRAME_H, 0.6, P, 3), { tone: "lo", crease: "none" }));
   out.push(L(NOTCHES.map((_, i) => k.lineOnTop([notchX(i), -43.9], [notchX(i), -41], FRAME_H + 0.6, P)).join(""), { tone: "mid" }));
+  // The share at each notch, engraved in front of the slot.
+  out.push(NOTCHES.map((n, i) => k.faceTextSvg(k.topMatrix([notchX(i), -36.9], FRAME_H, P, "x"), n + "%", { size: 4, tone: "mid", anchor: "middle" })).join(""));
   out.push(D([at([FRAME.x + 3, FRAME.y + 3, FRAME_H]), at([FRAME.x + FRAME.w - 3, FRAME.y + 3, FRAME_H]), at([FRAME.x + 3, FRAME.y + FRAME.d - 3, FRAME_H]), at([FRAME.x + FRAME.w - 3, FRAME.y + FRAME.d - 3, FRAME_H])], { size: 0.45 }));
   return out.join("");
 }
@@ -159,6 +162,9 @@ function consoleBase() {
     out.push(L(k.ring(x, y, 1, DIAL_TOP, P, 12), { tone: "mid" }));
   }
   out.push(k.faceTextSvg(k.topMatrix([DIALS.new[0], DIALS.new[1] + 5.5], DIAL_TOP, P, "x"), "2%", { size: 1.8, tone: "lo", anchor: "middle" }));
+  // Each dial's name on the console's front face.
+  const names = { old: t("OLD", "VIEJA"), new: t("CANARY", "CANARIO"), timer: t("CHECK", "REVISIÓN") };
+  for (const [name, [x]] of Object.entries(DIALS)) out.push(text(x, CONSOLE.y + CONSOLE.d, 1.4, names[name], { size: 4, tone: "mid", anchor: "middle" }));
   return out.join("");
 }
 
