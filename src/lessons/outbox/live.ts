@@ -59,21 +59,22 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG }, root) {
     return { at: S[homeOf[name]], down: false };
   }
 
-  const cfg = { mode: "dual", crash: 0.15, relay: 0.1, dedupe: "off", poll: 2, speed: 1 };
+  const cfg = { mode: "dual", crash: 0.15, relay: 0.1, dedupe: "off", wh: 0, poll: 2, speed: 1 };
   let model, clock, order = "";
   const WARM = 58.75;           // the first run opens mid-shift, so the first frame already shows letters and losses
   let first = true, seed = (Date.now() % 1e6) + 1;
 
   function restart() {
-    model = makeSim({ mode: cfg.mode, crash: cfg.crash, relayCrash: cfg.relay, dedupe: cfg.dedupe === "on", poll: cfg.poll }, first ? 1 : seed++);
+    model = makeSim({ mode: cfg.mode, crash: cfg.crash, relayCrash: cfg.relay, dedupe: cfg.dedupe !== "off", atomic: cfg.dedupe === "on", whCrash: cfg.wh, poll: cfg.poll }, first ? 1 : seed++);
     clock = first ? WARM : 0; first = false;
     model.runTo(clock);
     const outbox = cfg.mode === "outbox";
     actors.relay.g.style.display = outbox ? "" : "none";
     timerEl.style.display = outbox ? "" : "none";
     drawerOpen.style.display = outbox ? "" : "none"; drawerClosed.style.display = outbox ? "none" : "";
-    dedupeEl.style.display = cfg.dedupe === "on" ? "" : "none";
-    extraLabels.twice.style.display = cfg.dedupe === "on" ? "none" : ""; extraLabels.caught.style.display = cfg.dedupe === "on" ? "" : "none";
+    dedupeEl.style.display = cfg.dedupe !== "off" ? "" : "none";
+    const caughtDial = cfg.dedupe === "on" && !cfg.wh;
+    extraLabels.twice.style.display = caughtDial ? "none" : ""; extraLabels.caught.style.display = caughtDial ? "" : "none";
     paint();
   }
 
@@ -121,7 +122,7 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG }, root) {
     stack(rejects, Math.min(G.REJECT_CARDS, st.caught), clock - f.catch < 0.8);
     postSolid.toggleAttribute("data-lit", clock - f.post < 0.35);
     commitSolid.toggleAttribute("data-lit", clock - f.commit < 0.35);
-    shipSolid.toggleAttribute("data-lit", clock - f.spike < 0.35);
+    shipSolid.toggleAttribute("data-lit", clock - f.spike < 0.35 || clock - f.whfail < 0.6);
 
     // The relay's timer: the needle sweeps once per interval while the relay waits.
     if (cfg.mode === "outbox") {
@@ -132,23 +133,27 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG }, root) {
     }
 
     // Counters.
-    showDial(dials.orders, st.orders); showDial(dials.shipped, st.shipped); showDial(dials.extra, cfg.dedupe === "on" ? st.caught : st.dupShipped);
+    showDial(dials.orders, st.orders); showDial(dials.shipped, st.shipped); showDial(dials.extra, cfg.dedupe === "on" && !cfg.wh ? st.caught : st.dupShipped);
 
     // Readout and stats.
     say(story());
     stat("orders", st.orders); stat("shipped", st.shipped); stat("lost", st.lost); stat("phantom", st.phantom);
-    stat("dups", cfg.dedupe === "on" ? st.caught + L(" caught", " copias detectadas") : st.dupShipped);
+    stat("dups", cfg.dedupe !== "off" && st.caught ? st.dupShipped + L(" (" + st.caught + " caught)", " (" + st.caught + " detectadas)") : st.dupShipped);
     const ds = model.delays.slice(-40).sort((x, y) => x - y);
     stat("delay", ds.length ? rankQuantileSorted(ds, 0.5).toFixed(1) + " s" : "–");
   }
   function story() {
     const c = model.clerk.seg, r = model.relay.seg, n = model.inbox.length, p = model.pending.length;
-    if (c.kind === "down" && cfg.mode === "dual") return L("clerk failed on the way · order #" + c.id + " is in the ledger, its letter is on the floor", "el empleado falló en el camino · el pedido #" + c.id + " está en el libro, su carta está en el piso");
+    if (c.kind === "down" && cfg.mode === "dual") return L("clerk failed on the way · #" + c.id + " is in the ledger, its letter on the floor", "el empleado falló en el camino · #" + c.id + " en el libro, su carta en el piso");
     if (c.kind === "down" && cfg.mode === "pubfirst") return L("ledger write failed · the letter for #" + c.id + " was already sent", "falló la escritura en el libro · la carta del #" + c.id + " ya se había enviado");
     if (c.kind === "down") return L("clerk failed mid-transaction · neither card nor letter was kept", "el empleado falló a mitad de la transacción · no quedó ni la tarjeta ni la carta");
-    if (r.kind === "down") return L("relay failed after posting · those letters are still pending and will go again", "el relé falló después de despachar · esas cartas siguen pendientes y van a salir de nuevo");
-    if (cfg.mode === "outbox" && r.kind === "walk" && r.to === "rpost") return L("relay carrying " + r.n + " letter" + (r.n === 1 ? "" : "s") + " · " + p + " pending", "el relé lleva " + r.n + " carta" + (r.n === 1 ? "" : "s") + " · " + p + " pendiente" + (p === 1 ? "" : "s"));
-    if (cfg.mode === "outbox" && r.kind === "mark") return L("relay marking letters sent", "el relé marca las cartas como enviadas");
+    if (r.kind === "down") return L("relay failed after posting · those letters are still pending and will go again", "el reenviador falló después de despachar · esas cartas siguen pendientes y van a salir de nuevo");
+    const w = model.lastWhFail;
+    if (w && clock - model.flashes.whfail < 2.5) return w.shipped
+      ? L("warehouse failed after shipping #" + w.id + " · not on the spike · the letter comes back", "el almacén falló tras enviar el #" + w.id + " · no está en el pincho · la carta vuelve")
+      : L("warehouse failed · shipment and spike for #" + w.id + " rolled back · the letter comes back", "el almacén falló · envío y pincho del #" + w.id + " revertidos · la carta vuelve");
+    if (cfg.mode === "outbox" && r.kind === "walk" && r.to === "rpost") return L("relay carrying " + r.n + " letter" + (r.n === 1 ? "" : "s") + " · " + p + " pending", "el reenviador lleva " + r.n + " carta" + (r.n === 1 ? "" : "s") + " · " + p + " pendiente" + (p === 1 ? "" : "s"));
+    if (cfg.mode === "outbox" && r.kind === "mark") return L("relay marking letters sent", "el reenviador marca las cartas como enviadas");
     if (c.kind === "walk" && c.to === "post") return L("clerk walking the letter for #" + c.id + " to the postbox", "el empleado lleva la carta del #" + c.id + " al buzón");
     if (c.kind === "post") return L("clerk posting the letter for #" + c.id, "el empleado despacha la carta del #" + c.id);
     if (c.kind === "walk") return L("clerk walking back" + (n ? " · " + n + " waiting" : ""), "el empleado vuelve" + (n ? " · " + n + " en espera" : ""));

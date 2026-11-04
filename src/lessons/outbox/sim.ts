@@ -5,6 +5,9 @@
 //   pubfirst: post the letter, then write the ledger. A failed write leaves a phantom: shipped, never ordered.
 //   outbox:   write the ledger card and the letter into the outbox drawer in one transaction; a relay later
 //             carries pending letters to the postbox and only then marks them sent (at-least-once).
+// The warehouse can fail too (whCrash): after shipping, before it puts the order number on its dedupe spike. It never
+// acknowledged the letter, so the letter comes back. With atomic dedupe the shipment and the spike commit together,
+// so a failure undoes both.
 
 import { rng } from "../../lib/random";
 import { meanBy, rankQuantile, upperMedian } from "../../lib/stats";
@@ -13,9 +16,10 @@ export const RATE = 0.25;      // orders per second arriving at the clerk
 export const BATCH = 6;        // letters the relay carries in one trip
 
 // cfg: { mode, rate, crash (chance the clerk fails between the two writes), relayCrash (chance the relay fails after posting,
-//        before marking), dedupe, poll (s between relay checks) }
+//        before marking), dedupe, atomic (dedupe record and shipment in one transaction), whCrash, poll (s between relay checks) }
 export function makeSim(cfg, seed = 7) {
   const random = rng(seed);
+  const whRandom = rng(seed * 31 + 17);   // its own stream, so warehouse failures don't shift the other draws
   const rate = cfg.rate ?? RATE;
   const events = [];
   const push = (t, fn) => { let i = events.length; while (i > 0 && events[i - 1].t > t) i--; events.splice(i, 0, { t, fn }); };
@@ -28,11 +32,12 @@ export function makeSim(cfg, seed = 7) {
     rail: [],                    // letters on the rail: { id, t0, t1 }
     dropped: [],                 // letters dropped on the floor: { id, t, x (0..1 along the clerk's walk) }
     binned: 0,                   // ledger cards that never committed (failed writes or rolled-back transactions)
-    stats: { orders: 0, shipped: 0, lost: 0, phantom: 0, dupShipped: 0, caught: 0, failed: 0, sent: 0, relayCrashes: 0 },
+    stats: { orders: 0, shipped: 0, lost: 0, phantom: 0, dupShipped: 0, caught: 0, failed: 0, sent: 0, relayCrashes: 0, whCrashes: 0 },
     delays: [],
     clerk: { seg: { kind: "idle", t0: 0, t1: 0 }, carrying: false, forceCrash: false },
     relay: { seg: { kind: "idle", t0: 0, t1: 0 }, batch: [], nextCheck: cfg.poll ?? 2 },
-    flashes: { commit: -9, fail: -9, spike: -9, catch: -9, post: -9, mark: -9 },
+    flashes: { commit: -9, fail: -9, spike: -9, catch: -9, post: -9, mark: -9, whfail: -9 },
+    lastWhFail: null,
     crashNext() { sim.clerk.forceCrash = true; },
     runTo(t) {
       while (events.length && events[0].t <= t) { const e = events.shift(); sim.now = e.t; e.fn(e.t); }
@@ -68,11 +73,15 @@ export function makeSim(cfg, seed = 7) {
     sim.rail = sim.rail.filter((l) => l.t1 > t);
     if (sim.firstArrival[id] == null) { sim.firstArrival[id] = t; if (sim.committedAt[id] != null) sim.delays.push(t - sim.committedAt[id]); }
     if (cfg.dedupe && sim.seen.has(id)) { S.caught++; sim.flashes.catch = t; return; }
-    sim.seen.add(id);
+    const whFails = cfg.whCrash > 0 && whRandom() < cfg.whCrash;
+    const failNow = (shipped) => { S.whCrashes++; sim.flashes.whfail = t; sim.lastWhFail = { id, shipped }; letterToRail(id, t); };
+    if (whFails && cfg.dedupe && cfg.atomic) { failNow(false); return; }   // the transaction rolls back: nothing shipped, nothing spiked
     sim.shipCount[id] = (sim.shipCount[id] || 0) + 1;
     S.shipped++;
     if (sim.shipCount[id] > 1) S.dupShipped++;
     sim.flashes.spike = t;
+    if (whFails) { failNow(true); return; }   // shipped, but the number never reached the spike
+    sim.seen.add(id);
   }
   function commit(id, t) {
     sim.ledger.add(id); S.orders++; sim.committedAt[id] = t; sim.flashes.commit = t;
@@ -148,7 +157,7 @@ export function runFor(cfg, seconds = 600) {
   return {
     orders: avg((s) => s.stats.orders), shipped: avg((s) => s.stats.shipped), lost: avg((s) => s.stats.lost), phantom: avg((s) => s.stats.phantom),
     dupShipped: avg((s) => s.stats.dupShipped), caught: avg((s) => s.stats.caught), failed: avg((s) => s.stats.failed), sent: avg((s) => s.stats.sent),
-    relayCrashes: avg((s) => s.stats.relayCrashes), median: upperMedian(delays), p95: rankQuantile(delays, 0.95),
+    relayCrashes: avg((s) => s.stats.relayCrashes), whCrashes: avg((s) => s.stats.whCrashes), median: upperMedian(delays), p95: rankQuantile(delays, 0.95),
   };
 }
 // runFor stops taking orders at `seconds`, then runs a minute more so every letter in flight lands.
@@ -159,7 +168,7 @@ export function experimentResults() {
     lost: runFor({ mode: "dual", crash: 0.05 }),
     phantom: runFor({ mode: "pubfirst", crash: 0.05 }),
     outbox: runFor({ mode: "outbox", crash: 0.05, relayCrash: 0.1, dedupe: true, poll: 2 }),
-    dedupe: { off: runFor({ mode: "outbox", crash: 0, relayCrash: 0.1, dedupe: false, poll: 2 }), on: runFor({ mode: "outbox", crash: 0, relayCrash: 0.1, dedupe: true, poll: 2 }) },
+    dedupe: { after: runFor({ mode: "outbox", crash: 0, relayCrash: 0, dedupe: true, whCrash: 0.05, poll: 2 }), atomic: runFor({ mode: "outbox", crash: 0, relayCrash: 0, dedupe: true, atomic: true, whCrash: 0.05, poll: 2 }) },
     poll: { rows: [0.5, 2, 5].map((p) => [p, runFor({ mode: "outbox", crash: 0, relayCrash: 0, dedupe: true, poll: p })]), dual: runFor({ mode: "dual", crash: 0 }) },
   };
 }
