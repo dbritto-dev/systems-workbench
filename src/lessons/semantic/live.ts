@@ -111,6 +111,8 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
     if (fresh) build(cfg.size);
     run = plan();
     queryText.textContent = run.query.text;
+    // A long query shrinks to fit the board (78 units of face; a character is about 0.64 of the font size).
+    queryText.setAttribute("font-size", Math.min(3.9, 78 / (run.query.text.length * 0.64)).toFixed(2));
     L.strings.innerHTML = ""; L.rings.innerHTML = ""; L.probe.innerHTML = "";
     pathEl.innerHTML = ""; L.links.appendChild(pathEl);
     if (cfg.search === "exact") L.probe.appendChild(arm); else L.probe.appendChild(bead);
@@ -189,7 +191,7 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
     const best = run.res[0], found = run.truth.filter((i) => run.res.some((h) => h.i === i)).length;
     stat("query", "\u201c" + run.query.text + "\u201d");
     const of = tr(" of ", " de "), shownDone = t < MOVE ? 0 : done, miss = cfg.k - found;
-    stat("top", finished ? COL.ch[best.i].id + " \u00b7 " + COL.ch[best.i].text : tr("searching", "buscando"));
+    stat("top", finished ? COL.ch[best.i].id : tr("searching", "buscando"));
     stat("sim", finished ? best.s.toFixed(2) : "-");
     stat("compared", shownDone + of + COL.ch.length);
     stat("kept", finished ? kept.length + of + cfg.k + (cfg.cut ? tr(" (cutoff ", " (umbral ") + cfg.cut.toFixed(2) + ")" : "") : "-");
