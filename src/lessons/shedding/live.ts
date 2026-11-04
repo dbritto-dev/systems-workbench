@@ -86,7 +86,7 @@ export default function mount({ P, G, SLIP_SVG, FLAT_SVG, DISH_SVG, CUSTOMER_SVG
         done.push({ t: e.t, ok: e.type === "served" });
         if (e.type === "late") dishes.set(e.r.id, { r: e.r, kind: "late", t0: e.t, cook: e.cook });
         else dishes.set(e.r.id, { r: e.r, kind: "served", t0: e.t, cook: e.cook });
-        if (!quiet && e.type === "late" && (!note || clock - note.t > 5)) note = { t: e.t, en: "dish " + e.r.id + " · " + (e.t - e.r.deadline).toFixed(1) + " s after its customer left · binned", es: "plato " + e.r.id + " · " + (e.t - e.r.deadline).toFixed(1) + " s tarde · a la basura" };
+        if (!quiet && e.type === "late" && (!note || clock - note.t > 5)) note = { t: e.t, en: "dish " + e.r.id + " · " + (e.t - e.r.deadline).toFixed(1) + " s after its customer left · binned", es: "plato " + e.r.id + " · " + (e.t - e.r.deadline).toFixed(1) + " s tarde · al descarte" };
       } else if (!quiet && e.type === "turned" && (!note || clock - note.t > 5)) {
         note = { t: e.t, en: "rail full · customer " + e.r.id + " turned away", es: "riel lleno · cliente " + e.r.id + " rechazado" };
       } else if (!quiet && e.type === "dropped" && (!note || clock - note.t > 5)) {

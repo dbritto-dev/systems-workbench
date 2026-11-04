@@ -26,7 +26,7 @@ const CHART_H = 46;
 export const PLOT = { x0: -114, x1: -66, y: CHART.y + CHART.d, z0: 17, z1: 39, max: 120, span: 60 };
 
 // ---------- the order desk, just inside the door ----------
-const DESK = { x: -94, y: -26, w: 28, d: 18, r: 1.5 };
+const DESK = { x: -94, y: -26, w: 32, d: 18, r: 1.5 };
 const DESK_H = 12;
 export const DESK_SPOT = [DESK.x + 8, DESK.y + 8, DESK_H];          // where waiting slips stack, lying flat
 export const DESK_SHOW = 8;
@@ -102,14 +102,14 @@ function chart() {
   out.push(L(grid.join(""), { tone: "faint" }));
   out.push(L(seg([PLOT.x0, y, PLOT.z0], [PLOT.x1, y, PLOT.z0]) + seg([PLOT.x0, y, PLOT.z0], [PLOT.x0, y, PLOT.z1]), { tone: "lo" }));
   for (const v of [0, 60, 120]) out.push(word(PLOT.x0 - 1.2, y, PLOT.z0 + ((PLOT.z1 - PLOT.z0) * v) / PLOT.max - 0.9, String(v), 2.2, { anchor: "end", tone: "lo" }));
-  out.push(word(PLOT.x1 + 2, y, PLOT.z1 + 2.8, t("PER MINUTE · LAST 60 S", "POR MINUTO · ÚLTIMOS 60 S"), 2.1, { anchor: "end", tone: "lo" }));
+  out.push(word(PLOT.x1 + 2, y, PLOT.z1 + 2.8, t("PER MINUTE · LAST 60 S", "POR MINUTO · ÚLTIMOS 60 S"), 2.6, { anchor: "end", tone: "lo" }));
   out.push(`<path class="sh-pen" data-pen="cooked" d=""/>`, `<path class="sh-pen" data-pen="good" d=""/>`);
   // the legend: each counter with a sample of its pen and its name above it
   const cz = 2.2, lz = 10.2;
   [["cooked", "cookedMin", CHART.x + 4, t("COOKED", "COCINADOS")], ["good", "goodMin", CHART.x + 33, t("IN TIME", "A TIEMPO")]].forEach(([key, name, x, label]) => {
     out.push(digitCounter(P, { x: x + 1, y, z: cz, count: 3, w: 3.8, h: 5.2, gap: 0.5, pad: 1, name }));
     out.push(`<path class="sh-pen" data-key="${key}" d="${k.pathOf([at([x, y, lz + 0.9]), at([x + 5, y, lz + 0.9])])}"/>`);
-    out.push(word(x + 6.4, y, lz, label, 2.3));
+    out.push(word(x + 6.4, y, lz, label, 2.9));
   });
   return out.join("");
 }
@@ -120,7 +120,7 @@ function desk() {
   const out = [S(k.slabOf(DESK, 0, DESK_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(DESK, 1.8), DESK_H, P), { tone: "faint" }) })];
   const front = DESK.y + DESK.d;
   out.push(digitCounter(P, { x: DESK.x + 3, y: front, z: 1.4, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "desk" }));
-  out.push(word(DESK.x + 2.4, front, 9, t("ON THE DESK", "EN EL MOSTRADOR"), 2.1));
+  out.push(word(DESK.x + 2, front, 9, t("ON THE DESK", "EN EL MOSTRADOR"), 2.6));
   return out.join("");
 }
 
@@ -143,12 +143,12 @@ function railFront() {
   out.push(`<g data-stop style="display:none">${S(k.slabOf({ x: LIMIT_X - 1.2, y: RAIL_Y - 2.4, w: 2.4, d: 4.8, r: 0.5 }, RAIL_Z - 3, 7, P, 2), { tone: "hi", crease: "lo" })}</g>`);
   const front = RAILBOX.y + RAILBOX.d;
   // each counter with its name printed above it; the right end is left clear (the pass stands in front of it)
-  const cnt = (x, name, label) => digitCounter(P, { x, y: front, z: 1.8, count: 3, w: 4.2, h: 5.6, gap: 0.6, pad: 1, name }) + word(x - 1, front, 10.6, label, 2.4);
+  const cnt = (x, name, label) => digitCounter(P, { x, y: front, z: 1.8, count: 3, w: 4.2, h: 5.6, gap: 0.6, pad: 1, name }) + word(x - 1, front, 10.6, label, 2.7);
   out.push(cnt(RAILBOX.x + 4, "rail", t("ON THE RAIL", "EN EL RIEL")));
   out.push(cnt(RAILBOX.x + 31, "oldest", t("OLDEST WAIT, S", "ESPERA MÁX., S")));
   out.push(cnt(RAILBOX.x + 60, "dropped", t("DROPPED", "DESCARTADAS")));
   out.push(meter(P, { x: RAILBOX.x + 90, y: front, z: 2.6, r: 5, ticks: 8, zone: 0.5, name: "standing", value: 0 }));
-  out.push(word(RAILBOX.x + 90, front, 10.6, t("NOT EMPTIED", "SIN VACIARSE"), 2, { anchor: "middle" }));
+  out.push(word(RAILBOX.x + 90, front, 10.6, t("NOT EMPTIED", "SIN VACIAR"), 2.6, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -179,7 +179,7 @@ function pass() {
   out.push(L(k.planOutline(k.insetPlan(PASS, 1.6), PASS_H, P), { tone: "faint" }));
   const front = PASS.y + PASS.d;
   out.push(digitCounter(P, { x: PASS.x + 4, y: front, z: 3.4, count: 4, w: 4.6, h: 6.2, gap: 0.7, pad: 1.2, name: "served" }));
-  out.push(word(PASS.x + 27, front, 5.4, t("IN TIME", "A TIEMPO")));
+  out.push(word(PASS.x + 27, front, 5.4, t("IN TIME", "A TIEMPO"), 3));
   return out.join("");
 }
 
@@ -187,7 +187,7 @@ function bin() {
   const out = [S(k.slabOf(BIN, 0, BIN_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(BIN, 1.6), BIN_H, P), { tone: "lo" }) })];
   const front = BIN.y + BIN.d;
   out.push(digitCounter(P, { x: BIN.x + 2.4, y: front, z: 2, count: 3, w: 3.4, h: 4.8, gap: 0.5, pad: 0.8, name: "late" }));
-  out.push(word(BIN.x + BIN.w / 2, front, 9.4, t("TOO LATE", "TARDE"), 2, { anchor: "middle" }));
+  out.push(word(BIN.x + BIN.w / 2, front, 9.4, t("TOO LATE", "TARDE"), 2.8, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -211,7 +211,7 @@ function doorFront() {
   out.push(S(k.slabOf(PODIUM, 0, PODIUM_H, P, 3, 0.5), { tone: "mid" }));
   const front = PODIUM.y + PODIUM.d;
   out.push(digitCounter(P, { x: PODIUM.x + 3.4, y: front, z: 1.6, count: 3, w: 4, h: 5.4, gap: 0.5, pad: 0.9, name: "turned" }));
-  out.push(word(PODIUM.x + PODIUM.w / 2, front, 9.4, t("TURNED AWAY", "SIN LUGAR"), 2.1, { anchor: "middle" }));
+  out.push(word(PODIUM.x + PODIUM.w / 2, front, 9.4, t("TURNED AWAY", "SIN LUGAR"), 2.8, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -244,7 +244,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A takeaway kitchen on a base plate. Customers come in from the street at the front left through a door with a doorman, whose sign reads OPEN or FULL. Each order is a numbered slip that hangs on a long rail at the back, the oldest at the right end next to three cooks at their stoves. Dishes come out on the pass in front of the stoves and go to the customer waiting on the floor in front, or into the bin if the customer has already left. An order desk at the back left holds slips the rail has no room for, and a chart recorder beside it draws dishes cooked a minute against dishes handed over in time.",
-      "Una cocina de comida para llevar sobre una placa base. Los clientes entran desde la calle, adelante a la izquierda, por una puerta con un portero cuyo letrero dice ABIERTO o LLENO. Cada pedido es una comanda numerada que cuelga de un riel largo al fondo, la más vieja en el extremo derecho, junto a tres cocineros en sus estufas. Los platos salen por la barra de entrega frente a las estufas y van al cliente que espera en el piso de adelante, o a la basura si el cliente ya se fue. Un mostrador atrás a la izquierda guarda las comandas que no caben en el riel, y a su lado un registrador dibuja los platos cocinados por minuto frente a los entregados a tiempo.",
+      "Una cocina de comida para llevar sobre una placa base. Los clientes entran desde la calle, adelante a la izquierda, por una puerta con un portero cuyo letrero dice ABIERTO o LLENO. Cada pedido es una comanda numerada que cuelga de un riel largo al fondo, la más vieja en el extremo derecho, junto a tres cocineros en sus estufas. Los platos salen por la barra de entrega frente a las estufas y van al cliente que espera en el piso de adelante, o al descarte si el cliente ya se fue. Un mostrador atrás a la izquierda guarda las comandas que no caben en el riel, y a su lado un registrador dibuja los platos cocinados por minuto frente a los entregados a tiempo.",
     ),
     body: [
       plate(),

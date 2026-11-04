@@ -25,7 +25,7 @@ export const DISH = 2;                    // normal mean seconds per dish
 export const CAPACITY = COOKS / DISH;     // dishes a second at the normal pace
 export const PATIENCE = 8;                // a customer waits this long for the dish
 export const HOOKS = 6;                   // the rail's limit for "rail" and "door"
-export const TARGET = 1;                  // CoDel-style wait limit while the queue stands
+export const TARGET = 2;                  // CoDel-style wait limit while the queue stands
 export const INTERVAL = 4;                // a standing queue: not empty for this long; also the wait limit otherwise
 export const LIVE_WARM = 40;              // the machine opens each run this many seconds in
 
