@@ -1,6 +1,7 @@
 // <wb-experiment exp="burst" answer="2">: one predict-then-run card (markup from components/lesson/Experiments.astro).
-// A choice's data-choice is its index in the lesson's options, not its place on the card: the card shuffles the options
-// every time the page loads, so the right answer is never in a fixed place.
+// A choice's data-choice is its index in the lesson's options, not its place on the card: the options are shuffled every
+// time the page loads, so the right answer is never in a fixed place. An inline script in the card's markup does that
+// before the first paint (data-shuffled); shuffle() here only runs for a card that missed it.
 // The reader picks a prediction, runs it, and the card shows the verdict and the result bars.
 //
 // The result: the card's <script type="application/json" data-result>, worked out at build time by the lesson's
@@ -35,7 +36,7 @@ export class WbExperiment extends HTMLElement {
   /** Puts the options in a new random order (Fisher–Yates) and letters them A, B, C… in that order. */
   shuffle() {
     const group = this.querySelector(".choices");
-    if (!group || this.done) return;
+    if (!group || this.done || group.hasAttribute("data-shuffled")) return;
     const items = this.choices;
     for (let i = items.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -46,6 +47,7 @@ export class WbExperiment extends HTMLElement {
       const mark = b.querySelector(".mark");
       if (mark) mark.textContent = "ABCDE"[k] ?? "";
     });
+    group.setAttribute("data-shuffled", "");
   }
   disconnectedCallback() { this.removeEventListener("click", this.#click); }
 
