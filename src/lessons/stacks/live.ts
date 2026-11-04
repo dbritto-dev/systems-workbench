@@ -129,7 +129,7 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST }, root) {
       const ch = action.slice(5);
       const cleared = ed.redo.length;
       ev = ed.type(ch); from = null; to = [0, ed.undo.length - 1]; label = ch;
-      sayUr(cleared ? T("typed " + ch + " · the redo stack (" + cleared + ") goes in the bin", "escribiste " + ch + " · la pila de rehacer (" + cleared + ") va al cesto") : T("typed " + ch + " · pushed on undo", "escribiste " + ch + " · se apila en deshacer"));
+      sayUr(cleared ? T("typed " + ch + " · the redo stack (" + cleared + ") goes in the bin", "escribiste " + ch + " · la pila de rehacer (" + cleared + ") va al descarte") : T("typed " + ch + " · pushed on undo", "escribiste " + ch + " · se apila en deshacer"));
     } else if (action === "undo") {
       if (!ed.undo.length) { sayUr(T("nothing to undo", "nada que deshacer")); return false; }
       from = [0, ed.undo.length - 1]; ev = ed.undoOne(); to = [1, ed.redo.length - 1]; label = ev.ch;
