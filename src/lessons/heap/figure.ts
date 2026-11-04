@@ -60,8 +60,8 @@ const hidden = hiddenUnless;
 
 export const COUNTERS = {
   waiting: { x: IN_DESK.x + 4, y: IN_DESK.y + IN_DESK.d, z: 1.8, w: 4.6, h: 5.4, gap: 0.7, count: 2, size: "s" },
-  swaps: { x: OUT_DESK.x + 4, y: OUT_DESK.y + OUT_DESK.d, z: 1.8, w: 4.6, h: 5.4, gap: 0.7, count: 2, size: "s" },
-  oldest: { x: OUT_DESK.x + 21, y: OUT_DESK.y + OUT_DESK.d, z: 1.8, w: 4.6, h: 5.4, gap: 0.7, count: 3, size: "s" },
+  swaps: { x: OUT_DESK.x + 4, y: OUT_DESK.y + OUT_DESK.d, z: 1, w: 4.2, h: 4.6, gap: 0.7, count: 2, size: "s" },
+  oldest: { x: OUT_DESK.x + 21, y: OUT_DESK.y + OUT_DESK.d, z: 1, w: 4.2, h: 4.6, gap: 0.7, count: 3, size: "s" },
 };
 
 // A job token, drawn at the origin: place it with translateAlong. The digit is set live (one <text>).
@@ -75,22 +75,23 @@ function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H });
 }
 
-// Rods joining each pedestal to its children, lying on the plate and ending at the pedestal faces.
+// Rods joining each pedestal to its children, lying on the plate and ending at the pedestal faces. One path per
+// rod, named by its child (data-rod="c"), so the live code can light the rod a swap travels along.
 function rods() {
   const out = [];
   for (let i = 0; i < SLOTS; i++) for (const c of [2 * i + 1, 2 * i + 2]) {
     if (c >= SLOTS) continue;
     const a = NODES[i], b = NODES[c];
-    out.push(k.segment([a.x + (b.x > a.x ? 1 : -1) * 2, a.y + PED.d / 2, 0.3], [b.x, b.y - PED.d / 2, 0.3], P));
+    out.push(Ln(k.segment([a.x + (b.x > a.x ? 1 : -1) * 2, a.y + PED.d / 2, 0.3], [b.x, b.y - PED.d / 2, 0.3], P), { tone: "mid", className: "heap-rod" }).replace("<path", `<path data-rod="${c}"`));
   }
-  return Ln(out.join(""), { tone: "lo" });
+  return out.join("");
 }
 
 function pedestal(i, job) {
   const n = NODES[i];
   const plan = { x: n.x - PED.w / 2, y: n.y - PED.d / 2, w: PED.w, d: PED.d, r: 1.4 };
   return S(k.slabOf(plan, 0, n.z, P, 4, 0.5), { tone: "mid" })
-    + (n.z > 3 ? text(n.x, n.y + PED.d / 2, Math.max(0.6, n.z / 2 - 1), String(i), { size: 1.9, tone: "lo", anchor: "middle" }) : "")
+    + text(n.x, n.y + PED.d / 2, n.z > 3 ? Math.max(0.8, n.z / 2 - 1.2) : 0.5, String(i), { size: n.z > 3 ? 2.8 : 2.2, tone: "hi", anchor: "middle" })
     + `<g class="wb-lit-group" data-node="${i}" transform="${place([n.x, n.y, n.z])}"${hidden(job != null)}>${tokenSvg(job ?? "", false, `data-node-label="${i}"`)}</g>`;
 }
 
@@ -105,7 +106,7 @@ function rail(state) {
       + S(k.slabOf({ x: c.x, y: y0, w: c.w, d, r: 0.6 }, RAIL.h, CELL_H, P, 2, 0.2), { tone: "hi", crease: "lo" })
       + text(c.x + c.w / 2, y0 + d, RAIL.h + 0.6, String(state[i] ?? ""), { size: 2.4, tone: "hi", anchor: "middle", attr: `data-cell-label="${i}"` })
       + `</g>`);
-    out.push(text(c.x + c.w / 2, base.y + base.d, 0.5, String(i), { size: 1.5, tone: "lo", anchor: "middle" }));
+    out.push(text(c.x + c.w / 2, base.y + base.d, 0.4, String(i), { size: 1.9, tone: "mid", anchor: "middle" }));
   });
   // past slot 14 the heap goes on below the drawing: a small "+n" plate at the rail's end
   out.push(`<g data-more style="display:none">${text(base.x + base.w + 2, base.y + base.d, RAIL.h - 0.2, "+0", { size: 2.1, tone: "mid", attr: "data-more-label" })}</g>`);
@@ -125,9 +126,10 @@ function outDesk(state) {
   const out = [person(P, [OUT_DESK.x + 30, OUT_DESK.y - 4, 0], { scale: 0.85, hat: "cap" })];
   out.push(S(k.slabOf(OUT_DESK, 0, DESK_H, P, 4, 0.6), { tone: "mid" }));
   out.push(Ln(k.ring(OUT_PAD.x, OUT_PAD.y, 6, DESK_H, P, 28), { tone: "lo" }));
-  out.push(text(COUNTERS.swaps.x, OUT_DESK.y + OUT_DESK.d, 7.9, t("SWAPS", "INTERCAMBIOS"), { size: 1.7, tone: "mid" }));
+  out.push(text(COUNTERS.swaps.x, OUT_DESK.y + OUT_DESK.d, 6.4, t("SWAPS", "INTERCAMBIOS"), { size: 1.7, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.swaps, housing: false, name: "swaps", value: state.swaps }));
-  out.push(text(COUNTERS.oldest.x, OUT_DESK.y + OUT_DESK.d, 7.9, t("OLDEST 7–9 (s)", "ANTIGUA 7–9 (s)"), { size: 1.7, tone: "mid" }));
+  out.push(text(COUNTERS.oldest.x, OUT_DESK.y + OUT_DESK.d, 8.4, t("OLDEST", "RUTINA MÁS"), { size: 1.7, tone: "mid" }));
+  out.push(text(COUNTERS.oldest.x, OUT_DESK.y + OUT_DESK.d, 6.4, t("ROUTINE, S", "ANTIGUA, S"), { size: 1.7, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.oldest, housing: false, name: "oldest", value: state.oldest }));
   out.push(`<g data-served${hidden(state.served != null)} transform="${place([OUT_PAD.x, OUT_PAD.y, OUT_PAD.z])}">${tokenSvg(state.served ?? "", false, "data-served-label")}</g>`);
   return out.join("");

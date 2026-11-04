@@ -58,6 +58,9 @@ export const CLASSES = [
   { id: "routine", lo: 7, hi: 9 },
 ];
 export const MIX = [0.2, 0.3, 0.5];      // share of arrivals in each class
+// Load 1.05 with this mix: urgent and soon jobs alone fill the desk (1.0), plus a trickle of routine (0.05).
+export const HOT_MIX = [0.45 / 1.05, 0.55 / 1.05, 0.05 / 1.05];
+export const HOT_LOAD = 1.05;
 export const AGING = 15;                // aging: one priority level gained per 15 s waited
 // The key the heap orders by.
 //   priority: the job's priority.   fifo: arrival time (a plain queue is a heap keyed by arrival).

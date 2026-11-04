@@ -6,7 +6,7 @@ import { L, T } from "../../runtime/wb";
 import { show, playPause, setText, setLit } from "../../runtime/dom";
 import { smoothstep } from "../../lib/tween";
 import { secs1 } from "../../lib/format";
-import { makeClinic } from "./sim";
+import { makeClinic, HOT_MIX, HOT_LOAD } from "./sim";
 
 export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOTS, FIRST, RAIL_Y }, root) {
   const { stage, svg } = root.figure;
@@ -19,6 +19,8 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
 
   const nodes = Array.from({ length: SLOTS }, (_, i) => ({ g: q('[data-node="' + i + '"]'), label: q('[data-node-label="' + i + '"]') }));
   const cells = Array.from({ length: SLOTS }, (_, i) => ({ g: q('[data-cell="' + i + '"]'), label: q('[data-cell-label="' + i + '"]') }));
+  const rods = Array.from({ length: SLOTS }, (_, i) => q('[data-rod="' + i + '"]'));   // rods[c]: the rod from c's parent to c
+  const litRod = (c, on) => rods[c]?.setAttribute("data-tone", on ? "lit" : "mid");
   const fly = { a: { g: q('[data-fly="a"]'), label: q('[data-fly-label="a"]') }, b: { g: q('[data-fly="b"]'), label: q('[data-fly-label="b"]') } };
   const served = { g: q("[data-served]"), label: q("[data-served-label]") };
   const more = { g: q("[data-more]"), label: q("[data-more-label]") };
@@ -41,11 +43,13 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
     show(more.g, extra > 0); setText(more.label, "+" + extra);
   }
   function restart() {
-    c = makeClinic({ policy: cfg.policy, load: cfg.load, stable: cfg.ties === "seq" }, seed++);
+    // "hot": urgent and soon jobs alone fill the desk, plus a trickle of routine ones (the starvation experiment).
+    const hot = cfg.load === "hot";
+    c = makeClinic({ policy: cfg.policy, load: hot ? HOT_LOAD : cfg.load, mix: hot ? HOT_MIX : undefined, stable: cfg.ties === "seq" }, seed++);
     c.runTo(20);
     while (c.heap.size() < 9 && c.now < 400) c.runTo(c.now + 1);   // start with a busy room
     disp = c.heap.a.map((j) => j.p);
-    steps = []; cur = null; moving = new Set(); cells.forEach((x) => setLit(x.g, false)); msg = T("the desk always takes the top job", "el mostrador siempre toma el trabajo de arriba");
+    steps = []; cur = null; moving = new Set(); cells.forEach((x) => setLit(x.g, false)); rods.forEach((_, i) => litRod(i, false)); msg = T("the desk always takes the top job", "el mostrador siempre toma el trabajo de arriba");
     show(fly.a.g, false); show(fly.b.g, false); show(served.g, false);
     paint(); numbers(0);
   }
@@ -87,6 +91,7 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
         setText(fly.a.label, s.va); setText(fly.b.label, s.vb); show(fly.a.g, true); show(fly.b.g, true);
         moving = new Set([s.i, s.j]);   // the tokens fly; their array cells stay put, lit, until the swap lands
         [s.i, s.j].forEach((x) => x < SLOTS && setLit(cells[x].g, true));
+        litRod(Math.max(s.i, s.j), true);   // the rod between the two pedestals that swap
       }
     }
     if (s.d == null) s.d = STEP;
@@ -100,7 +105,7 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
     if (s.kind === "arrive") disp[s.to] = s.v;
     if (s.kind === "serve") { setText(served.label, fly.a.label.textContent); show(served.g, true); }
     if (s.kind === "lift") disp[0] = s.v;
-    if (s.kind === "swap") { disp[s.i] = s.vb; disp[s.j] = s.va; moving = new Set(); cells.forEach((x) => setLit(x.g, false)); }
+    if (s.kind === "swap") { disp[s.i] = s.vb; disp[s.j] = s.va; moving = new Set(); cells.forEach((x) => setLit(x.g, false)); litRod(Math.max(s.i, s.j), false); }
     show(fly.a.g, false); show(fly.b.g, false);
     paint();
   }
@@ -150,7 +155,7 @@ export default function mount({ P, NODES, CELLS, IN_PAD, OUT_PAD, COUNTERS, SLOT
   function set(name, raw, quiet) {
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
-    if (name === "load") cfg.load = Number(raw); else cfg[name] = raw;
+    if (name === "load") cfg.load = raw === "hot" ? "hot" : Number(raw); else cfg[name] = raw;
     if (!quiet) restart();
   }
   root.on("change", (name, value) => set(name, value));
