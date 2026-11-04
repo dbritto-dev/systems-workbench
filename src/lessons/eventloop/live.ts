@@ -12,6 +12,8 @@ import { millis } from "../../lib/format";
 export default function mount({ P, G, SLOTS }, root) {
   const MS_PER_SECOND = 40;
   const lbl = (s) => (WB.lang() === "es" && LABEL_ES[s]) || s;
+  // The order puzzle's readout uses the code names alone, so the three steps fit on a phone.
+  const SHORT = { "console.log in the script": "console.log", "Promise.then callback": "Promise.then", "setTimeout(0) callback": "setTimeout(0)" };
 
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
@@ -72,15 +74,15 @@ export default function mount({ P, G, SLOTS }, root) {
     });
     showStats();
     if (puzzle && puzzle.order.length) {
-      say(puzzle.order.map((x, i) => (i + 1) + ". " + lbl(x)).join(" · "));
+      say(puzzle.order.map((x, i) => (i + 1) + ". " + (SHORT[x] || lbl(x))).join(" · "));
       if (puzzle.order.length === 3 && L.t > puzzle.until) puzzle = null;
     } else if (!puzzle) {
       if (WB.lang() === "es") {
         const waiting = L.macro.length + " en la cinta · " + L.micro.length + " en la bandeja";
-        say(r ? lbl(r.label) + (r.total > 2 ? " · quedan " + Math.ceil(r.left) + " ms" : "") + " · " + waiting : "inactivo · " + waiting);
+        say(r ? lbl(r.label) + (r.total > 2 ? " · quedan " + Math.ceil(r.left) + " ms" : "") + " · " + waiting : (L.macro.length || L.micro.length ? "toma la siguiente tarea · " : "inactivo · ") + waiting);
       } else {
         const waiting = L.macro.length + " on the conveyor · " + L.micro.length + " in the tray";
-        say(r ? r.label + (r.total > 2 ? " · " + Math.ceil(r.left) + " ms left" : "") + " · " + waiting : "idle · " + waiting);
+        say(r ? r.label + (r.total > 2 ? " · " + Math.ceil(r.left) + " ms left" : "") + " · " + waiting : (L.macro.length || L.micro.length ? "taking the next task · " : "idle · ") + waiting);
       }
     } else say(tr(puzzle.msg));
   }

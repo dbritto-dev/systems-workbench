@@ -68,7 +68,9 @@ function startCpuJob(L) {
 function startFlood(L) {
   if (!L.cfg.flood) return;
   let n = 0;
-  const next = () => task(L, "promise", "promise.then", FLOOD.each, () => { if (++n < FLOOD.count) L.micro.push(next()); });
+  // Each callback queues the next one as it starts (like queueMicrotask(next) at the top of the callback), so the
+  // tray is never empty while the chain runs.
+  const next = () => task(L, "promise", "promise.then", FLOOD.each, () => {}, { start: () => { if (++n < FLOOD.count) L.micro.push(next()); } });
   L.macro.push(task(L, "io", "start promise chain", 0.5, () => L.micro.push(next())));
 }
 
@@ -126,7 +128,7 @@ function tick(L, step) {
 }
 
 function pick(L) {
-  if (L.micro.length) { L.running = L.micro.shift(); return; }
+  if (L.micro.length) { L.running = L.micro.shift(); if (L.running.start) L.running.start(); return; }
   if (L.t >= L.nextFrame) {
     const gap = L.t - L.lastFrame;
     L.stats.gapMax = Math.max(L.stats.gapMax, gap);

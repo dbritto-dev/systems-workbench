@@ -9,7 +9,7 @@
 import * as k from "../../../workbench/kit.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
-import { sphereOf } from "../../../workbench/vendor-anatomy/kit/lathe.mjs";
+import { sphereOf, solidOf, frameAlong } from "../../../workbench/vendor-anatomy/kit/lathe.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
@@ -71,13 +71,15 @@ const WORKER_TOP = 12;
 
 const LAMP = [-140, -22];
 const LAMP_Z = 14;
-const BULB_R = 10;
+const SHADE_Z = 30;     // the shade's rim; a stem rises from the housing to hold it
+const SHADE_H = 9;
+const BULB_R = 5;
 
 export const P = k.fitProjection(
   [
     ...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0),
     [OPERATOR[0], OPERATOR[1], 56],
-    [LAMP[0], LAMP[1], LAMP_Z + BULB_R + 4],
+    [LAMP[0], LAMP[1], SHADE_Z + SHADE_H + 2],
     [SPINDLE[0], SPINDLE[1], DESK_TOP + DEPTH_MAX * DISC.h + 10],
   ],
   WIDTH,
@@ -153,15 +155,17 @@ function wall() {
 }
 
 // ---------- the loop's own parts ----------
-// A beacon: a squat housing with a big dome lamp on top, unlike any person on the plate.
+// A lamp, not a person: a housing, a stem and a cone-shaped shade over a bulb. Shade and bulb go dark (lit) on a frame.
 function lamp() {
   const [x, y] = LAMP;
   const house = { x: x - 11, y: y - 11, w: 22, d: 22, r: 3 };
   const out = [S(k.slabOf(house, 0, LAMP_Z, P, 4, 0.6), { tone: "mid", inner: L(k.sideSeam(house, LAMP_Z - 4, P, 4), { tone: "faint" }) })];
   out.push(L(k.faceRectY(P, house.x + 5, house.x + house.w - 5, house.y + house.d, 3, 6), { tone: "lo" }));
-  out.push(S(k.cylinder(x, y, BULB_R + 2, LAMP_Z, 2.4, P, 40, 0.4), { tone: "mid" }));
-  const bulb = (lit) => S(sphereOf([x, y, LAMP_Z + 5], BULB_R, P), { tone: "hi", crease: "lo", lit });
-  out.push(`<g data-lamp="off">${bulb(false)}</g><g data-lamp="on">${bulb(true)}${L(k.ring(x, y, BULB_R + 1, LAMP_Z + 2.4, P, 40), { tone: "lit" })}</g>`);
+  out.push(S(k.cylinder(x, y, 5, LAMP_Z, 2, P, 32, 0.4), { tone: "mid" }));
+  out.push(S(k.cylinder(x, y, 1.5, LAMP_Z + 2, SHADE_Z + SHADE_H - LAMP_Z - 2, P, 16), { tone: "mid", crease: "none" }));
+  const bulb = (lit) => S(sphereOf([x, y, SHADE_Z - 0.6], BULB_R, P, { steps: 32 }), { tone: "hi", crease: "lo", lit });
+  const shade = (lit) => S(solidOf([[0, 12.5], [SHADE_H, 4.5]], frameAlong([x, y, SHADE_Z], [0, 0, 1]), P), { tone: "hi", crease: "lo", lit });
+  out.push(`<g data-lamp="off">${bulb(false)}${shade(false)}</g><g data-lamp="on">${bulb(true)}${shade(true)}${L(k.ring(x, y, 7.5, LAMP_Z + 2, P, 40), { tone: "lit" })}</g>`);
   return out.join("");
 }
 
@@ -280,8 +284,8 @@ export function buildFigure() {
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,
-    label: t("An event loop as a workshop. One operator stands behind one desk, the call stack: frames stack on a spindle at the left hand, the task being run sits in front, and the microtask tray (promise callbacks) is at the right hand. A conveyor of macrotasks (timer pucks, I/O tiles, CPU blocks) runs into the desk through a gate that stays down while the tray holds anything. Timers wait in a cabinet in front and slide onto the conveyor when due; a dial shows when. Behind a partition, four small helpers do I/O and send finished reads down a channel into the conveyor's hopper. A worker bench with its own helper can take CPU jobs, and a big lamp should blink every 16 ms when the loop gets a chance to draw a frame.",
-      "Un bucle de eventos como taller. Un operador está detrás de un escritorio, la pila de llamadas: los marcos se apilan en un eje a su mano izquierda, la tarea en ejecución está al frente y la bandeja de microtareas (callbacks de promesas) está a su mano derecha. Una cinta de macrotareas (fichas de temporizador, placas de E/S, bloques de CPU) llega al escritorio pasando por una barrera que queda baja mientras la bandeja tenga algo. Los temporizadores esperan en un gabinete al frente y pasan a la cinta cuando vencen; un dial muestra cuándo. Detrás de una mampara, cuatro ayudantes pequeños hacen la E/S y mandan las lecturas terminadas por un canal hasta la tolva de la cinta. Un banco de worker con su propio ayudante puede tomar trabajos de CPU, y una lámpara grande debería parpadear cada 16 ms cuando el bucle tiene oportunidad de dibujar un cuadro."),
+    label: t("An event loop as a workshop. One operator stands behind one desk, the call stack: frames stack on a spindle at the left hand, the task being run sits in front, and the microtask tray (promise callbacks) is at the right hand. A conveyor of macrotasks (timer pucks, I/O tiles, CPU blocks) runs into the desk through a gate that stays down while the tray holds anything. Timers wait in a cabinet in front and slide onto the conveyor when due; a dial shows when. Behind a partition, four small helpers do file reads (Node's thread pool) and send finished reads down a channel into the conveyor's hopper. At the far left, a worker bench with its own helper can take CPU jobs, and a desk lamp with a cone shade should blink every 16 ms when the loop gets a chance to draw a frame.",
+      "Un bucle de eventos como taller. Un operador está detrás de un escritorio, la pila de llamadas: los marcos se apilan en un eje a su mano izquierda, la tarea en ejecución está al frente y la bandeja de microtareas (callbacks de promesas) está a su mano derecha. Una cinta de macrotareas (fichas de temporizador, placas de E/S, bloques de CPU) llega al escritorio pasando por una barrera que queda baja mientras la bandeja tenga algo. Los temporizadores esperan en un gabinete al frente y pasan a la cinta cuando vencen; un dial muestra cuándo. Detrás de una mampara, cuatro ayudantes pequeños leen archivos (el pool de hilos de Node) y mandan las lecturas terminadas por un canal hasta la tolva de la cinta. A la izquierda, un banco de worker con su propio ayudante puede tomar trabajos de CPU, y una lámpara con pantalla cónica debería parpadear cada 16 ms cuando el bucle tiene oportunidad de dibujar un cuadro."),
     body: [
       plate(),
       helpers(),
