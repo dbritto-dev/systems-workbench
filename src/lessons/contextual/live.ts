@@ -141,9 +141,9 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
     let text;
     if (phase < 0.4) text = "\u201c" + cur.text + "\u201d · " + where;
     else if (!o.found) text = tr((o.rer && !o.inPool ? "the answer wasn't in the first 150" : "the answer came " + ordinal(came)) + " · not among the " + k + " passed on · missed",
-      (o.rer && !o.inPool ? "la respuesta no estaba entre los 150 primeros" : "la respuesta quedó en el puesto " + came) + " · no está entre los " + k + " que se pasan · fallada");
+      (o.rer && !o.inPool ? "la respuesta no estaba entre los 150 primeros" : "la respuesta quedó en el puesto " + came) + " · no está entre los " + k + " que se pasan · sin encontrar");
     else text = tr((o.rer ? "reranked to " + ordinal(o.finalRank + 1) : "ranked " + ordinal(o.first + 1)) + " · in the " + k + " passed on to the model",
-      (o.rer ? "tras el reranking, en el puesto " + (o.finalRank + 1) : "en el puesto " + (o.first + 1)) + " · entre los " + k + " que se pasan al modelo");
+      (o.rer ? "reranking: puesto " + (o.finalRank + 1) : "puesto " + (o.first + 1)) + " · en los " + k + " que se pasan");
     say(text);
   }
   const stat = (key, value) => root.stat(key, value);

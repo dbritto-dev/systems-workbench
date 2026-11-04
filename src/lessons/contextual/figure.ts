@@ -167,7 +167,9 @@ function pressFront() {
 }
 // labels for the press and its meter, printed on the plate in front of it
 function pressLabels() {
-  return faceText(P, [PRESS_X - 22, BELT.y + BELT.d, 3.2], t("CONTEXT PRESS · DIAL: $ PER M TOKENS", "PRENSA DE CONTEXTO · DIAL: $ POR M TOKENS"), { size: 2.1, tone: "mid" });
+  // two lines on the belt's front face, left of the press's front leg
+  return faceText(P, [BELT.x + 10, BELT.y + BELT.d, 4.4], t("CONTEXT PRESS", "PRENSA DE CONTEXTO"), { size: 2.1, tone: "mid" })
+    + faceText(P, [BELT.x + 10, BELT.y + BELT.d, 1.6], t("DIAL: $ PER M TOKENS", "DIAL: $ POR M TOKENS"), { size: 2.1, tone: "mid" });
 }
 
 // The two cabinets the cards are filed in. Each has a lamp on top that lights while it is searched,
@@ -177,10 +179,11 @@ function cabinets() {
   const wf = WORDS.y + WORDS.d;
   out.push(S(k.slabOf(WORDS, 0, WORDS_H, P, 3, 0.6), { tone: "mid" }));
   const drawers = [];
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) drawers.push(faceY(WORDS.x + 2 + c * 9, WORDS.x + 10 + c * 9, wf, 2 + r * 5.6, 6.8 + r * 5.6));
+  // three rows of drawers, leaving a band at the top for the label
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) drawers.push(faceY(WORDS.x + 2 + c * 9, WORDS.x + 10 + c * 9, wf, 2 + r * 5.6, 6.8 + r * 5.6));
   out.push(L(drawers.join(""), { tone: "lo" }));
-  out.push(D([0, 1, 2, 3].flatMap((r) => [0, 1, 2].map((c) => at([WORDS.x + 6 + c * 9, wf, 4.4 + r * 5.6]))), { size: 0.5, tone: "mid" }));
-  out.push(faceText(P, [WORDS.x + WORDS.w / 2, wf, WORDS_H - 3.6], t("WORDS", "PALABRAS"), { size: 2.6, tone: "hi", anchor: "middle" }));
+  out.push(D([0, 1, 2].flatMap((r) => [0, 1, 2].map((c) => at([WORDS.x + 6 + c * 9, wf, 4.4 + r * 5.6]))), { size: 0.5, tone: "mid" }));
+  out.push(faceText(P, [WORDS.x + WORDS.w / 2, wf, WORDS_H - 5.2], t("WORDS", "PALABRAS"), { size: 2.6, tone: "hi", anchor: "middle" }));
   out.push(`<g data-off-band="words" style="display:none">${L(seg([WORDS.x + 1, wf, 1], [WORDS.x + WORDS.w - 1, wf, WORDS_H - 6]) + seg([WORDS.x + 1, wf, WORDS_H - 6], [WORDS.x + WORDS.w - 1, wf, 1]), { tone: "hi" })}</g>`);
   out.push(`<g data-lamp="words">${variants("lamp-words", { off: lamp(P, [WORDS.x + WORDS.w - 5, WORDS.y + 5, WORDS_H], { r: 2.2 }), on: lamp(P, [WORDS.x + WORDS.w - 5, WORDS.y + 5, WORDS_H], { r: 2.2, lit: true }) }, "off")}</g>`);
   // the meaning map: a table whose top is a map of clusters of pins
@@ -248,11 +251,11 @@ function scoreboard() {
   const front = SCORE.y + SCORE.d;
   const out = [S(k.slabOf(SCORE, 0, SCORE_H, P, 3, 0.6), { tone: "mid" })];
   out.push(digitCounter(P, { x: SCORE.x + 5, y: front, z: 3, count: 3, w: 5.2, h: 7, gap: 0.8, pad: 1.4, name: "asked" }));
-  out.push(label(SCORE.x + 5, front, 12, t("ASKED", "PREGUNTAS"), 2.6));
+  out.push(label(SCORE.x + 5, front, 13, t("ASKED", "PREGUNTAS"), 2.6));
   out.push(digitCounter(P, { x: SCORE.x + 30, y: front, z: 3, count: 3, w: 5.2, h: 7, gap: 0.8, pad: 1.4, name: "missed" }));
-  out.push(label(SCORE.x + 30, front, 12, t("MISSED", "FALLADAS"), 2.6));
+  out.push(label(SCORE.x + 30, front, 13, t("MISSED", "SIN ENCONTRAR"), 2.6));
   out.push(meter(P, { x: SCORE.x + 70, y: front, z: 3.6, r: 7.4, ticks: 8, zone: 0.5, name: "failrate", value: 0.2 }));
-  out.push(label(SCORE.x + 61, front, 12, t("FAILED  0-40%", "FALLAS  0-40%"), 2.4));
+  out.push(label(SCORE.x + 61, front, 13, t("FAILED  0-40%", "FALLAS  0-40%"), 2.4));
   out.push(`<g data-miss-lamp>${variants("miss", { off: lamp(P, [SCORE.x + SCORE.w - 6, SCORE.y + 6, SCORE_H], { r: 2.6 }), on: lamp(P, [SCORE.x + SCORE.w - 6, SCORE.y + 6, SCORE_H], { r: 2.6, lit: true }) }, "off")}</g>`);
   out.push(faceText(P, [SCORE.x + SCORE.w - 16, SCORE.y + 8, SCORE_H], t("MISS", "FALLA"), { face: "top", size: 2.4, tone: "mid", anchor: "middle" }));
   return out.join("");
@@ -264,7 +267,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A print shop on a base plate. At the back, bound reports wait in a stack; a guillotine cuts each one into small chunk cards and drops them on a belt. Halfway along, a context press reads the whole report lying open on its head and stamps a dark header strip onto each card; a dial on its front shows what that costs per million tokens. At the end of the belt the cards are filed in two cabinets, a drawer cabinet marked WORDS (the keyword index) and a map table marked MEANING (the embedding map), each with a lamp. In front, a person asks a question written on a board; the first 150 candidates come back into a rack of fifteen bins, best on the left; an inspector at a rerank table picks the best into a tray of up to twenty places passed to the model. The answer chunk is the lit card. A scoreboard counts questions asked and answers missed, with a failure-rate meter and a lamp that lights on a miss.",
-      "Una imprenta sobre una placa base. Al fondo, los informes encuadernados esperan en una pila; una guillotina corta cada uno en pequeñas tarjetas de fragmentos y las deja sobre una cinta. A mitad de camino, una prensa de contexto lee el informe completo abierto sobre su cabezal y estampa una franja oscura de encabezado en cada tarjeta; un dial en su frente muestra cuánto cuesta eso por millón de tokens. Al final de la cinta, las tarjetas se archivan en dos gabinetes, un gabinete de cajones marcado PALABRAS (el índice de palabras clave) y una mesa con un mapa marcada SIGNIFICADO (el mapa de embeddings), cada uno con una lámpara. Adelante, una persona hace una pregunta escrita en un tablero; los 150 primeros candidatos vuelven a un estante de quince casilleros, el mejor a la izquierda; un inspector en una mesa de reranking elige los mejores para una bandeja de hasta veinte lugares que se pasa al modelo. El fragmento con la respuesta es la tarjeta encendida. Un marcador cuenta las preguntas hechas y las respuestas falladas, con un medidor de la tasa de fallas y una lámpara que se enciende con cada falla.",
+      "Una imprenta sobre una placa base. Al fondo, los informes encuadernados esperan en una pila; una guillotina corta cada uno en pequeñas tarjetas de fragmentos y las deja sobre una cinta. A mitad de camino, una prensa de contexto lee el informe completo abierto sobre su cabezal y estampa una franja oscura de encabezado en cada tarjeta; un dial en su frente muestra cuánto cuesta eso por millón de tokens. Al final de la cinta, las tarjetas se archivan en dos gabinetes, un gabinete de cajones marcado PALABRAS (el índice de palabras clave) y una mesa con un mapa marcada SIGNIFICADO (el mapa de embeddings), cada uno con una lámpara. Adelante, una persona hace una pregunta escrita en un tablero; los 150 primeros candidatos vuelven a un estante de quince casilleros, el mejor a la izquierda; un inspector en una mesa de reranking elige los mejores para una bandeja de hasta veinte lugares que se pasa al modelo. El fragmento con la respuesta es la tarjeta encendida. Un marcador cuenta las preguntas hechas y las respuestas sin encontrar, con un medidor de la tasa de fallas y una lámpara que se enciende con cada falla.",
     ),
     body: [
       plate(),
