@@ -25,6 +25,7 @@ export default function mount({ P, G, CLERK_SVG, TITLES }, root) {
     const g = document.createElementNS(NS, "g");
     g.setAttribute("data-clerk", String(i));
     g.innerHTML = CLERK_SVG;
+    g.querySelector("[data-clerk-letter]").textContent = NAMES[i];
     layer.appendChild(g);
     return { g, key: g.querySelector("[data-key]"), slip: g.querySelector("[data-slip]"), lit: g.querySelector("[data-slip-lit]"), value: g.querySelector("[data-slip-value]"), note: g.querySelector("[data-slip-note]") };
   });
@@ -166,7 +167,7 @@ export default function mount({ P, G, CLERK_SVG, TITLES }, root) {
   function set(name, raw, quiet) {
     cfg[name] = NUMERIC.includes(name) ? Number(raw) : raw;
     root.press(name, raw);
-    if (name !== "speed" && !quiet) { restart(); show(T("settings applied · run restarted", "ajustes aplicados · la corrida empezó de nuevo")); }
+    if (name !== "speed" && !quiet) { restart(); show(T("settings applied · run restarted", "ajustes aplicados · la ejecución empezó de nuevo")); }
   }
   root.on("change", (name, value) => set(name, value));
   const actions = { reset: () => { restart(); show(T("started over", "empezó de nuevo")); } };

@@ -143,11 +143,12 @@ export function runQuota(cfg, seed) {
     if (cfg.scenario === "booking" ? s.clerks.every((c) => c.phase === "done" || (c.phase === "idle" && !s.seats.some((x) => !x.length))) : s.clerks.every((c) => c.phase === "done")) break;
   }
   const span = Math.max(1e-6, s.stats.lastDone);
-  return { ...s.stats, value: s.card.value, perMinute: (s.stats.done / span) * 60, seconds: span, doubleSeats: s.seats.filter((x) => x.length > 1).length, wait: s.stats.done ? s.stats.waitSum / s.stats.done : 0 };
+  // landed: deposits that reached the card (a lost update was made but overwritten).
+  return { ...s.stats, value: s.card.value, perMinute: (s.stats.done / span) * 60, landedPerMinute: ((s.stats.done - s.stats.lost) / span) * 60, seconds: span, doubleSeats: s.seats.filter((x) => x.length > 1).length, wait: s.stats.done ? s.stats.waitSum / s.stats.done : 0 };
 }
 
 export function average(cfg, seeds = [3, 5, 7, 11, 13, 17, 19, 23]) {
   const runs = seeds.map((seed) => runQuota(cfg, seed));
   const mean = (k) => meanBy(runs, (r) => r[k]);
-  return { done: mean("done"), lost: mean("lost"), retries: mean("retries"), perMinute: mean("perMinute"), wait: mean("wait"), doubleSeats: mean("doubleSeats"), booked: mean("booked"), runs };
+  return { done: mean("done"), lost: mean("lost"), retries: mean("retries"), perMinute: mean("perMinute"), landedPerMinute: mean("landedPerMinute"), wait: mean("wait"), doubleSeats: mean("doubleSeats"), booked: mean("booked"), runs };
 }

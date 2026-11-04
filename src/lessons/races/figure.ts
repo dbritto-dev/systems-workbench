@@ -79,7 +79,7 @@ function ledger() {
   out.push(`<g data-card-lit style="display:none">${S(card, { tone: "hi", crease: "lo", lit: true }).replace('class="iso-solid"', 'class="iso-solid" data-lit-outline')}</g>`);
   const x0 = CARD.x + 3, x1 = CARD.x + CARD.w - 3;
   // Header: title, a rule, and the version stamp at the top right.
-  out.push(rawText(x0, FACE, 55.6, t("LEDGER · ACCOUNT 7", "LIBRO · CUENTA 7"), { size: 2.8, tone: "lo" }));
+  out.push(rawText(x0, FACE, 55.6, t("LEDGER · ACCOUNT 7", "LIBRO · CUENTA 7"), { size: 2.8, tone: "mid" }));
   out.push(L(seg([x0, FACE, 52.6], [x1, FACE, 52.6]), { tone: "faint", free: true }));
   out.push(S(k.slabOf({ x: -2, y: FACE, w: 11, d: 1, r: 0.3 }, 53.6, 6.6, P, 2, 0.2), { tone: "mid", crease: "none" }));
   out.push(L(faceY(-1.2, 8.2, FACE + 1, 54.4, 59.4), { tone: "lo" }));
@@ -158,6 +158,8 @@ export function clerkSvg() {
   const out = [];
   out.push(S(k.cylinder(0, 0, 6, 0, 1.6, P, 26, 0.3), { tone: "mid" }));
   out.push(S(k.cylinder(0, 0, 4.4, 1.6, 13.4, P, 24), { tone: "hi", crease: "none" }));
+  // The clerk's letter (A–D) on the front of the body, below the slip; live.ts fills it in.
+  out.push(rawText(1.2, 4.4, 3.9, "", { size: 5, tone: "hi", anchor: "middle", attr: "data-clerk-letter" }));
   out.push(S(k.cylinder(0, 0, 5.2, 15, 1.4, P, 24, 0.3), { tone: "mid" }));
   out.push(S(k.cylinder(0, 0, 3.6, 16.4, 6, P, 22, 0.3), { tone: "hi", crease: "lo" }));
   out.push(`<g data-key style="display:none">${keySvg([6.4, 1.5, 9])}</g>`);
