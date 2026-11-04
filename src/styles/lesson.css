@@ -25,6 +25,12 @@
 /* Lesson elements (src/elements): the wrappers take no box of their own; the card is a block like the article was. */
 wb-lesson, wb-figure { display: contents; }
 wb-experiment { display: block; }
+/* A card shuffles its options when <wb-experiment> is defined (wb-experiment.ts). Until then they keep their space but
+   stay invisible, so the order written in the HTML never shows and then jumps. Only with scripting on: without
+   JavaScript the element is never defined, and the options show in their written order. */
+@media (scripting: enabled) {
+  wb-experiment:not(:defined) .choices { visibility: hidden; }
+}
 /* A result's bars in titled groups. */
 .bar-group { font-family: var(--anatomy-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--anatomy-muted); margin-top: 6px; }
 .bar-group:first-child { margin-top: 0; }
