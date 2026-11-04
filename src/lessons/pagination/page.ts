@@ -26,15 +26,17 @@ const RUNS = {
   },
   inserts: () => {
     const o = average({ ...BIG, mode: "offset", insertRate: 1 }), c = average({ ...BIG, mode: "cursor", insertRate: 1 }), top = Math.max(o.duplicates, 1);
-    return { verdict: t("Over 10 pages, with about " + Math.round(o.inserts) + " new rows arriving: offset showed " + o.duplicates.toFixed(1) + " rows twice, cursor " + c.duplicates.toFixed(1) + ".",
-        "En 10 páginas, con unas " + Math.round(o.inserts) + " filas nuevas llegando: offset mostró " + o.duplicates.toFixed(1) + " filas dos veces, cursor " + c.duplicates.toFixed(1) + "."),
-      bars: [["Offset", o.duplicates / top, t(o.duplicates.toFixed(1) + " twice", o.duplicates.toFixed(1) + " dos veces"), true], ["Cursor", c.duplicates / top, t(c.duplicates.toFixed(1) + " twice", c.duplicates.toFixed(1) + " dos veces")]] };
+    const od = Math.round(o.duplicates), cd = Math.round(c.duplicates);
+    return { verdict: t("Over 10 pages, with about " + Math.round(o.inserts) + " new rows arriving: offset showed about " + od + " rows twice, cursor " + (cd ? "about " + cd : "none") + ".",
+        "En 10 páginas, con unas " + Math.round(o.inserts) + " filas nuevas llegando: offset mostró unas " + od + " filas dos veces, cursor " + (cd ? "unas " + cd : "ninguna") + "."),
+      bars: [["Offset", o.duplicates / top, t(od + " twice", od + " dos veces"), true], ["Cursor", c.duplicates / top, t(cd + " twice", cd + " dos veces")]] };
   },
   deletes: () => {
     const o = average({ ...BIG, mode: "offset", deleteRate: 1 }), c = average({ ...BIG, mode: "cursor", deleteRate: 1 }), top = Math.max(o.missing, 1);
-    return { verdict: t("With about " + Math.round(o.deletes) + " deletes, offset never showed " + o.missing.toFixed(1) + " rows that still exist; cursor missed " + c.missing.toFixed(1) + ".",
-        "Con unos " + Math.round(o.deletes) + " borrados, offset nunca mostró " + o.missing.toFixed(1) + " filas que todavía existen; cursor se perdió " + c.missing.toFixed(1) + "."),
-      bars: [["Offset", o.missing / top, t(o.missing.toFixed(1) + " missed", o.missing.toFixed(1) + " perdidas"), true], ["Cursor", c.missing / top, t(c.missing.toFixed(1) + " missed", c.missing.toFixed(1) + " perdidas")]] };
+    const om = Math.round(o.missing), cm = Math.round(c.missing);
+    return { verdict: t("With about " + Math.round(o.deletes) + " deletes, offset never showed about " + om + " rows that still exist; cursor missed " + (cm ? "about " + cm : "none") + ".",
+        "Con unos " + Math.round(o.deletes) + " borrados, offset nunca mostró unas " + om + " filas que todavía existen; cursor " + (cm ? "se perdió unas " + cm : "no se perdió ninguna") + "."),
+      bars: [["Offset", o.missing / top, t(om + " missed", om + " perdidas"), true], ["Cursor", c.missing / top, t(cm + " missed", cm + " perdidas")]] };
   },
   ties: () => {
     const tie = average({ ...BIG, mode: "cursor", batch: 3, keyUnique: false }), u = average({ ...BIG, mode: "cursor", batch: 3, keyUnique: true }), top = Math.max(tie.missing, 1);
@@ -56,7 +58,7 @@ const EXPERIMENTS = [
     title: t("A deep page", "Una página profunda"),
     change: t("20,000 rows, 20 per page · page 1 vs page 500", "20,000 filas, 20 por página · página 1 vs página 500"),
     question: t("How much more work is page 500 than page 1?", "¿Cuánto más trabajo es la página 500 que la página 1?"),
-    options: [t("About the same for both: the database jumps to the page", "Más o menos lo mismo para las dos: la base de datos salta a la página"), t("Offset does about 500× the work; cursor stays about the same", "Offset hace unas 500× el trabajo; cursor se queda más o menos igual"), t("Both get slower, cursor a little less", "Las dos se vuelven más lentas, cursor un poco menos")],
+    options: [t("About the same for both: the database jumps to the page", "Más o menos lo mismo para las dos: la base de datos salta a la página"), t("Offset far more; cursor about the same", "Offset mucho más; cursor más o menos lo mismo"), t("Both get slower, cursor a little less", "Las dos se vuelven más lentas, cursor un poco menos")],
     answer: 1,
     why: t("OFFSET 9980 doesn't jump anywhere: the database finds the first 9,980 rows in order and throws them away before returning 20. The work grows with the page number. A cursor (WHERE (created_at, id) < (last values) ORDER BY … LIMIT 20) seeks straight into the index at the last row and reads 20, so page 500 costs what page 2 costs.", "OFFSET 9980 no salta a ningún lado: la base de datos encuentra las primeras 9,980 filas en orden y las descarta antes de devolver 20. El trabajo crece con el número de página. Un cursor (WHERE (created_at, id) < (últimos valores) ORDER BY … LIMIT 20) va directo en el índice a la última fila y lee 20, así que la página 500 cuesta lo mismo que la página 2."),
     watch: { mode: "offset", pageSize: 4, inserts: "off", deletes: "off", key: "unique" },
@@ -78,7 +80,7 @@ const EXPERIMENTS = [
     question: t("Now rows disappear from pages already read. What does the reader miss?", "Ahora desaparecen filas de páginas ya leídas. ¿Qué se pierde el lector?"),
     options: [t("Only the deleted rows", "Solo las filas borradas"), t("Also some rows that were never deleted", "También algunas filas que nunca se borraron"), t("Nothing: deletes only shorten the last page", "Nada: los borrados solo acortan la última página")],
     answer: 1,
-    why: t("A delete in a page you've already read pulls every later row one place forward, so the next OFFSET starts one row too late and silently skips a row that still exists. Nobody gets an error; the row just never appears. A cursor continues after the last row it saw, wherever that row now sits.", "Un borrado en una página que ya leíste jala todas las filas siguientes un lugar hacia adelante, así que el siguiente OFFSET empieza una fila demasiado tarde y se salta en silencio una fila que todavía existe. Nadie recibe un error; la fila simplemente nunca aparece. Un cursor sigue después de la última fila que vio, esté donde esté ahora esa fila."),
+    why: t("A delete in a page you've already read pulls every later row one place forward, so the next OFFSET starts one row too late and silently skips a row that still exists. Nobody gets an error; the row just never appears. A cursor continues after the last row it saw, wherever that row now sits.", "Un borrado en una página que ya leíste adelanta un lugar todas las filas siguientes, así que el siguiente OFFSET empieza una fila demasiado tarde y se salta en silencio una fila que todavía existe. Nadie recibe un error; la fila simplemente nunca aparece. Un cursor sigue después de la última fila que vio, esté donde esté ahora esa fila."),
     watch: { mode: "offset", pageSize: 4, inserts: "off", deletes: "on", key: "unique" },
   },
   {
@@ -96,7 +98,7 @@ const EXPERIMENTS = [
     title: t("Jump to page 37", "Salta a la página 37"),
     change: t("20 per page · a user clicks page 37 directly", "20 por página · un usuario hace clic directo en la página 37"),
     question: t("How does each kind of pagination get there?", "¿Cómo llega ahí cada tipo de paginación?"),
-    options: [t("Cursor jumps there faster than offset", "Cursor salta ahí más rápido que offset"), t("Offset asks for it in one query; cursor has to walk all 37 pages", "Offset la pide en una consulta; cursor tiene que recorrer las 37 páginas"), t("Neither can jump; both walk", "Ninguna puede saltar; las dos recorren")],
+    options: [t("Cursor jumps there faster than offset", "Cursor salta ahí más rápido que offset"), t("Offset jumps in one query; cursor walks", "Offset salta en una consulta; cursor recorre"), t("Neither can jump; both walk", "Ninguna puede saltar; las dos recorren")],
     answer: 1,
     why: t("A cursor only knows where the last page ended, so there is no cursor for page 37 until you've fetched pages 1 to 36. Offset can compute it: OFFSET 720. That's the trade: offset gives page numbers but gets slower and drifts as data changes; cursors are fast and stable but only go next and previous. Infinite scroll and APIs suit cursors; numbered pages over small or stable data suit offset.", "Un cursor solo sabe dónde terminó la última página, así que no hay cursor para la página 37 hasta que hayas traído las páginas 1 a 36. Offset la puede calcular: OFFSET 720. Ese es el intercambio: offset da números de página pero se vuelve más lento y se desfasa cuando cambian los datos; los cursores son rápidos y estables pero solo van a la siguiente y a la anterior. El scroll infinito y las APIs encajan con cursores; las páginas numeradas sobre datos pequeños o estables encajan con offset."),
     watch: { mode: "cursor", pageSize: 4, inserts: "off", deletes: "off", key: "unique", jump: true },
@@ -107,7 +109,7 @@ const QUESTIONS = [
   [t("What does OFFSET 10000 LIMIT 20 make the database do?", "¿Qué le hace hacer OFFSET 10000 LIMIT 20 a la base de datos?"),
     t("Read the first 10,020 rows in sort order (through the index or a sort) and throw away 10,000 of them. The cost grows with the offset, so deep pages get slow and use more I/O even though the result is the same 20 rows.", "Leer las primeras 10,020 filas en el orden pedido (con el índice o con un ordenamiento) y descartar 10,000. El costo crece con el offset, así que las páginas profundas se vuelven lentas y usan más E/S aunque el resultado sean las mismas 20 filas.")],
   [t("Write the WHERE clause for the next page of a feed ordered by created_at DESC, id DESC, and the index it needs.", "Escribe la cláusula WHERE para la página siguiente de un feed ordenado por created_at DESC, id DESC, y el índice que necesita."),
-    t("WHERE (created_at, id) < (:last_created_at, :last_id) ORDER BY created_at DESC, id DESC LIMIT 20, with an index on (created_at, id). Where row-value comparison isn't supported: created_at < :t OR (created_at = :t AND id < :id).", "WHERE (created_at, id) < (:last_created_at, :last_id) ORDER BY created_at DESC, id DESC LIMIT 20, con un índice sobre (created_at, id). Donde no se puede comparar tuplas de valores: created_at < :t OR (created_at = :t AND id < :id).")],
+    t("WHERE (created_at, id) < (:last_created_at, :last_id) ORDER BY created_at DESC, id DESC LIMIT 20, with an index on (created_at, id) (lesson 11, Database indexes). Where row-value comparison isn't supported: created_at < :t OR (created_at = :t AND id < :id).", "WHERE (created_at, id) < (:last_created_at, :last_id) ORDER BY created_at DESC, id DESC LIMIT 20, con un índice sobre (created_at, id) (lección 11, Índices de bases de datos). Donde no se puede comparar tuplas de valores: created_at < :t OR (created_at = :t AND id < :id).")],
   [t("A user reports seeing the same item twice while scrolling a busy feed, and support can't reproduce it. What's your first guess?", "Un usuario reporta que vio el mismo elemento dos veces al hacer scroll en un feed con mucho movimiento, y soporte no lo puede reproducir. ¿Cuál es tu primera sospecha?"),
     t("Offset pagination over data that changes: new items arrived between page requests and pushed earlier items onto the next page. Deletes cause the opposite, silently skipped items. Moving to a cursor fixes both.", "Paginación con offset sobre datos que cambian: llegaron elementos nuevos entre una petición de página y otra y empujaron elementos anteriores a la página siguiente. Los borrados causan lo contrario, elementos saltados en silencio. Pasar a un cursor arregla las dos cosas.")],
   [t("Why is a cursor on created_at alone a bug, and when does it show up?", "¿Por qué un cursor solo sobre created_at es un bug, y cuándo aparece?"),
@@ -121,23 +123,23 @@ const QUESTIONS = [
 export default defineLesson({
   title: t("Pagination Workbench", "Banco de trabajo: paginación"),
   eyebrow: t("Systems lesson 12 · Pagination", "Lección de sistemas 12 · Paginación"),
-  lede: t("Every list API has to hand data out a page at a time, and the way it remembers where the last page ended decides how fast deep pages are and whether rows get shown twice or never. This lesson builds offset and cursor pagination three ways: watch a machine do it, predict what breaks it, then explain it back.", "Toda API de listados tiene que entregar los datos de a una página, y la forma en que recuerda dónde terminó la última página decide qué tan rápidas son las páginas profundas y si algunas filas se muestran dos veces o nunca. Esta lección arma la paginación con offset y con cursor de tres formas: mira cómo lo hace una máquina, predice qué la rompe y después explícalo."),
+  lede: t("Every list API has to hand data out a page at a time, and the way it remembers where the last page ended decides how fast deep pages are and whether rows get shown twice or never. This lesson builds offset and cursor pagination three ways: watch a machine do it, predict what breaks it, then explain it back.", "Toda API de listados tiene que entregar los datos una página a la vez, y la forma en que recuerda dónde terminó la última página decide qué tan rápidas son las páginas profundas y si algunas filas se muestran dos veces o nunca. Esta lección arma la paginación con offset y con cursor de tres formas: mira cómo lo hace una máquina, predice qué la rompe y después explícalo."),
   machine: {
     intro: t("The rail is the table, newest folder at the left. Watch the offset reader step past more folders on every page, switch to a cursor, then add new rows or deletes and watch what the reader sees.", "El riel es la tabla, con la carpeta más nueva a la izquierda. Mira cómo el lector con offset pasa por más carpetas en cada página, cambia a un cursor, y después agrega filas nuevas o borrados y mira qué ve el lector."),
     plate: {
       title: t("Filing machine", "Archivador"),
       keys: [
         { mark: "lit", label: t("The reading head and the folder it is reading", "El cabezal de lectura y la carpeta que está leyendo") },
-        { mark: "raised", label: t("Folders, newest at the left; same tab position = same created_at second", "Carpetas, la más nueva a la izquierda; misma posición de pestaña = mismo segundo de created_at") },
-        { mark: "flat", label: t("Dial: rows the current query has read", "Dial: filas que leyó la consulta actual") },
+        { mark: "raised", label: t("Folders, newest at the left; neighbouring folders with the same tab position share a created_at second", "Carpetas, la más nueva a la izquierda; carpetas vecinas con la pestaña en la misma posición comparten un segundo de created_at") },
+        { mark: "flat", label: t("Dial on the carriage: rows the current query has read (the readout prints the count)", "Dial del carro: filas que leyó la consulta actual (la línea de estado muestra la cuenta)") },
       ],
       caption:
-        t("The reader fetches one page at a time. In offset mode it starts from the newest folder every time and steps past every folder it skips; the dial counts each one. In cursor mode the clip marks where the last page ended and the carriage seeks straight there. New folders come in at the left and push the rest along. A folder read a second time has a dark tab; a folder that should have been shown and wasn't stands up out of the row.", "El lector trae una página a la vez. En modo offset empieza cada vez desde la carpeta más nueva y pasa por cada carpeta que se salta; el dial cuenta cada una. En modo cursor el clip marca dónde terminó la última página y el carro va directo ahí. Las carpetas nuevas entran por la izquierda y empujan al resto. Una carpeta leída por segunda vez tiene la pestaña oscura; una carpeta que debió mostrarse y no se mostró sobresale de la fila."),
+        t("The reader fetches one page at a time. In offset mode it starts from the newest folder every time and steps past every folder it skips; the dial counts each one. In cursor mode the clip marks where the last page ended and the carriage seeks straight there. New folders drop from the hopper at the left and push the rest along; old ones slide into the bin at the right. A folder read a second time has a dark tab; a folder that should have been shown and wasn't stands up out of the row.", "El lector trae una página a la vez. En modo offset empieza cada vez desde la carpeta más nueva y pasa por cada carpeta que se salta; el dial cuenta cada una. En modo cursor el clip marca dónde terminó la última página y el carro va directo ahí. Las carpetas nuevas caen de la tolva de la izquierda y empujan al resto; las viejas se deslizan al cajón de la derecha. Una carpeta leída por segunda vez tiene la pestaña oscura; una carpeta que debió mostrarse y no se mostró sobresale de la fila."),
       stage: { "data-office": "" },
       label: t("Pagination simulation. Space pauses or resumes.", "Simulación de paginación. La barra espaciadora pausa o reanuda."),
     },
     svg: buildFigure(),
-    stats: [["page", t("Page", "Página")], ["rows", t("Rows read", "Filas leídas")], ["trips", t("Queries", "Consultas")], ["dups", t("Shown twice", "Mostradas dos veces")], ["missing", t("Never shown", "Nunca mostradas")], ["pass", t("Reader", "Lector")]],
+    stats: [["page", t("Page", "Página")], ["rows", t("Rows read", "Filas leídas")], ["trips", t("Queries", "Consultas")], ["dups", t("Shown twice", "Mostradas dos veces")], ["missing", t("Never shown", "Nunca mostradas")], ["pass", t("Reader run", "Pasada del lector")]],
     controls: [
       { seg: "mode", label: t("Pagination", "Paginación"), options: [["offset", "Offset"], ["cursor", "Cursor"]], value: "offset" },
       { seg: "pageSize", label: t("Page size", "Tamaño de página"), options: [[4, "4"], [8, "8"]], value: 4 },

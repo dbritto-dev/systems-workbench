@@ -147,4 +147,6 @@ export function buildFigure() {
   });
 }
 
-export const GEOMETRY = { SLOTS, SLOT_X0, SLOT_W, FEED_X, BIN_X, TAB_Y, DIAL, READER };
+// On a phone the live figure crops to the hopper and the first NARROW_SLOTS slots.
+export const NARROW_SLOTS = 20;
+export const GEOMETRY = { SLOTS, SLOT_X0, SLOT_W, FEED_X, BIN_X, TAB_Y, DIAL, READER, NARROW_SLOTS };

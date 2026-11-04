@@ -2,7 +2,7 @@
 // The filing machine in the browser: runs a reader against the model, slides folders and the carriage to where the
 // model has them, and answers the controls. mount() gets the build-time data from page.ts (geometry, folder
 // drawings, the experiments' titles) and root, the <wb-lesson>.
-import { translateAlong } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+import { translateAlong, iso } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { playPause } from "../../runtime/dom";
@@ -25,8 +25,23 @@ export default function mount({ P, G, FOLDER_SVG, TITLES }, root) {
   const els = new Map();
   let seed = (Date.now() % 1e6) + 1;
 
+  // Phones: crop the figure to the left end of the rail (hopper, card index and the first slots) so folders, tabs and
+  // the clip are big enough to see, and keep the reader inside that window with fewer pages per pass.
+  const narrowQ = matchMedia("(max-width: 600px)");
+  const FULL_BOX = svg.getAttribute("viewBox");
+  const NARROW_BOX = (() => {
+    const pts = [[G.FEED_X - 16, -18, 36], [G.FEED_X - 16, 50, -17], [slotX(G.NARROW_SLOTS) + 4, 52, 0], [slotX(G.NARROW_SLOTS) + 4, -12, G.READER.beamZ + 4]].map((p) => iso(p, P));
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), pad = 8;
+    const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad;
+    return [x0, y0, Math.max(...xs) + pad - x0, Math.max(...ys) + pad - y0].map((v) => v.toFixed(1)).join(" ");
+  })();
+  let narrow = narrowQ.matches;
+  const crop = () => svg.setAttribute("viewBox", narrow ? NARROW_BOX : FULL_BOX);
+  narrowQ.addEventListener("change", (e) => { narrow = e.matches; crop(); restart(); });
+  crop();
+
   function runCfg(extra = {}) {
-    return { mode: cfg.mode, pageSize: cfg.pageSize, pages: Math.floor(28 / cfg.pageSize), rows0: 60, batch: 3, insertRate: RATES[cfg.inserts], deleteRate: cfg.deletes === "on" ? 0.25 : 0, keyUnique: cfg.key === "unique", think: 1.4, stepTime: 0.09, startAt: 0.8, ...extra };
+    return { mode: cfg.mode, pageSize: cfg.pageSize, pages: Math.floor((narrow ? 16 : 28) / cfg.pageSize), rows0: 60, batch: 3, insertRate: RATES[cfg.inserts], deleteRate: cfg.deletes === "on" ? 0.25 : 0, keyUnique: cfg.key === "unique", think: 1.4, stepTime: 0.09, startAt: 0.8, ...extra };
   }
 
   function folderEl(id, ts) {
@@ -70,8 +85,11 @@ export default function mount({ P, G, FOLDER_SVG, TITLES }, root) {
       current = { ...e, marked: 0 };
       tally = 0;
       stats.trips++; stats.page = e.page;
-      say(cfg.mode === "offset" ? T("page " + e.page + " · OFFSET " + e.skipped + " LIMIT " + cfg.pageSize, "página " + e.page + " · OFFSET " + e.skipped + " LIMIT " + cfg.pageSize)
-        : e.walking ? T("walking · page " + e.page + " after the clip", "recorriendo · página " + e.page + " después del clip") : T("page " + e.page + " · rows after the clip", "página " + e.page + " · filas después del clip"));
+      // The readout carries the rows-read count, which the carriage dial is too small to show on a phone.
+      const reads = T(" · reads " + e.cost + (e.cost === 1 ? " row" : " rows"), " · lee " + e.cost + (e.cost === 1 ? " fila" : " filas"));
+      const head = cfg.mode === "offset" ? T("page " + e.page + " · OFFSET " + e.skipped + " LIMIT " + cfg.pageSize, "página " + e.page + " · OFFSET " + e.skipped + " LIMIT " + cfg.pageSize)
+        : e.walking ? T("walking · page " + e.page + " after the clip", "recorriendo · página " + e.page + " después del clip") : T("page " + e.page + " · rows after the clip", "página " + e.page + " · filas después del clip");
+      say(T(head.en + reads.en, head.es + reads.es));
     }
   }
 
