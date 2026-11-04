@@ -1,13 +1,15 @@
 // @ts-nocheck: model code ported as-is; shared helpers come from src/lib.
 // Shared model for the figure and the experiments: a pool of workers calling a supplier,
 // optionally through a timeout, retries and a circuit breaker. Times are in seconds of figure time.
+// The supplier's causes: "slow" answers after about sickTime; "failing" hangs as long and then errors; "down" refuses
+// the call at once (connection refused), so the error comes back in about downTime.
 import { rng } from "../../lib/random";
 import { mean, meanBy, rankQuantile } from "../../lib/stats";
 
 export const STEP = 0.05;
 export const BASE = {
   workers: 6, queue: 4, rate: 3, supplierShare: 0.7, localTime: 0.4,
-  healthyTime: 0.6, sickTime: 6, cap: 15, recoverHold: 2, fastTime: 0.05,
+  healthyTime: 0.6, sickTime: 6, downTime: 0.08, cap: 15, recoverHold: 2, fastTime: 0.05,
   cause: "healthy", timeout: 0, breaker: false, threshold: 5, cooldown: 5, retries: 0, backoff: false,
 };
 const freshCounts = () => ({ arrived: 0, localArrived: 0, served: 0, servedLocal: 0, servedSupplier: 0, failedFast: 0, failedSlow: 0, dropped: 0, localDropped: 0, attempts: 0, loadArea: 0, time: 0, latencies: [], supplierLatencies: [] });
@@ -50,7 +52,8 @@ export function createSim(options = {}, seed = 1) {
     }
     w.req.attempts++; s.counts.attempts++;
     const ill = sick();
-    const call = { start: s.t, endAt: s.t + (ill ? cfg.sickTime : cfg.healthyTime) * (0.85 + 0.3 * random()), ok: !ill || cfg.cause === "slow" };
+    const takes = cfg.cause === "down" ? cfg.downTime : ill ? cfg.sickTime : cfg.healthyTime;
+    const call = { start: s.t, endAt: s.t + takes * (0.85 + 0.3 * random()), ok: !ill || cfg.cause === "slow" };
     s.calls.push(call);
     w.call = call; w.phase = "call"; w.callStart = s.t; w.deadline = cfg.timeout ? s.t + cfg.timeout : Infinity;
   }
@@ -70,7 +73,7 @@ export function createSim(options = {}, seed = 1) {
       if (c.endAt <= s.t) {
         result(w, c.ok);
         if (c.ok) { if (s.watchFrom !== null && s.recoveredAt === null) s.recoveredAt = s.t; return finish(w, "ok"); }
-        return retryOr(w, "error");
+        return retryOr(w, s.t - c.start < 0.5 ? "fast" : "error");   // a refused call fails fast too
       }
       if (s.t >= w.deadline) { c.abandoned = true; result(w, false); return retryOr(w, "timeout"); }
     }
@@ -148,10 +151,10 @@ export const WINDOW = 40;   // seconds after the fix that the recovery runs watc
 const incident = (o) => averageScenario({ options: { timeout: 1.5, ...o }, events: INCIDENT, seconds: 20 + WINDOW, from: 0 });
 export function experimentResults() {
   return {
-    slow: { a: averageScenario({ options: { cause: "healthy" } }), b: averageScenario({ options: { cause: "slow" } }) },
+    slow: { a: averageScenario({ options: { cause: "healthy" } }), b: averageScenario({ options: { cause: "slow" } }), c: averageScenario({ options: { cause: "down" } }) },
     timeout: { a: averageScenario({ options: { cause: "slow" } }), b: averageScenario({ options: { cause: "slow", timeout: 1.5 } }) },
     breaker: { a: averageScenario({ options: { cause: "failing", timeout: 1.5 } }), b: averageScenario({ options: { cause: "failing", timeout: 1.5, breaker: true } }) },
-    retries: { a: incident({}), b: incident({ retries: 3 }), c: incident({ retries: 3, breaker: true }) },
+    retries: { a: incident({}), b: incident({ retries: 3 }), c: incident({ retries: 3, breaker: true }) },   // b → c is the experiment; a is the baseline
     cooldown: { a: incident({}), b: incident({ breaker: true, cooldown: 5 }), c: incident({ breaker: true, cooldown: 30 }) },
   };
 }

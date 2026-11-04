@@ -83,7 +83,8 @@ export default function mount({ P, G }, root) {
     const fill = Math.min(1, load / g.full);
     gauge.setAttribute("d", fill > 0.005 ? WB.faceRectY(P, g.x0, g.x1, g.y, g.z0, g.z0 + (g.z1 - g.z0) * fill) : "");
     const supplier = cfg.cause === "slow" ? T("supplier slow", "proveedor lento") : cfg.cause === "failing" ? T("supplier failing", "proveedor fallando")
-      : s.supplier.recovering ? T("supplier overloaded", "proveedor saturado") : T("supplier ok", "proveedor bien");
+      : cfg.cause === "down" ? T("supplier down", "proveedor caído")
+      : s.supplier.recovering ? T("supplier overloaded", "proveedor saturado") : T("supplier healthy", "proveedor sano");
     const breakerText = !cfg.breaker ? T("no breaker", "sin interruptor") : state === "half" ? T("breaker half-open · one test call", "interruptor semiabierto · 1 prueba")
       : state === "open" ? T("breaker open", "interruptor abierto") : T("breaker closed", "interruptor cerrado");
     say(L(breakerText) + " · " + L(waiting + " of 6 cords in the trunk", waiting + " de 6 cordones en la troncal") + " · " + L(supplier));
@@ -130,7 +131,7 @@ export default function mount({ P, G }, root) {
   root.on("watch", (w) => {
     machine = createSim(machine.cfg, (Date.now() % 1e6) + 1);
     set("cause", w.cause); set("timeout", w.timeout); set("breaker", w.breaker); set("retries", w.retries);
-    if (w.cooldown) set("cooldown", w.cooldown);
+    set("cooldown", w.cooldown ?? 5); set("threshold", w.threshold ?? 5);
     if (w.fixAfter) scheduled = [{ at: machine.s.t + w.fixAfter, fn: () => { machine.set("cause", "healthy"); root.press("cause", "healthy"); } }];
     showStats(true);
     if (clock.paused) clock.setPaused(false);
