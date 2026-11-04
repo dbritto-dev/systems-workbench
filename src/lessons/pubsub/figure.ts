@@ -54,7 +54,7 @@ export const P = k.fitProjection(
   { pad: 26, azimuth: 52 },
 );
 
-const { S, L, D, at } = shorthand(P);
+const { S, L, D, at, text } = shorthand(P);
 const byDepth = (points) => [...points].sort((a, b) => k.depthOf([a[0], a[1], 0], P) - k.depthOf([b[0], b[1], 0], P));
 
 export function cardSvg({ lit = false } = {}) {
@@ -114,6 +114,8 @@ function desk(cx) {
   out.push(S(k.cylinder(cx, POST_Y, 2.8, DESK.h + 28, 1.6, P, 16), { tone: "mid" }));
   out.push(S(k.cylinder(cx, POST_Y, 3.6, DESK.h, 1.4, P, 20), { tone: "mid" }));
   out.push(D([at([plan.x + 3, plan.y + 3, DESK.h]), at([plan.x + plan.w - 3, plan.y + plan.d - 3, DESK.h])], { size: 0.4, tone: "lo" }));
+  // The station's letter on the desk front, the same A–E the readout and the experiments use.
+  out.push(text(cx, plan.y + plan.d, 6.6, "ABCDE"[STATION_X.indexOf(cx)], { size: 6, tone: "hi", anchor: "middle" }));
   return out.join("");
 }
 // The stamp: collar on the post, arm and head. Live code lowers it to stamp (acknowledge) a card.
@@ -214,7 +216,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A pneumatic dispatch office on a base plate. A screw press at the back prints one message at a time and sends it down a single tube into a round distribution hub. The hub fires one copy down every connected tube at the same moment, to up to five stamping stations. Each copy lands in its station's own tray, and each station takes cards from its tray at its own pace and stamps them to acknowledge them; cards it has not reached yet pile up in its tray. While a station without a durable subscription is away, its tray is gone and its copies fall into a discard bin.",
-      "Una oficina de despacho neumático sobre una placa base. Una prensa de tornillo al fondo imprime un mensaje a la vez y lo manda por un solo tubo a un distribuidor redondo. El distribuidor dispara una copia por cada tubo conectado al mismo tiempo, hacia hasta cinco estaciones de sellado. Cada copia cae en la bandeja de su estación, y cada estación toma tarjetas de su bandeja a su propio ritmo y las sella para confirmarlas; las que todavía no alcanza se apilan en su bandeja. Mientras una estación sin suscripción duradera está desconectada, su bandeja desaparece y sus copias caen a un cesto de descarte."),
+      "Una oficina de despacho neumático sobre una placa base. Una prensa de tornillo al fondo imprime un mensaje a la vez y lo manda por un solo tubo a un distribuidor redondo. El distribuidor dispara una copia por cada tubo conectado al mismo tiempo, hacia hasta cinco estaciones de sellado. Cada copia cae en la bandeja de su estación, y cada estación toma tarjetas de su bandeja a su propio ritmo y las sella para confirmarlas; las que todavía no alcanza se apilan en su bandeja. Mientras una estación sin suscripción duradera está desconectada, su bandeja desaparece y sus copias caen al descarte."),
     body: [
       plate(),
       pressBack(),

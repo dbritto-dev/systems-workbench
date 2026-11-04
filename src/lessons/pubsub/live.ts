@@ -30,7 +30,7 @@ export default function mount({ P, G }, root) {
   const stackEls = trayEls.map((el) => [...el.querySelectorAll("[data-card]")]);
   const dropEls = STATION_X.map((_, i) => q('[data-drop="' + i + '"]'));
 
-  const cfg = { subs: 3, slow: false, offline: false, durable: true, crash: 0, idempotent: false, shared: false };
+  const cfg = { subs: 3, slow: false, offline: false, durable: true, crash: 0, idempotent: false, shared: false, direct: false };
   let speed = 1;
   let m = fresh();
   let drops = new Array(STATIONS).fill(null);
@@ -66,7 +66,8 @@ export default function mount({ P, G }, root) {
     for (const e of m.log) {
       if (e.type === "drop") drops[e.q] = { t0: m.t, bin: false };
       if (e.type === "lost") drops[e.q] = { t0: m.t, bin: true };
-      if (e.type === "publish" && (!note || m.t > note.until)) {
+      if (e.type === "call") note = { until: m.t + 0.8 }, say(B("press calls " + LETTER[e.q] + " with #" + e.id + " and waits for its stamp", "la prensa llama a " + LETTER[e.q] + " con #" + e.id + " y espera su sello"));
+      if (e.type === "publish" && !m.cfg.direct && (!note || m.t > note.until)) {
         const copies = STATION_X.filter((_, q) => subscribed(m, q)).length;
         say(B("message #" + e.id + " · " + copies + (copies === 1 ? " copy" : " copies"), "mensaje #" + e.id + " · " + copies + (copies === 1 ? " copia" : " copias")));
       }
@@ -96,7 +97,7 @@ export default function mount({ P, G }, root) {
       else if (p < PUB_SHARE + HUB_SHARE) spin = (p - PUB_SHARE) / HUB_SHARE;
       else {
         const share = ease((p - PUB_SHARE - HUB_SHARE) / (1 - PUB_SHARE - HUB_SHARE));
-        for (let i = 0; i < STATIONS; i++) if (tubeOn(i)) place(capEls[i][n % 2], along(G.ROUTES[i], lens[i], share));
+        for (let i = 0; i < STATIONS; i++) if (tubeOn(i) && (f.only === undefined || f.only === i)) place(capEls[i][n % 2], along(G.ROUTES[i], lens[i], share));
       }
     });
     const ang = (spin === null ? 0 : spin) * Math.PI * 2, H = G.HUB;
@@ -172,11 +173,12 @@ export default function mount({ P, G }, root) {
       cfg.shared = m.cfg.shared = raw === "true" || raw === true;
       if (cfg.shared) { m.queues[0].push(...m.queues[1]); m.queues[1].length = 0; }
     }
+    if (name === "direct") { cfg.direct = m.cfg.direct = raw === "true" || raw === true; if (!cfg.direct) m.call = null; }
     if (name === "speed") speed = Number(raw);
     root.press(name, raw);
   }
   function restart() { m = fresh(); drops = new Array(STATIONS).fill(null); note = null; paint(); showStats(); say(B("starting", "empezando")); }
-  const DEFAULTS = { subs: 3, station: "normal", durable: "true", crash: 0, idempotent: "false", shared: "false" };
+  const DEFAULTS = { subs: 3, station: "normal", durable: "true", crash: 0, idempotent: "false", shared: "false", direct: "false" };
   root.on("change", (name, value) => set(name, value));
   const actions = { reset: restart };
   root.on("action", (name) => actions[name]?.());
@@ -185,7 +187,7 @@ export default function mount({ P, G }, root) {
 
   root.on("watch", (watch) => {
     const w = { ...DEFAULTS, ...watch };
-    for (const name of ["subs", "durable", "crash", "idempotent", "shared"]) set(name, String(w[name]));
+    for (const name of ["subs", "durable", "crash", "idempotent", "shared", "direct"]) set(name, String(w[name]));
     cfg.slow = cfg.offline = false;
     restart();
     set("station", w.station);

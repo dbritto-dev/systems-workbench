@@ -13,19 +13,20 @@ const RESULTS = experimentResults();
 // What each card shows after a run.
 const RUNS_RAW = {
   fanout: () => {
-    const { two, five, direct } = RESULTS.fanout, top = direct * 1.05;
+    const { hub5, direct2, direct5 } = RESULTS.fanout, top = hub5.asked;
+    const out = (x) => n0(x.out), msgs = (x) => t(n0(x.out) + " sent", n0(x.out) + " enviados");
     return {
-      verdict: t("With 2 or 5 subscribers the press spends " + secs2(two) + " per message either way. Calling 5 stations directly and waiting would take " + secs2(direct) + ".",
-        "Con 2 o 5 suscriptores la prensa dedica " + secs2(two) + " por mensaje en ambos casos. Llamar directamente a 5 estaciones y esperar tomaría " + secs2(direct) + "."),
-      bars: [[t("Pub/sub, 2 subs", "Pub/sub, 2 susc."), two / top, secs2(two)], [t("Pub/sub, 5 subs", "Pub/sub, 5 susc."), five / top, secs2(five), true], [t("Direct calls, 5", "Llamadas directas, 5"), direct / top, secs2(direct)]] };
+      verdict: t("Through the hub, the press sent all " + out(hub5) + " of " + n0(hub5.asked) + " messages, " + secs2(hub5.perMessage) + " of its time each. Calling the 5 stations and waiting for each stamp, every message held the press " + secs2(direct5.perMessage) + " and it sent " + out(direct5) + ". With 2 stations it would have sent " + out(direct2) + ".",
+        "Con el distribuidor, la prensa envió los " + out(hub5) + " de " + n0(hub5.asked) + " mensajes, con " + secs2(hub5.perMessage) + " de su tiempo cada uno. Llamando a las 5 estaciones y esperando cada sello, cada mensaje ocupó a la prensa " + secs2(direct5.perMessage) + " y envió " + out(direct5) + ". Con 2 estaciones habría enviado " + out(direct2) + "."),
+      bars: [[t("Hub, 5 stations", "Distribuidor, 5 estaciones"), hub5.out / top, msgs(hub5)], [t("Direct calls, 2 stations", "Llamadas directas, 2 estaciones"), direct2.out / top, msgs(direct2)], [t("Direct calls, 5 stations", "Llamadas directas, 5 estaciones"), direct5.out / top, msgs(direct5), true]] };
   },
   slow: () => {
     const { fast, slow } = RESULTS.slow;
     const dTop = Math.max(fast.a, slow.a) * 1.25;
     const cards = (n) => t(n0(n) + " cards", n0(n) + " tarjetas");
     return {
-      verdict: t("A still finishes each message " + secs2(slow.a) + " after it is printed, the same as before. After 100 messages C has " + n0(slow.c) + " cards waiting, and the pile grows by about 25 a minute.",
-        "A sigue terminando cada mensaje " + secs2(slow.a) + " después de impreso, igual que antes. Tras 100 mensajes C tiene " + n0(slow.c) + " tarjetas esperando, y la pila crece unas 25 por minuto."),
+      verdict: t("A still finishes each message " + secs2(slow.a) + " after it is printed, the same as before. After 100 messages (two minutes) C has " + n0(slow.c) + " cards waiting: the pile grows by about " + n0(slow.c / 2) + " a minute.",
+        "A sigue terminando cada mensaje " + secs2(slow.a) + " después de impreso, igual que antes. Tras 100 mensajes (dos minutos) C tiene " + n0(slow.c) + " tarjetas esperando: la pila crece unas " + n0(slow.c / 2) + " por minuto."),
       bars: [[t("A's delay, C normal", "Demora de A, C normal"), fast.a / dTop, secs2(fast.a)], [t("A's delay, C slow", "Demora de A, C lenta"), slow.a / dTop, secs2(slow.a), true], [t("C's backlog, normal", "Pendientes de C, normal"), fast.c / 100, cards(fast.c)], [t("C's backlog, slow", "Pendientes de C, lenta"), slow.c / 100, cards(slow.c), true]] };
   },
   offline: () => {
@@ -41,7 +42,7 @@ const RUNS_RAW = {
     const top = plain.runs * 1.08;
     return {
       verdict: t("For " + n0(plain.pub) + " different messages, A's handler ran " + n0(plain.runs) + " times. A plain handler applied " + n0(plain.effects) + " effects; an idempotent one applied " + n0(idem.effects) + ".",
-        "Para " + n0(plain.pub) + " mensajes distintos, el handler de A corrió " + n0(plain.runs) + " veces. Un handler simple aplicó " + n0(plain.effects) + " efectos; uno idempotente aplicó " + n0(idem.effects) + "."),
+        "Para " + n0(plain.pub) + " mensajes distintos, el handler de A se ejecutó " + n0(plain.runs) + " veces. Un handler simple aplicó " + n0(plain.effects) + " efectos; uno idempotente aplicó " + n0(idem.effects) + "."),
       bars: [[t("Different messages", "Mensajes distintos"), plain.pub / top, n0(plain.pub)], [t("Handler runs", "Ejecuciones del handler"), plain.runs / top, n0(plain.runs), true], [t("Effects, plain", "Efectos, simple"), plain.effects / top, n0(plain.effects), true], [t("Effects, idempotent", "Efectos, idempotente"), idem.effects / top, n0(idem.effects)]] };
   },
   shared: () => {
@@ -58,23 +59,23 @@ const RUNS = Object.fromEntries(Object.entries(RUNS_RAW).map(([id, run]) => [id,
 const EXPERIMENTS = [
   {
     id: "fanout",
-    title: t("More subscribers", "Más suscriptores"),
-    change: t("Subscribers 2 → 5 · three more stations now want every message", "Suscriptores 2 → 5 · ahora tres estaciones más quieren cada mensaje"),
-    question: t("The press now feeds five stations instead of two. How long does it spend on each message?", "Ahora la prensa alimenta cinco estaciones en lugar de dos. ¿Cuánto tiempo dedica a cada mensaje?"),
+    title: t("Call every station", "Llamar a cada estación"),
+    change: t("5 stations · the press drops each message in the hub → sends it down one station's tube at a time and waits for that station's stamp", "5 estaciones · la prensa deja cada mensaje en el distribuidor → lo manda por el tubo de una estación a la vez y espera el sello de esa estación"),
+    question: t("A message is due every 1.2 s, 100 in two minutes. How many does the press get out?", "Toca un mensaje cada 1.2 s, 100 en dos minutos. ¿Cuántos logra enviar la prensa?"),
     options: [
-      t("The same 1.2 s: it never waits for the stations", "Los mismos 1.2 s: nunca espera a las estaciones"),
-      t("About 2.5 times longer: there are more copies to hand out", "Unas 2.5 veces más: hay más copias que repartir"),
-      t("A little longer: the hub has more tubes to fill", "Un poco más: el distribuidor tiene más tubos que llenar"),
+      t("All 100: the stations do the work, not the press", "Los 100: el trabajo lo hacen las estaciones, no la prensa"),
+      t("Most of them, about 80", "La mayoría, unos 80"),
+      t("Fewer than a third", "Menos de un tercio"),
     ],
-    answer: 0,
-    why: t("The press only drops the capsule into the hub. Firing a copy down every tube is the broker's job, and all copies travel at once, and working through each tray is each station's job. That is the decoupling pub/sub buys: adding a subscriber costs the publisher nothing. If the press called each station itself and waited for an answer, every new station would add its whole processing time to every message.",
-      "La prensa solo deja la cápsula en el distribuidor. Disparar una copia por cada tubo es trabajo del broker, y todas las copias viajan a la vez; vaciar cada bandeja es trabajo de cada estación. Ese es el desacoplamiento que te da pub/sub: sumar un suscriptor no le cuesta nada al publicador. Si la prensa llamara a cada estación y esperara la respuesta, cada estación nueva sumaría todo su tiempo de procesamiento a cada mensaje."),
-    watch: { subs: 5 },
+    answer: 2,
+    why: t("A direct call puts each station's whole round trip on the publisher's path: the tube there, taking the card, the work and the stamp, one station after another. A message now holds the press longer than the 1.2 s it has, so it falls further behind every minute, and every new station makes it slower. Through the hub, the press drops the capsule and goes back to printing; copies travel at once and each station works through its own tray. That is the decoupling pub/sub buys: adding a subscriber costs the publisher nothing.",
+      "Una llamada directa pone todo el recorrido de cada estación en el camino del publicador: el tubo de ida, tomar la tarjeta, el trabajo y el sello, una estación después de otra. Ahora un mensaje ocupa a la prensa más que los 1.2 s que tiene, así que se atrasa más cada minuto, y cada estación nueva la vuelve más lenta. Con el distribuidor, la prensa deja la cápsula y vuelve a imprimir; las copias viajan a la vez y cada estación vacía su propia bandeja. Ese es el desacoplamiento que te da pub/sub: sumar un suscriptor no le cuesta nada al publicador."),
+    watch: { subs: 5, direct: "true" },
   },
   {
     id: "slow",
     title: t("A slow subscriber", "Un suscriptor lento"),
-    change: t("Station C takes 2 s per card · the press still prints one every 1.2 s", "La estación C tarda 2 s por tarjeta · la prensa sigue imprimiendo una cada 1.2 s"),
+    change: t("Station C works 2 s on each card (2.35 s with taking and stamping) · the press still prints one every 1.2 s", "La estación C trabaja 2 s en cada tarjeta (2.35 s contando tomarla y sellarla) · la prensa sigue imprimiendo una cada 1.2 s"),
     question: t("After two minutes, what has happened?", "Después de dos minutos, ¿qué pasó?"),
     options: [
       t("A and B have slowed down too: the hub waits for C", "A y B también se volvieron lentas: el distribuidor espera a C"),
@@ -105,15 +106,15 @@ const EXPERIMENTS = [
     id: "crash",
     title: t("Crash before the ack", "Caída antes del ack"),
     change: t("Stations crash 1 time in 10 after doing the work, before stamping the card", "Las estaciones se caen 1 de cada 10 veces después de hacer el trabajo, antes de sellar la tarjeta"),
-    question: t("Over 100 messages, how many times does station A's handler run?", "Con 100 mensajes, ¿cuántas veces corre el handler de la estación A?"),
+    question: t("Over two minutes (about 100 messages), how many times does station A's handler run?", "En dos minutos (unos 100 mensajes), ¿cuántas veces se ejecuta el handler de la estación A?"),
     options: [
       t("Exactly 100: the broker knows the work was done", "Exactamente 100: el broker sabe que el trabajo se hizo"),
       t("About 110: some messages are handled twice", "Unas 110: algunos mensajes se procesan dos veces"),
       t("About 90: the crashed messages are lost", "Unas 90: los mensajes de las caídas se pierden"),
     ],
     answer: 1,
-    why: t("The broker only knows a card is done when it sees the stamp (the ack). A crash after the work but before the ack looks exactly like a crash before the work, so the broker hands the card out again. That is at-least-once delivery: nothing is lost, but some messages arrive twice. An idempotent handler, one that checks whether it has already applied a message, turns those duplicates into no-ops.",
-      "El broker solo sabe que una tarjeta está lista cuando ve el sello (el ack). Una caída después del trabajo pero antes del ack se ve igual que una caída antes del trabajo, así que el broker vuelve a entregar la tarjeta. Eso es entrega al menos una vez (at-least-once): no se pierde nada, pero algunos mensajes llegan dos veces. Un handler idempotente, uno que revisa si ya aplicó un mensaje, convierte esos duplicados en operaciones sin efecto."),
+    why: t("The broker only knows a card is done when it sees the stamp (the ack). A crash after the work but before the ack looks exactly like a crash before the work, so the broker hands the card out again. That is at-least-once delivery: nothing is lost, but some messages arrive twice. An idempotent handler, one that checks whether it has already applied a message, turns those duplicates into no-ops; lesson 25, Idempotency keys, builds one.",
+      "El broker solo sabe que una tarjeta está lista cuando ve el sello (el ack). Una caída después del trabajo pero antes del ack se ve igual que una caída antes del trabajo, así que el broker vuelve a entregar la tarjeta. Eso es entrega al menos una vez (at-least-once): no se pierde nada, pero algunos mensajes llegan dos veces. Un handler idempotente, uno que revisa si ya aplicó un mensaje, convierte esos duplicados en operaciones sin efecto; la lección 25, Claves de idempotencia, construye uno."),
     watch: { subs: 3, crash: 0.1, idempotent: false },
   },
   {
@@ -127,8 +128,8 @@ const EXPERIMENTS = [
       t("All 100 go to A; B only gets cards if A fails", "Los 100 van a A; B solo recibe tarjetas si A falla"),
     ],
     answer: 1,
-    why: t("Two subscriptions mean two copies: each subscriber gets everything (fan-out). Two workers on one queue are competing consumers: each card goes to exactly one of them, so they share the work. Same broker, different shape: pub/sub for \"everyone who cares should know\", a work queue for \"someone should do this\".",
-      "Dos suscripciones significan dos copias: cada suscriptor recibe todo (difusión, fan-out). Dos workers sobre una cola son consumidores en competencia (competing consumers): cada tarjeta va exactamente a uno de ellos, así que se reparten el trabajo. Mismo broker, otra forma: pub/sub para \"todos a los que les importa deben enterarse\", una cola de trabajo para \"alguien tiene que hacer esto\"."),
+    why: t("Two subscriptions mean two copies: each subscriber gets everything (fan-out). Two workers on one queue are competing consumers: each card goes to exactly one of them, so they share the work. Same broker, different shape: pub/sub for \"everyone who cares should know\", a work queue for \"someone should do this\". Lesson 20, Logs and offsets, splits a stream the same way, one partition per consumer.",
+      "Dos suscripciones significan dos copias: cada suscriptor recibe todo (difusión, fan-out). Dos workers sobre una cola son consumidores en competencia (competing consumers): cada tarjeta va exactamente a uno de ellos, así que se reparten el trabajo. Mismo broker, otra forma: pub/sub para \"todos a los que les importa deben enterarse\", una cola de trabajo para \"alguien tiene que hacer esto\". La lección 20, Logs y offsets, reparte un flujo de la misma forma, una partición por consumidor."),
     watch: { subs: 3, shared: true },
   },
 ];
@@ -144,11 +145,11 @@ const QUESTIONS = [
     t("When old messages are worthless to a subscriber that was away: live positions, presence, prices, a dashboard that refreshes anyway. It is cheaper and can't build up a backlog. Anything that must not be missed, like orders or payments, needs a durable subscription.",
       "Cuando los mensajes viejos no le sirven de nada a un suscriptor que no estaba: posiciones en vivo, presencia, precios, un tablero que se refresca de todos modos. Es más barata y no puede acumular pendientes. Todo lo que no se puede perder, como pedidos o pagos, necesita una suscripción duradera.")],
   [t("Your payment handler reads from an at-least-once queue. How do you make sure a customer is charged once?", "Tu handler de pagos lee de una cola al menos una vez (at-least-once). ¿Cómo te aseguras de cobrarle una sola vez al cliente?"),
-    t("Make the handler idempotent: give every message an id, record processed ids (a unique constraint in the same transaction as the charge), and skip ids already seen. Pass an idempotency key to the payment provider too, so a retry on their side can't double-charge.",
-      "Haz que el handler sea idempotente: dale a cada mensaje un id, registra los ids procesados (una restricción única en la misma transacción que el cobro) y salta los ids que ya viste. Pásale también una clave de idempotencia (idempotency key) al proveedor de pagos, para que un reintento de su lado no cobre dos veces.")],
+    t("Make the handler idempotent: give every message an id, record processed ids with a unique constraint in the same transaction as your own payment record, and skip ids already seen. The charge itself happens at the provider, outside your transaction, so pass the message id as the provider's idempotency key: a redelivered message then can't charge twice. Lesson 25, Idempotency keys, walks through it.",
+      "Haz que el handler sea idempotente: dale a cada mensaje un id, registra los ids procesados con una restricción de unicidad en la misma transacción que tu propio registro del pago y salta los ids que ya viste. El cobro ocurre en el proveedor, fuera de tu transacción, así que pásale el id del mensaje como clave de idempotencia (idempotency key): un mensaje reentregado ya no puede cobrar dos veces. La lección 25, Claves de idempotencia, lo explica paso a paso.")],
   [t("Why is exactly-once delivery so hard, and what do teams do instead?", "¿Por qué es tan difícil la entrega exactamente una vez (exactly-once), y qué hacen los equipos en su lugar?"),
-    t("Because the ack can be lost after the work is done, and the broker can't tell that apart from a crash before the work. So it must either redeliver (risking duplicates) or not (risking loss). Teams pick at-least-once delivery plus idempotent handlers, which gives exactly-once effects.",
-      "Porque el ack se puede perder después de hecho el trabajo, y el broker no puede distinguir eso de una caída antes del trabajo. Así que tiene que volver a entregar (con riesgo de duplicados) o no hacerlo (con riesgo de pérdida). Los equipos eligen entrega al menos una vez más handlers idempotentes, lo que da efectos exactamente una vez.")],
+    t("Because the ack can be lost after the work is done, and the broker can't tell that apart from a crash before the work. So it must either redeliver (risking duplicates) or not (risking loss). Teams pick at-least-once delivery plus idempotent handlers (lesson 25), which gives exactly-once effects.",
+      "Porque el ack se puede perder después de hecho el trabajo, y el broker no puede distinguir eso de una caída antes del trabajo. Así que tiene que volver a entregar (con riesgo de duplicados) o no hacerlo (con riesgo de pérdida). Los equipos eligen entrega al menos una vez más handlers idempotentes (lección 25), lo que da efectos exactamente una vez.")],
   [t("Give a real example of pub/sub and one of a work queue from a system you know.", "Da un ejemplo real de pub/sub y otro de cola de trabajo de un sistema que conozcas."),
     t("Pub/sub: \"order placed\" goes to email, analytics and inventory, each of which needs every order. Work queue: thumbnails to generate or emails to send, where any one worker can do each job and adding workers adds throughput.",
       "Pub/sub: \"pedido realizado\" va a correo, analítica e inventario, y cada uno necesita todos los pedidos. Cola de trabajo: miniaturas por generar o correos por enviar, donde cualquier worker puede hacer cada tarea y sumar workers aumenta el rendimiento (throughput).")],
@@ -158,7 +159,7 @@ export default defineLesson({
   title: t("Pub/Sub Workbench", "Banco de trabajo: pub/sub"),
   eyebrow: t("Systems lesson 02 · Pub/sub", "Lección de sistemas 02 · Pub/sub"),
   lede: t("Publish/subscribe lets one part of a system announce something without knowing who listens. This lesson builds that idea three ways: watch a machine do it, predict what breaks it, then explain it back.",
-    "Publicar/suscribir (publish/subscribe) permite que una parte de un sistema anuncie algo sin saber quién escucha. Esta lección arma esa idea de tres maneras: mira una máquina hacerlo, predice qué la rompe y luego explícalo con tus palabras."),
+    "Publicar/suscribir (publish/subscribe) permite que una parte de un sistema anuncie algo sin saber quién escucha. Esta lección construye esa idea de tres formas: mira cómo lo hace una máquina, predice qué la rompe y después explícalo."),
   machine: {
     intro: t("The press is the publisher, the hub and its tubes are the broker, and each station is a subscriber with its own tray. Watch a few messages go out, then change the settings below and see what the counters and trays do.",
       "La prensa es el publicador, el distribuidor y sus tubos son el broker, y cada estación es un suscriptor con su propia bandeja. Mira salir algunos mensajes, luego cambia los ajustes de abajo y observa qué hacen los contadores y las bandejas."),
@@ -171,7 +172,7 @@ export default defineLesson({
       ],
       caption: t(
         "The press prints a message every 1.2 s and sends it down one tube to the hub, then goes straight back to printing. The hub fires a copy down every connected tube at the same moment, so five subscribers get their copy as soon as two would. Each station takes the next card from its own tray, works on it and stamps it to acknowledge it; its lamp blinks on every ack. Cards waiting in a tray are that subscriber's backlog. A station that is away without a durable subscription has no tray: its copies fall into the bin.",
-        "La prensa imprime un mensaje cada 1.2 s y lo manda por un tubo al distribuidor, y vuelve de inmediato a imprimir. El distribuidor dispara una copia por cada tubo conectado al mismo tiempo, así que cinco suscriptores reciben su copia tan rápido como dos. Cada estación toma la siguiente tarjeta de su bandeja, la procesa y la sella para confirmarla (ack); su lámpara parpadea con cada ack. Las tarjetas que esperan en una bandeja son lo pendiente (backlog) de ese suscriptor. Una estación desconectada sin suscripción duradera no tiene bandeja: sus copias caen al cesto."),
+        "La prensa imprime un mensaje cada 1.2 s y lo manda por un tubo al distribuidor, y vuelve de inmediato a imprimir. El distribuidor dispara una copia por cada tubo conectado al mismo tiempo, así que cinco suscriptores reciben su copia tan rápido como dos. Cada estación toma la siguiente tarjeta de su bandeja, la procesa y la sella para confirmarla (ack); su lámpara parpadea con cada ack. Las tarjetas que esperan en una bandeja son lo pendiente (backlog) de ese suscriptor. Una estación desconectada sin suscripción duradera no tiene bandeja: sus copias caen al descarte."),
       stage: { "data-office": "" },
       label: t("Dispatch office simulation. Space pauses or resumes.", "Simulación de la oficina de despacho. Espacio pausa o reanuda."),
     },
@@ -184,12 +185,13 @@ export default defineLesson({
       { seg: "crash", label: t("Crash before ack", "Caída antes del ack"), options: [[0, t("Never", "Nunca")], [0.1, t("1 in 10", "1 de 10")]], value: 0 },
       { seg: "idempotent", label: t("Handlers", "Handlers"), options: [["false", t("Plain", "Simples")], ["true", t("Idempotent", "Idempotentes")]], value: "false" },
       { seg: "shared", label: t("A and B", "A y B"), options: [["false", t("Own subscriptions", "Suscripciones propias")], ["true", t("Share one queue", "Comparten una cola")]], value: "false" },
+      { seg: "direct", label: t("Delivery", "Entrega"), options: [["false", t("Through the hub", "Por el distribuidor")], ["true", t("Direct calls", "Llamadas directas")]], value: "false" },
       { speed: true },
       { actions: [["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from two simulated minutes of the same machine (100 messages), averaged over six runs.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados salen de dos minutos simulados de la misma máquina (100 mensajes), promediados en seis corridas."), experiments: withResults(EXPERIMENTS, RUNS) },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen de dos minutos simulados de la misma máquina (100 mensajes), promediados en seis ejecuciones."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   data: {
     P,

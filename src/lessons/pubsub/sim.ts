@@ -6,15 +6,17 @@ import { mean, meanBy } from "../../lib/stats";
 // One press publishes a message every T.interval into the hub. The hub sends one copy down every
 // subscribed tube at the same moment; all copies arrive T.tube later, whatever the number of tubes.
 // Each station takes cards from its own tray at its own pace.
+// direct: no fan-out. The press sends each message down one station's tube at a time and waits for that station's
+// stamp before calling the next one, the way a publisher that calls its subscribers itself would.
 export const T = { interval: 1.2, press: 0.3, tube: 0.6, take: 0.15, work: 0.4, slowWork: 2.0, ack: 0.2, crash: 0.35 };
 export const STATIONS = 5;
 export const STATION_X = [-80, -30, 20, 70, 120];
 export const OFFLINE_STATION = 2;
 export const SLOW_STATION = 2;
 export function createModel(options = {}, seed = 7) {
-  const cfg = { subs: 3, slow: false, offline: false, durable: true, crash: 0, idempotent: false, shared: false, ...options };
+  const cfg = { subs: 3, slow: false, offline: false, durable: true, crash: 0, idempotent: false, shared: false, direct: false, ...options };
   return {
-    cfg, t: 0, random: rng(seed), nextPub: 0.2, press: null, inflight: [],
+    cfg, t: 0, random: rng(seed), nextPub: 0.2, press: null, inflight: [], call: null, pressBusy: 0, lastStamp: [],
     published: 0, msgs: new Map(), queues: Array.from({ length: STATIONS }, () => []), rrNext: 0, log: null,
     stations: Array.from({ length: STATIONS }, () => ({ busy: null, online: true, handled: 0, effects: 0, seen: new Set(), done: new Set(), delivered: 0, lost: 0, delays: [], maxBacklog: 0 })),
   };
@@ -54,25 +56,38 @@ function deliver(m, q, id) {
     emit(m, { type: "lost", q, id });
   }
 }
+// Direct calls: send the message to the next station that has its own subscription, or finish the call.
+function nextCall(m) {
+  const c = m.call;
+  let k = c.k + 1;
+  while (k < m.cfg.subs && m.cfg.shared && k === 1) k++;
+  if (k >= m.cfg.subs) { m.lastStamp.push(m.t - m.msgs.get(c.id)); m.call = null; return; }
+  c.k = k; m.inflight.push({ id: c.id, t: 0, only: k }); emit(m, { type: "call", id: c.id, q: k });
+}
 export function step(m, dt) {
   m.t += dt;
-  // Publisher: never waits for anyone.
-  if (!m.press && m.t >= m.nextPub) { m.press = { t: 0 }; m.nextPub += T.interval; emit(m, { type: "press" }); }
+  // Publisher: with the hub it never waits for anyone; calling stations directly, it waits for each stamp in turn.
+  if (!m.press && !m.call && m.t >= m.nextPub) { m.press = { t: 0 }; m.nextPub += T.interval; emit(m, { type: "press" }); }
+  if (m.press || m.call) m.pressBusy += dt;
   if (m.press) {
     m.press.t += dt;
     if (m.press.t >= T.press) {
       m.press = null;
       const id = ++m.published;
       m.msgs.set(id, m.t);
-      m.inflight.push({ id, t: 0 });
+      if (m.cfg.direct) { m.call = { id, k: -1 }; nextCall(m); }
+      else m.inflight.push({ id, t: 0 });
       emit(m, { type: "publish", id });
     }
   }
   // Broker: every copy of a message travels its own tube in parallel and arrives at the same moment.
+  // A direct call travels only the tube of the station being called.
   m.inflight = m.inflight.filter((f) => {
     f.t += dt;
     if (f.t < T.tube) return true;
-    for (let q = 0; q < STATIONS; q++) deliver(m, q, f.id);
+    for (let q = 0; q < STATIONS; q++) if (f.only === undefined || f.only === q) deliver(m, q, f.id);
+    // A direct call to a station with no subscription right now gets no answer: the caller moves on.
+    if (f.only !== undefined && m.call && m.call.id === f.id && !subscribed(m, f.only)) nextCall(m);
     return false;
   });
   // Stations.
@@ -106,7 +121,14 @@ export function step(m, dt) {
       continue;
     }
     if (b.phase === "crash") { m.queues[b.q].unshift({ id: b.id, tries: b.tries + 1 }); s.busy = null; continue; }
-    if (b.phase === "ack") { s.done.add(b.id); s.delays.push(m.t - m.msgs.get(b.id)); s.busy = null; emit(m, { type: "ack", i, id: b.id }); }
+    if (b.phase === "ack") {
+      s.done.add(b.id); s.delays.push(m.t - m.msgs.get(b.id)); s.busy = null; emit(m, { type: "ack", i, id: b.id });
+      if (m.call && m.call.id === b.id && m.call.k === i) {
+        // The direct caller hears back and calls the next station, or goes back to printing after the last one.
+        nextCall(m);
+      }
+      if (!m.cfg.direct && m.stations.every((st, k) => !active(m, k) || (m.cfg.shared && k === 1) || st.done.has(b.id))) m.lastStamp.push(m.t - m.msgs.get(b.id));
+    }
   }
 }
 // Run the model headless for `seconds`. events: [{ at, run(m) }]
@@ -125,8 +147,6 @@ export function averageOf(options, settings, measure, seeds = [3, 5, 7, 11, 13, 
     ? Object.fromEntries(Object.keys(values[0]).map((k) => [k, meanBy(values, (v) => v[k])]))
     : mean(values);
 }
-// What a publisher would spend per message if it called every subscriber itself and waited.
-export const directCallTime = (subs) => T.press + subs * (T.take + T.work + T.ack);
 
 // ---------- the experiments (computed at build time; the page used to run them in the browser on click) ----------
 const RUN = { seconds: 120 };
@@ -147,7 +167,8 @@ export function experimentResults() {
   const delayAndBacklog = (mm) => ({ a: mean(mm.stations[0].delays), c: mm.queues[2].length });
   const lostAndPeak = (mm) => ({ lost: mm.stations[2].lost, peak: mm.stations[2].maxBacklog });
   return {
-    fanout: { two: averageOf({ subs: 2 }, RUN, (mm) => mm.t / mm.published), five: averageOf({ subs: 5 }, RUN, (mm) => mm.t / mm.published), direct: directCallTime(5) },
+    fanout: Object.fromEntries([["hub2", { subs: 2 }], ["hub5", { subs: 5 }], ["direct2", { subs: 2, direct: true }], ["direct5", { subs: 5, direct: true }]].map(([k, o]) =>
+      [k, averageOf(o, RUN, (mm) => ({ out: mm.published, asked: Math.floor((mm.t - 0.2) / T.interval) + 1, perMessage: mm.pressBusy / mm.published, last: mean(mm.lastStamp) }))])),
     slow: { fast: averageOf({ subs: 3 }, RUN, delayAndBacklog), slow: averageOf({ subs: 3, slow: true }, RUN, delayAndBacklog) },
     offline: {
       nd: averageOf({ subs: 3, durable: false }, { ...RUN, events: offlineWindow }, lostAndPeak),
