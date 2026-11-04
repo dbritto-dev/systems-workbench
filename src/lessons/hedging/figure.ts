@@ -36,7 +36,7 @@ export const FACE_X = STOVE.x + STOVE.w;          // the stove face toward the v
 export const PROG = { y0: 4.5, y1: -5.5, z0: 1.6, z1: 3.6 }; // progress strip on that face, from the lane's y
 const COOK = { dx: 12, dy: -11.5 };               // the cook stands behind the stove
 const CONSOLE = { x: -104, y: 67, w: 140, d: 16, r: 1.6 };
-const CONSOLE_H = 10;
+const CONSOLE_H = 11.5;
 const BIN = { x: 46, y: 65, w: 28, d: 18, r: 2 };
 const BIN_H = 9;
 export const BIN_AT = [BIN.x + BIN.w / 2, BIN.y + BIN.d / 2, BIN_H - 2];
@@ -108,7 +108,7 @@ function consoleDesk() {
   const labels = { p50: "P50, ms", p99: "P99, ms", copies: t("COPIES, %", "COPIAS, %"), extra: t("EXTRA WORK, %", "TRABAJO EXTRA, %") };
   for (const key of Object.keys(COUNTERS)) {
     const c = COUNTERS[key];
-    out.push(text(c.x, fy, 7.4, labels[key], { size: 2.4, tone: "mid" }));
+    out.push(text(c.x, fy, 8.2, labels[key], { size: 3, tone: "mid" }));
     out.push(digitCounter(P, { x: c.x, y: fy, z: 1.4, w: 5, h: 5.4, gap: 0.6, count: c.count, size: "s", housing: false, name: key, value: 0 }));
   }
   return out.join("");
@@ -125,7 +125,7 @@ function bin() {
 // at the origin (its top centre on the face toward the viewer); the live code places it. A copy is the lit one.
 export function ticketSvg() {
   const w = TICKET.w, h = TICKET.h;
-  return `<g class="wb-lit-group">${card(P, { x: -w / 2, y: 0, z: -h, w, h, text: "00", sub: "×" + HEAVY_X, size: 4.2, subSize: 2.6, clip: true, attr: "data-num", subAttr: "data-sub" })}</g>`;
+  return `<g class="wb-lit-group">${card(P, { x: -w / 2, y: 0, z: -h, w, h, text: "000", sub: "×" + HEAVY_X, size: 3.8, subSize: 2.6, clip: true, attr: "data-num", subAttr: "data-sub" })}</g>`;
 }
 
 export function buildFigure({ mark }) {
@@ -134,7 +134,7 @@ export function buildFigure({ mark }) {
     height: HEIGHT,
     label: t(
       "A kitchen pass on a base plate. At the left, the expediter stands behind the pass, which has a timer dial with a lit mark at the hedge delay and a tray where answers land. Five ticket rails run from the pass to five numbered stoves, each with its cook behind it; order tickets hang on a rail in the order that cook will take them, and a lit ticket is a copy. Each stove has a progress strip on its face and a sign on top that lights up while the cook is stalled. In front, a console counts the p50 and p99 in milliseconds, the share of requests that got a copy and the extra work, and a bin collects work whose answer nobody wanted.",
-      "Un pase de cocina sobre una placa base. A la izquierda, el expedidor está detrás del pase, que tiene un reloj con una marca encendida en la demora del respaldo y una bandeja donde llegan las respuestas. Cinco rieles de comandas van del pase a cinco estufas numeradas, cada una con su cocinero detrás; las comandas cuelgan del riel en el orden en que ese cocinero las tomará, y una comanda encendida es una copia. Cada estufa tiene una barra de avance en su frente y un letrero arriba que se enciende mientras el cocinero está trabado. Adelante, una consola cuenta el p50 y el p99 en milisegundos, la proporción de solicitudes que recibieron copia y el trabajo extra, y un cesto junta el trabajo cuya respuesta nadie quería.",
+      "Un pase de cocina sobre una placa base. A la izquierda, el expedidor está detrás del pase, que tiene un reloj con una marca encendida en la demora del respaldo y una bandeja donde llegan las respuestas. Cinco rieles de comandas van del pase a cinco estufas numeradas, cada una con su cocinero detrás; las comandas cuelgan del riel en el orden en que ese cocinero las tomará, y una comanda encendida es una copia. Cada estufa tiene una barra de avance en su frente y un letrero arriba que se enciende mientras el cocinero está trabado. Adelante, una consola cuenta el p50 y el p99 en milisegundos, la proporción de solicitudes que recibieron copia y el trabajo extra, y una bandeja de descarte junta el trabajo cuya respuesta nadie quería.",
     ),
     body: [plate(), pass(mark), LY.map((_, i) => lane(i)).join(""), consoleDesk(), bin(), `<g data-fly></g>`],
   });

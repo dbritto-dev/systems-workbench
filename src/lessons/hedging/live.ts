@@ -10,7 +10,9 @@ import { lerp, approach, easeInOutCubic as ease } from "../../lib/tween";
 import { rankQuantile } from "../../lib/stats";
 import { makeKitchen, REPLICAS, HEAVY_X } from "./sim";
 
-export default function mount({ P, G, TICKET_SVG, P95 }, root) {
+export default function mount({ P, G, TICKET_SVG, P95, TITLES }, root) {
+  // A ticket's number, on its card and in the readout alike: the last three digits.
+  const tag = (id) => String(id % 1000);
   const MS_PER_S = 10;          // at ×1, 10 ms of kitchen time per second: 100 times slower
   const FLY = 0.45;             // seconds a ticket takes to hop to the tray or the bin
   const LIFT = 0.5;             // seconds a cancelled ticket takes to lift off and fade
@@ -49,7 +51,7 @@ export default function mount({ P, G, TICKET_SVG, P95 }, root) {
   function addVisual(c) {
     if (vis.has(c)) return;
     const g = ticket();
-    g._num.textContent = String(c.q.id % 100).padStart(2, "0");
+    g._num.textContent = tag(c.q.id);
     g._sub.textContent = c.q.heavy ? "×" + HEAVY_X : "";
     setLit(g, c.n > 0);
     g.style.opacity = "0";
@@ -103,12 +105,12 @@ export default function mount({ P, G, TICKET_SVG, P95 }, root) {
 
   // What happened in the model since the last frame: new tickets on the rails, and the readout.
   const cook = (c) => c.server + 1;
-  const no = (c) => c.q.id;
+  const no = (c) => tag(c.q.id);
   function handle(e) {
     const c = e.c;
     if (e.type === "arrive") { for (const x of e.q.copies) addVisual(x); return; }
     if (e.type === "hedge") { addVisual(c); tell(2, T("ticket " + no(c) + " still out after " + Math.round(e.t - c.q.born) + " ms · copy to cook " + cook(c), "comanda " + no(c) + " sigue pendiente tras " + Math.round(e.t - c.q.born) + " ms · copia al cocinero " + cook(c))); return; }
-    if (e.type === "skip") { tell(2, T("ticket " + e.q.id + " still out · hedge budget spent, no copy", "comanda " + e.q.id + " sigue pendiente · presupuesto agotado, sin copia")); return; }
+    if (e.type === "skip") { tell(2, T("ticket " + tag(e.q.id) + " still out · hedge budget spent, no copy", "comanda " + tag(e.q.id) + " sigue pendiente · presupuesto agotado, sin copia")); return; }
     if (e.type === "stall") {
       const n = e.s.queue.length + (e.s.cur ? 1 : 0), who = e.s.i + 1, ms = Math.round(e.dur);
       tell(3, n ? T("cook " + who + " stalls for " + ms + " ms · " + n + " ticket" + (n > 1 ? "s" : "") + " stuck", "el cocinero " + who + " se traba " + ms + " ms · " + n + (n > 1 ? " comandas atascadas" : " comanda atascada"))
@@ -125,7 +127,7 @@ export default function mount({ P, G, TICKET_SVG, P95 }, root) {
       else tell(0, T("ticket " + no(c) + " · cook " + cook(c) + " · " + ms + " ms", "comanda " + no(c) + " · cocinero " + cook(c) + " · " + ms + " ms"));
       return;
     }
-    if (e.type === "late") { tell(2, T("cook " + cook(c) + " finished " + no(c) + " too late · thrown away", "el cocinero " + cook(c) + " terminó " + no(c) + " tarde · al cesto")); return; }
+    if (e.type === "late") { tell(2, T("cook " + cook(c) + " finished " + no(c) + " too late · thrown away", "el cocinero " + cook(c) + " terminó " + no(c) + " tarde · al descarte")); return; }
     if (e.type === "cancel") { tell(1, e.from === "run" ? T("ticket " + no(c) + " stopped on cook " + cook(c) + " · its answer is already in", "comanda " + no(c) + " detenida en el cocinero " + cook(c) + " · su respuesta ya llegó") : T("cook " + cook(c) + " drops its copy of " + no(c), "el cocinero " + cook(c) + " descarta su copia de " + no(c))); return; }
     if (e.type === "drop") { tell(1, T("cook " + cook(c) + " drops " + no(c) + " on arrival · the other copy started", "el cocinero " + cook(c) + " descarta " + no(c) + " al llegar · la otra copia ya empezó")); return; }
   }
@@ -262,7 +264,7 @@ export default function mount({ P, G, TICKET_SVG, P95 }, root) {
     for (const name of ["mode", "delay", "cancel", "budget", "load", "stalls", "heavy"]) set(name, String(w[name]), true);
     restart();
     if (loop.paused) loop.setPaused(false);
-    say(T("watching: " + id, "observando: " + id));
+    say(T("watching: " + TITLES[id].en.toLowerCase(), "observando: " + TITLES[id].es.toLowerCase()));
   });
 
   loop.setPaused(loop.paused);
