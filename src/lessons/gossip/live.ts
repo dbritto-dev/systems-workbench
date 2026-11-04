@@ -1,6 +1,6 @@
 // @ts-nocheck: live code ported as-is; shared helpers come from src/runtime and src/lib.
 // The gossip village in the browser: runs a rumour and the membership heartbeats round by round, flies messengers
-// between houses, keeps the town hall's pegboard, and answers the controls. mount() gets the build-time data from
+// between houses, keeps house 0's pegboard, and answers the controls. mount() gets the build-time data from
 // page.ts (projection, geometry, Spanish experiment titles) and root, the <wb-lesson>.
 import { iso, lineOnTop } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
@@ -9,7 +9,7 @@ import { playPause } from "../../runtime/dom";
 import { easeInOutQuad } from "../../lib/tween";
 import { makeSpread, makeMembership } from "./sim";
 
-export default function mount({ P, G, TITLES_ES }, root) {
+export default function mount({ P, G, TITLES }, root) {
   // The dial's needle and a messenger's arc, as figure.ts draws them (needleAt, flightPoint).
   const DIAL = G.DIAL;
   const needleAt = (turn) => {
@@ -153,7 +153,7 @@ export default function mount({ P, G, TITLES_ES }, root) {
     cfg[name] = NUMERIC.includes(name) ? Number(raw) : raw;
     root.press(name, raw);
     if (name === "speed" || quiet) return;
-    if (name === "timeout") { member.cfg.timeout = cfg.timeout; say(T("failure timeout " + cfg.timeout + " rounds", "timeout de falla: " + cfg.timeout + " rondas")); return; }
+    if (name === "timeout") { member.cfg.timeout = cfg.timeout; say(T("failure timeout " + cfg.timeout + " rounds", "tiempo límite de falla: " + cfg.timeout + " rondas")); return; }
     if (name === "slow") { member.cfg.slow = cfg.slow; say(cfg.slow ? T("slow links on: 3 in 10 messages arrive late", "enlaces lentos: 3 de cada 10 mensajes llegan tarde") : T("slow links off", "sin enlaces lentos")); return; }
     restart(); say(T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada"));
   }
@@ -180,7 +180,7 @@ export default function mount({ P, G, TITLES_ES }, root) {
     restart();
     if (loop.paused) loop.setPaused(false);
     if (id === "timeout") setTimeout(kill, 3000);
-    say(T("watching: " + id, "observando: " + TITLES_ES[id]));
+    say(T("watching: " + TITLES[id].en, "observando: " + TITLES[id].es));
   });
 
   loop.setPaused(loop.paused);

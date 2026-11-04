@@ -1,9 +1,9 @@
 // @ts-nocheck: figure code ported as-is; drawing shorthands come from src/lib/draw.
-// A gossip village: houses on a board pass a rumour to random neighbours each round; the town hall keeps a
-// membership board of who is alive, suspected or dead; a dial counts the rounds.
+// A gossip village: houses on a board pass a rumour to random neighbours each round; every house keeps its own table
+// of who is alive, suspected or dead, and the board in front of house 0 shows house 0's copy; a dial counts the rounds.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, labelPlate } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { rng } from "../../lib/random";
@@ -20,7 +20,7 @@ const HOUSE = { w: 12, d: 10, h: 8 };
 const ROOF_Z = HOUSE.h;
 export const LAMP_Z = HOUSE.h + 2.4 + 2.6;
 
-// House plots: member 0 is the town hall; members 1..39 live in a jittered 8 × 5 grid.
+// House plots: member 0 is the big house at the back (an ordinary member, drawn bigger to hold its board); members 1..39 live in a jittered 8 × 5 grid.
 const jitter = rng(4242);
 const SLOTS = [];
 for (let r = 0; r < 5; r++) for (let c = 0; c < 8; c++) SLOTS.push([-158 + c * 27 + (jitter() - 0.5) * 6, -98 + r * 30 + (jitter() - 0.5) * 6]);
@@ -47,7 +47,6 @@ const depth = ([x, y]) => k.depthOf([x, y, 0], P);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
-    + rulerStrip(P, { x: -158, y: 84, w: 196, d: 7, r: 1 })
     + labelPlate(P, { x: 128, y: 74, w: 36, d: 18, r: 1.5 }, [[133, 79, 20], [133, 83, 26], [133, 87, 14]]);
 }
 
@@ -70,12 +69,12 @@ function house(m, [x, y]) {
   out.push(L(k.faceRectY(P, x - 1.5, x + 1.5, front, 0, 4.6) + k.faceRectY(P, x + 2.6, x + 5, front, 3.6, 6), { tone: "lo" }));
   const side = x + HOUSE.w / 2;
   out.push(L(k.faceRectX(P, side, y - 2, y + 1, 3.6, 6), { tone: "lo" }));
-  // Boards nailed across the front: the town hall has declared this house dead.
+  // Boards nailed across the front: house 0 has declared this house dead.
   out.push(`<g data-boards>${L([[x - 5.4, 0.8, x + 5.4, 7.2], [x - 5.4, 7.2, x + 5.4, 0.8]].map(([x0, z0, x1, z1]) => k.pathOf([[x0, front + 0.05, z0], [x1, front + 0.05, z1]].map(at))).join(""), { tone: "mid", free: true })}</g>`);
   out.push(`<g class="roof">${S(k.slabOf(k.insetPlan(body, -1.2), ROOF_Z, 2.4, P, 2, 0.4), { tone: "mid" })}</g>`);
   out.push(S(k.slabOf({ x: x + 2.6, y: y - 3.4, w: 2.4, d: 2.4, r: 0.3 }, ROOF_Z + 2.4, 3.4, P, 2), { tone: "mid", crease: "none" }));
   out.push(`<g data-lamp="${m}">${lamp(x - 2, y + 0.5, LAMP_Z)}</g>`);
-  // A pennant on a pole: the town hall suspects this house (no fresh heartbeat lately).
+  // A pennant on a pole: house 0 suspects this house (no fresh heartbeat lately).
   const fx = x - 4.6, fy = y - 3, top = ROOF_Z + 2.4 + 12;
   out.push(`<g data-flag>${L(k.pathOf([[fx, fy, ROOF_Z + 2.4], [fx, fy, top]].map(at)), { tone: "mid" })}<path class="pennant" d="${k.pathOf([[fx, fy, top], [fx + 9, fy, top - 2.6], [fx, fy, top - 5.2]].map(at), true)}"/></g>`);
   out.push(`</g>`);
@@ -95,6 +94,8 @@ function hall() {
   out.push(L(k.planOutline(k.insetPlan(HALL, 3), HALL.h + 3, P), { tone: "faint" }));
   out.push(D(k.corners(HALL, 1).map(([x, y]) => at([x, y, HALL.h + 3])), { size: 0.45 }));
   out.push(`<g data-lamp="0">${lamp(HALL_LAMP[0], HALL_LAMP[1], HALL.h + 3 + 2.6)}</g>`);
+  // Its name on the ground in front of it, left of the steps, like a house number.
+  out.push(text(HALL.x - 1, front + 9, 0, t("HOUSE 0", "CASA 0"), { face: "top", size: 5, tone: "mid" }));
   // Steps down to the board in front.
   out.push(S(k.slabOf({ x: HALL.x + HALL.w / 2 - 8, y: front, w: 16, d: 5, r: 0.6 }, 0, 2, P, 2, 0.3), { tone: "mid" }));
   out.push(`</g>`);
@@ -106,6 +107,8 @@ function board() {
   const out = [S(k.slabOf(BOARD, 0, BOARD_H, P, 4, 0.5), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(BOARD, 2.4), BOARD_H, P, 4), { tone: "faint" }));
   out.push(L(PEGS.map(([x, y]) => k.ring(x, y, 2, BOARD_H, P, 14)).join(""), { tone: "lo" }));
+  // Whose table this is: house 0's own view, not a master list.
+  out.push(text(BOARD.x, BOARD.y + BOARD.d + 8, 0, t("HOUSE 0'S VIEW", "VISTA DE LA CASA 0"), { face: "top", size: 4.6, tone: "mid" }));
   const order = PEGS.map((p, m) => ({ p, m })).sort((a, b) => depth(a.p) - depth(b.p));
   for (const { p: [x, y], m } of order) {
     out.push(`<g data-peg="${m}" data-state="alive">`
@@ -159,8 +162,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A village of houses on a board. Each round, every house that knows a rumour sends messengers to a few random houses, and a house's roof lamp lights when it hears. At the back right stands the town hall, with a membership board in front of it: one peg per house, tall while the house is alive, short when it is suspected, an empty hole when it is declared dead. A dial at the front counts the rounds.",
-      "Un pueblo de casas sobre un tablero. En cada ronda, cada casa que conoce un rumor manda mensajeros a unas pocas casas al azar, y la lámpara del techo de una casa se enciende cuando se entera. Atrás a la derecha está la alcaldía, con un tablero de membresía delante: una clavija por casa, alta mientras la casa está viva, baja cuando es sospechosa, un hoyo vacío cuando se declara muerta. Un dial al frente cuenta las rondas."),
+      "A village of houses on a board. Each round, every house that knows a rumour sends messengers to a few random houses, and a house's roof lamp lights when it hears. At the back right stands house 0, an ordinary member drawn bigger, with its copy of the membership table on a board in front of it: one peg per house, tall while the house is alive, short when it is suspected, an empty hole when it is declared dead. A dial at the front counts the rounds.",
+      "Un pueblo de casas sobre un tablero. En cada ronda, cada casa que conoce un rumor manda mensajeros a unas pocas casas al azar, y la lámpara del techo de una casa se enciende cuando se entera. Atrás a la derecha está la casa 0, un miembro común dibujado más grande, con su copia de la tabla de membresía en un tablero delante: una clavija por casa, alta mientras la casa está viva, baja cuando es sospechosa, un hoyo vacío cuando se declara muerta. Un dial al frente cuenta las rondas."),
     body: [
       plate(),
       items.map((i) => i.svg).join(""),
