@@ -224,7 +224,7 @@ function console_() {
   out.push(text(-16, FRONT, 8.6, "0–0.5", 2, { anchor: "middle" }));
   // the main thread: what it is doing now (lamps near the front edge, words under them)
   const lampsX = [4, 13, 22, 31];
-  const words = ["HTML", "CSS", "JS", t("PAINT", "PINTA")];
+  const words = ["HTML", "CSS", "JS", t("PAINT", "PINTADO")];
   ["parse", "css", "script", "render"].forEach((kind, i) => {
     const p = [lampsX[i], FRONT - 3.2, CONSOLE_H];
     out.push(`<g data-thread="${kind}">${lamp(P, p, { r: 1.9 })}</g><g data-thread-on="${kind}" style="display:none">${litFill(lamp(P, p, { r: 1.9, lit: true }))}</g>`);
