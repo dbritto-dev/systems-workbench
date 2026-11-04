@@ -78,7 +78,7 @@ function clock() {
   const ticks = k.radialTicks(x, y, CLOCK_R - 2.6, 60, 5, CLOCK_TOP, [1, 2.4], P);
   out.push(L(ticks.minor, { tone: "lo" }), L(ticks.major, { tone: "mid" }));
   out.push(L(k.ring(x, y, 1.3, CLOCK_TOP, P, 16), { tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([x, y + 6], CLOCK_TOP, P, "x"), "60 s", { size: 2.2, tone: "lo", anchor: "middle" }));
+  out.push(k.faceTextSvg(k.topMatrix([x, y + 6], CLOCK_TOP, P, "x"), "1 MIN", { size: 3, tone: "mid", anchor: "middle" }));
   return out.join("");
 }
 
@@ -229,7 +229,7 @@ export function buildFigure() {
     height: HEIGHT,
     label: t(
       "A records office on a base plate. On the left, an archive chest with eight drawers holds every record but is slow to reach. On the right, a card rack with twelve slots holds copies of recently used records. A carriage on rails carries a copy from the archive to the rack. A push button at the front asks for a record; if its card is in the rack it is answered at once, otherwise the carriage fetches it.",
-      "Una oficina de registros sobre una placa base. A la izquierda, un archivador de ocho cajones guarda todos los registros, pero llegar a ellos es lento. A la derecha, un estante de fichas con doce lugares guarda copias de los registros usados hace poco. Un carro sobre rieles lleva una copia del archivo al estante. Un botón al frente pide un registro; si su ficha está en el estante se responde de inmediato, si no, el carro va a buscarla."),
+      "Una oficina de registros sobre una placa base. A la izquierda, un archivo de ocho cajones guarda todos los registros, pero llegar a ellos es lento. A la derecha, un estante de fichas con doce lugares guarda copias de los registros usados hace poco. Un carro sobre rieles lleva una copia del archivo al estante. Un botón al frente pide un registro; si su ficha está en el estante se responde de inmediato, si no, el carro va a buscarla."),
     body: [
       plate(),
       clock(),

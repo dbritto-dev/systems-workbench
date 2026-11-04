@@ -46,13 +46,13 @@ const EXPERIMENTS = [
       t("It falls to almost nothing", "Cae casi a cero"),
     ],
     answer: 1,
-    why: t("A copy only helps if the same record is asked for again before it expires. The most popular record comes back every few requests and still hits, but the next dozen come back every 10 to 30 seconds, after their cards have gone. You trade freshness for trips to the archive.",
-      "Una copia solo sirve si alguien vuelve a pedir el mismo registro antes de que caduque. El registro más popular vuelve cada pocas solicitudes y sigue acertando, pero la docena siguiente vuelve cada 10 a 30 segundos, cuando sus fichas ya no están. Cambias frescura por viajes al archivo."),
+    why: t("A copy only helps if the same record is asked for again before it expires. The most popular record is almost half of all requests, so it still hits. The next ones come back every 20 seconds to a couple of minutes, long after a 6 s card has gone. A shorter TTL buys freshness with trips to the archive.",
+      "Una copia solo sirve si alguien vuelve a pedir el mismo registro antes de que caduque. El registro más popular es casi la mitad de todas las solicitudes, así que sigue acertando. Los siguientes vuelven cada 20 segundos a un par de minutos, mucho después de que una ficha de 6 s se fue. Un TTL más corto paga la frescura con viajes al archivo."),
     watch: { ttl: 6, slots: 12, traffic: "popular" },
   },
   {
     id: "size",
-    title: t("A smaller rack", "Un estante más chico"),
+    title: t("A smaller rack", "Un estante más pequeño"),
     change: t("Rack 12 slots → 4 slots · a third of the room", "Estante de 12 lugares → 4 lugares · un tercio del espacio"),
     question: t("The rack can now hold 4 of the 40 records. The hit rate…", "Ahora el estante guarda 4 de los 40 registros. La tasa de aciertos…"),
     options: [
@@ -77,7 +77,7 @@ const EXPERIMENTS = [
     ],
     answer: 1,
     why: t("With even traffic, the chance that the record you want is in the rack is about the share of records the rack holds: 12 of 40 is 30%. Caches pay off because real traffic is uneven: a few things are asked for constantly.",
-      "Con tráfico parejo, la probabilidad de que el registro que buscas esté en el estante es más o menos la parte de los registros que el estante guarda: 12 de 40 es 30%. Las cachés rinden porque el tráfico real es desparejo: unas pocas cosas se piden todo el tiempo."),
+      "Con tráfico parejo, la probabilidad de que el registro que buscas esté en el estante es más o menos la parte de los registros que el estante guarda: 12 de 40 es 30%. Las cachés rinden porque el tráfico real es desigual: unas pocas cosas se piden todo el tiempo."),
     watch: { ttl: 60, slots: 12, traffic: "even" },
   },
   {
@@ -91,23 +91,23 @@ const EXPERIMENTS = [
       t("Slow until every card has expired once, about a minute", "Lentas hasta que cada ficha haya caducado una vez, cerca de un minuto"),
     ],
     answer: 1,
-    why: t("Every request becomes a trip to the archive until the popular cards are back. With skewed traffic that takes only a handful of requests. In a real system those trips arrive all at once, and if they are more than the database can serve, a short refill turns into a queue.",
-      "Cada solicitud se vuelve un viaje al archivo hasta que regresan las fichas populares. Con tráfico sesgado eso toma solo unas cuantas solicitudes. En un sistema real esos viajes llegan todos a la vez, y si son más de los que la base de datos puede atender, un llenado corto se convierte en una cola."),
+    why: t("Every request becomes a trip to the archive until the popular cards are back. With skewed traffic that takes only a handful of requests. In a real system those trips arrive all at once, and if they are more than the database can serve, a short refill turns into a queue: a cache stampede (lesson 28, Cache stampede).",
+      "Cada solicitud se vuelve un viaje al archivo hasta que regresan las fichas populares. Con tráfico sesgado eso toma solo unas cuantas solicitudes. En un sistema real esos viajes llegan todos a la vez, y si son más de los que la base de datos puede atender, un llenado corto se convierte en una cola: una estampida de caché (lección 28, Cache stampede)."),
     watch: { ttl: 60, slots: 12, traffic: "popular", flush: true },
   },
   {
     id: "stale",
     title: t("A record changes", "Cambia un registro"),
     change: t("Record #1 is updated in the archive · its card is still in the rack", "El registro #1 se actualiza en el archivo · su ficha sigue en el estante"),
-    question: t("Of the next reads of #1 answered from the rack, how many show the old version?", "De las siguientes lecturas de #1 que responde el estante, ¿cuántas muestran la versión vieja?"),
+    question: t("Over the next 30 requests, of the reads of #1 answered from the rack, how many show the old version?", "En las siguientes 30 solicitudes, de las lecturas de #1 que responde el estante, ¿cuántas muestran la versión vieja?"),
     options: [
-      t("None: the rack notices the change", "Ninguna: el estante nota el cambio"),
-      t("About half", "Más o menos la mitad"),
-      t("Most of them, until the card expires", "Casi todas, hasta que la ficha caduca"),
+      t("All of them: nothing tells the rack", "Todas: nada le avisa al estante"),
+      t("About half: the popular card is refetched often", "Más o menos la mitad: la ficha popular se vuelve a traer seguido"),
+      t("Most of them: the card expires partway", "Casi todas: la ficha caduca a mitad de camino"),
     ],
     answer: 2,
-    why: t("The rack has no idea the archive changed. It keeps serving its copy until the TTL runs out. Turning on invalidate on write takes the card out when the record changes, so the next read fetches the new version.",
-      "El estante no tiene idea de que el archivo cambió. Sigue sirviendo su copia hasta que se acaba el TTL. Si activas invalidar al escribir, la ficha sale cuando cambia el registro, así que la siguiente lectura trae la versión nueva."),
+    why: t("The rack has no idea the archive changed, so it keeps serving its copy until the TTL runs out. Not all of them, though: the card was filed up to a minute before the change, so it often expires during the 30 requests, and the copy fetched after that is the new version. Turning on invalidate on write takes the card out when the record changes, so the next read fetches the new version.",
+      "El estante no tiene idea de que el archivo cambió, así que sigue sirviendo su copia hasta que se acaba el TTL. Pero no todas: la ficha se guardó hasta un minuto antes del cambio, así que muchas veces caduca durante las 30 solicitudes, y la copia que se trae después ya es la versión nueva. Si activas invalidar al escribir, la ficha sale cuando cambia el registro, así que la siguiente lectura trae la versión nueva."),
     watch: { ttl: 60, slots: 12, traffic: "popular", invalidate: false, change: true },
   },
 ];
@@ -131,8 +131,12 @@ const QUESTIONS = [
     "Quien escribe sin pasar por la app (una migración, un script de administración, otro servicio) no borra la clave. O una carrera: un lector falla, lee la fila vieja, el escritor actualiza y borra la clave, y luego el lector guarda la fila vieja que leyó. El TTL es la red de seguridad para ambos casos.")],
   [t("Redis restarts during peak traffic. What do you expect in the first seconds, and what would you do before the next deploy?",
     "Redis se reinicia en hora pico. ¿Qué esperas en los primeros segundos, y qué harías antes del próximo despliegue?"),
-    t("Every read misses at once, the database gets more reads than it can serve, requests queue and latency jumps. Warm the cache before switching traffic, add capacity headroom on the database, and consider request coalescing so one miss per key goes to the database.",
-    "Todas las lecturas fallan a la vez, la base de datos recibe más lecturas de las que puede atender, las solicitudes hacen cola y la latencia se dispara. Calienta la caché antes de pasar el tráfico, deja margen de capacidad en la base de datos y considera agrupar solicitudes (request coalescing) para que a la base de datos llegue un solo fallo por clave.")],
+    t("Every read misses at once, the database gets more reads than it can serve, requests queue and latency jumps. Warm the cache before switching traffic, add capacity headroom on the database, and consider request coalescing (lesson 28, Cache stampede) so one miss per key goes to the database.",
+    "Todas las lecturas fallan a la vez, la base de datos recibe más lecturas de las que puede atender, las solicitudes hacen cola y la latencia se dispara. Calienta la caché antes de pasar el tráfico, deja margen de capacidad en la base de datos y considera agrupar solicitudes (request coalescing; lección 28, Cache stampede) para que a la base de datos llegue un solo fallo por clave.")],
+  [t("This rack only files a copy after a miss (cache-aside). What changes if the app also writes the new value into the cache on every write (write-through)?",
+    "Este estante solo guarda una copia después de un fallo (cache-aside). ¿Qué cambia si la app además escribe el valor nuevo en la caché en cada escritura (write-through)?"),
+    t("Reads right after a write hit and see the new value, so the first reader doesn't pay a miss. The cost moves to writes: each one updates two stores, and values that are written but rarely read take up room. The two writes are still separate, so a failure or a race between them can leave the cache out of step; keep a TTL as the backstop.",
+    "Las lecturas justo después de una escritura aciertan y ven el valor nuevo, así que el primer lector no paga un fallo. El costo pasa a las escrituras: cada una actualiza dos lugares, y los valores que se escriben pero casi no se leen ocupan espacio. Las dos escrituras siguen siendo separadas, así que una falla o una carrera entre ellas puede dejar la caché desfasada; deja un TTL como red de seguridad.")],
 ];
 
 export default defineLesson({
@@ -142,22 +146,22 @@ export default defineLesson({
     "Una caché es un estante pequeño y rápido de copias frente a un almacén grande y lento. Esta lección arma esa idea de tres maneras: mira una máquina hacerlo, predice qué la rompe y luego explícalo con tus palabras."),
   machine: {
     intro: t("The rack on the right is the cache. The chest on the left is the database. Watch a few requests, then change the settings below and see what the counters do.",
-      "El estante de la derecha es la caché. El archivador de la izquierda es la base de datos. Mira algunas solicitudes, luego cambia los ajustes de abajo y observa qué hacen los contadores."),
+      "El estante de la derecha es la caché. El archivo de la izquierda es la base de datos. Mira algunas solicitudes, luego cambia los ajustes de abajo y observa qué hacen los contadores."),
     plate: {
       title: t("Records office", "Oficina de registros"),
       keys: [
         { mark: "lit", label: t("The record in play", "El registro en juego") },
         { mark: "raised", label: t("Card rack: the cache, 12 slots, fast", "Estante de fichas: la caché, 12 lugares, rápido") },
-        { mark: "flat", label: t("Archive chest: the database, every record, slow", "Archivador: la base de datos, todos los registros, lento") },
+        { mark: "flat", label: t("Archive chest: the database, every record, slow", "Archivo: la base de datos, todos los registros, lento") },
       ],
       caption: t(
-        "Each press of the button asks for one of 40 records. If its card is in the rack, it is a hit and is answered in 0.7 s. If not, the carriage fetches it from the archive (2.75 s) and leaves a copy in the rack. The strip on each card is its time to live; the dial turns once a minute.",
-        "Cada vez que se pulsa el botón se pide uno de 40 registros. Si su ficha está en el estante, es un acierto (hit) y se responde en 0.7 s. Si no, es un fallo (miss): el carro lo trae del archivo (2.75 s) y deja una copia en el estante. La franja de cada ficha es su tiempo de vida (time to live, TTL); el reloj da una vuelta por minuto."),
+        "Each press of the button asks for one of 40 records. If its card is in the rack, it is a hit and is answered in 0.7 s. If not, the carriage fetches it from the archive (2.75 s) and leaves a copy in the rack. The strip on each card is its time to live; the dial marked 1 MIN turns once a minute.",
+        "Cada vez que se pulsa el botón se pide uno de 40 registros. Si su ficha está en el estante, es un acierto (hit) y se responde en 0.7 s. Si no, es un fallo (miss): el carro lo trae del archivo (2.75 s) y deja una copia en el estante. La franja de cada ficha es su tiempo de vida (time to live, TTL); el reloj marcado 1 MIN da una vuelta por minuto."),
       stage: { "data-office": "" },
-      label: t("Records office simulation. Space pauses or resumes.", "Simulación de la oficina de registros. Espacio pausa o reanuda."),
+      label: t("Records office simulation. Space pauses or resumes.", "Simulación de la oficina de registros. La barra espaciadora pausa o reanuda."),
     },
     svg: buildFigure(),
-    stats: [["requests", t("Requests", "Solicitudes")], ["hits", t("From rack", "Del estante")], ["misses", t("From archive", "Del archivo")], ["rate", t("Hit rate", "% de aciertos"), "–"], ["wait", t("Avg wait", "Espera media"), "–"], ["stale", t("Stale reads", "Obsoletas")]],
+    stats: [["requests", t("Requests", "Solicitudes")], ["hits", t("From rack", "Del estante")], ["misses", t("From archive", "Del archivo")], ["rate", t("Hit rate", "Tasa de aciertos"), "–"], ["wait", t("Avg wait", "Espera media"), "–"], ["stale", t("Stale reads", "Obsoletas")]],
     controls: [
       { seg: "ttl", label: t("Time to live", "Tiempo de vida"), options: [[6, "6 s"], [20, "20 s"], [60, "60 s"]], value: 60 },
       { seg: "slots", label: t("Rack size", "Tamaño del estante"), options: [[4, t("4 slots", "4 lugares")], [12, t("12 slots", "12 lugares")]], value: 12 },
@@ -168,7 +172,7 @@ export default defineLesson({
     ],
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results are averaged over 9,000 simulated requests of the same machine; the figure's starting point is a 67% hit rate.",
-    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de correrlo. Los resultados son el promedio de 9,000 solicitudes simuladas de la misma máquina; la figura arranca con una tasa de aciertos de 67%."), experiments: withResults(EXPERIMENTS, RUNS) },
+    "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados son el promedio de 9,000 solicitudes simuladas de la misma máquina; la figura arranca con una tasa de aciertos de 67%."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
   // Figure-specific styles: empty slots hide their card, the TTL strip fill, blanking covers.
   css: `
