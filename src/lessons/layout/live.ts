@@ -228,7 +228,7 @@ export default function mount({ P, G }, root) {
     root.press(name, raw);
     cfg[name] = NUM.includes(name) ? Number(raw) : String(raw);
     if (name === "speed") return;
-    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · corrida reiniciada")); }
+    if (!quiet) { restart(); say(T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };

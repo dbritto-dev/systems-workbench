@@ -74,11 +74,11 @@ function desk() {
   for (const [name, p] of Object.entries(LAMPS)) {
     out.push(`<g data-lamp="${name}">${lamp(P, p, { r: 2.4 })}</g><g data-lamp-on="${name}" style="display:none">${litFill(lamp(P, p, { r: 2.4, lit: true }))}</g>`);
   }
-  out.push(text(LAMPS.read[0], DESK_FRONT, 5.6, t("READ", "LECTURA"), 2.4, { anchor: "middle" }));
-  out.push(text(LAMPS.write[0], DESK_FRONT, 5.6, t("WRITE", "ESCRITURA"), 2.4, { anchor: "middle" }));
+  out.push(text(LAMPS.read[0], DESK_FRONT, 5.6, t("READ", "LECTURA"), 2.8, { anchor: "middle" }));
+  out.push(text(LAMPS.write[0], DESK_FRONT, 5.6, t("WRITE", "ESCRITURA"), 2.8, { anchor: "middle" }));
   // the rAF tray: deferred callbacks wait here as slips
   out.push(S(k.slabOf(TRAY, DESK_H, 1, P, 2, 0.2), { tone: "lo", inner: L(k.planOutline(k.insetPlan(TRAY, 1), DESK_H + 1, P), { tone: "faint" }) }));
-  out.push(text(TRAY.x + TRAY.w / 2, DESK_FRONT, 5.6, "rAF", 2.4, { anchor: "middle" }));
+  out.push(text(TRAY.x + TRAY.w / 2, DESK_FRONT, 5.6, "rAF", 2.8, { anchor: "middle" }));
   return out.join("");
 }
 export function slipSvg(n) {
@@ -97,11 +97,11 @@ function galley() {
   const out = [S(k.slabOf(GALLEY, 0, TRAY_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(GALLEY, 2), TRAY_H, P), { tone: "lo" }) })];
   const front = GALLEY.y + GALLEY.d;
   out.push(digitCounter(P, { x: GALLEY.x + 6, y: front, z: 1.4, count: 3, w: 3.6, h: 4.4, gap: 0.5, pad: 0.8, name: "layouts" }));
-  out.push(text(GALLEY.x + 20.6, front, 2.2, t("LAYOUTS", "LAYOUTS"), 2.4));
+  out.push(text(GALLEY.x + 20.6, front, 2.2, t("LAYOUTS", "LAYOUTS"), 2.8));
   out.push(digitCounter(P, { x: GALLEY.x + 52, y: front, z: 1.4, count: 3, w: 3.6, h: 4.4, gap: 0.5, pad: 0.8, name: "forced" }));
-  out.push(text(GALLEY.x + 66.6, front, 2.2, t("FORCED", "FORZADOS"), 2.4));
+  out.push(text(GALLEY.x + 66.6, front, 2.2, t("FORCED", "FORZADOS"), 2.8));
   out.push(digitCounter(P, { x: GALLEY.x + 104, y: front, z: 1.4, count: 4, w: 3.6, h: 4.4, gap: 0.5, pad: 0.8, name: "boxes" }));
-  out.push(text(GALLEY.x + 123, front, 2.2, t("BOXES", "CAJAS"), 2.4));
+  out.push(text(GALLEY.x + 123, front, 2.2, t("BOXES", "CAJAS"), 2.8));
   return out.join("");
 }
 export function nodeAt(n) {
@@ -133,7 +133,7 @@ function fenceWall(which) {
 }
 function fenceFront() {
   return fenceWall("right") + fenceWall("front")
-    + text(FENCE.x + FENCE.w - 3, FENCE.y + FENCE.d, TRAY_H + 0.9, "CONTAIN", 2.2, { anchor: "end", tone: "hi" });
+    + text(FENCE.x + FENCE.w - 3, FENCE.y + FENCE.d, TRAY_H + 0.9, "CONTAIN", 2.6, { anchor: "end", tone: "hi" });
 }
 
 // ---------- the gantry ----------
@@ -172,9 +172,9 @@ function console_() {
   STAGES.forEach((name, i) => {
     const x = stageX(i), p = [x - 14, CONSOLE.y + 5, CONSOLE_H];   // the lamp at the left of its station, clear of the words
     out.push(`<g data-stage="${name}">${lamp(P, p, { r: 2.4 })}</g><g data-stage-on="${name}" style="display:none">${litFill(lamp(P, p, { r: 2.4, lit: true }))}</g>`);
-    out.push(text(x + 3, front, 6.9, LABELS[name], 2.4, { anchor: "middle" }));
+    out.push(text(x + 3, front, 6.9, LABELS[name], 2.8, { anchor: "middle" }));
     out.push(digitCounter(P, { x: x - 4.6, y: front, z: 1, count: 4, w: 3.2, h: 3.4, gap: 0.4, pad: [0.7, 0.6, 0.4], name: "ms-" + name }));
-    out.push(text(x + 11.8, front, 1.4, "ms", 2.2));
+    out.push(text(x + 11.8, front, 1.4, "ms", 2.4));
   });
   return out.join("");
 }
@@ -185,7 +185,7 @@ function strip() {
   out.push(L(k.planOutline(k.insetPlan(STRIP, 2), STRIP_H, P), { tone: "faint" }));
   const side = STRIP.x + STRIP.w;
   out.push(digitCounter(P, { x: side, y: STRIP.y + STRIP.d - 6, z: 2.2, count: 4, face: "x", w: 3.8, h: 4.8, gap: 0.5, pad: 0.9, name: "frame" }));
-  out.push(faceText(P, [side, STRIP.y + STRIP.d - 25.6, 3.2], t("LAST FRAME, ms", "ÚLTIMO CUADRO, ms"), { face: "x", size: 2.4, tone: "mid" }));
+  out.push(faceText(P, [side, STRIP.y + STRIP.d - 25.6, 3.2], t("LAST FRAME, ms", "ÚLTIMO CUADRO, ms"), { face: "x", size: 2.8, tone: "mid" }));
   return out.join("");
 }
 function bars() {
@@ -199,7 +199,7 @@ function budget() {
   out.push(L(k.segment([x, y0, BUDGET_Z], [x, y1, BUDGET_Z], P), { tone: "hi" }));
   // its label on a small plate at the back post, facing right
   out.push(S(slab({ x: x + 0.8, y: y0 - 7, w: 1, d: 14, r: 0.2 }, BUDGET_Z - 2, 4, 2), { tone: "hi", crease: "lo" }));
-  out.push(faceText(P, [x + 1.8, y0 + 6, BUDGET_Z - 0.9], "16.7 ms", { face: "x", size: 2.4, tone: "hi" }));
+  out.push(faceText(P, [x + 1.8, y0 + 6, BUDGET_Z - 0.9], "16.7 ms", { face: "x", size: 2.6, tone: "hi" }));
   return out.join("");
 }
 

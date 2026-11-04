@@ -115,9 +115,9 @@ const EXPERIMENTS = [
       "El bucle lee, escribe, lee… · 10 ítems → 40 ítems en una página de 2,000 cajas, luego 40 ítems en una página de 8,000 cajas"),
     question: t("How does the cost of one frame grow?", "¿Cómo crece el costo de un cuadro?"),
     options: [
-      t("With the items only: 4× the items, 4× the cost; the page size doesn't matter", "Solo con los ítems: 4× los ítems, 4× el costo; el tamaño de la página no importa"),
-      t("With items × page size: 4× the items, then 4× the page, about 16× in all", "Con ítems × tamaño de la página: 4× los ítems, luego 4× la página, unas 16× en total"),
-      t("Hardly at all: after the first layout the browser reuses its measurements", "Casi nada: después del primer layout el navegador reutiliza sus medidas"),
+      t("With the items only: 4× the items, 4× the cost", "Solo con los ítems: 4× los ítems, 4× el costo"),
+      t("With items × page size: about 16× in all", "Con ítems × tamaño de la página: unas 16× en total"),
+      t("Hardly at all: the browser reuses its last measurements", "Casi nada: el navegador reutiliza sus últimas medidas"),
     ],
     answer: 1,
     why: t(
@@ -128,20 +128,20 @@ const EXPERIMENTS = [
   },
   {
     id: "props",
-    title: t("Write a colour instead", "Escribe un color en su lugar"),
+    title: t("Write a color instead", "Escribe un color en su lugar"),
     change: t("The same read, write, read… loop, 40 items, 2,000 boxes · each write sets height, background-color, or transform (on an element with will-change: transform)",
       "El mismo bucle lee, escribe, lee…, 40 ítems, 2,000 cajas · cada escritura cambia height, background-color o transform (en un elemento con will-change: transform)"),
     question: t("With background-color instead of height, still with a read after every write: how many layouts per frame?",
       "Con background-color en lugar de height, todavía con una lectura después de cada escritura: ¿cuántos layouts por cuadro?"),
     options: [
-      t("Still about one per item: any style change followed by a read forces a layout", "Todavía más o menos uno por ítem: cualquier cambio de estilo seguido de una lectura fuerza un layout"),
-      t("None: a colour moves nothing, so the reads find layout up to date; the frame still repaints", "Ninguno: un color no mueve nada, así que las lecturas encuentran el layout al día; el cuadro igual vuelve a pintar"),
-      t("Just one, at the end of the frame, like the batched loop", "Solo uno, al final del cuadro, como el bucle agrupado"),
+      t("About one per item: any style write followed by a read forces one", "Más o menos uno por ítem: cualquier escritura de estilo seguida de una lectura fuerza uno"),
+      t("None: a color change doesn't invalidate layout", "Ninguno: un cambio de color no invalida el layout"),
+      t("One: the first read settles the change for the rest", "Uno: la primera lectura resuelve el cambio para las demás"),
     ],
     answer: 1,
     why: t(
-      "A read forces only the work that is out of date. height changes geometry, so it marks layout dirty and the next read pays for a layout. background-color changes how boxes look, not where they are: the read still brings style up to date (" + ms(T3.color.style) + " a frame here) but layout stays valid, and the frame repaints only the changed items (" + ms(T3.color.paint) + "). transform on an element with its own layer skips layout and paint: the compositor just moves the layer. Layouts per frame: " + n0(T3.height.layouts) + ", " + n0(T3.color.layouts) + " and " + n0(T3.transform.layouts) + ". The order still matters for geometry: change a size or a position and the reads are back to forcing layouts.",
-      "Una lectura fuerza solo el trabajo que está desactualizado. height cambia la geometría, así que marca el layout como sucio y la siguiente lectura paga un layout. background-color cambia cómo se ven las cajas, no dónde están: la lectura igual pone el estilo al día (" + ms(T3.color.style) + " por cuadro aquí) pero el layout sigue válido, y el cuadro vuelve a pintar solo los ítems que cambiaron (" + ms(T3.color.paint) + "). transform en un elemento con su propia capa se salta el layout y el pintado: el compositor solo mueve la capa. Layouts por cuadro: " + n0(T3.height.layouts) + ", " + n0(T3.color.layouts) + " y " + n0(T3.transform.layouts) + ". El orden sigue importando para la geometría: cambia un tamaño o una posición y las lecturas vuelven a forzar layouts.",
+      "A read forces only the work that is out of date. height changes geometry, so it marks layout dirty and the next read pays for a layout. background-color changes how boxes look, not where they are, so it never marks layout out of date: the read still brings style up to date (" + ms(T3.color.style) + " a frame here) but layout stays valid, and the frame repaints only the changed items (" + ms(T3.color.paint) + "). transform on an element with its own layer skips layout and paint: the compositor just moves the layer. Layouts per frame: " + n0(T3.height.layouts) + ", " + n0(T3.color.layouts) + " and " + n0(T3.transform.layouts) + ". The order still matters for geometry: change a size or a position and the reads are back to forcing layouts. Lesson 51, Frame budget, shows what animating left instead of transform does to a 120 Hz screen.",
+      "Una lectura fuerza solo el trabajo que está desactualizado. height cambia la geometría, así que marca el layout como sucio y la siguiente lectura paga un layout. background-color cambia cómo se ven las cajas, no dónde están, así que nunca marca el layout como desactualizado: la lectura igual pone el estilo al día (" + ms(T3.color.style) + " por cuadro aquí) pero el layout sigue válido, y el cuadro vuelve a pintar solo los ítems que cambiaron (" + ms(T3.color.paint) + "). transform en un elemento con su propia capa se salta el layout y el pintado: el compositor solo mueve la capa. Layouts por cuadro: " + n0(T3.height.layouts) + ", " + n0(T3.color.layouts) + " y " + n0(T3.transform.layouts) + ". El orden sigue importando para la geometría: cambia un tamaño o una posición y las lecturas vuelven a forzar layouts. La lección 51, Presupuesto de cuadro, muestra lo que animar left en lugar de transform le hace a una pantalla de 120 Hz.",
     ),
     watch: { pattern: "inplace", prop: "color", items: 40, dom: 2000, contain: "none", speed: 1 },
   },
@@ -153,8 +153,8 @@ const EXPERIMENTS = [
     question: t("Each widget moves both its read and its write into a requestAnimationFrame callback. How many layouts per frame?",
       "Cada widget mueve su lectura y su escritura a un callback de requestAnimationFrame. ¿Cuántos layouts por cuadro?"),
     options: [
-      t("One: rAF callbacks run together just before the frame's layout, so they're batched", "Uno: los callbacks de rAF corren juntos justo antes del layout del cuadro, así que quedan agrupados"),
-      t("About one per widget again: the callbacks still run one after another, read, write, read, write", "Más o menos uno por widget otra vez: los callbacks igual corren uno tras otro, lee, escribe, lee, escribe"),
+      t("One: rAF callbacks are batched before the frame's layout", "Uno: los callbacks de rAF se agrupan antes del layout del cuadro"),
+      t("About one per widget: each callback still reads after a write", "Más o menos uno por widget: cada callback igual lee después de una escritura"),
       t("None: rAF callbacks run after layout and paint", "Ninguno: los callbacks de rAF corren después del layout y el pintado"),
     ],
     answer: 1,
@@ -171,9 +171,9 @@ const EXPERIMENTS = [
       "El bucle lee, escribe, lee…, 40 ítems, en una página de 8,000 cajas · sin contención vs contain: strict en la lista"),
     question: t("With contain: strict on the list and the same loop, what changes?", "Con contain: strict en la lista y el mismo bucle, ¿qué cambia?"),
     options: [
-      t("The forced layouts go away: a contained element is laid out later, on its own", "Los layouts forzados desaparecen: un elemento contenido se acomoda después, por separado"),
-      t("Still one forced layout per item, but each covers only the list, so the frame gets far cheaper", "Sigue habiendo un layout forzado por ítem, pero cada uno cubre solo la lista, así que el cuadro sale mucho más barato"),
-      t("Nothing: layout always covers the whole document", "Nada: el layout siempre cubre todo el documento"),
+      t("No more forced layouts: the list lays out later, on its own", "No más layouts forzados: la lista se acomoda después, por separado"),
+      t("The same forced layouts, each covering only the list", "Los mismos layouts forzados, cada uno solo sobre la lista"),
+      t("Nothing: a read still lays out the whole document", "Nada: una lectura igual hace el layout de todo el documento"),
     ],
     answer: 1,
     why: t(
@@ -201,15 +201,15 @@ const QUESTIONS = [
     t("When a self-contained part of the page (a widget, a list, a feed card) changes often. contain: content (layout, paint and style containment) or contain: strict (which adds size containment) tells the browser that changes inside can't affect anything outside, so it can lay out and paint just that part. It shrinks each layout; it doesn't remove forced layouts, so fix the read and write order too. Size containment means the box no longer grows with its content, so it needs an explicit size. For long pages, content-visibility: auto goes further and skips layout and paint for sections that are off screen.",
       "Cuando una parte autónoma de la página (un widget, una lista, una tarjeta de un feed) cambia seguido. contain: content (contención de layout, pintado y estilo) o contain: strict (que agrega contención de tamaño) le dice al navegador que los cambios de adentro no pueden afectar nada afuera, así que puede acomodar y pintar solo esa parte. Achica cada layout; no elimina los layouts forzados, así que también arregla el orden de lecturas y escrituras. La contención de tamaño hace que la caja ya no crezca con su contenido, así que necesita un tamaño explícito. En páginas largas, content-visibility: auto va más allá y se salta el layout y el pintado de las secciones fuera de pantalla.")],
   [t("How does layout thrashing show up in what users feel and in Core Web Vitals?", "¿Cómo se nota el layout thrashing en lo que sienten los usuarios y en las Core Web Vitals?"),
-    t("Interaction to Next Paint (INP) measures how long the page takes to show the next frame after a click, tap or key press. A handler that thrashes keeps the main thread busy before that frame can be drawn, so INP goes up; during scrolling or an animation it shows as dropped frames instead. The event loop lesson (16) shows the same main thread from the task side, and the throttle lesson (32) cuts how often a handler runs; neither helps if each run still interleaves reads and writes.",
-      "Interaction to Next Paint (INP) mide cuánto tarda la página en mostrar el siguiente cuadro después de un clic, un toque o una tecla. Un handler que hace thrashing mantiene ocupado el hilo principal antes de que se pueda dibujar ese cuadro, así que el INP sube; durante un scroll o una animación se nota como cuadros perdidos. La lección del bucle de eventos (16) muestra el mismo hilo principal desde el lado de las tareas, y la del throttle (32) reduce cuántas veces corre un handler; ninguna ayuda si cada ejecución sigue intercalando lecturas y escrituras.")],
+    t("Interaction to Next Paint (INP) measures how long the page takes to show the next frame after a click, tap or key press. A handler that thrashes keeps the main thread busy before that frame can be drawn, so INP goes up; during scrolling or an animation it shows as dropped frames instead. Lesson 51, Frame budget, shows how INP and the frame budget are measured; lesson 16, Event loop, shows the same main thread from the task side; and lesson 32, Throttle, cuts how often a handler runs. None of them helps if each run still interleaves reads and writes.",
+      "Interaction to Next Paint (INP) mide cuánto tarda la página en mostrar el siguiente cuadro después de un clic, un toque o una tecla. Un handler que hace thrashing mantiene ocupado el hilo principal antes de que se pueda dibujar ese cuadro, así que el INP sube; durante un scroll o una animación se nota como cuadros perdidos. La lección 51, Presupuesto de cuadro, muestra cómo se miden el INP y el presupuesto de cada cuadro; la lección 16, Bucle de eventos, muestra el mismo hilo principal desde el lado de las tareas; y la lección 32, Throttle, reduce cuántas veces corre un handler. Ninguna ayuda si cada ejecución sigue intercalando lecturas y escrituras.")],
 ];
 
 export default defineLesson({
   title: t("Layout Thrashing Workbench", "Banco de trabajo: layout thrashing"),
   eyebrow: t("Systems lesson 52 · Layout thrashing", "Lección de sistemas 52 · Layout thrashing"),
   lede: t("A browser lays out the page lazily: a style change only marks layout as out of date, and the page is measured once, just before the next frame. Reading a size or position after a change forces that layout on the spot, so reading and writing in turn across a list forces one per item. This lesson builds that as a machine: watch it, predict what breaks it, then explain it back.",
-    "Un navegador hace el layout de la página de forma perezosa: un cambio de estilo solo marca el layout como desactualizado, y la página se mide una sola vez, justo antes del siguiente cuadro. Leer un tamaño o una posición después de un cambio fuerza ese layout en el acto, así que leer y escribir por turnos a lo largo de una lista fuerza uno por ítem (layout thrashing). Esta lección lo arma como una máquina: mírala, predice qué la rompe y luego explícalo."),
+    "Un navegador hace el layout de la página de forma perezosa: un cambio de estilo solo marca el layout como desactualizado, y la página se mide una sola vez, justo antes del siguiente cuadro (frame). Leer un tamaño o una posición después de un cambio fuerza ese layout en el acto, así que leer y escribir por turnos a lo largo de una lista fuerza uno por ítem (layout thrashing). Esta lección lo arma como una máquina: mírala, predice qué la rompe y luego explícalo."),
   machine: {
     intro: t("Every frame the clerk goes through the list: a READ measures an item, a WRITE changes its style. Each pass of the gantry over the galley is one layout, and it lights when a read forced it in the middle of the script. The strip on the right keeps one bar per frame against the 16.7 ms line. Time runs slow: one 16.7 ms frame takes about a second at ×1.",
       "En cada cuadro el empleado recorre la lista: una LECTURA mide un ítem, una ESCRITURA le cambia el estilo. Cada pasada del pórtico sobre la bandeja es un layout, y se ilumina cuando una lectura lo forzó en medio del script. La tira de la derecha guarda una barra por cuadro contra la línea de 16.7 ms. El tiempo corre lento: un cuadro de 16.7 ms tarda más o menos un segundo en ×1."),
@@ -222,7 +222,7 @@ export default defineLesson({
       ],
       caption: t(
         "A write only marks style, and for a geometry change layout, as out of date. A read needs current geometry, so if layout is out of date the gantry makes a pass right then; otherwise layout waits for the end of the frame, where style, layout, paint and composite run in that order. Model costs: a layout is " + ms(COST.layoutBase) + " plus " + us(COST.layoutBox) + " per box in its scope, a style update " + us(COST.styleEach) + " per changed element, paint " + us(COST.paintBox) + " per repainted box, each varying ±" + n0(JITTER * 100) + "% between runs. Real costs depend on the browser, the device and the CSS. A small page fills the front of the galley; 8,000 boxes fill it to the back. The fence is contain: strict on the list.",
-        "Una escritura solo marca como desactualizado el estilo y, si cambia la geometría, el layout. Una lectura necesita la geometría al día, así que si el layout está desactualizado el pórtico hace una pasada en ese momento; si no, el layout espera al final del cuadro, donde corren el estilo, el layout, el pintado y la composición, en ese orden. Costos del modelo: un layout cuesta " + ms(COST.layoutBase) + " más " + us(COST.layoutBox) + " por caja en su alcance, una actualización de estilo " + us(COST.styleEach) + " por elemento cambiado, el pintado " + us(COST.paintBox) + " por caja repintada, y cada uno varía ±" + n0(JITTER * 100) + "% entre ejecuciones. Los costos reales dependen del navegador, el dispositivo y el CSS. Una página chica llena el frente de la bandeja; 8,000 cajas la llenan hasta el fondo. La cerca es contain: strict en la lista.",
+        "Una escritura solo marca como desactualizado el estilo y, si cambia la geometría, el layout. Una lectura necesita la geometría al día, así que si el layout está desactualizado el pórtico hace una pasada en ese momento; si no, el layout espera al final del cuadro, donde corren el estilo, el layout, el pintado y la composición, en ese orden. Costos del modelo: un layout cuesta " + ms(COST.layoutBase) + " más " + us(COST.layoutBox) + " por caja en su alcance, una actualización de estilo " + us(COST.styleEach) + " por elemento cambiado, el pintado " + us(COST.paintBox) + " por caja repintada, y cada uno varía ±" + n0(JITTER * 100) + "% entre ejecuciones. Los costos reales dependen del navegador, el dispositivo y el CSS. Una página pequeña llena el frente de la bandeja; 8,000 cajas la llenan hasta el fondo. La cerca es contain: strict en la lista.",
       ),
       stage: { "data-bench": "" },
       label: t("Layout thrashing simulation. Space pauses or resumes.", "Simulación de layout thrashing. Espacio pausa o reanuda."),
@@ -247,7 +247,7 @@ export default defineLesson({
     ],
     note: t(
       "Changing a setting starts the run again. “Sneak in a read” makes some other code read the first item's height halfway through the next frame's writes. transform is written to an element with will-change: transform, on its own layer.",
-      "Cambiar un ajuste reinicia la corrida. “Colar una lectura” hace que otro código lea la altura del primer ítem a mitad de las escrituras del siguiente cuadro. transform se escribe en un elemento con will-change: transform, en su propia capa.",
+      "Cambiar un ajuste reinicia la ejecución. “Colar una lectura” hace que otro código lea la altura del primer ítem a mitad de las escrituras del siguiente cuadro. transform se escribe en un elemento con will-change: transform, en su propia capa.",
     ),
   },
   predict: {
@@ -256,8 +256,8 @@ export default defineLesson({
     experiments: withResults(EXPERIMENTS, RUNS),
   },
   explain: { questions: QUESTIONS },
-  footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson; its costs are a model, not measurements of any browser.`,
-    `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección; sus costos son un modelo, no mediciones de ningún navegador.`),
+  footer: t(`Figure drawn with the <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> isometric kit (MIT). Simulation written for this lesson; its costs are a model, not measurements of any browser. Lesson 51 covers the frame budget and INP this work eats into, and lesson 53 keeps a long list small enough to lay out.`,
+    `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Simulación escrita para esta lección; sus costos son un modelo, no mediciones de ningún navegador. La lección 51 trata el presupuesto de cuadro y el INP que consume este trabajo, y la lección 53 mantiene una lista larga lo bastante pequeña para acomodarla.`),
   css: LIT_FILL_CSS,
   data: {
     P,
