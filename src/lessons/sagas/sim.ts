@@ -10,6 +10,7 @@ import { averageOver } from "../../lib/stats";
 export const ORDERS = {
   standard: ["F", "H", "C", "P", "M"],
   mailFirst: ["M", "F", "H", "C", "P"],
+  mailMid: ["F", "H", "M", "C", "P"],
   payFirst: ["P", "F", "H", "C", "M"],
 };
 export const NAMES = { F: "flight", H: "hotel", C: "car", P: "payment", M: "confirmation email" };
@@ -247,7 +248,7 @@ export function experimentResults() {
   return {
     nosaga: { a: runScenario({ style: "none", decline: 0.2 }), b: runScenario({ style: "orch", decline: 0.2 }) },
     lost: { g: runScenario({ ...lostBase, undo: "none" }), r: runScenario({ ...lostBase, undo: "retry" }), k: runScenario({ ...lostBase, undo: "idem" }) },
-    email: { last: runScenario({ style: "orch", decline: 0.2 }), first: runScenario({ style: "orch", decline: 0.2, order: "mailFirst" }) },
+    email: { last: runScenario({ style: "orch", decline: 0.2 }), first: runScenario({ style: "orch", decline: 0.2, order: "mailFirst" }), mid: runScenario({ style: "orch", decline: 0.2, order: "mailMid" }) },
     isolation: { a: runScenario(isoBase), b: runScenario({ ...isoBase, order: "payFirst" }) },
     choreo: { o: runScenario({ style: "orch", decline: 0.2 }), c: runScenario({ style: "choreo", decline: 0.2 }) },
   };

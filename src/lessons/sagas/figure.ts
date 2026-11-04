@@ -36,9 +36,9 @@ export const DESK_PORT = [12, DESK.y];           // couriers leave the desk here
 export const ROWS = 4;
 const CHECK = { x0: DESK.x + 5, x1: DESK.x + DESK.w - 5, y0: DESK.y + 3, y1: DESK.y + DESK.d - 3 };
 const SCORE = { x: -144, y: 22, w: 70, d: 3, r: 0.5 };
-const SCORE_Z = [4, 50];
-export const SCORE_ROWS = ["done", "undone", "stuck", "wrongMail", "turned"];
-const SCORE_LABELS = { done: t("BOOKED", "RESERVADOS"), undone: t("UNDONE", "DESHECHOS"), stuck: t("STUCK", "A MEDIAS"), wrongMail: t("WRONG EMAIL", "CORREO ERRÓNEO"), turned: t("TURNED AWAY", "SIN LUGAR") };
+const SCORE_Z = [4, 56];
+export const SCORE_ROWS = ["done", "undone", "stuck", "wrongMail", "turned", "doubles"];
+const SCORE_LABELS = { done: t("BOOKED", "RESERVADOS"), undone: t("UNDONE", "DESHECHOS"), stuck: t("STUCK", "A MEDIAS"), wrongMail: t("WRONG EMAIL", "CORREO ERRÓNEO"), turned: t("TURNED AWAY", "SIN LUGAR"), doubles: t("UNDONE TWICE", "DOS VECES") };
 export const LABELS = { F: t("FLIGHT", "VUELO"), H: "HOTEL", C: t("CAR", "AUTO"), P: t("PAY", "PAGO"), M: t("EMAIL", "CORREO") };
 
 export const P = k.fitProjection(
@@ -167,7 +167,7 @@ function keeper() {
     + `</g>`;
 }
 
-// The scoreboard: five rows, a label and a three-wheel counter each.
+// The scoreboard: six rows, a label and a three-wheel counter each.
 function scoreboard() {
   const out = [];
   out.push(S(k.slabOf({ x: SCORE.x - 2, y: SCORE.y - 3, w: SCORE.w + 4, d: 9, r: 1.4 }, 0, SCORE_Z[0], P, 3, 0.4), { tone: "mid" }));
@@ -205,8 +205,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A travel agency on a base plate. Five counters stand in a row: flight, hotel, car, payment and a postbox for the confirmation email. Each booking counter has a board of hooks where it hangs a tag for every booking it holds. A trip folder rides the forward track past the counters, collecting a stamp at each. If a step fails, the folder drops to the return track and rides back, and each counter it passes takes its tag down. Half-done trips are left on a ledge at the front. At the front, an orchestrator desk with a checklist sends couriers to the counters along dashed lines, and a scoreboard counts trips booked, undone, stuck, wrong emails and customers turned away.",
-      "Una agencia de viajes sobre una placa base. Cinco mostradores en fila: vuelo, hotel, auto, pago y un buzón para el correo de confirmación. Cada mostrador de reservas tiene un tablero con ganchos donde cuelga una etiqueta por cada reserva que retiene. Una carpeta de viaje avanza por la vía de ida frente a los mostradores y recibe un sello en cada uno. Si un paso falla, la carpeta baja a la vía de regreso y vuelve, y cada mostrador por el que pasa descuelga su etiqueta. Los viajes a medias quedan en una repisa al frente. Al frente, un escritorio del orquestador con una lista de control manda mensajeros a los mostradores por líneas punteadas, y un marcador cuenta los viajes reservados, deshechos, a medias, los correos erróneos y los clientes sin lugar."),
+      "A travel agency on a base plate. Five counters stand in a row: flight, hotel, car, payment and a postbox for the confirmation email. Each booking counter has a board of hooks where it hangs a tag for every booking it holds. A trip folder rides the forward track past the counters, collecting a stamp at each. If a step fails, the folder drops to the return track and rides back, and each counter it passes takes its tag down. Half-done trips are left on a ledge at the front. At the front, an orchestrator desk with a checklist sends couriers to the counters along dashed lines, and a scoreboard counts trips booked, undone, stuck, wrong emails, customers turned away and undos that ran twice.",
+      "Una agencia de viajes sobre una placa base. Cinco mostradores en fila: vuelo, hotel, auto, pago y un buzón para el correo de confirmación. Cada mostrador de reservas tiene un tablero con ganchos donde cuelga una etiqueta por cada reserva que retiene. Una carpeta de viaje avanza por la vía de ida frente a los mostradores y recibe un sello en cada uno. Si un paso falla, la carpeta baja a la vía de regreso y vuelve, y cada mostrador por el que pasa descuelga su etiqueta. Los viajes a medias quedan en una repisa al frente. Al frente, un escritorio del orquestador con una lista de control manda mensajeros a los mostradores por líneas punteadas, y un marcador cuenta los viajes reservados, deshechos, a medias, los correos erróneos, los clientes sin lugar y los deshacer que se ejecutaron dos veces."),
     body: [
       plate(),
       wires(),

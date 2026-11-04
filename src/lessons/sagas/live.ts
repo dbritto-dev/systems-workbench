@@ -6,7 +6,7 @@ import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/i
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { playPause } from "../../runtime/dom";
-import { makeSim, folderAt, NAMES } from "./sim";
+import { makeSim, folderAt } from "./sim";
 
 export default function mount({ P, G, HOOKS, FOLDER_SVG, PUCK_SVG }, root) {
   const NS = "http://www.w3.org/2000/svg";
@@ -16,7 +16,8 @@ export default function mount({ P, G, HOOKS, FOLDER_SVG, PUCK_SVG }, root) {
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
-  const NAMES_ES = { F: "vuelo", H: "hotel", C: "auto", P: "pago", M: "correo de confirmación" };
+  // Why a booking step failed: the board it needed was full.
+  const SOLD = { F: ["no seats left", "sin asientos"], H: ["no rooms left", "sin habitaciones"], C: ["no cars left", "sin autos"] };
   const sayText = (text) => root.figure.say(text);
   const say = (v) => sayText(L(v));
   const layer = q("[data-folders]");
@@ -142,8 +143,12 @@ export default function mount({ P, G, HOOKS, FOLDER_SVG, PUCK_SVG }, root) {
     const undoing = active.find((trip) => t >= trip.compAt);
     if (undoing) {
       const f = folderAt(undoing, t), sold = undoing.failReason === "sold", svc = model.order[undoing.failSlot], steps = Math.max(0, f.steps);
-      say(T("trip " + (undoing.id + 1) + " · " + (sold ? NAMES[svc] + " full" : "card declined") + " · undoing " + steps + " step" + (f.steps === 1 ? "" : "s"),
-        "viaje " + (undoing.id + 1) + " · " + (sold ? NAMES_ES[svc] + " lleno" : "tarjeta rechazada") + " · deshaciendo " + steps + " paso" + (f.steps === 1 ? "" : "s")));
+      const why = sold && SOLD[svc] ? SOLD[svc] : ["card declined", "tarjeta rechazada"];
+      say(steps > 0
+        ? T("trip " + (undoing.id + 1) + " · " + why[0] + " · undoing " + steps + " step" + (steps === 1 ? "" : "s"),
+          "viaje " + (undoing.id + 1) + " · " + why[1] + " · deshaciendo " + steps + " paso" + (steps === 1 ? "" : "s"))
+        : T("trip " + (undoing.id + 1) + " · " + why[0] + " · all steps undone, riding back",
+          "viaje " + (undoing.id + 1) + " · " + why[1] + " · todo deshecho, de regreso"));
     }
     else if (n.stuck && cfg.style === "none") say(T(n.stuck + " half-done trip" + (n.stuck === 1 ? "" : "s") + " · " + n.orphans + " bookings held for nobody",
       n.stuck + " viaje" + (n.stuck === 1 ? "" : "s") + " a medias · " + n.orphans + " reservas retenidas para nadie"));
