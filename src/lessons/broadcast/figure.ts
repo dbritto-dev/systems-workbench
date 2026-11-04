@@ -30,7 +30,7 @@ export const P = k.fitProjection(
   { pad: 24, azimuth: 45 },
 );
 
-const { S, L, D, at } = shorthand(P);
+const { S, L, D, at, text } = shorthand(P);
 const depth = (x, y, z = 0) => k.depthOf([x, y, z], P);
 
 // The route a wire takes on the board: straight between stations, except the ring's closing wire, which runs round the margin.
@@ -93,8 +93,8 @@ function board(state) {
 // Two gauges on the front margin, each a scale with two target pins (tall: challenge 3d, short: 3e) and a slider.
 // Messages per value, 0–60; slowest value, 0–2.4 s, one tick per 100 ms hop.
 export const GAUGES = {
-  mpo: { x: -106, max: 60, targets: [30, 20] },
-  max: { x: 6, max: 2.4, targets: [0.6, 2] },
+  mpo: { x: -106, max: 60, targets: [30, 20], name: t("MSGS / VALUE", "MSJS / VALOR") },
+  max: { x: 6, max: 2.4, targets: [0.6, 2], name: t("MAX", "MÁX") },
 };
 const G = { w: 100, y: 101, d: 7, pad: 4 };
 export const gaugeX = (g, v) => g.x + G.pad + (Math.max(0, Math.min(g.max, v)) / g.max) * (G.w - 2 * G.pad);
@@ -118,6 +118,8 @@ function gauge(key, value) {
   const slider = S(k.slabOf({ x: x0 - 1.6, y: G.y - 0.5, w: 3.2, d: G.d + 1, r: 0.6 }, 0.6, 2.6, P, 2, 0.3), { tone: "hi", crease: "lo" })
     + L(k.lineOnTop([x0, G.y + 0.5], [x0, G.y + G.d - 0.5], 3.2, P), { tone: "mid", free: true });
   out.push(`<g data-gauge="${key}" transform="${slideBy(g, value)}">${slider}</g>`);
+  // The gauge's name on the plate's front face, below its strip: the same words as the panel stat.
+  out.push(text(g.x + G.pad, PLATE.y + PLATE.d, -PLATE_H + 3.2, g.name, { size: 5.6, tone: "mid" }));
   return out.join("");
 }
 

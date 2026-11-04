@@ -128,8 +128,8 @@ export default function mount({ ROUTES, GAUGE }, root) {
       const op = net.ops[spot.id];
       const lit = Math.min(op.have, 25);
       const took = op.done ? Math.round((op.done - op.t0) * 1000) : 0;
-      say(T("value " + (spot.id + 1) + " · entered at node " + (spot.origin + 1) + " · " + lit + " of " + op.target + " lit" + (op.done ? " in " + took + " ms" : "") + (net.stats.overload ? " · network flooded" : ""),
-        "valor " + (spot.id + 1) + " · entró en el nodo " + (spot.origin + 1) + " · " + lit + " de " + op.target + " encendidos" + (op.done ? " en " + took + " ms" : "") + (net.stats.overload ? " · red saturada" : "")));
+      say(T("value " + (spot.id + 1) + " · from node " + (spot.origin + 1) + " · " + lit + " of " + op.target + " lit" + (op.done ? " in " + took + " ms" : "") + (net.stats.overload ? " · network flooded" : ""),
+        "valor " + (spot.id + 1) + " · desde el nodo " + (spot.origin + 1) + " · " + lit + " de " + op.target + " encendidos" + (op.done ? " en " + took + " ms" : "") + (net.stats.overload ? " · red saturada" : "")));
     }
   }
   // A point a share u of the way along a polyline (by length). Not src/lib/geometry's pointAlong: a share, not a
