@@ -40,10 +40,11 @@ export const BELT_Y = BELT.y + BELT.d / 2;            // -59
 // ---------- the collector, back right ----------
 const COLL = { x: 8, y: -96, w: 138, d: 40, r: 1.5 };
 export const COLL_H = 16;
-export const SLOTS = 8;
-export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => 14 + i * 16.4);     // slot left edges
-const SLOT_W = 14;
-export const SLOT_YS = [-86, -80, -74];                // where a trace's cards stand in a slot (A behind, C in front)
+export const SLOTS = 6;
+export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => 13 + i * 22);       // slot left edges
+const SLOT_W = 20;
+export const SLOT_CARD_X = [-6.8, 0, 6.8];             // a trace's cards stand side by side in its slot: A, B, C
+export const SLOT_CARD_Y = -78;
 const COLL_FRONT = COLL.y + COLL.d;                    // -56
 export const INLET = [COLL.x + 2, BELT_Y, BELT_H];
 
@@ -77,7 +78,7 @@ export const P = k.fitProjection(
 );
 
 const { S, L } = shorthand(P);
-const words = (x, y, z, w, size = 3, opts = {}) => faceText(P, [x, y, z], w, { size, tone: "mid", ...opts });
+const words = (x, y, z, w, size = 3, opts = {}) => faceText(P, [x, y, z], w, { size, tone: "hi", ...opts });
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H });
@@ -125,8 +126,8 @@ function belt() {
 function collectorSigns() {
   const z = COLL_H;
   const one = sign(P, { x: 46, y: COLL.y + 1.2, z, w: 62, h: 7.5, text: t("COLLECTOR", "COLECTOR"), size: 3.6, posts: false });
-  const two = sign(P, { x: 14, y: COLL.y + 1.2, z, w: 58, h: 7.5, text: t("COLLECTOR 1", "COLECTOR 1"), size: 3.6, posts: false })
-    + sign(P, { x: 82, y: COLL.y + 1.2, z, w: 58, h: 7.5, text: t("COLLECTOR 2", "COLECTOR 2"), size: 3.6, posts: false });
+  const two = sign(P, { x: 13, y: COLL.y + 1.2, z, w: 60, h: 7.5, text: t("COLLECTOR 1", "COLECTOR 1"), size: 3.6, posts: false })
+    + sign(P, { x: 81, y: COLL.y + 1.2, z, w: 60, h: 7.5, text: t("COLLECTOR 2", "COLECTOR 2"), size: 3.6, posts: false });
   return `<g data-signs="one">${one}</g><g data-signs="two" style="display:none">${two}</g>`;
 }
 function collector() {
@@ -134,15 +135,15 @@ function collector() {
   out.push(L(k.planOutline(k.insetPlan(COLL, 1.8), COLL_H, P), { tone: "faint" }));
   // the rack: one slot per trace waiting for its decision, each over a timer
   SLOT_X.forEach((x, i) => {
-    out.push(L(k.planOutline({ x, y: -90, w: SLOT_W, d: 22, r: 0.8 }, COLL_H, P), { tone: "lo" }));
+    out.push(L(k.planOutline({ x, y: -88, w: SLOT_W, d: 18, r: 0.8 }, COLL_H, P), { tone: "lo" }));
     out.push(`<g data-meter-wrap="${i}">${meterPart(x + SLOT_W / 2, i)}</g>`);
   });
   // the wall between the two collectors (shown with two)
-  out.push(`<g data-divider style="display:none">${S(k.slabOf({ x: 77.6, y: -92, w: 1.6, d: 30, r: 0.3 }, COLL_H, 6, P, 2), { tone: "hi", crease: "lo" })}</g>`);
+  out.push(`<g data-divider style="display:none">${S(k.slabOf({ x: 77.2, y: -92, w: 1.6, d: 30, r: 0.3 }, COLL_H, 6, P, 2), { tone: "hi", crease: "lo" })}</g>`);
   // IN MEMORY: traces held waiting for a decision, on the collector's right side
   const side = COLL.x + COLL.w;
   out.push(digitCounter(P, { x: side, y: COLL_FRONT - 4, z: 2.4, count: 4, w: 4.4, h: 6, gap: 0.6, pad: 1, face: "x", name: "held" }));
-  out.push(faceText(P, [side, COLL_FRONT - 4, 12.2], t("IN MEMORY", "EN MEMORIA"), { face: "x", size: 3, tone: "mid" }));
+  out.push(faceText(P, [side, COLL_FRONT - 4, 12.2], t("IN MEMORY", "EN MEMORIA"), { face: "x", size: 3, tone: "hi" }));
   return out.join("");
 }
 function meterPart(x, i) {
@@ -184,28 +185,26 @@ function desk() {
   out.push(L(k.planOutline(k.insetPlan(DESK, 2.2), DESK_H, P), { tone: "faint" }));
   // the bin: a well in the desk top that dropped cards fall into
   out.push(S(k.slabOf(BIN, DESK_H, 2.2, P, 3, 0.3), { tone: "lo", crease: "none", inner: L(k.planOutline(k.insetPlan(BIN, 2.2), DESK_H + 2.2, P), { tone: "mid" }) }));
-  const face = DESK.y + DESK.d;
-  out.push(digitCounter(P, { x: BIN.x + 4, y: face, z: 1.6, count: 4, w: 4.2, h: 5.4, gap: 0.6, pad: 1, name: "dropped" }));
-  out.push(words(BIN.x + 3, face, 9.6, t("DROPPED", "DESCARTADAS"), 3));
-  // each pair's heading lies on the desk top, along its front edge; the captions sit on the face above the wheels
-  const group = (x, head, all, kept, name) => {
-    const o = [faceText(P, [x - 0.6, face - 7, DESK_H], head, { face: "top", size: 3.4, tone: "hi" })];
-    o.push(digitCounter(P, { x: x + 0.6, y: face, z: 1.6, count: 3, w: 4, h: 5.4, gap: 0.5, pad: 1, name: name + "All" }));
-    o.push(words(x - 0.6, face, 9.6, all, 3));
-    o.push(digitCounter(P, { x: x + 17.4, y: face, z: 1.6, count: 3, w: 4, h: 5.4, gap: 0.5, pad: 1, name: name + "Kept" }));
-    o.push(words(x + 16.2, face, 9.6, kept, 3));
-    return o.join("");
-  };
-  out.push(group(DESK.x + 40, t("ERRORS", "ERRORES"), t("ALL", "TODOS"), t("KEPT", "GUARDADOS"), "err"));
-  out.push(group(DESK.x + 79, t("SLOW", "LENTAS"), t("ALL", "TODAS"), t("KEPT", "GUARDADAS"), "slow"));
+  const face = DESK.y + DESK.d, side = DESK.x + DESK.w;
+  // one caption per counter, on the same face, clear of its housing
+  out.push(digitCounter(P, { x: BIN.x + 1, y: face, z: 2.4, count: 4, w: 4.2, h: 5.6, gap: 0.6, pad: 1, name: "dropped" }));
+  out.push(words(BIN.x + 22, face, 3.6, t("DROPPED", "DESCARTADAS"), 3));
+  out.push(digitCounter(P, { x: DESK.x + 51, y: face, z: 2.4, count: 3, w: 4, h: 5.6, gap: 0.5, pad: 1, name: "errAll" }));
+  out.push(words(DESK.x + 66.4, face, 3.6, t("ERRORS", "ERRORES"), 3));
+  out.push(digitCounter(P, { x: DESK.x + 82.4, y: face, z: 2.4, count: 3, w: 4, h: 5.6, gap: 0.5, pad: 1, name: "errKept" }));
+  out.push(words(DESK.x + 97.8, face, 3.6, t("KEPT", "GUARDADOS"), 3));
+  out.push(digitCounter(P, { x: side, y: face - 3, z: 2.4, count: 3, w: 4, h: 5.6, gap: 0.5, pad: 1, face: "x", name: "slowAll" }));
+  out.push(faceText(P, [side, face - 18.4, 3.6], t("SLOW", "LENTAS"), { face: "x", size: 3, tone: "hi" }));
+  out.push(digitCounter(P, { x: side, y: face - 34, z: 2.4, count: 3, w: 4, h: 5.6, gap: 0.5, pad: 1, face: "x", name: "slowKept" }));
+  out.push(faceText(P, [side, face - 49.4, 3.6], t("KEPT", "GUARDADAS"), { face: "x", size: 3, tone: "hi" }));
   // the error-rate dials: what the archive says, counting its traces vs weighting each by its plaque (0 to 50%)
   const dz = DESK_H;
   for (const [i, x, label] of [[0, DESK.x + 57, t("COUNTED", "CONTADA")], [1, DESK.x + 97, t("WEIGHTED", "PONDERADA")]]) {
     out.push(dial(P, { x, y: DESK.y + 24, z: dz, r: 9.5, h: 3, ticks: 50, every: 10, from: -Math.PI * 0.75, span: Math.PI * 1.5, name: "rate" + i, value: 0 }));
-    out.push(faceText(P, [x, DESK.y + 42.5, dz], label, { face: "top", size: 3.4, tone: "mid", anchor: "middle" }));
+    out.push(faceText(P, [x, DESK.y + 42.5, dz], label, { face: "top", size: 3.4, tone: "hi", anchor: "middle" }));
     // the scale: 0 at the front left, 50% at the front right
     const r = 13.4, cy = DESK.y + 24;
-    for (const [a, v] of [[-0.75, "0"], [0.75, "50%"]]) out.push(faceText(P, [x + Math.sin(a * Math.PI) * r, cy - Math.cos(a * Math.PI) * r + 1.4, dz], v, { face: "top", size: 3.4, tone: "mid", anchor: "middle" }));
+    for (const [a, v] of [[-0.75, "0"], [0.75, "50%"]]) out.push(faceText(P, [x + Math.sin(a * Math.PI) * r, cy - Math.cos(a * Math.PI) * r + 1.4, dz], v, { face: "top", size: 3.4, tone: "hi", anchor: "middle" }));
   }
   out.push(faceText(P, [DESK.x + 77, DESK.y + 6.4, dz], t("ERROR RATE", "TASA DE ERROR"), { face: "top", size: 3.8, tone: "hi", anchor: "middle" }));
   return out.join("");
@@ -265,4 +264,4 @@ export function buildFigure() {
 }
 
 export const CARD_SPOTS = Array.from({ length: FOLDERS }, (_, i) => [0, 1, 2].map((s) => cardSpot(i, s)));
-export const GEOMETRY = { CARD_SPOTS, SX, TRACK_Y, ENTRY, BENCH_H, EMIT, BELT_Y, BELT_H, INLET, SLOTS, SLOT_X, SLOT_W, SLOT_YS, COLL_H, FOLDERS, BIN_SPOT, CARD };
+export const GEOMETRY = { CARD_SPOTS, SX, TRACK_Y, ENTRY, BENCH_H, EMIT, BELT_Y, BELT_H, INLET, SLOTS, SLOT_X, SLOT_W, SLOT_CARD_X, SLOT_CARD_Y, COLL_H, FOLDERS, BIN_SPOT, CARD };

@@ -120,7 +120,7 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
     return path[path.length - 1];
   };
   // a collector's rack slots: all 8 for one collector; 0–3 and 4–7 for two
-  const slotRange = (coll) => (cfg.mode === "tail" && cfg.coll !== "one" ? (coll === 0 ? [0, 4] : [4, 8]) : [0, 8]);
+  const slotRange = (coll) => (cfg.mode === "tail" && cfg.coll !== "one" ? (coll === 0 ? [0, G.SLOTS / 2] : [G.SLOTS / 2, G.SLOTS]) : [0, G.SLOTS]);
   function slotFor(part, tr) {
     if (partSlot.has(part)) return partSlot.get(part);
     const [lo, hi] = slotRange(part.coll);
@@ -216,7 +216,7 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
         if (clock < s.decided) {
           const slot = slotFor(s.part, tr);
           if (slot < 0) continue;            // the rack is full: it waits inside the collector
-          want(tr, s.svc, [G.SLOT_X[slot] + G.SLOT_W / 2, G.SLOT_YS[s.svc], G.COLL_H], "rack", false);
+          want(tr, s.svc, [G.SLOT_X[slot] + G.SLOT_W / 2 + G.SLOT_CARD_X[s.svc], G.SLOT_CARD_Y, G.COLL_H], "rack", false);
           continue;
         }
         if (!s.kept && clock < s.decided + 1.4) {
