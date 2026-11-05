@@ -1,8 +1,8 @@
-// <wb-experiment exp="burst" answer="2">: one predict-then-run card (markup from components/lesson/Experiments.astro).
+// <wb-experiment exp="burst" answer="2">: one predict-then-run card (markup from components/lesson/Experiment.astro).
 // A choice's data-choice is its index in the lesson's options, not its place on the card: the options are shuffled every
-// time the page loads, so the right answer is never in a fixed place. shuffleChoices() below does it. The page runs it
-// inline right after each card's options, while the HTML is parsed, so the first paint already shows the new order
-// (this module only loads after parsing). The element runs it too, for a card that missed it.
+// time the page loads, so the right answer is never in a fixed place. shuffleChoices() below does it. Each card carries
+// its own copy and runs it right after its options, while the HTML is parsed, so the first paint already shows the new
+// order (this module only loads after parsing). The element runs it too, for a card that missed it.
 // The reader picks a prediction, runs it, and the card shows the verdict and the result bars.
 //
 // The result: the card's <script type="application/json" data-result>, worked out at build time by the lesson's
@@ -20,8 +20,8 @@ export interface Result { verdict: string; bars?: ResultBar[]; groups?: { title:
 export interface WatchDetail { id: string; watch: unknown }
 
 /** Puts a card's options (the buttons in .choices) in a random order (Fisher–Yates), letters them A, B, C… in that
- *  order, and marks the group data-shuffled so it happens once. Components/lesson/Experiments.astro inlines this
- *  function's source into the page, so keep it self-contained: no imports, no outer variables. */
+ *  order, and marks the group data-shuffled so it happens once. Components/lesson/Experiment.astro inlines this
+ *  function's source into each card, so keep it self-contained: no imports, no outer variables. */
 export function shuffleChoices(group: Element) {
   if (group.hasAttribute("data-shuffled")) return;
   const items = Array.from(group.children);
@@ -37,7 +37,7 @@ export function shuffleChoices(group: Element) {
   group.setAttribute("data-shuffled", "");
 }
 
-// The base class is a stand-in at build time, when Experiments.astro imports shuffleChoices in Node.
+// The base class is a stand-in at build time, when Experiment.astro imports shuffleChoices in Node.
 const Base = (globalThis.HTMLElement ?? Object) as typeof HTMLElement;
 
 export class WbExperiment extends Base {
