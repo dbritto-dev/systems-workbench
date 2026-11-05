@@ -108,10 +108,15 @@ function pageTable() {
   out.push(text(PTAB.x + 4, PTAB.y + PTAB.d - 3, PTAB_H, t("ONE CHANGE · WHOLE PAGE", "UN CAMBIO · PÁGINA ENTERA"), SIZE, { face: "top" }));
   return out.join("");
 }
-function counterCol(x, y, name, count, words, { dot = false } = {}) {
+function counterCol(x, y, name, count, words, { tenths = false } = {}) {
   const w = 4.4, gap = 0.6;
   const out = [digitCounter(P, { x, y, z: 1.6, count, w, h: 6, gap, pad: 1, name })];
-  if (dot) out.push(D([k.iso([x + (count - 1) * (w + gap) - gap / 2, y + 0.4, 2.1], P)], { size: 0.6, tone: "hi" }));
+  if (tenths) {
+    // a decimal point, then one wheel for tenths in its own housing (as the BM25 lesson's score wheels)
+    const end = x + count * w + (count - 1) * gap;
+    out.push(k.dotsSvg([k.iso([end + 2.3, y + 0.6, 2.2], P)], { size: 2.2, tone: "hi" }));
+    out.push(digitCounter(P, { x: end + 4.6, y, z: 1.6, count: 1, w, h: 6, gap, pad: 1, name: name + "f" }));
+  }
   out.push(text(x - 1, y - 3.2, BENCH_H, words, SIZE, { face: "top" }));
   return out.join("");
 }
@@ -120,7 +125,7 @@ function benchB() {
   out.push(L(k.planOutline(k.insetPlan(BENCH_B, 2.2), BENCH_H, P), { tone: "faint" }));
   const f = BENCH_B.y + BENCH_B.d, x = BENCH_B.x;
   out.push(counterCol(x + 5, f, "waB", 2, t("WRITE AMP", "AMP. ESCR.")));
-  out.push(counterCol(x + 26, f, "rdB", 3, t("PAGES/READ", "PÁG./LECT."), { dot: true }));
+  out.push(counterCol(x + 26, f, "rdB", 1, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
   out.push(counterCol(x + 51, f, "spB", 3, t("SPACE %", "ESPACIO %")));
   out.push(meter(P, { x: x + 77, y: f, z: 1.4, r: 6.4, ticks: 10, zone: 0.8, name: "diskB" }));
   out.push(text(x + 77, f - 3.2, BENCH_H, t("DISK", "DISCO"), SIZE, { face: "top", anchor: "middle" }));
@@ -194,7 +199,7 @@ function benchL() {
   out.push(L(k.planOutline(k.insetPlan(BENCH_L, 2.2), BENCH_H, P), { tone: "faint" }));
   const f = BENCH_L.y + BENCH_L.d, x = BENCH_L.x;
   out.push(counterCol(x + 5, f, "waL", 2, t("WRITE AMP", "AMP. ESCR.")));
-  out.push(counterCol(x + 26, f, "rdL", 3, t("FILES/READ", "ARCH./LECT."), { dot: true }));
+  out.push(counterCol(x + 26, f, "rdL", 2, t("FILES/READ", "ARCH./LECT."), { tenths: true }));
   out.push(counterCol(x + 51, f, "spL", 3, t("SPACE %", "ESPACIO %")));
   out.push(meter(P, { x: x + 77, y: f, z: 1.4, r: 6.4, ticks: 10, zone: 0.8, name: "diskL" }));
   out.push(text(x + 77, f - 3.2, BENCH_H, t("DISK", "DISCO"), SIZE, { face: "top", anchor: "middle" }));

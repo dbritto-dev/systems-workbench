@@ -25,7 +25,7 @@ export default function mount({ P, G }, root) {
   const press = q("[data-press]"), needle = q("[data-progress]"), stallSign = q("[data-stall]");
   const labels = { leveled: qa('[data-labels="leveled"]'), tiered: qa('[data-labels="tiered"]'), ticks: qa("[data-target]") };
   const fly = q('[data-layer="fly"]');
-  const counters = Object.fromEntries(["waitB", "waitL", "waB", "waL", "rdB", "rdL", "spB", "spL"].map((n) => [n, WB.counter(svg, n, P)]));
+  const counters = Object.fromEntries(["waitB", "waitL", "waB", "waL", "rdB", "rdBf", "rdL", "rdLf", "spB", "spL"].map((n) => [n, WB.counter(svg, n, P)]));
   const meters = { diskB: WB.meter(svg, "diskB", P), diskL: WB.meter(svg, "diskL", P) };
 
   // ---------- settings and the run ----------
@@ -211,7 +211,9 @@ export default function mount({ P, G }, root) {
     if (waB !== null) counters.waB.setClamped(Math.round(waB));
     if (waL !== null) counters.waL.setClamped(Math.round(waL));
     const rb = mean(m.reads.bt.map((x) => x.pages)), rl = mean(m.reads.lsm.map((x) => x.pages)), fl = mean(m.reads.lsm.map((x) => x.files));
-    counters.rdB.setClamped(Math.round(rb * 10)); counters.rdL.setClamped(Math.round(fl * 10));
+    const tenthsOf = (v) => { const n = Math.min(999, Math.round(v * 10)); return [Math.floor(n / 10), n % 10]; };
+    { const [i, f] = tenthsOf(rb); counters.rdB.set(i); counters.rdBf.set(f); }
+    { const [i, f] = tenthsOf(fl); counters.rdL.set(i); counters.rdLf.set(f); }
     counters.spB.setClamped(Math.round(bt.space * 100)); counters.spL.setClamped(Math.round(ls.space * 100));
     meters.diskB.set(Math.min(1, m.busy.bt)); meters.diskL.set(Math.min(1, m.busy.lsm));
 
