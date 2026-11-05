@@ -11,11 +11,19 @@ export * from "./vendor-anatomy/kit/iso-kit.mjs";
 // The kit's palette with one change: the muted grey (captions, eyebrows, labels, plate corners, legends) reaches
 // WCAG AA contrast for small text, 4.5:1, on every surface it sits on: light #8c8c90 → #656569 (5.2:1 on the page,
 // 5.6:1 on cards), dark #6e6e6e → #8d8d91 (5.6:1 on cards). Only interface text uses it; the drawings don't.
-const MUTED = [["--anatomy-muted:#8c8c90", "--anatomy-muted:#656569"], ["--anatomy-muted:#6e6e6e", "--anatomy-muted:#8d8d91"]];
+// Words painted on the machine (face text) get their own ink, --anatomy-face-ink, instead of the kit's mid grey, which
+// is a line colour and reaches only 2.5–3.5:1 on the faces. The new ink reaches 4.5:1 on every face, shade and lit top
+// it can sit on: light #5e5e62 (4.7:1 on the darkest shade, #dcdcd9), dark #939397 (4.9:1 on the lit top, #262626).
+// Lines and strokes keep --anatomy-mid.
+const MUTED = [
+  ["--anatomy-muted:#8c8c90", "--anatomy-muted:#656569"], ["--anatomy-muted:#6e6e6e", "--anatomy-muted:#8d8d91"],
+  ["--anatomy-mid:#8a8a8f;", "--anatomy-mid:#8a8a8f;--anatomy-face-ink:#5e5e62;"], ["--anatomy-mid:#6a6a6a;", "--anatomy-mid:#6a6a6a;--anatomy-face-ink:#939397;"],
+];
 export const ISO_CSS = MUTED.reduce((css, [from, to]) => {
   if (!css.includes(from)) throw new Error(`kit.mjs: the kit's palette changed, ${from} not found`);
   return css.replace(from, to);
 }, KIT_CSS) +
+  ".iso-face-text{fill:var(--anatomy-face-ink)}" +
   // The live readout wraps instead of running off the plate's left edge: it keeps clear of the hint on wide plates and,
   // on phones, where there is no Space key to pause with, takes the hint's place and the full width.
   '.iso-plate-corner[data-corner="readout"]{left:12em;white-space:normal;text-align:right;line-height:1.3}' +
