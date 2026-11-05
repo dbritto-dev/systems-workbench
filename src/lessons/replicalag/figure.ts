@@ -1,0 +1,197 @@
+// @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
+// A main ledger and two copy desks. On the left, the leader: the ledger where every write is entered, its LSN counter
+// on the front, the users who write to it standing by. Two conveyors carry a slip for each entry, in order, to the
+// copy desks, followers A and B; at each desk the slips wait in line on a tray and are copied one at a time into
+// the desk's own ledger, and the counters on the desk's front say how far it has got (AT) and how old the oldest
+// entry it hasn't copied yet is (LAG). The slip of your own latest save is lit. In front, you, and the board that
+// shows what you wrote and what your last read saw. The leader's sign or a desk's name plate lights where your
+// last read was served.
+// Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
+import * as k from "../../../workbench/kit.mjs";
+import { basePlate, labelPlate, digitCounter, lamp, person, figurine, plaque, faceText, litFill } from "../../../workbench/parts.mjs";
+import { t } from "../../../workbench/i18n.mjs";
+import { shorthand } from "../../lib/draw";
+
+export const WIDTH = 700;
+export const HEIGHT = 470;
+
+const PLATE = { x: -98, y: -134, w: 182, d: 186, r: 8 };
+const PLATE_H = 12, FOOT_H = 5;
+
+// The leader: the main ledger.
+const LEAD = { x: -90, y: -126, w: 38, d: 96, r: 2 };
+const LEAD_H = 17;
+const LEAD_FRONT = LEAD.y + LEAD.d;
+const LEAD_RIGHT = LEAD.x + LEAD.w;
+
+// The copy desks (followers), A in front, B at the back.
+export const DESK_W = 58, DESK_D = 28, DESK_H = 15;
+export const DESKS = [{ x: 18, y: -80 }, { x: 18, y: -128 }].map((d) => ({ ...d, w: DESK_W, d: DESK_D, r: 2 }));
+export const BELT_Y = DESKS.map((d) => d.y + d.d / 2);       // each conveyor runs along its desk's middle
+export const BELT = { x0: LEAD_RIGHT, x1: DESKS[0].x, w: 8, z: DESK_H };
+export const QUEUE = { x0: DESKS[0].x + 3, step: 2.8, slots: 10 };  // slips waiting on the desk's tray; the next to copy is last
+export const BOOK = { dx: 32, w: 16, d: 14 };            // the desk's copy of the ledger, on its top
+
+// In front: you, and your board.
+export const YOU = [-34, 34, 0];
+const BOARD = { x: 2, y: 12, w: 78, d: 16, r: 1.6 };
+const BOARD_H = 9;
+const SCREEN = { x: 7, y: 16, w: 68, d: 3, r: 0.5 };
+const SCREEN_H = 22;
+
+export const P = k.fitProjection(
+  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), ...k.boxCorners(LEAD, 0, LEAD_H + 14), ...k.boxCorners(DESKS[1], 0, DESK_H + 11), ...k.boxCorners(SCREEN, BOARD_H, BOARD_H + SCREEN_H + 2), [YOU[0], YOU[1], 30]],
+  WIDTH,
+  HEIGHT,
+  { pad: 18, azimuth: 50 },
+);
+
+const { S, L } = shorthand(P);
+const text = (x, y, z, words, size = 2.6, opts = {}) => faceText(P, [x, y, z], words, { size, tone: "mid", ...opts });
+const sideText = (x, y, z, words, size = 2.6, opts = {}) => faceText(P, [x, y, z], words, { face: "x", size, tone: "mid", ...opts });
+
+function plate() {
+  return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
+    + labelPlate(P, { x: -92, y: 32, w: 26, d: 12, r: 1.4 }, [[-88, 36, 18], [-88, 40, 11]]);
+}
+
+// A ledger lying open on a top face at height z: two pages with rule lines.
+function ledger(x, y, w, d, z, lines = 6) {
+  const out = [];
+  const half = w / 2;
+  for (const px of [x, x + half]) {
+    out.push(S(k.slabOf({ x: px + 0.3, y, w: half - 0.6, d, r: 0.6 }, z, 1.2, P, 3, 0.2), { tone: "hi", crease: "lo" }));
+    const rows = [];
+    for (let i = 1; i <= lines; i++) rows.push(k.lineOnTop([px + 1.6, y + (d * i) / (lines + 1)], [px + half - 1.8, y + (d * i) / (lines + 1)], z + 1.2, P));
+    out.push(L(rows.join(""), { tone: "faint", free: true }));
+  }
+  return out.join("");
+}
+
+// ---------- the leader ----------
+function leader() {
+  const out = [S(k.slabOf(LEAD, 0, LEAD_H, P, 3, 0.6), { tone: "mid" })];
+  out.push(L(k.planOutline(k.insetPlan(LEAD, 2.4), LEAD_H, P), { tone: "faint" }));
+  out.push(ledger(LEAD.x + 7, LEAD.y + 40, 26, 22, LEAD_H, 7));
+  // the sign at the back of its top
+  const sign = { x: LEAD.x + 4, y: LEAD.y + 6, w: 32, d: 3, r: 0.5 };
+  // (lit when your last read was served here)
+  out.push(`<g class="wb-lit-group" data-node="L">` + S(k.slabOf(sign, LEAD_H, 13, P, 3, 0.3), { tone: "mid", crease: "lo" })
+    + text(sign.x + sign.w / 2, sign.y + sign.d, LEAD_H + 4.2, t("LEADER", "LÍDER"), 4.6, { anchor: "middle" }) + `</g>`);
+  // its LSN on the front face
+  out.push(text(LEAD.x + 6, LEAD_FRONT, 5.4, "LSN", 3.2));
+  out.push(digitCounter(P, { x: LEAD.x + 15, y: LEAD_FRONT, z: 3.6, count: 4, w: 4.4, h: 6, gap: 0.5, pad: 1, name: "lsn" }));
+  return out.join("");
+}
+// The users who write to the leader: a small crowd by its front.
+function crowd() {
+  return [[-82, -16], [-72, -22], [-64, -14], [-86, -6]].map(([x, y]) => figurine(P, [x, y, 0], { scale: 0.8 })).join("");
+}
+
+// ---------- the conveyors ----------
+function belt(i) {
+  const y = BELT_Y[i], { x0, x1, w, z } = BELT;
+  const plan = { x: x0, y: y - w / 2, w: x1 - x0, d: w, r: 0.4 };
+  const out = [];
+  for (const x of [x0 + 6, x1 - 6]) for (const dy of [-w / 2 + 1, w / 2 - 1]) out.push(S(k.cylinder(x, y + dy, 0.8, 0, z - 2, P, 10), { tone: "mid", crease: "none" }));
+  out.push(S(k.slabOf(plan, z - 2, 2, P, 2, 0.2), { tone: "lo", crease: "none" }));
+  const rollers = [];
+  for (let x = x0 + 3; x < x1 - 1; x += 4) rollers.push(k.lineOnTop([x, y - w / 2 + 0.8], [x, y + w / 2 - 0.8], z, P));
+  out.push(L(rollers.join(""), { tone: "faint", free: true }));
+  // chevrons toward the desk
+  const ch = [];
+  for (let x = x0 + 14; x < x1 - 8; x += 18) ch.push(k.onTop([[x - 1.6, y - 2.2], [x + 1.2, y], [x - 1.6, y + 2.2]], z, P));
+  out.push(L(ch.join(""), { tone: "mid" }));
+  return out.join("");
+}
+
+// ---------- the copy desks ----------
+function desk(i) {
+  const d = DESKS[i], name = i ? "B" : "A";
+  const out = [S(k.slabOf(d, 0, DESK_H, P, 3, 0.6), { tone: "mid" })];
+  out.push(L(k.planOutline(k.insetPlan(d, 2), DESK_H, P), { tone: "faint" }));
+  // the tray the slips wait on
+  const y = BELT_Y[i];
+  out.push(S(k.slabOf({ x: d.x + 1.5, y: y - 4.5, w: 30, d: 9, r: 0.6 }, DESK_H, 0.6, P, 2, 0.2), { tone: "lo", crease: "none" }));
+  // the copy of the ledger
+  out.push(ledger(d.x + BOOK.dx, y - BOOK.d / 2, BOOK.w, BOOK.d, DESK_H, 5));
+  // its name plate, lying at the front: lit when your last read was served here (an upright sign would hide B)
+  out.push(`<g class="wb-lit-group" data-node="${i}">` + plaque(P, { x: d.x + 32, y: d.y + 21.4, z: DESK_H, w: 24, d: 6.2, text: t("FOLLOWER " + name, "RÉPLICA " + name), size: 2.7 }) + `</g>`);
+  return out.join("");
+}
+// The desk's front face: how far it has got (AT, an LSN) on top, how far behind (ms) below.
+function counters(i) {
+  const d = DESKS[i], front = d.y + d.d;
+  return text(d.x + 4, front, 10, t("AT", "EN"), 2.8)
+    + digitCounter(P, { x: d.x + 12, y: front, z: 8.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "at" + i })
+    + digitCounter(P, { x: d.x + 12, y: front, z: 1.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "lag" + i })
+    + text(d.x + 31.6, front, 2.9, "ms", 2.6)
+    + text(d.x + 37, front, 2.9, t("LAG", "RETRASO"), 2.8);
+}
+// The lamp that lights once the desk has applied your latest save.
+function yours(i) {
+  const d = DESKS[i];
+  const p = [d.x + 5, d.y + d.d - 4.4, DESK_H];
+  return `<g data-lamp="yours${i}"><g data-off-lamp>${lamp(P, p, { r: 2.2 })}</g><g data-on-lamp style="display:none">${litFill(lamp(P, p, { r: 2.2, lit: true }))}</g></g>`;
+}
+
+// ---------- you and your board ----------
+function board() {
+  const out = [S(k.slabOf(BOARD, 0, BOARD_H, P, 3, 0.5), { tone: "mid" })];
+  out.push(L(k.planOutline(k.insetPlan(BOARD, 1.8), BOARD_H, P), { tone: "faint" }));
+  const front = BOARD.y + BOARD.d;
+  // everyone's totals on the front face
+  out.push(digitCounter(P, { x: BOARD.x + 4, y: front, z: 2.2, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "missing" }));
+  out.push(text(BOARD.x + 19.4, front, 3.2, t("MISSING", "FALTA"), 2.8));
+  out.push(digitCounter(P, { x: BOARD.x + 40, y: front, z: 2.2, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "wentBack" }));
+  out.push(text(BOARD.x + 55.6, front, 3.2, t("WENT BACK", "RETROCEDIÓ"), 2.8));
+  // the screen on top: what you wrote, what your last read saw
+  out.push(S(k.slabOf({ x: SCREEN.x + SCREEN.w / 2 - 6, y: SCREEN.y - 3, w: 12, d: 7, r: 1 }, BOARD_H, 1.4, P, 3, 0.3), { tone: "lo" }));
+  out.push(S(k.slabOf(SCREEN, BOARD_H + 1.4, SCREEN_H, P, 3, 0.4), { tone: "mid", crease: "lo" }));
+  const z0 = BOARD_H + 1.4, top = z0 + SCREEN_H, face = SCREEN.y + SCREEN.d;
+  out.push(L(k.faceRectY(P, SCREEN.x + 2, SCREEN.x + SCREEN.w - 2, face, z0 + 2, top - 2), { tone: "faint" }));
+  out.push(text(SCREEN.x + 4, face, top - 7, t("YOU WROTE", "ESCRIBISTE"), 2.8));
+  out.push(digitCounter(P, { x: SCREEN.x + 6, y: face, z: z0 + 4.4, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "wrote" }));
+  out.push(text(SCREEN.x + 40, face, top - 7, t("YOUR READ SAW", "TU LECTURA VIO"), 2.8));
+  out.push(digitCounter(P, { x: SCREEN.x + 42, y: face, z: z0 + 4.4, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "saw" }));
+  return out.join("");
+}
+// On the board's top, in front of the screen, over each total: lit when your last read missed your save, or went back.
+function boardLamps() {
+  const y = BOARD.y + BOARD.d - 4.4;
+  const lampAt = (x, name) => `<g data-lamp="${name}"><g data-off-lamp>${lamp(P, [x, y, BOARD_H], { r: 2.2 })}</g><g data-on-lamp style="display:none">${litFill(lamp(P, [x, y, BOARD_H], { r: 2.2, lit: true }))}</g></g>`;
+  return lampAt(BOARD.x + 10, "missing") + lampAt(BOARD.x + 46, "back");
+}
+function you() {
+  return person(P, YOU, { scale: 1.1 }) + plaque(P, { x: YOU[0] - 7, y: YOU[1] + 8, w: 14, d: 7, text: t("YOU", "TÚ"), size: 3.4 });
+}
+
+// A slip: a small card standing on the conveyor, drawn at the origin and moved with translateAlong. Lit when it
+// carries your own latest save.
+export const SLIP = { w: 5.2, h: 4.6 };
+export function slipSvg() {
+  const plan = { x: -SLIP.w / 2, y: -0.3, w: SLIP.w, d: 0.6, r: 0.15 };
+  return `<g class="wb-lit-group" data-slip>${S(k.slabOf(plan, 0, SLIP.h, P, 2, 0.15), { tone: "hi", crease: "none" })}</g>`;
+}
+
+export function buildFigure() {
+  return k.figureSvg({
+    width: WIDTH,
+    height: HEIGHT,
+    label: t(
+      "A main ledger and two copy desks on a base plate. On the left, the leader: a long block with an open ledger on top, a LEADER sign, and its LSN counter on the front, the number of the last write it took; a few users stand by it. Two conveyors run from the leader to two copy desks on the right, follower A in front and follower B at the back, carrying a slip for every write, in order. On each desk the slips wait on a tray and are copied one at a time into the desk's own ledger, and the desk's front shows how far it has got (AT, an LSN) and how many milliseconds old the oldest write it hasn't copied is (LAG). The slip for your own latest save is lit, and a lamp on each desk lights once that desk has copied it. In front stand you and your board: what you wrote and what your last read saw, a MISSING lamp when that read didn't have your save and a WENT BACK lamp when it showed less than a read before it, each over a counter that adds them up for every user. The LEADER sign or a desk's name plate lights where your last read was served.",
+      "Un libro mayor y dos mesas de copia sobre una placa base. A la izquierda, el líder: un bloque largo con un libro abierto encima, un letrero LÍDER y su contador LSN al frente, el número de la última escritura que recibió; unos usuarios esperan a su lado. Dos cintas transportadoras van del líder a dos mesas de copia a la derecha, la réplica A adelante y la réplica B al fondo, y llevan un papel por cada escritura, en orden. En cada mesa los papeles esperan en una bandeja y se copian uno a la vez en el libro propio de la mesa, y el frente de la mesa muestra hasta dónde llegó (EN, un LSN) y cuántos milisegundos tiene la escritura más vieja que todavía no copió (RETRASO). El papel de tu último guardado está encendido, y una lámpara en cada mesa se enciende cuando esa mesa ya lo copió. Adelante estás tú con tu tablero: lo que escribiste y lo que vio tu última lectura, una lámpara FALTA cuando esa lectura no tenía tu guardado y una lámpara RETROCEDIÓ cuando mostró menos que una lectura anterior, cada una sobre un contador que suma esos casos para todos los usuarios. El letrero LÍDER o la placa con el nombre de una mesa se enciende donde se atendió tu última lectura.",
+    ),
+    body: [
+      plate(),
+      leader(),
+      belt(1), desk(1), counters(1), yours(1), `<g data-layer="slips1"></g>`,
+      crowd(),
+      belt(0), desk(0), counters(0), yours(0), `<g data-layer="slips0"></g>`,
+      board(), boardLamps(),
+      you(),
+    ],
+  });
+}
+
+export const GEOMETRY = { BELT_Y, BELT, QUEUE, BOOK, DESK_H, DESKS };
