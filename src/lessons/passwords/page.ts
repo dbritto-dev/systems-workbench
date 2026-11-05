@@ -194,7 +194,7 @@ const QUESTIONS = [
 
 export default defineLesson({
   title: t("Password Hashing Workbench", "Banco de trabajo: hash de contraseñas"),
-  eyebrow: t("Systems lesson 79 · Password Hashing", "Lección de sistemas 79 · Hash de contraseñas"),
+  eyebrow: t("Systems lesson 79 · Password hashing", "Lección de sistemas 79 · Hash de contraseñas"),
   lede: t("When a table of password hashes leaks, nobody reverses the hashes: the attacker guesses, hashes each guess and compares, as fast as their hardware allows. A password hash has one job, to make every guess expensive: slow, salted and, ideally, memory-hard. This lesson puts a stolen vault in front of a cracking rig, with your login desk paying the same price per login: watch it, predict what each setting buys, then explain it back.",
     "Cuando se filtra una tabla de hashes de contraseñas, nadie invierte los hashes: el atacante adivina, calcula el hash de cada intento y compara, tan rápido como le permite su hardware. Un hash de contraseñas tiene un solo trabajo, encarecer cada intento: lento, con sal y, de ser posible, exigente en memoria. Esta lección pone una bóveda robada frente a un equipo de ataque, con tu mostrador de login pagando el mismo precio por cada login: míralo, predice qué compra cada ajuste y después explícalo."),
   machine: {

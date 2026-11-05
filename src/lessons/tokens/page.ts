@@ -1,5 +1,5 @@
 // @ts-nocheck: content in the style of the other lessons
-// Systems lesson 80 · Token Revocation: a festival gate that checks wristbands by their stamp.
+// Systems lesson 80 · Token revocation: a festival gate that checks wristbands by their stamp.
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { one, n0, pct } from "../../lib/format";
@@ -191,7 +191,7 @@ const QUESTIONS = [
 
 export default defineLesson({
   title: t("Token Revocation Workbench", "Banco de trabajo: revocación de tokens"),
-  eyebrow: t("Systems lesson 80 · Token Revocation", "Lección de sistemas 80 · Revocación de tokens"),
+  eyebrow: t("Systems lesson 80 · Token revocation", "Lección de sistemas 80 · Revocación de tokens"),
   lede: t("A signed access token, such as a JWT, is checked by its signature and expiry alone, so logging out doesn't revoke it: any copy keeps working until it expires. Revoking it sooner takes state that the API consults on every request. This lesson turns it into a festival gate that checks wristbands by their stamp: watch it, predict what a stolen wristband can do, then explain it back.",
     "Un token de acceso firmado, como un JWT, se revisa solo por su firma y su vencimiento, así que cerrar sesión no lo revoca: cualquier copia sigue sirviendo hasta que vence. Revocarlo antes exige un estado que la API consulte en cada solicitud. Esta lección lo convierte en la entrada de un festival que revisa pulseras por su sello: mírala, predice qué puede hacer una pulsera robada y después explícala."),
   machine: {

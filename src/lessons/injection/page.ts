@@ -1,5 +1,5 @@
 // @ts-nocheck: content in the style of the other lessons
-// Systems lesson 83 · SQL Injection: a records room where pasted words can turn into SQL, and how to keep them data.
+// Systems lesson 83 · SQL injection: a records room where pasted words can turn into SQL, and how to keep them data.
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { one, n0, pct } from "../../lib/format";
@@ -185,7 +185,7 @@ const QUESTIONS = [
 
 export default defineLesson({
   title: t("SQL Injection Workbench", "Banco de trabajo: inyección SQL"),
-  eyebrow: t("Systems lesson 83 · SQL Injection", "Lección de sistemas 83 · Inyección SQL"),
+  eyebrow: t("Systems lesson 83 · SQL injection", "Lección de sistemas 83 · Inyección SQL"),
   lede: t("SQL injection happens when a program pastes what a user typed into the text of a query, so a quote in the input can end the data and start code. Parameters keep the words out of the statement, an allowlist picks column names, and a narrow database account limits what a miss can reach. This lesson runs a records room that builds its queries three ways: watch a machine do it, predict what breaks it, then explain it back.",
     "La inyección SQL ocurre cuando un programa pega lo que escribió el usuario en el texto de una consulta, así que una comilla en la entrada puede terminar el dato y empezar código. Los parámetros dejan las palabras fuera de la sentencia, una lista permitida (allowlist) elige los nombres de columna y una cuenta de base de datos acotada limita lo que alcanza un descuido. Esta lección usa una sala de archivo que arma sus consultas de tres formas: mira cómo lo hace una máquina, predice qué la rompe y después explícalo."),
   machine: {
