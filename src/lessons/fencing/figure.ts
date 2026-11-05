@@ -6,53 +6,53 @@
 // has seen; slips it refuses drop into the REJECTED tray. Every number is a counter on a real object.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, labelPlate, digitCounter, person, keyPart, dial, card, lamp, faceText, variants, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, person, keyPart, dial, card, lamp, faceText, variants, litFill } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
 
-const PLATE = { x: -134, y: -100, w: 266, d: 140, r: 8 };
+const PLATE = { x: -132, y: -102, w: 258, d: 142, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 
 // The key office (the lock service), back left.
-const KO = { x: -124, y: -92, w: 68, d: 38, r: 2 };
-const KO_H = 18;
+const KO = { x: -124, y: -96, w: 74, d: 40, r: 2 };
+const KO_H = 20;
 const KO_FRONT = KO.y + KO.d;
 const KO_SIDE = KO.x + KO.w;
-const DIAL = { x: -104, y: -73, r: 10, h: 4 };
-const HOOK = [-76, -73];
+const DIAL = { x: -102, y: -76, r: 11.5, h: 4 };
+const HOOK = [-70, -76];
 export const HOOK_KEY = [HOOK[0] + 6.6, HOOK[1], KO_H + 10];
-export const KEY_OUT = [-82, KO_FRONT + 2, KO_H + 2];          // where a key leaves the office
+export const KEY_OUT = [-80, KO_FRONT + 2, KO_H + 2];          // where a key leaves the office
 
 // The vault (the storage), back right.
-const VAULT = { x: 28, y: -92, w: 88, d: 42, r: 2 };
-const VAULT_H = 30;
+const VAULT = { x: 20, y: -96, w: 98, d: 46, r: 2 };
+const VAULT_H = 32;
 const VAULT_FRONT = VAULT.y + VAULT.d;
-const SLOT = { x: 70, w: 26, z: 20.4, h: 3.8 };
+const SLOT = { x: 68, w: 28, z: 21.6, h: 4 };
 export const SLOT_AT = [SLOT.x + SLOT.w / 2, VAULT_FRONT + 1.6, SLOT.z + 1.2];
-const FENCE = { x: 34, y: -88, w: 46, d: 12, r: 1 };
-const FENCE_H = 8;
+const FENCE = { x: 26, y: -90, w: 50, d: 13, r: 1 };
+const FENCE_H = 9;
 const FENCE_FRONT = FENCE.y + FENCE.d;
-const LAMP_AT = [104, -80, VAULT_H];
+const LAMP_AT = [104, -82, VAULT_H];
 
-// The REJECTED tray, beside the vault.
-const TRAY = { x: 90, y: -42, w: 34, d: 15, r: 1.2 };
-const TRAY_H = 6;
+// The REJECTED tray, in front of the vault.
+const TRAY = { x: 68, y: 2, w: 48, d: 18, r: 1.4 };
+const TRAY_H = 8;
 export const TRAY_SPOT = [TRAY.x + TRAY.w / 2, TRAY.y + TRAY.d / 2, TRAY_H - 1];
 
 // The desks at the front: one per worker.
-export const DX = [-86, -28, 30];
-const DESK = { y: 10, w: 44, d: 18, h: 11 };
+export const DX = [-94, -34, 26];
+const DESK = { y: 8, w: 50, d: 22, h: 12 };
 const DESK_FRONT = DESK.y + DESK.d;
 export const DESK_H = DESK.h;
-export const KEY_SPOT = DX.map((x) => [x + 11, DESK.y + 8, DESK.h]);
-export const SLIP_SPOT = DX.map((x) => [x - 2, DESK.y + 9, DESK.h + 0.4]);
-export const PERSON_AT = DX.map((x) => [x - 11, DESK.y - 8, 0]);
+export const KEY_SPOT = DX.map((x) => [x + 12, DESK.y + 10, DESK.h]);
+export const SLIP_SPOT = DX.map((x) => [x - 2, DESK.y + 11, DESK.h + 0.4]);
+export const PERSON_AT = DX.map((x) => [x - 12, DESK.y - 9, 0]);
 
 export const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [HOOK[0], HOOK[1], KO_H + 18], ...k.boxCorners(VAULT, 0, VAULT_H + FENCE_H + 2), ...PERSON_AT.map(([x, y]) => [x, y, 31])],
+  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [HOOK[0], HOOK[1], KO_H + 18], ...k.boxCorners(VAULT, 0, VAULT_H + FENCE_H + 2), ...PERSON_AT.map(([x, y]) => [x, y, 34])],
   WIDTH,
   HEIGHT,
   { pad: 16, azimuth: 50 },
@@ -60,23 +60,24 @@ export const P = k.fitProjection(
 
 const { S, L } = shorthand(P);
 const text = (x, y, z, words, size = 3.2, opts = {}) => faceText(P, [x, y, z], words, { size, tone: "mid", ...opts });
-const counter = (o) => digitCounter(P, { w: 4.6, h: 6, gap: 0.6, pad: 1.1, ...o });
+const counter = (o) => digitCounter(P, { w: 5, h: 6.6, gap: 0.6, pad: 1.2, ...o });
+// The captions beside counters, at the standard size of the other lessons.
+const LABEL = 3;
 
 function plate() {
-  return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
-    + labelPlate(P, { x: 80, y: 20, w: 40, d: 14, r: 1.5 }, [[85, 25, 26], [85, 29, 18]]);
+  return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H });
 }
 
 // ---------- the key office ----------
 function keyOffice() {
   const out = [S(k.slabOf(KO, 0, KO_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(KO, 2.4), KO_H, P), { tone: "faint" }));
-  out.push(text(KO.x + 4.4, KO_FRONT, 13, t("KEY OFFICE", "OFICINA DE LLAVES"), 3.4));
-  out.push(counter({ x: KO.x + 4.4, y: KO_FRONT, z: 3, count: 3, name: "token" }));
-  out.push(text(KO.x + 21.8, KO_FRONT, 4.8, "TOKEN", 3.2));
+  out.push(text(KO.x + 4.6, KO_FRONT, 14, t("KEY OFFICE", "OFICINA DE LLAVES"), 3.8));
+  out.push(counter({ x: KO.x + 4.6, y: KO_FRONT, z: 3.2, count: 3, name: "token" }));
+  out.push(text(KO.x + 24, KO_FRONT, 5.2, "TOKEN", LABEL));
   // on the right face: how often the key went to a new holder while the old one, paused, still thought it held it
-  out.push(counter({ x: KO_SIDE, y: KO_FRONT - 2.6, z: 3.6, count: 2, face: "x", name: "two" }));
-  out.push(faceText(P, [KO_SIDE, KO_FRONT - 15.6, 5.2], t("TWO HOLDERS", "DOS DUEÑOS"), { face: "x", size: 2.8, tone: "mid" }));
+  out.push(counter({ x: KO_SIDE, y: KO_FRONT - 2.8, z: 4, count: 2, face: "x", name: "two" }));
+  out.push(faceText(P, [KO_SIDE, KO_FRONT - 16.6, 5.8], t("TWO HOLDERS", "DOS DUEÑOS"), { face: "x", size: LABEL, tone: "mid" }));
   // the lease timer: the needle shows what's left of the current lease
   out.push(dial(P, { x: DIAL.x, y: DIAL.y, z: KO_H, r: DIAL.r, h: DIAL.h, ticks: 27, every: 3, from: Math.PI * 0.1, span: Math.PI * 1.8, name: "ttl", value: 0, label: "TTL" }));
   // the hook the free key hangs on
@@ -84,7 +85,7 @@ function keyOffice() {
   out.push(S(k.cylinder(hx, hy, 3, KO_H, 1.4, P, 20, 0.3), { tone: "mid" }));
   out.push(S(k.cylinder(hx, hy, 1, KO_H + 1.4, 17, P, 12), { tone: "mid", crease: "none" }));
   out.push(S(k.slabOf({ x: hx - 1, y: hy - 1, w: 8.6, d: 2, r: 0.4 }, KO_H + 17, 1.8, P, 2), { tone: "mid", crease: "none" }));
-  out.push(`<g data-hook-key>${keyPart(P, HOOK_KEY, { scale: 1.6 })}</g>`);
+  out.push(`<g data-hook-key>${keyPart(P, HOOK_KEY, { scale: 1.7 })}</g>`);
   return out.join("");
 }
 
@@ -94,15 +95,15 @@ function vault() {
   out.push(L(k.planOutline(k.insetPlan(VAULT, 2.4), VAULT_H, P), { tone: "faint" }));
   // the door's outline and hinges on the front face
   out.push(L(k.faceRectY(P, VAULT.x + 3, VAULT.x + VAULT.w - 3, VAULT_FRONT, 3, VAULT_H - 3), { tone: "faint" }));
-  out.push(text(VAULT.x + 5.4, VAULT_FRONT, 21.4, t("VAULT", "BÓVEDA"), 3.8));
+  out.push(text(VAULT.x + 5.4, VAULT_FRONT, 22.6, t("VAULT", "BÓVEDA"), 4.2));
   // the slot slips go in by
   out.push(S(k.slabOf({ x: SLOT.x, y: VAULT_FRONT, w: SLOT.w, d: 1.4, r: 0.4 }, SLOT.z, SLOT.h, P, 2, 0.2), { tone: "hi", crease: "lo" }));
   out.push(L(k.segment([SLOT.x + 2.4, VAULT_FRONT + 1.4, SLOT.z + 1.7], [SLOT.x + SLOT.w - 2.4, VAULT_FRONT + 1.4, SLOT.z + 1.7], P), { tone: "hi" }));
   // the record's version, and the writes that overwrote an update they never saw
-  out.push(counter({ x: VAULT.x + 5.4, y: VAULT_FRONT, z: 8.6, count: 3, w: 4.8, h: 6.4, name: "version" }));
-  out.push(text(VAULT.x + 23.4, VAULT_FRONT, 10.6, t("VERSION", "VERSIÓN"), 3));
-  out.push(counter({ x: VAULT.x + 42, y: VAULT_FRONT, z: 8.6, count: 2, w: 4.8, h: 6.4, name: "over" }));
-  out.push(text(VAULT.x + 55, VAULT_FRONT, 10.6, t("OVERWRITES", "SOBRESCRITURAS"), 2.8));
+  out.push(counter({ x: VAULT.x + 5.4, y: VAULT_FRONT, z: 9, count: 3, name: "version" }));
+  out.push(text(VAULT.x + 24.2, VAULT_FRONT, 11, t("VERSION", "VERSIÓN"), LABEL));
+  out.push(counter({ x: VAULT.x + 45, y: VAULT_FRONT, z: 9, count: 2, name: "over" }));
+  out.push(text(VAULT.x + 58.6, VAULT_FRONT, 11, t("OVERWRITES", "SOBRESCRITURAS"), LABEL));
   // the lamp that flashes when a write overwrites
   out.push(`<g data-flash="off">${lamp(P, LAMP_AT, { r: 3.6 })}</g><g data-flash="on" style="display:none">${litFill(lamp(P, LAMP_AT, { r: 3.6, lit: true }))}</g>`);
   return out.join("");
@@ -111,8 +112,8 @@ function vault() {
 function fencePanel() {
   const out = [`<g data-fence style="display:none">`];
   out.push(S(k.slabOf(FENCE, VAULT_H, FENCE_H, P, 3, 0.4), { tone: "mid" }));
-  out.push(counter({ x: FENCE.x + 3.4, y: FENCE_FRONT, z: VAULT_H + 1.4, count: 3, w: 4.2, h: 5.4, name: "seen" }));
-  out.push(text(FENCE.x + 20, FENCE_FRONT, VAULT_H + 3, t("HIGHEST", "MÁXIMO"), 3));
+  out.push(counter({ x: FENCE.x + 3.4, y: FENCE_FRONT, z: VAULT_H + 1.4, count: 3, w: 4.6, h: 5.8, pad: 1, name: "seen" }));
+  out.push(text(FENCE.x + 21.6, FENCE_FRONT, VAULT_H + 3, t("HIGHEST", "MÁXIMO"), LABEL));
   out.push(faceText(P, [FENCE.x + FENCE.w / 2, FENCE.y + FENCE.d / 2 + 1.2, VAULT_H + FENCE_H], "TOKEN", { face: "top", size: 3.4, tone: "mid", anchor: "middle" }));
   out.push(`</g>`);
   return out.join("");
@@ -121,8 +122,8 @@ function fencePanel() {
 function tray() {
   const out = [S(k.slabOf(TRAY, 0, TRAY_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TRAY, 2), TRAY_H, P), { tone: "lo" }) })];
   const front = TRAY.y + TRAY.d;
-  out.push(counter({ x: TRAY.x + 3, y: front, z: 0.9, count: 2, w: 4, h: 4.4, pad: 0.7, name: "rejected" }));
-  out.push(text(TRAY.x + 13.8, front, 1.8, t("REJECTED", "RECHAZADAS"), 2.6));
+  out.push(counter({ x: TRAY.x + 3.4, y: front, z: 1.4, count: 2, w: 4.8, h: 5.4, pad: 1, name: "rejected" }));
+  out.push(text(TRAY.x + 17, front, 2.6, t("REJECTED", "RECHAZADAS"), LABEL));
   return out.join("");
 }
 
@@ -132,22 +133,22 @@ function desk(i) {
   const plan = { x: cx - DESK.w / 2, y: DESK.y, w: DESK.w, d: DESK.d, r: 1.5 };
   const out = [S(k.slabOf(plan, 0, DESK.h, P, 3, 0.5), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(plan, 2), DESK.h, P), { tone: "faint" }));
-  out.push(faceText(P, [plan.x + 6, DESK_FRONT, 2.4], "ABC"[i], { size: 6.6, tone: "hi", anchor: "middle" }));
+  out.push(faceText(P, [plan.x + 6.6, DESK_FRONT, 2.6], "ABC"[i], { size: 7.2, tone: "hi", anchor: "middle" }));
   // the status plate: what the worker is doing; lit while it's paused
-  const sp = { x: cx - 9, y: DESK_FRONT, w: 30, d: 1, r: 0.3 };
+  const sp = { x: cx - 10, y: DESK_FRONT, w: 34, d: 1, r: 0.3 };
   out.push(`<g class="wb-lit-group" data-status-plate="${i}">`
-    + S(k.slabOf(sp, 2, 6.6, P, 2, 0.2), { tone: "hi", crease: "lo" })
-    + faceText(P, [sp.x + sp.w / 2, sp.y + sp.d, 3.6], t("IDLE", "LIBRE").en, { size: 3.4, tone: "hi", anchor: "middle", attr: `data-status="${i}"` })
+    + S(k.slabOf(sp, 2.2, 7.2, P, 2, 0.2), { tone: "hi", crease: "lo" })
+    + faceText(P, [sp.x + sp.w / 2, sp.y + sp.d, 4], t("IDLE", "LIBRE").en, { size: 3.6, tone: "hi", anchor: "middle", attr: `data-status="${i}"` })
     + `</g>`);
   return out.join("");
 }
 function worker(i) {
   const at = PERSON_AT[i];
   return variants("worker-" + i, {
-    run: person(P, at, { scale: 1.15 }),
-    paused: litFill(person(P, at, { scale: 1.15, lit: true })),
+    run: person(P, at, { scale: 1.25 }),
+    paused: litFill(person(P, at, { scale: 1.25, lit: true })),
     // crashed: the worker is gone, only its spot is left
-    down: S(k.cylinder(at[0], at[1], 5.6 * 1.15, 0, 1.4 * 1.15, P, 24, 0.3), { tone: "mid" }),
+    down: S(k.cylinder(at[0], at[1], 5.6 * 1.25, 0, 1.4 * 1.25, P, 24, 0.3), { tone: "mid" }),
   }, "run");
 }
 
