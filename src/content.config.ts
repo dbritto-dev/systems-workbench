@@ -5,7 +5,7 @@ import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
 import { file } from "astro/loaders";
 
-const AREAS = ["Fundamentals", "Data", "Concurrency", "Messaging", "Distributed", "Traffic", "Resilience", "Delivery", "Observability", "Frontend", "Search"] as const;
+const AREAS = ["Fundamentals", "Data", "Concurrency", "Messaging", "Distributed", "Traffic", "Resilience", "Delivery", "Observability", "Frontend", "Search", "Security"] as const;
 
 const lessons = defineCollection({
   loader: file("workbench/collection/lessons.json", { parser: (text) => JSON.parse(text).map((l: { slug: string }) => ({ id: l.slug, ...l })) }),
