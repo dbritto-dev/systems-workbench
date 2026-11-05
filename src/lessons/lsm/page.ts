@@ -47,8 +47,8 @@ const RUNS = {
     const b = R.base, m = top(b.rangeL);
     return {
       verdict: t("A range of 100 keys cost the B-tree " + p1(b.rangeB) + " pages and the LSM tree " + p1(b.rangeL) + ", from " + p1(b.rangeFiles) + " runs, with Bloom filters on.",
-        "Un rango de 100 claves le costó al árbol B " + p1(b.rangeB) + " páginas y al árbol LSM " + p1(b.rangeL) + ", de " + p1(b.rangeFiles) + " archivos, con los filtros de Bloom activos."),
-      bars: [[t("B-tree, pages", "Árbol B, páginas"), b.rangeB / m, p1(b.rangeB)], [t("LSM tree, pages", "Árbol LSM, páginas"), b.rangeL / m, p1(b.rangeL), true], [t("LSM tree, runs searched", "Árbol LSM, archivos revisados"), b.rangeFiles / m, p1(b.rangeFiles)]],
+        "Un rango de 100 claves le costó al árbol B " + p1(b.rangeB) + " páginas y al árbol LSM " + p1(b.rangeL) + ", de " + p1(b.rangeFiles) + " secuencias, con los filtros de Bloom activos."),
+      bars: [[t("B-tree, pages", "Árbol B, páginas"), b.rangeB / m, p1(b.rangeB)], [t("LSM tree, pages", "Árbol LSM, páginas"), b.rangeL / m, p1(b.rangeL), true], [t("LSM tree, runs searched", "Árbol LSM, secuencias revisadas"), b.rangeFiles / m, p1(b.rangeFiles)]],
     };
   },
   burst: () => {
