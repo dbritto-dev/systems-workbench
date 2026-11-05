@@ -19,7 +19,7 @@ export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
   const NS = "http://www.w3.org/2000/svg";
   const chipsLayer = q('[data-layer="chips"]'), slipsLayer = q('[data-layer="slips"]');
   const hostCounters = [0, 1, 2].map((i) => WB.counter(svg, "p99-" + i, P));
-  const desk = Object.fromEntries(["avg", "max", "est", "exact", "under"].map((n) => [n, WB.counter(svg, n, P)]));
+  const desk = Object.fromEntries(["avg", "max", "est", "exact", "under", "under-f"].map((n) => [n, WB.counter(svg, n, P)]));
   const NREF = RATE * WINDOW, FLIGHT = 1.6, FALL = 0.55, MAX_CHIPS = 36;
   const spec = (i) => (i === 3 ? G.TUBE.M : G.TUBE.host);
   // Per layout: the tube groups and the fill group of every tube, rack by rack.
@@ -81,7 +81,8 @@ export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
     const s = dash;
     drawRack(3, s.merged, s.estBucket, true);
     desk.avg.setClamped(Math.round(s.avg)); desk.max.setClamped(Math.round(s.max)); desk.est.setClamped(Math.round(s.est)); desk.exact.setClamped(Math.round(s.exact));
-    desk.under.setClamped(Math.round(1000 * s.underBuckets));
+    const tenths = Math.round(1000 * s.underBuckets);
+    desk.under.setClamped(Math.floor(tenths / 10)); desk["under-f"].set(tenths % 10);
     stat("avg", ms(s.avg)); stat("max", ms(s.max)); stat("est", ms(s.est)); stat("exact", ms(s.exact));
     stat("under", pc(s.underBuckets)); stat("underx", pc(s.underExact));
   }

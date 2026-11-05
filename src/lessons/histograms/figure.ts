@@ -147,15 +147,23 @@ function desk(first) {
   const c = DESK_COUNTER;
   SLOTS.forEach((key, i) => {
     const x = slotX(i) + c.dx;
-    out.push(digitCounter(P, { x, y: DESK_FACE, z: c.z, count: c.count, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name: key, value: Math.min(9999, Math.round(values[key])) }));
-    if (key === "under") out.push(D([at([x + 3 * c.w + 2 * c.gap + c.gap / 2, DESK_FACE + 0.2, c.z + 0.5])], { size: 1.1, tone: "hi" }));
-    const cx = x + span(c) + c.pad + 2;
+    let end = x + span(c);
+    if (key === "under") {
+      // whole percent on three wheels, a decimal point, then the tenths on their own wheel (as lesson 35's score wheels)
+      const tenths = Math.round(values.under), whole = { ...c, count: 3 };
+      out.push(digitCounter(P, { x, y: DESK_FACE, z: c.z, count: 3, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name: "under", value: Math.floor(tenths / 10) }));
+      const dotX = x + span(whole) + c.pad + 1.2;
+      out.push(D([at([dotX, DESK_FACE + 0.1, c.z + 0.4])], { size: 2.2, tone: "hi" }));
+      out.push(digitCounter(P, { x: dotX + 1.2 + c.pad, y: DESK_FACE, z: c.z, count: 1, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name: "under-f", value: tenths % 10 }));
+      end = dotX + 1.2 + c.pad + c.w;
+    } else out.push(digitCounter(P, { x, y: DESK_FACE, z: c.z, count: c.count, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name: key, value: Math.min(9999, Math.round(values[key])) }));
+    const cx = end + c.pad + 2;
     out.push(word(cx, DESK_FACE, 5.6, DESK_WORDS[key][0]), word(cx, DESK_FACE, 2.2, DESK_WORDS[key][1]));
   });
   // the sources, on the desk top, with a groove between groups
   const grooves = [];
   for (const [first, n, words] of SOURCES) {
-    out.push(word(slotX(first) + 4, DESK.y + DESK.d - 5, DESK_H, words, { face: "top", size: 3.6 }));
+    out.push(word(slotX(first) + 4, DESK.y + DESK.d - 5, DESK_H, words, { face: "top", size: 3.6, tone: "hi" }));
     if (first) grooves.push(k.lineOnTop([slotX(first) - 1, DESK.y + 3], [slotX(first) - 1, DESK.y + DESK.d - 3], DESK_H, P));
   }
   out.push(L(grooves.join(""), { tone: "lo" }));
