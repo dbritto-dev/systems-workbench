@@ -133,7 +133,7 @@ function desk() {
   const front = DESK.y + DESK.d;
   out.push(faceText(P, [DESK.x + 4, DESK.y + 19, DESK_H], t("COORDINATOR", "COORDINADOR"), { face: "top", size: 3, tone: "mid" }));
   const col = (x, name, count, words) => digitCounter(P, { x, y: front, z: 2.6, count, w: 4, h: 5.4, gap: 0.5, pad: 0.9, name })
-    + text(x + count * 4.5 + 1.2, front, 3.8, words, 2.7);
+    + text(x + count * 4.5 + 3.4, front, 3.8, words, 2.7);   // clear of the housing's right edge
   out.push(col(DESK.x + 4, "committed", 3, t("COMMITTED", "CONFIRMADAS")));
   out.push(col(DESK.x + 48, "aborted", 3, t("ABORTED", "ABORTADAS")));
   out.push(col(DESK.x + 88, "split", 2, t("SPLIT", "DIVIDIDAS")));
