@@ -14,9 +14,9 @@ import { makeLive, formula, M_LIVE } from "./sim";
 // Moments within an operation, in machine seconds (each operation's length is DUR in sim.ts).
 const AT = {
   look: { in: 0.3, probe: 0.3, verdict: 0.62, out: 0.75, land: 1.05 },
-  maybe: { in: 0.3, probe: 0.3, verdict: 0.62, out: 0.8, drawer: 1.2, found: 1.3, back: 1.55, land: 1.95 },
-  add: { in: 0.3, probe: 0.3, commit: 0.62, out: 0.8, drawer: 1.2 },
-  del: { in: 0.35, probe: 0.35, commit: 0.68, out: 0.85, gone: 1.15 },
+  maybe: { in: 0.3, probe: 0.3, verdict: 0.62, out: 0.8, inbox: 1.3, found: 1.4, back: 1.6, land: 1.95 },
+  add: { in: 0.3, probe: 0.3, commit: 0.62, out: 0.75, inbox: 1.2 },
+  del: { in: 0.4, probe: 0.4, commit: 0.72, out: 0.9, gone: 1.15 },
 };
 const PROBE_LEN = 0.3;
 
@@ -117,22 +117,31 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
   const kind = (o) => (o.type === "look" ? (o.maybe ? "maybe" : "look") : o.type);
   const tray = (o) => (o.maybe ? (o.inArchive ? "found" : "fp") : "no");
   /** The card's place and opacity at time s into op o, or null when it isn't shown. */
+  // The climb between the reader and the archive's inbox: across low, then up the archive's bare left end, so the card
+  // never passes in front of a counter or a caption.
+  // Going up, the card first slides right (away from the verdict board), then back, then rises; coming down, the reverse.
+  const climb = (a, b, u) => {
+    const up = a[2] < b[2], v = smoothstep(u);
+    const fx = up ? 1 - (1 - v) ** 2 : v ** 2, fy = up ? v ** 2 : 1 - (1 - v) ** 2, fz = up ? v ** 2.5 : 1 - (1 - v) ** 2.5;
+    return [lerp(a[0], b[0], fx), lerp(a[1], b[1], fy), lerp(a[2], b[2], fz)];
+  };
   function cardAt(o, s) {
-    const a = AT[kind(o)], R = G.READ_SPOT, Dr = G.DRAWER_SPOT[o.drawer];
+    const a = AT[kind(o)], R = G.READ_SPOT, I = G.INBOX_SPOT;
+    const fadeIn = (t0, t1) => ({ p: [R[0], R[1], R[2] + 2 * (1 - clamp((s - t0) / (t1 - t0)))], o: clamp((s - t0) / (t1 - t0)) });
     if (o.type === "del") {
-      if (s < a.in) return { p: arc(Dr, R, s / a.in, 10), o: 1 };
+      if (s < a.in) return { p: climb(I, R, s / a.in), o: 1 };
       if (s < a.out) return { p: R, o: 1 };
-      return s < a.gone ? { p: [R[0], R[1], R[2] - 3 * (s - a.out) / (a.gone - a.out)], o: 1 - (s - a.out) / (a.gone - a.out) } : null;
+      return s < a.gone ? { p: R, o: 1 - (s - a.out) / (a.gone - a.out) } : null;
     }
-    const from = G.FEED_SPOT[o.type === "add" ? 0 : 1];
-    if (s < a.in) return { p: arc(from, R, s / a.in, 8), o: 1 };
+    if (s < a.in) return fadeIn(0, a.in);
     if (s < a.out) return { p: R, o: 1 };
-    if (o.type === "add") return s < a.drawer ? { p: arc(R, Dr, (s - a.out) / (a.drawer - a.out), 22), o: 1 - 0.8 * clamp((s - a.out) / (a.drawer - a.out) - 0.6) / 0.4 } : null;
+    if (o.type === "add") return s < a.inbox ? { p: climb(R, I, (s - a.out) / (a.inbox - a.out)), o: 1 - 0.8 * clamp(((s - a.out) / (a.inbox - a.out) - 0.7) / 0.3) } : null;
     const T0 = G.TRAY_SPOT[tray(o)];
-    if (!o.maybe) return s < a.land ? { p: arc(R, T0, (s - a.out) / (a.land - a.out), 10), o: 1 } : null;
-    if (s < a.drawer) return { p: arc(R, Dr, (s - a.out) / (a.drawer - a.out), 22), o: 1 };
-    if (s < a.back) return { p: Dr, o: 1 };
-    return s < a.land ? { p: arc(Dr, T0, (s - a.back) / (a.land - a.back), 18), o: 1 } : null;
+    const up = [T0[0], T0[1], T0[2] + 0.4];
+    if (!o.maybe) return s < a.land ? { p: arc(R, [up[0], up[1], up[2]], (s - a.out) / (a.land - a.out), 5), o: 1 } : null;
+    if (s < a.inbox) return { p: climb(R, I, (s - a.out) / (a.inbox - a.out)), o: 1 };
+    if (s < a.back) return { p: I, o: 1 };
+    return s < a.land ? { p: arc(I, up, (s - a.back) / (a.land - a.back), 6), o: 1 } : null;
   }
 
   // ---------- narration (short: three lines at most on a phone) ----------
@@ -183,7 +192,7 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
       show(th, on);
       if (!on) return;
       const i = o.pos[j], to = iso(pegTop(i, old.has(i) ? old.get(i) : counts[i]), P);
-      const mx = (from[0] + to[0]) / 2, my = Math.min(from[1], to[1]) - 6 - 0.04 * Math.abs(to[0] - from[0]);
+      const mx = (from[0] + to[0]) / 2, my = (from[1] + to[1]) / 2 - 3;
       th.setAttribute("d", "M" + from[0].toFixed(1) + " " + from[1].toFixed(1) + "Q" + mx.toFixed(1) + " " + my.toFixed(1) + " " + to[0].toFixed(1) + " " + to[1].toFixed(1));
       th.setAttribute("stroke-dashoffset", String(1 - grow));
     });
@@ -196,7 +205,7 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
     const c = cardAt(o, s);
     show(card, !!c);
     if (c) {
-      setText(cardTxt, String(o.key));
+      setText(cardTxt, (o.type === "add" ? "+" : o.type === "del" ? "−" : "") + o.key);
       card.setAttribute("transform", translateAlong(P, c.p));
       card.style.opacity = c.o < 1 ? String(Math.max(0, c.o)) : "";
       setLit(cardLit, !!((o.fp && s >= AT.maybe.found) || (o.fn && s >= a.verdict)));

@@ -204,8 +204,8 @@ export default defineLesson({
       title: t("Peg board", "Tablero de clavijas"),
       keys: [
         { mark: "lit", label: t("The current key's pegs and threads, and the board's answer; a card the board got wrong; the archive lamp when a trip finds nothing", "Las clavijas e hilos de la clave actual y la respuesta del tablero; una tarjeta en la que el tablero se equivocó; la lámpara del archivo cuando un viaje no encuentra nada") },
-        { mark: "raised", label: t("Key cards, with the key's number on the front; pegs that are up", "Tarjetas de claves, con el número de la clave al frente; clavijas arriba") },
-        { mark: "flat", label: t("The board: " + M_LIVE + " pegs in four rows of twenty", "El tablero: " + M_LIVE + " clavijas en cuatro filas de veinte") },
+        { mark: "raised", label: t("Key cards: the key's number, + when it is being added, − when deleted; pegs that are up", "Tarjetas de claves: el número de la clave, + cuando se agrega, − cuando se borra; clavijas arriba") },
+        { mark: "flat", label: t("The board: " + M_LIVE + " pegs in five rows of sixteen", "El tablero: " + M_LIVE + " clavijas en cinco filas de dieciséis") },
       ],
       caption: t(
         "The board has " + M_LIVE + " pegs (the filter's bits); pegs per key sets how many keys it is planned for (" + M_LIVE + " ÷ 5 = 16). A key's hashes pick its pegs, and two hashes can pick the same one. Adding a key raises its pegs and files the card in the archive. A lookup checks them: one peg down is a sure NO, and the card goes to SAID NO without a trip; all up is MAYBE, and the card goes to the archive, then to FOUND, or to FALSE POSITIVES when other keys had raised all its pegs. Lookups are " + pct(PRESENT_SHARE) + " stored keys and " + pct(1 - PRESENT_SHARE) + " new ones. With deletes on, after every " + REPLACE_EVERY + " lookups one stored key is deleted and a new one added: pulling its pegs down also pulls pegs other keys need, which shows up as FALSE NEGATIVES; a counting filter stacks one ring per key on each peg and takes one off instead.",

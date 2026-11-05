@@ -68,7 +68,6 @@ export const M_LIVE = 80;
 export const REPLACE_EVERY = 4;
 export const PRESENT_SHARE = 0.3;              // share of lookups for keys that are in the archive
 export const DUR = { add: 1.3, no: 1.25, maybe: 2.1, del: 1.25 };   // seconds each operation takes on the machine
-export const DRAWERS = 6;
 
 export function makeLive(cfgIn, seed = 1) {
   const cfg = { m: M_LIVE, bpk: 5, k: 3, keys: "planned", deletes: "none", ...cfgIn };
@@ -94,7 +93,7 @@ export function makeLive(cfgIn, seed = 1) {
     f.add(key);
     present.push(key);
     st.adds++;
-    return { type: "add", key, pos, distinct: distinctOf(pos), before, after: beforeAt(pos), drawer: key % DRAWERS, dur: DUR.add, st: snapshot() };
+    return { type: "add", key, pos, distinct: distinctOf(pos), before, after: beforeAt(pos), dur: DUR.add, st: snapshot() };
   }
   function del() {
     const i = Math.floor(rnd() * present.length), key = present[i];
@@ -102,7 +101,7 @@ export function makeLive(cfgIn, seed = 1) {
     f.remove(key);
     present.splice(i, 1);
     st.dels++;
-    return { type: "del", key, pos, distinct: distinctOf(pos), before, after: beforeAt(pos), drawer: key % DRAWERS, dur: DUR.del, st: snapshot() };
+    return { type: "del", key, pos, distinct: distinctOf(pos), before, after: beforeAt(pos), dur: DUR.del, st: snapshot() };
   }
   function look(wantPresent) {
     const inArchive = wantPresent && present.length > 0;
@@ -114,7 +113,7 @@ export function makeLive(cfgIn, seed = 1) {
     if (!maybe) { st.saidNo++; if (inArchive) st.fn++; }
     else { st.trips++; if (inArchive) st.found++; else st.fp++; }
     const down = new Set(pos.filter((p) => f.counts[p] === 0)).size;    // distinct pegs that are down
-    return { type: "look", key, pos, distinct: distinctOf(pos), before, after: before, inArchive, maybe, fp: maybe && !inArchive, fn: !maybe && inArchive, down, drawer: key % DRAWERS, dur: maybe ? DUR.maybe : DUR.no, st: snapshot() };
+    return { type: "look", key, pos, distinct: distinctOf(pos), before, after: before, inArchive, maybe, fp: maybe && !inArchive, fn: !maybe && inArchive, down, dur: maybe ? DUR.maybe : DUR.no, st: snapshot() };
   }
 
   function next() {
