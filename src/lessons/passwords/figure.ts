@@ -3,11 +3,11 @@
 // stolen copy. Left, the login desk: users' login slips wait on a lane on its top and go to one of four cores, a
 // drum whose needle spins while it hashes. Centre, the vault: a cabinet of eight drawers, one per user row, each with
 // the row's letter, its stored hash and its salt; a drawer lights when the rig has cracked it. Right, the rig: guess
-// tags slide from the hopper along a rail into four GPU mills; its counters show the guesses made and the rig's
-// clock. Behind it the thief stands by the stolen copy.
+// tags slide from the hopper along a rail into its one GPU, a mill; its counters show how far down the guess list it
+// has got and the rig's clock. Behind it the thief stands by the stolen copy.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, person, figurine, dial, plaque, lamp, faceText, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, person, figurine, dial, plaque, faceText } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -31,7 +31,7 @@ const LANE = { x: -132, y: -20, w: 82, d: 11, r: 1 };
 const LANE_H = 1.6;
 export const LANE_Y = LANE.y + LANE.d / 2;
 export const LANE_Z = DESK_H + LANE_H;
-export const LANE_X = Array.from({ length: 9 }, (_, i) => -57 - 8.6 * i);
+export const LANE_X = Array.from({ length: 8 }, (_, i) => -57 - 8.6 * i);   // the ninth place holds "+N" for the rest
 export const SLIP = { w: 6.4, h: 7.6 };
 
 // ---------- the vault: plinth and cabinet ----------
@@ -49,10 +49,10 @@ export const DRAWER_Z = [PLINTH_H + 2 + DRAWER.h + DRAWER.gap, PLINTH_H + 2];
 const RIG = { x: 46, y: -28, w: 88, d: 52, r: 1.6 };
 const RIG_H = 14;
 const RIG_FRONT = RIG.y + RIG.d;
-export const GPU_X = [59, 79, 99, 119];
-export const GPU_Y = 11;
-const GPU_R = 6.4, GPU_H = 6;
-const RAIL = { x: 52, y: -9, w: 78, d: 6, r: 0.8 };
+export const GPU_X = [112];                  // one GPU: every number on the rig is for one
+export const GPU_Y = 4;
+const GPU_R = 10, GPU_H = 6;
+const RAIL = { x: 52, y: -9, w: 60, d: 6, r: 0.8 };
 const RAIL_H = 2;
 export const RAIL_Y = RAIL.y + RAIL.d / 2;
 export const RAIL_Z = RIG_H + RAIL_H;
@@ -107,28 +107,28 @@ function desk() {
   const c1 = DESK.x + 5, c2 = c1 + 29, c3 = c2 + 28;
   out.push(housing(c1 - 1.2, c1 + span(4) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c1, y, z, 4, "line"), cap(c1 - 1.2, y, CAP_Z(z), t("IN LINE", "EN FILA")));
   out.push(housing(c2 - 1.2, c2 + span(4) + 2.2, y, z - 1.2, z + WH.h + 1.2), wheels(c2, y, z, 3, "waitI"), dot(c2 + span(3) + 1, y, z + 0.6), wheels(c2 + span(3) + 2, y, z, 1, "waitF"), cap(c2 - 1.2, y, CAP_Z(z), t("WAIT S", "ESPERA S")));
-  out.push(housing(c3 - 1.2, c3 + span(4) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c3, y, z, 4, "hashMs"), cap(c3 - 1.2, y, CAP_Z(z), t("HASH MS", "HASH MS")));
+  out.push(housing(c3 - 1.2, c3 + span(4) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c3, y, z, 4, "hashMs"), faceText(P, [c3 - 1.2, y, CAP_Z(z)], "HASH MS", { size: CAP, tone: "mid", attr: "data-hash-cap" }));
+  // the back of the line, beyond the lane's eight places: "+N" on the lane's left end, where the line is cut off
+  out.push(faceText(P, [LANE.x + 0.6, LANE.y + LANE.d - 1.6, LANE_Z], "", { face: "top", size: 3, tone: "hi", attr: "data-more" }));
   return out.join("");
 }
 
-// A core: a drum on the desk top whose needle spins while it hashes, and a lamp beside it, lit while busy.
+// A core: a drum on the desk top whose needle spins while it hashes, with the login slip it is hashing on top.
 function core(i) {
   const x = CORE_X[i];
-  const lampAt = [x + CORE_R + 1.6, CORE_Y - CORE_R + 1, DESK_H];
-  return `<g data-core="${i}">` + dial(P, { x, y: CORE_Y, z: DESK_H, r: CORE_R, h: CORE_H, ticks: 8, every: 2, name: "core" + i, value: i * 0.21, knurl: false })
-    + `<g data-lamp="${i}" data-off-lamp>${lamp(P, lampAt, { r: 1.5 })}</g><g data-lamp="${i}" data-on style="display:none">${litFill(lamp(P, lampAt, { r: 1.5, lit: true }))}</g>` + `</g>`;
+  return `<g data-core="${i}">` + dial(P, { x, y: CORE_Y, z: DESK_H, r: CORE_R, h: CORE_H, ticks: 8, every: 2, name: "core" + i, value: i * 0.21, knurl: false }) + `</g>`;
 }
 
 // ---------- the vault ----------
 function vault() {
   const out = [S(k.slabOf(PLINTH, 0, PLINTH_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(PLINTH, 2.4), PLINTH_H, P), { tone: "faint" }));
-  out.push(plaque(P, { x: CAB.x + 4, y: CAB_FRONT + 6, z: PLINTH_H, w: CAB.w - 8, d: 12, text: t("VAULT · 1000 ROWS", "BÓVEDA · 1000 FILAS"), size: 4.2 }));
+  out.push(plaque(P, { x: CAB.x + 4, y: CAB_FRONT + 6, z: PLINTH_H, w: CAB.w - 8, d: 12, text: t("VAULT · 1,000 ROWS", "BÓVEDA · 1,000 FILAS"), size: 4.2 }));
   // counters on the plinth's front: rows cracked, and rows whose hash is the same as another row's
   const y = PLINTH_FRONT, z = 2;
   const c1 = PLINTH.x + 5, c2 = PLINTH.x + 50;
   out.push(housing(c1 - 1.2, c1 + span(4) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c1, y, z, 4, "cracked"), cap(c1 - 1.2, y, CAP_Z(z), t("CRACKED", "ADIVINADAS")));
-  out.push(cap(c1 + span(4) + 2.6, y, z + 1.4, t("OF 1000", "DE 1000")));
+  out.push(cap(c1 + span(4) + 2.6, y, z + 1.4, t("OF 1,000", "DE 1,000")));
   out.push(housing(c2 - 1.2, c2 + span(3) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c2, y, z, 3, "same"), cap(c2 - 1.2, y, CAP_Z(z), t("SAME HASH", "MISMO HASH")));
   out.push(S(k.slabOf(CAB, PLINTH_H, CAB_H, P, 3, 0.5), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(CAB, 2), PLINTH_H + CAB_H, P), { tone: "faint" }));
@@ -163,7 +163,7 @@ function rig() {
   // the rail the guesses slide along, from the hopper to the mills
   out.push(S(k.slabOf(RAIL, RIG_H, RAIL_H, P, 2, 0.3), { tone: "lo", crease: "none" }));
   out.push(L(k.lineOnTop([RAIL.x + 1, RAIL_Y], [RAIL.x + RAIL.w - 1, RAIL_Y], RIG_H + RAIL_H, P), { tone: "faint" }));
-  // counters on the front: guesses so far (d.d × 10^ee) and the rig's clock (ddd.d and a unit)
+  // counters on the front: how far down the guess list (d.d × 10^ee) and the rig's clock (dddd.d and a unit)
   const y = RIG_FRONT, z = 2;
   const g = RIG.x + 4;
   out.push(housing(g - 1.2, g + 2 * WH.w + 9.4 + span(2) + 1.2, y, z - 1.2, z + WH.h + 1.2));
@@ -171,18 +171,20 @@ function rig() {
   out.push(faceText(P, [g + 2 * WH.w + 3, y, z + 1.2], "×10", { size: CAP, tone: "hi" }));
   out.push(wheels(g + 2 * WH.w + 9.4, y, z + 1.6, 2, "gE"));
   out.push(cap(g - 1.2, y, CAP_Z(z), t("GUESSES", "INTENTOS")));
-  const c = RIG.x + 40;
-  out.push(housing(c - 1.2, c + span(4) + 2.2, y, z - 1.2, z + WH.h + 1.2), wheels(c, y, z, 3, "clockI"), dot(c + span(3) + 1, y, z + 0.6), wheels(c + span(3) + 2, y, z, 1, "clockF"));
+  const c = RIG.x + 37;
+  out.push(housing(c - 1.2, c + span(5) + 2.2, y, z - 1.2, z + WH.h + 1.2), wheels(c, y, z, 4, "clockI"), dot(c + span(4) + 1, y, z + 0.6), wheels(c + span(4) + 2, y, z, 1, "clockF"));
   out.push(cap(c - 1.2, y, CAP_Z(z), t("RIG CLOCK", "RELOJ")));
-  out.push(faceText(P, [c + span(4) + 3.6, y, z + 1.4], "SECONDS", { size: CAP, tone: "mid", attr: "data-unit" }));
+  out.push(faceText(P, [c + span(5) + 3.6, y, z + 1.4], "SECONDS", { size: CAP, tone: "mid", attr: "data-unit" }));
+  // the one GPU, named on the rig's top in front of the rail
+  out.push(plaque(P, { x: RAIL.x + 14, y: RAIL.y + RAIL.d + 5, z: RIG_H, w: 24, d: 8, text: t("ONE GPU", "UNA GPU"), size: 3.4 }));
   return out.join("");
 }
 function hopper() {
   return S(k.slabOf(HOPPER, RIG_H, HOPPER_H, P, 3, 0.4), { tone: "mid", inner: L(k.planOutline(k.insetPlan(HOPPER, 2), RIG_H + HOPPER_H, P), { tone: "lo" }) });
 }
-// A GPU mill: a drum whose needle spins with the rig.
+// The GPU mill: a drum whose needle spins with the rig.
 function gpu(i) {
-  return `<g data-gpu="${i}">` + dial(P, { x: GPU_X[i], y: GPU_Y, z: RIG_H, r: GPU_R, h: GPU_H, ticks: 12, every: 3, name: "gpu" + i, value: i / 4 }) + `</g>`;
+  return `<g data-gpu="${i}">` + dial(P, { x: GPU_X[i], y: GPU_Y, z: RIG_H, r: GPU_R, h: GPU_H, ticks: 16, every: 4, name: "gpu" + i, value: 0 }) + `</g>`;
 }
 
 // A login slip: an upright card with the user's letter, drawn at the origin and moved with translateAlong.
@@ -202,8 +204,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A server and a thief on one base plate. At the left, the login desk: users stand behind it, and their login slips wait on a lane on the desk's top until one of four cores, drums whose needles spin while they hash, takes the slip; counters on the desk's front show how many wait, how long the oldest has waited and how many milliseconds one hash takes. In the centre, the vault: a cabinet of eight drawers, each a user row with its letter, its stored hash and its salt; a drawer lights when the rig has cracked that row. Counters on the vault's plinth show how many of the table's 1000 rows are cracked and how many share their hash with another row. At the right, the cracking rig: guess tags slide from a hopper along a rail into four GPU mills; counters show the guesses made so far, as a number times a power of ten, and the rig's clock. Behind the rig, the thief stands by the stolen copy of the vault.",
-      "Un servidor y un ladrón sobre una placa base. A la izquierda, el mostrador de login: los usuarios esperan detrás, y sus papeletas de login esperan en un carril sobre el mostrador hasta que uno de cuatro núcleos, tambores cuya aguja gira mientras calculan el hash, toma la papeleta; los contadores al frente muestran cuántas esperan, cuánto lleva esperando la más antigua y cuántos milisegundos tarda un hash. En el centro, la bóveda: un gabinete de ocho cajones, cada uno una fila de usuario con su letra, su hash guardado y su sal; un cajón se enciende cuando el equipo adivinó esa fila. Los contadores del zócalo muestran cuántas de las 1000 filas de la tabla están adivinadas y cuántas comparten su hash con otra fila. A la derecha, el equipo de ataque: fichas de intentos salen de una tolva por un riel hacia cuatro molinos GPU; los contadores muestran los intentos hechos, como un número por una potencia de diez, y el reloj del equipo. Detrás, el ladrón está junto a la copia robada de la bóveda.",
+      "A server and a thief on one base plate. At the left, the login desk: users stand behind it, and their login slips wait on a lane on the desk's top until one of four cores, drums whose needles spin while they hash, takes the slip; counters on the desk's front show how many wait, how long the oldest has waited and how long one hash takes. In the centre, the vault: a cabinet of eight drawers, each a user row with its letter, its stored hash and its salt; a drawer lights when the rig has cracked that row. Counters on the vault's plinth show how many of the table's 1,000 rows are cracked and how many share their hash with another row. At the right, the cracking rig: guess tags slide from a hopper along a rail into one GPU, a mill; counters show how far down its guess list the rig has got, as a number times a power of ten, and the rig's clock. Behind the rig, the thief stands by the stolen copy of the vault.",
+      "Un servidor y un ladrón sobre una placa base. A la izquierda, el mostrador de login: los usuarios esperan detrás, y sus papeletas de login esperan en un carril sobre el mostrador hasta que uno de cuatro núcleos, tambores cuya aguja gira mientras calculan el hash, toma la papeleta; los contadores al frente muestran cuántas esperan, cuánto lleva esperando la más antigua y cuánto tarda un hash. En el centro, la bóveda: un gabinete de ocho cajones, cada uno una fila de usuario con su letra, su hash guardado y su sal; un cajón se enciende cuando el equipo adivinó esa fila. Los contadores del zócalo muestran cuántas de las 1,000 filas de la tabla están adivinadas y cuántas comparten su hash con otra fila. A la derecha, el equipo de ataque: fichas de intentos salen de una tolva por un riel hacia una GPU, un molino; los contadores muestran hasta dónde llegó el equipo en su lista de intentos, como un número por una potencia de diez, y el reloj del equipo. Detrás, el ladrón está junto a la copia robada de la bóveda.",
     ),
     body: [
       plate(),

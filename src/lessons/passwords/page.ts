@@ -6,14 +6,14 @@ import { defineLesson, withResults } from "../types";
 import { int, pct } from "../../lib/format";
 import { LIT_FILL_CSS } from "../../../workbench/parts.mjs";
 import { buildFigure, slipSvg, tagSvg, P, GEOMETRY } from "./figure";
-import { fastRun, saltRun, workRun, spikeRun, lengthRun, dur, rigRate, hashSecs, N, CORES } from "./sim";
+import { fastRun, saltRun, workRun, spikeRun, lengthRun, dur, rigRate, hashSecs, N, CORES, DAY } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (eight seeds each).
 const R = { fast: fastRun(), salt: saltRun(), work: workRun(), spike: spikeRun(), length: lengthRun() };
 
 const D = (s) => dur(s);                                  // { en, es }
 const both = (f) => t(f("en"), f("es"));                   // build one sentence per language from the same numbers
-const ms = (s) => (s < 1e-3 ? (s * 1000).toFixed(3) : String(Math.round(s * 1000))) + " ms";
+const ms = (s) => (s < 1e-3 ? Math.round(s * 1e6) + " µs" : Math.round(s * 1000) + " ms");
 const logShare = (s, top) => Math.max(0.02, Math.min(1, Math.log10(Math.max(1, s)) / Math.log10(top)));
 const big = (r, lang) => (r >= 1e9 ? Math.round(r / 1e9) + (lang === "en" ? " billion" : " mil millones") : int(r));
 const pts = (a, b) => Math.round(100 * (a - b));
@@ -38,12 +38,12 @@ const RUNS = {
     const top = SA.on.half * 3;
     return {
       verdict: both((l) => l === "en"
-        ? "One salt for everyone: half the table fell in " + D(SA.off.half).en + ", and " + Math.round(SA.off.shared) + " rows shared their hash with another row. A salt per user: " + D(SA.on.half).en + ", " + Math.round(SA.ratio) + " times longer, and no two rows alike."
-        : "Una sola sal para todos: la mitad de la tabla cayó en " + D(SA.off.half).es + ", y " + Math.round(SA.off.shared) + " filas compartían su hash con otra. Una sal por usuario: " + D(SA.on.half).es + ", " + Math.round(SA.ratio) + " veces más, y ninguna fila igual a otra."),
+        ? "No salt: half the table fell in " + D(SA.off.half).en + ", and " + Math.round(SA.off.shared) + " rows shared their hash with another row. A salt per user: " + D(SA.on.half).en + ", " + Math.round(SA.ratio) + " times longer, and no two rows alike."
+        : "Sin sal: la mitad de la tabla cayó en " + D(SA.off.half).es + ", y " + Math.round(SA.off.shared) + " filas compartían su hash con otra. Una sal por usuario: " + D(SA.on.half).es + ", " + Math.round(SA.ratio) + " veces más, y ninguna fila igual a otra."),
       bars: [
-        [t("Half the table, one salt (log scale)", "Mitad de la tabla, una sal (escala log)"), logShare(SA.off.half, top), D(SA.off.half), true],
+        [t("Half the table, no salt (log scale)", "Mitad de la tabla, sin sal (escala log)"), logShare(SA.off.half, top), D(SA.off.half), true],
         [t("Half the table, salt per user (log scale)", "Mitad de la tabla, sal por usuario (escala log)"), logShare(SA.on.half, top), D(SA.on.half)],
-        [t("Rows sharing a hash, one salt (of 1,000)", "Filas con hash compartido, una sal (de 1,000)"), Math.min(1, SA.off.shared / 200), String(Math.round(SA.off.shared)), true],
+        [t("Rows sharing a hash, no salt (of 1,000)", "Filas con hash compartido, sin sal (de 1,000)"), Math.min(1, SA.off.shared / 200), String(Math.round(SA.off.shared)), true],
       ],
     };
   },
@@ -97,15 +97,15 @@ const EXPERIMENTS = [
     ],
     answer: 1,
     why: both((l) => l === "en"
-      ? "Nobody reverses the hash: the rig hashes guesses, most common first, and compares. A GPU computes on the order of " + big(rigRate("sha256"), l) + " SHA-256 hashes a second, so even with a salt per user it works through the common passwords and the word-and-digits patterns of 1,000 users in " + D(F.sha.half).en + ". SHA-256 is built to be fast; a password hash is built to be slow. bcrypt and Argon2id manage about " + int(rigRate("bcrypt")) + " and " + int(rigRate("argon2id")) + " guesses a second on the same GPU here, so the same half takes " + D(F.bcrypt.half).en + " and " + D(F.argon.half).en + ". The strongest passwords survive either way and the most common fall either way; the hash decides the fate of everyone in between."
-      : "Nadie invierte el hash: el equipo calcula el hash de cada intento, los más comunes primero, y compara. Una GPU calcula del orden de " + big(rigRate("sha256"), l) + " hashes SHA-256 por segundo, así que incluso con una sal por usuario recorre las contraseñas comunes y los patrones de palabra y dígitos de 1,000 usuarios en " + D(F.sha.half).es + ". SHA-256 está hecho para ser rápido; un hash de contraseñas está hecho para ser lento. bcrypt y Argon2id logran unos " + int(rigRate("bcrypt")) + " y " + int(rigRate("argon2id")) + " intentos por segundo en la misma GPU aquí, así que la misma mitad tarda " + D(F.bcrypt.half).es + " y " + D(F.argon.half).es + ". Las contraseñas más fuertes sobreviven en ambos casos y las más comunes caen en ambos; el hash decide la suerte de todas las del medio."),
-    watch: { hash: "sha256", work: "1", salt: "on", policy: "people", logins: "20" },
+      ? "Nobody reverses the hash: the rig hashes guesses, most common first, and compares. A GPU computes on the order of " + big(rigRate("sha256"), l) + " SHA-256 hashes a second, so even with a salt per user it works through the common passwords and the word-and-digits patterns of 1,000 users in " + D(F.sha.half).en + ". SHA-256 is built to be fast; a password hash is built to be slow. bcrypt and Argon2id manage about " + int(rigRate("bcrypt")) + " and " + int(rigRate("argon2id")) + " hashes a second on the same GPU here, so the same half takes " + D(F.bcrypt.half).en + " and " + D(F.argon.half).en + ". The strongest passwords survive either way and the most common fall either way; the hash decides the fate of everyone in between."
+      : "Nadie invierte el hash: el equipo calcula el hash de cada intento, los más comunes primero, y compara. Una GPU calcula del orden de " + big(rigRate("sha256"), l) + " hashes SHA-256 por segundo, así que incluso con una sal por usuario recorre las contraseñas comunes y los patrones de palabra y dígitos de 1,000 usuarios en " + D(F.sha.half).es + ". SHA-256 está hecho para ser rápido; un hash de contraseñas está hecho para ser lento. bcrypt y Argon2id logran unos " + int(rigRate("bcrypt")) + " y " + int(rigRate("argon2id")) + " hashes por segundo en la misma GPU aquí, así que la misma mitad tarda " + D(F.bcrypt.half).es + " y " + D(F.argon.half).es + ". Las contraseñas más fuertes sobreviven en ambos casos y las más comunes caen en ambos; el hash decide la suerte de todas las del medio."),
+    watch: { hash: "sha256", work: "1", salt: "on", policy: "people", logins: "20", stop: "half" },
   },
   {
     id: "salt",
     title: t("No salt", "Sin sal"),
-    change: t("PBKDF2 (600,000 iterations), 1,000 users, one GPU · a salt per user vs one salt shared by everyone, which is as good as none",
-      "PBKDF2 (600,000 iteraciones), 1,000 usuarios, una GPU · una sal por usuario vs una sal compartida por todos, que es como no tener ninguna"),
+    change: t("PBKDF2 (600,000 iterations), 1,000 users, one GPU · a salt per user vs no salt",
+      "PBKDF2 (600,000 iteraciones), 1,000 usuarios, una GPU · una sal por usuario vs sin sal"),
     question: t("How much longer does half the table hold out with a salt per user?", "¿Cuánto más resiste la mitad de la tabla con una sal por usuario?"),
     options: [
       t("About the same: the salt is stored next to the hash", "Casi lo mismo: la sal se guarda junto al hash"),
@@ -114,9 +114,9 @@ const EXPERIMENTS = [
     ],
     answer: 1,
     why: both((l) => l === "en"
-      ? "The salt isn't secret and doesn't need to be. Without one, a single hash of a guess is compared with all 1,000 rows at once, and everyone with the same password has the same hash: " + Math.round(SA.off.shared) + " rows here shared theirs with another row, so cracking one cracks them all (look at the SAME HASH counter). With no salt at all, an attacker can even look hashes up in tables computed in advance. With a salt per user, each guess has to be hashed again for every row still standing, so half the table took " + Math.round(SA.ratio) + " times longer: " + D(SA.off.half).en + " against " + D(SA.on.half).en + ". A salt multiplies the attacker's work by the number of users, but does nothing for one account attacked alone; that's the slow hash's job. bcrypt and Argon2id make and store the salt for you."
-      : "La sal no es secreta ni necesita serlo. Sin ella, un solo hash de un intento se compara con las 1,000 filas a la vez, y todos los que tienen la misma contraseña tienen el mismo hash: aquí " + Math.round(SA.off.shared) + " filas compartían el suyo con otra, así que adivinar una es adivinarlas todas (mira el contador MISMO HASH). Sin ninguna sal, el atacante hasta puede buscar los hashes en tablas calculadas de antemano. Con una sal por usuario, cada intento hay que calcularlo de nuevo para cada fila que sigue en pie, así que la mitad de la tabla tardó " + Math.round(SA.ratio) + " veces más: " + D(SA.off.half).es + " contra " + D(SA.on.half).es + ". La sal multiplica el trabajo del atacante por el número de usuarios, pero no hace nada por una cuenta atacada sola; eso le toca al hash lento. bcrypt y Argon2id generan y guardan la sal por ti."),
-    watch: { hash: "pbkdf2", work: "1", salt: "off", policy: "people", logins: "20" },
+      ? "The salt isn't secret and doesn't need to be. Without one, a single hash of a guess is compared with all 1,000 rows at once, and everyone with the same password has the same hash: " + Math.round(SA.off.shared) + " rows here shared theirs with another row, so cracking one cracks them all (look at the SAME HASH counter); an attacker can even look hashes up in tables computed in advance. One salt shared by every row is no better: it is the same for everyone, so equal passwords still hash alike. With a salt per user, each guess has to be hashed again for every row still standing, so half the table took " + Math.round(SA.ratio) + " times longer: " + D(SA.off.half).en + " against " + D(SA.on.half).en + ". A salt multiplies the attacker's work by the number of users, but does nothing for one account attacked alone; that's the slow hash's job. bcrypt and Argon2id make and store the salt for you."
+      : "La sal no es secreta ni necesita serlo. Sin ella, un solo hash de un intento se compara con las 1,000 filas a la vez, y todos los que tienen la misma contraseña tienen el mismo hash: aquí " + Math.round(SA.off.shared) + " filas compartían el suyo con otra, así que adivinar una es adivinarlas todas (mira el contador MISMO HASH); el atacante hasta puede buscar los hashes en tablas calculadas de antemano. Una sola sal compartida por todas las filas no es mejor: es la misma para todos, así que contraseñas iguales siguen dando el mismo hash. Con una sal por usuario, cada intento hay que calcularlo de nuevo para cada fila que sigue en pie, así que la mitad de la tabla tardó " + Math.round(SA.ratio) + " veces más: " + D(SA.off.half).es + " contra " + D(SA.on.half).es + ". La sal multiplica el trabajo del atacante por el número de usuarios, pero no hace nada por una cuenta atacada sola; eso le toca al hash lento. bcrypt y Argon2id generan y guardan la sal por ti."),
+    watch: { hash: "pbkdf2", work: "1", salt: "off", policy: "people", logins: "20", stop: "half" },
   },
   {
     id: "work",
@@ -131,9 +131,9 @@ const EXPERIMENTS = [
     ],
     answer: 1,
     why: both((l) => l === "en"
-      ? "A work factor divides how far down the guess list the rig gets in 30 days: by 16, a bit more than one power of ten, on a list that spans twenty. The " + pct(W.w1.common) + " of users who picked a common password sit at the top of that list, and they fall within the month whatever the cost; ×16 only saved the patterns in between: " + pct(W.w1.month) + " cracked at ×1, " + pct(W.w16.month) + " at ×16, " + pts(W.w1.month, W.w16.month) + " points. Meanwhile each login went from " + ms(W.w1.login) + " to " + ms(W.w16.login) + " of CPU. So raise the cost as far as your login budget allows (OWASP's floor for bcrypt is cost 10), rehash a user's password at the next login after you raise it, and protect the top of the list another way: refuse common and breached passwords at sign-up, and limit online guessing."
-      : "Un factor de trabajo divide qué tan abajo en la lista de intentos llega el equipo en 30 días: entre 16, poco más de una potencia de diez, en una lista que abarca veinte. El " + pct(W.w1.common) + " de usuarios que eligió una contraseña común está arriba de esa lista, y cae dentro del mes sea cual sea el costo; ×16 solo salvó los patrones del medio: " + pct(W.w1.month) + " adivinadas con ×1, " + pct(W.w16.month) + " con ×16, " + pts(W.w1.month, W.w16.month) + " puntos. Mientras tanto cada login pasó de " + ms(W.w1.login) + " a " + ms(W.w16.login) + " de CPU. Así que sube el costo hasta donde te lo permita tu presupuesto de login (el piso de OWASP para bcrypt es costo 10), vuelve a calcular el hash de cada usuario en su siguiente login después de subirlo, y protege la parte de arriba de la lista de otra forma: rechaza contraseñas comunes y filtradas al registrarse, y limita los intentos en línea."),
-    watch: { hash: "bcrypt", work: "16", salt: "on", policy: "people", logins: "20" },
+      ? "A work factor divides how far down the guess list the rig gets in 30 days: by 16, a bit more than one power of ten, on a list that spans twenty. The " + pct(W.w1.common) + " of users who picked a common password sit at the top of that list, and they fall within the month whatever the cost; ×16 only saved the patterns in between: " + pct(W.w1.month) + " cracked at ×1, " + pct(W.w16.month) + " at ×16, " + pts(W.w1.month, W.w16.month) + " points. Meanwhile each login went from " + ms(W.w1.login) + " to " + ms(W.w16.login) + " of CPU: at 20 logins a second that keeps " + Math.round(20 * W.w16.login) + " cores busy, and the machine's desk has " + CORES + ", so its line grows (experiment 4). So raise the cost as far as your login budget allows (OWASP's floor for bcrypt is cost 10), rehash a user's password at the next login after you raise it, and protect the top of the list another way: refuse common and breached passwords at sign-up, and limit online guessing."
+      : "Un factor de trabajo divide qué tan abajo en la lista de intentos llega el equipo en 30 días: entre 16, poco más de una potencia de diez, en una lista que abarca veinte. El " + pct(W.w1.common) + " de usuarios que eligió una contraseña común está arriba de esa lista, y cae dentro del mes sea cual sea el costo; ×16 solo salvó los patrones del medio: " + pct(W.w1.month) + " adivinadas con ×1, " + pct(W.w16.month) + " con ×16, " + pts(W.w1.month, W.w16.month) + " puntos. Mientras tanto cada login pasó de " + ms(W.w1.login) + " a " + ms(W.w16.login) + " de CPU: a 20 logins por segundo eso ocupa " + Math.round(20 * W.w16.login) + " núcleos, y el mostrador de la máquina tiene " + CORES + ", así que su fila crece (experimento 4). Así que sube el costo hasta donde te lo permita tu presupuesto de login (el piso de OWASP para bcrypt es costo 10), vuelve a calcular el hash de cada usuario en su siguiente login después de subirlo, y protege la parte de arriba de la lista de otra forma: rechaza contraseñas comunes y filtradas al registrarse, y limita los intentos en línea."),
+    watch: { hash: "bcrypt", work: "16", salt: "on", policy: "people", logins: "20", stop: 30 * DAY },
   },
   {
     id: "spike",
@@ -150,7 +150,8 @@ const EXPERIMENTS = [
     why: both((l) => l === "en"
       ? CORES + " cores at about " + BCRYPT_MS + " a hash can check about " + CAPACITY + " logins a second. At 20 a second they're " + pct(SP.calm.cpu) + " busy. At 200 the CPU is pinned at " + pct(SP.spike.cpu) + ", " + Math.round(SP.spike.served) + " a second get through and the rest join the line: after the minute " + int(SP.spike.line) + " are waiting and a new login waits " + Math.round(SP.spike.wait60) + " s, longer than most clients will. With SHA-256 the same spike would have kept the cores " + (100 * SP.sha.cpu).toFixed(3) + "% busy. The slowness you pay for is real CPU on every attempt, an attacker's included. So limit attempts before the hash runs (per account and per IP address; lesson 05, Rate limiting), and size the work factor to your peak: logins per second × seconds per hash = cores kept busy."
       : CORES + " núcleos a unos " + BCRYPT_MS + " por hash pueden verificar unos " + CAPACITY + " logins por segundo. A 20 por segundo están " + pct(SP.calm.cpu) + " ocupados. A 200 la CPU queda clavada al " + pct(SP.spike.cpu) + ", pasan " + Math.round(SP.spike.served) + " por segundo y el resto se suma a la fila: al cabo del minuto esperan " + int(SP.spike.line) + " y un login nuevo espera " + Math.round(SP.spike.wait60) + " s, más de lo que aguanta la mayoría de los clientes. Con SHA-256 el mismo pico habría dejado los núcleos ocupados un " + (100 * SP.sha.cpu).toFixed(3) + "%. La lentitud que pagas es CPU real en cada intento, también en los del atacante. Así que limita los intentos antes de que corra el hash (por cuenta y por dirección IP; lección 05, Limitación de tasa), y dimensiona el factor de trabajo para tu pico: logins por segundo × segundos por hash = núcleos ocupados."),
-    watch: { hash: "bcrypt", work: "1", salt: "on", policy: "people", logins: "200" },
+    // the desk runs in slow motion, so the Watch skips to the end of the spike's minute
+    watch: { hash: "bcrypt", work: "1", salt: "on", policy: "people", logins: "200", desk: 60 },
   },
   {
     id: "length",
@@ -167,7 +168,7 @@ const EXPERIMENTS = [
     why: both((l) => l === "en"
       ? "Brute force has to cover the space: 94^8 ≈ 6 × 10^15 passwords for 8 characters from all 94 printable ones, 26^12 ≈ 10^17 for 12 lowercase letters. A bigger alphabet multiplies each character's choices by 3.6; each extra character multiplies the whole space by the alphabet's size. So half the table fell in " + D(LE.r8.half).en + " with 8 of 94 and " + D(LE.r12.half).en + " with 12 lowercase. And these are truly random; people told to add a digit and a symbol write Password1!, which is near the top of every guess list. That's why NIST SP 800-63B (2025) drops composition rules in favour of length and a check against common and breached passwords."
       : "La fuerza bruta tiene que cubrir el espacio: 94^8 ≈ 6 × 10^15 contraseñas para 8 caracteres de los 94 imprimibles, 26^12 ≈ 10^17 para 12 letras minúsculas. Un alfabeto mayor multiplica las opciones de cada carácter por 3.6; cada carácter extra multiplica el espacio entero por el tamaño del alfabeto. Así que la mitad de la tabla cayó en " + D(LE.r8.half).es + " con 8 de 94 y en " + D(LE.r12.half).es + " con 12 minúsculas. Y estas son de verdad aleatorias; a la gente que le piden agregar un dígito y un símbolo escribe Password1!, que está cerca del principio de toda lista de intentos. Por eso NIST SP 800-63B (2025) deja las reglas de composición y pide longitud y una verificación contra contraseñas comunes y filtradas."),
-    watch: { hash: "sha256", work: "1", salt: "on", policy: "rand8", logins: "20" },
+    watch: { hash: "sha256", work: "1", salt: "on", policy: "rand8", logins: "20", stop: "half" },
   },
 ];
 
@@ -203,13 +204,13 @@ export default defineLesson({
     plate: {
       title: t("Vault, desk and rig", "Bóveda, mostrador y equipo"),
       keys: [
-        { mark: "lit", label: t("A cracked row; a core hashing a login, and its slip", "Una fila adivinada; un núcleo calculando un login, y su papeleta") },
-        { mark: "raised", label: t("Login slips with the user's letter; guess tags on the rig's rail", "Papeletas de login con la letra del usuario; fichas de intentos en el riel del equipo") },
+        { mark: "lit", label: t("A cracked row", "Una fila adivinada") },
+        { mark: "raised", label: t("Login slips with the user's letter, on the lane or on the core hashing them; guess tags on the rig's rail", "Papeletas de login con la letra del usuario, en el carril o sobre el núcleo que las calcula; fichas de intentos en el riel del equipo") },
         { mark: "flat", label: t("Drawers: row letter, stored hash (first 4 hex digits) and salt", "Cajones: letra de la fila, hash guardado (primeros 4 dígitos hex) y sal") },
       ],
       caption: t(
-        "Each drawer is one user row: its letter, the first four hex digits of its stored hash, and its salt. Without a salt, rows with the same password show the same hash, and the SAME HASH counter on the plinth counts them across all 1,000 rows. The rig hashes guesses in the order that cracks the most accounts first (common passwords, then patterns, then brute force); GUESSES shows how many so far, as a number times a power of ten, and CRACKED how many rows have fallen. On the desk, login slips wait on the lane, a core takes one and spins while it hashes, and the counters show how many wait, how long the oldest has waited and what one hash costs.",
-        "Cada cajón es una fila de usuario: su letra, los primeros cuatro dígitos hex de su hash guardado y su sal. Sin sal, las filas con la misma contraseña muestran el mismo hash, y el contador MISMO HASH del zócalo las cuenta en las 1,000 filas. El equipo calcula intentos en el orden que adivina más cuentas primero (contraseñas comunes, luego patrones, luego fuerza bruta); INTENTOS muestra cuántos van, como un número por una potencia de diez, y ADIVINADAS cuántas filas cayeron. En el mostrador, las papeletas de login esperan en el carril, un núcleo toma una y gira mientras calcula el hash, y los contadores muestran cuántas esperan, cuánto lleva esperando la más antigua y cuánto cuesta un hash.",
+        "Each drawer is one user row: its letter, the first four hex digits of its stored hash, and its salt. Without a salt, rows with the same password show the same hash, and the SAME HASH counter on the plinth counts them across all 1,000 rows. The rig tries guesses in the order that cracks the most accounts first (common passwords, then patterns, then brute force); GUESSES shows how far down that list it has got, as a number times a power of ten (with a salt per user each guess costs a hash for every row still standing), and CRACKED how many rows have fallen. On the desk, login slips wait on the lane, a core takes one and spins while it hashes, and the counters show how many wait, how long the oldest has waited and what one hash costs.",
+        "Cada cajón es una fila de usuario: su letra, los primeros cuatro dígitos hex de su hash guardado y su sal. Sin sal, las filas con la misma contraseña muestran el mismo hash, y el contador MISMO HASH del zócalo las cuenta en las 1,000 filas. El equipo prueba intentos en el orden que adivina más cuentas primero (contraseñas comunes, luego patrones, luego fuerza bruta); INTENTOS muestra hasta dónde llegó en esa lista, como un número por una potencia de diez (con una sal por usuario, cada intento cuesta un hash por cada fila que sigue en pie), y ADIVINADAS cuántas filas cayeron. En el mostrador, las papeletas de login esperan en el carril, un núcleo toma una y gira mientras calcula el hash, y los contadores muestran cuántas esperan, cuánto lleva esperando la más antigua y cuánto cuesta un hash.",
       ),
       stage: { "data-vault": "" },
       label: t("Password hashing simulation. Space pauses or resumes.", "Simulación de hash de contraseñas. Espacio pausa o reanuda."),
@@ -219,7 +220,7 @@ export default defineLesson({
       ["cracked", t("Cracked, of 1,000", "Adivinadas, de 1,000")],
       ["clock", t("Rig clock", "Reloj del equipo")],
       ["half", t("Half the table falls in", "La mitad de la tabla cae en")],
-      ["rig", t("Guesses a second, one GPU", "Intentos por segundo, una GPU")],
+      ["rig", t("Hashes a second, one GPU", "Hashes por segundo, una GPU")],
       ["login", t("One login's hash", "El hash de un login")],
       ["cpu", t("Server CPU", "CPU del servidor")],
     ],

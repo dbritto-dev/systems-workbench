@@ -63,22 +63,33 @@ export function makeTable(cfg, seed = 1, n = N) {
     users.push({ i, ...p, salt, input, hash: hex(fnv1a(input), 4), saltText: hex(salt, 2), t: 0 });
   }
   const rate = rigRate(cfg.hash, cfg.work);
+  // users by guess number, and the sum of the guess numbers before each (to turn hashes into guess depth)
+  const order = [...users].sort((a, b) => a.g - b.g);
+  const before = [];
   if (cfg.salt) {
     // sweep guess numbers in order; each guess is hashed once for every user not yet cracked
-    const order = [...users].sort((a, b) => a.g - b.g);
-    let before = 0;
-    order.forEach((u, k) => { u.t = (before + (n - k) * u.g) / rate; before += u.g; });
+    let sum = 0;
+    order.forEach((u, k) => { before.push(sum); u.t = (sum + (n - k) * u.g) / rate; sum += u.g; });
   } else for (const u of users) u.t = u.g / rate;
   const times = users.map((u) => u.t).sort((a, b) => a - b);
   // rows whose hash is the same as another row's (only possible without salt: same password, same hash)
   const count = new Map();
   for (const u of users) count.set(u.input, (count.get(u.input) || 0) + 1);
   const shared = users.filter((u) => count.get(u.input) > 1).length;
-  return { cfg, users, times, rate, shared };
+  return { cfg, users, times, rate, shared, order, before };
 }
 
 export const crackedBy = (table, T) => { let lo = 0, hi = table.times.length; while (lo < hi) { const m = (lo + hi) >> 1; if (table.times[m] <= T) lo = m + 1; else hi = m; } return lo; };
 export const halfTime = (table) => table.times[Math.floor(table.times.length / 2)];
+/** How far down the guess list the rig has got after T seconds: its hashes so far without a salt, fewer with one
+ *  (each guess is hashed once for every row still standing, so k rows cracked leaves n - k hashes per guess). */
+export function guessesBy(table, T) {
+  const H = T * table.rate;
+  if (!table.cfg.salt) return H;
+  const n = table.users.length, k = crackedBy(table, T);
+  if (k >= n) return table.order[n - 1].g;
+  return (H - table.before[k]) / (n - k);
+}
 
 /** The eight rows the vault shows: the first pair of users with the same password, then six spread from the weakest
  *  password to the strongest (by guess number). */
@@ -193,7 +204,7 @@ export function fastRun() {
   return { sha: half("sha256"), bcrypt: half("bcrypt"), argon: half("argon2id"), rates: { sha: rigRate("sha256"), bcrypt: rigRate("bcrypt"), argon: rigRate("argon2id") } };
 }
 
-// 2. Salt: PBKDF2 with a per-user salt vs one salt for everyone (as good as none).
+// 2. Salt: PBKDF2 with a per-user salt vs no salt.
 export function saltRun() {
   const run = (salt) => avg((seed) => { const tb = table({ hash: "pbkdf2", salt })(seed); return { half: halfTime(tb), shared: tb.shared, day: crackedBy(tb, DAY) / N }; });
   const off = run(false), on = run(true);
