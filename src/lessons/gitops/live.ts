@@ -41,7 +41,7 @@ export default function mount({ P, G, WALKER, WALKER_SYNC, POD_READY, POD_START 
 
   // ---------- settings and the run ----------
   const cfg = { selfHeal: "on", prune: "on", poll: "poll", replicas: "hpa", traffic: "normal", speed: 4 };
-  let m, clock, logAt, seed = 3, saidAt = -9, saidRank = 0, held = null;
+  let m, clock, logAt, seed = 3, saidAt = -9, saidRank = 0, held = null, jump = null;
   const flash = { dev: -9, eng: -9 };
   const simCfg = () => ({ selfHeal: cfg.selfHeal === "on", prune: cfg.prune === "on", poll: cfg.poll, replicas: cfg.replicas, traffic: cfg.traffic });
 
@@ -54,6 +54,7 @@ export default function mount({ P, G, WALKER, WALKER_SYNC, POD_READY, POD_START 
     clock = watch?.from ?? 0;
     m.runTo(clock);
     logAt = m.log.length; saidAt = -9; saidRank = 0; held = null; flash.dev = flash.eng = -9;
+    jump = watch?.jump ?? null;
     paint();
     showStats();
   }
@@ -237,6 +238,19 @@ export default function mount({ P, G, WALKER, WALKER_SYNC, POD_READY, POD_START 
   const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => {
     clock += dt * cfg.speed;
+    // a Watch can skip a quiet stretch: run the model through it, drop its narration, and say how far it went
+    // (to: a fixed time; toCheck: up to that many seconds before the timer's own next look, so its wait stays real)
+    if (jump && clock >= jump.at) {
+      const to = jump.toCheck ? m.R.nextCheck - jump.toCheck : jump.to;
+      if (to > clock) {
+        clock = to; m.runTo(clock);
+        if (jump.nextCheck) m.R.nextCheck = jump.nextCheck;     // the timer's next look, staged just after the merge
+        logAt = m.log.length; held = null;
+        const secs = String(Math.round(m.R.nextCheck - (jump.since ?? 0)));
+        say(9, T(jump.say.en.replace("{s}", secs), jump.say.es.replace("{s}", secs)));
+      }
+      jump = null;
+    }
     m.runTo(clock);
     paint();
     statTimer += dt; if (statTimer > 0.2) { statTimer = 0; showStats(); }

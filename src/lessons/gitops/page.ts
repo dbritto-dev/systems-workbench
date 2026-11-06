@@ -100,6 +100,10 @@ const EXPERIMENTS = [
       "Con self-heal (autorreparación), el reconciliador ve el cambio en vivo en segundos (observa el clúster) y vuelve a poner el valor de git, así que el hotfix casi no existe. Sin él, al principio nada lo revierte; la app solo se ve desincronizada (OutOfSync). Pero un sync automático aplica todo el estado deseado de la revisión nueva, no solo lo que cambió el commit, así que la siguiente fusión, sea de lo que sea, vuelve a poner el LÍMITE en " + LIMIT.git + " sin avisar, en un momento que nadie eligió. Hasta entonces, git no decía lo que estaba corriendo. Mejor haz del hotfix un commit: tarda una revisión de git (o un webhook) en llegar, y se queda.",
     ),
     watch: { set: { ...BASE, selfHeal: "off" }, sim: {}, script: [{ at: HOTFIX.at, type: "hotfix" }, { at: HOTFIX.release, type: "release" }], from: HOTFIX.at - 8, speed: 15,
+      // the ten quiet minutes between the hotfix and the release are skipped, and the timer's next look lands just after
+      // the merge, so the release's sync erases the hotfix within seconds of the press
+      jump: { at: HOTFIX.at + 30, to: HOTFIX.release - 8, nextCheck: HOTFIX.release + 6,
+        say: { en: "ten minutes later · the hotfix is still there", es: "diez minutos después · el hotfix sigue ahí" } },
       say: { en: "self-heal off · a hotfix at 1 min, a release at 11 min", es: "sin self-heal · un hotfix al minuto 1, una versión al minuto 11" } },
   },
   {
@@ -119,6 +123,8 @@ const EXPERIMENTS = [
       "Argo CD observa el clúster, así que los cambios en vivo se notan en segundos, pero lee git con un temporizador: por defecto cada 120 s más hasta 60 s de variación aleatoria (jitter) (timeout.reconciliation), 3 minutos como mucho. Una fusión cae en un punto al azar de ese ciclo y espera en promedio cerca de la mitad; después el despliegue suma su propio tiempo, mientras arrancan pods nuevos y se van los viejos. Un webhook del servidor de git le avisa que lea ya, así que solo queda el despliegue. Deja el temporizador como respaldo, porque un webhook se puede perder. Acortar el temporizador hace que todas las apps relean git más seguido, lo que carga al repo server y al servidor de git.",
     ),
     watch: { set: BASE, sim: {}, script: [{ at: 20, type: "release" }, { at: 300, type: "release" }, { at: 580, type: "release" }], from: 12, speed: 4,
+      // skip to just before the timer's own next look: the wait is the model's, only the watching is shorter
+      jump: { at: 26, toCheck: 4, since: 20, say: { en: "skip ahead · the timer's next look comes {s} s after the merge", es: "salto adelante · la próxima revisión del temporizador llega {s} s después de la fusión" } },
       say: { en: "a merge at 20 s · watch NEXT CHECK · then try the webhook", es: "una fusión a los 20 s · mira REVISA EN · luego prueba el webhook" } },
   },
   {

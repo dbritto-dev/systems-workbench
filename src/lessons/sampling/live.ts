@@ -20,7 +20,7 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
   const stat = (key, value) => root.stat(key, value);
   const layers = Object.fromEntries(["rack", "tokens", "belt", "back", "bin", "front", "fly"].map((n) => [n, q('[data-layer="' + n + '"]')]));
   const flagDown = [0, 1, 2].map((i) => q('[data-flag-down="' + i + '"]')), flagUp = [0, 1, 2].map((i) => q('[data-flag-up="' + i + '"]'));
-  const rules = [0, 1].map((c) => q('[data-rules="' + c + '"]'));
+  const rules = q("[data-rules]");
   const ruleText = (name) => qa('[data-rule="' + name + '"]');
   const moreText = [0, 1].map((c) => q('[data-more="' + c + '"]'));
   const rateText = [0, 1, 2].map((i) => q('[data-rate="' + i + '"]'));
@@ -92,8 +92,8 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
     rateText.forEach((el, i) => setText(el, cfg.mode === "tail" ? "100%" : i === 2 && cfg.pay === "all" ? "100%" : pc(keep)));
     const two = cfg.mode === "tail" && cfg.coll !== "one";
     show(signs.one, !two); show(signs.two, two); show(divider, two);
-    // the collector's rules, in front of its rack: only tail sampling has any
-    show(rules[0], cfg.mode === "tail"); show(rules[1], two);
+    // the collector's rules, on the desk: only tail sampling has any
+    show(rules, cfg.mode === "tail");
     ruleText("keep").forEach((el) => setText(el, L("KEEP ", "GUARDA ") + pc(keep)));
     ruleText("wait").forEach((el) => setText(el, L("WAIT ", "ESPERA ") + cfg.wait + " s"));
   }

@@ -2,8 +2,9 @@
 // A trace archive. At the back left, the service bench: requests from the users walk a track past three services, A
 // (the edge), B (orders) and C (payments); each service has a sampler (a flag it raises while it records, and a
 // plaque with its rate) and writes one span card per request. The cards ride the belt to the collector at the back
-// right, whose rack holds each trace's cards over a timer (the decision wait) until it keeps or drops them; plaques in
-// front of the rack give its rules, and a "+N" tag at the end of the rack counts the traces held that it can't show. Kept cards
+// right, whose rack holds each trace's cards over a timer (the decision wait) until it keeps or drops them; plaques at
+// the tally desk's back left give its rules, and a "+N" tag at the end of the rack counts the traces held that it
+// can't show. Kept cards
 // are filed by trace in the archive's folders, each with its weight; dropped ones fall into the discard bin. On the
 // tally desk: errors and slow requests sent and kept, and two dials for the error rate the archive gives, counted and
 // weighted. Every number is a counter on a real object.
@@ -142,14 +143,6 @@ function collector() {
     out.push(L(k.planOutline({ x, y: -88, w: SLOT_W, d: 18, r: 0.8 }, COLL_H, P), { tone: "lo" }));
     out.push(`<g data-meter-wrap="${i}">${meterPart(x + SLOT_W / 2, i)}</g>`);
   });
-  // the rules, on plaques in front of the rack (tail sampling only): one set per collector
-  // (stacked, and clear of the left end, which the archive's back tier hides)
-  for (const [c, x0] of [[0, 38], [1, 106]]) {
-    const out2 = [plaque(P, { x: x0, y: -69.4, z: COLL_H, w: 30, d: 5.6 }), plaque(P, { x: x0, y: -63, z: COLL_H, w: 30, d: 5.6 })];
-    out2.push(faceText(P, [x0 + 15, -65.1, COLL_H + 0.8], "", { face: "top", size: 3.3, tone: "hi", anchor: "middle", attr: `data-rule="keep"` }));
-    out2.push(faceText(P, [x0 + 15, -58.7, COLL_H + 0.8], "", { face: "top", size: 3.3, tone: "hi", anchor: "middle", attr: `data-rule="wait"` }));
-    out.push(`<g data-rules="${c}" style="display:none">${out2.join("")}</g>`);
-  }
   // "+N": traces held in memory beyond the rack's slots, at the end of each collector's slots
   for (const [c, x] of [[0, 78.2], [1, 142.2]]) out.push(faceText(P, [x, COLL_FRONT, 6.2], "", { size: 3.6, tone: "hi", anchor: "middle", attr: `data-more="${c}"` }));
   // the wall between the two collectors (shown with two)
@@ -211,8 +204,12 @@ function desk() {
   out.push(faceText(P, [side, face - 18.4, 3.6], t("SLOW", "LENTAS"), { face: "x", size: 3, tone: "hi" }));
   out.push(digitCounter(P, { x: side, y: face - 34, z: 2.4, count: 3, w: 4, h: 5.6, gap: 0.5, pad: 1, face: "x", name: "slowKept" }));
   out.push(faceText(P, [side, face - 49.4, 3.6], t("KEPT", "GUARDADAS"), { face: "x", size: 3, tone: "hi" }));
+  // the collector's rules (tail sampling only), on two plaques at the desk's back left, clear of the rack
+  const dz = DESK_H, rx = DESK.x + 39, rules = [plaque(P, { x: rx, y: DESK.y + 1, z: dz, w: 27, d: 4.6 }), plaque(P, { x: rx, y: DESK.y + 6.2, z: dz, w: 27, d: 4.6 })];
+  rules.push(faceText(P, [rx + 13.5, DESK.y + 4.6, dz + 0.8], "", { face: "top", size: 3, tone: "hi", anchor: "middle", attr: `data-rule="keep"` }));
+  rules.push(faceText(P, [rx + 13.5, DESK.y + 9.8, dz + 0.8], "", { face: "top", size: 3, tone: "hi", anchor: "middle", attr: `data-rule="wait"` }));
+  out.push(`<g data-rules style="display:none">${rules.join("")}</g>`);
   // the error-rate dials: what the archive says, counting its traces vs weighting each by its plaque (0 to 50%)
-  const dz = DESK_H;
   for (const [i, x, label] of [[0, DESK.x + 57, t("COUNTED", "CONTADA")], [1, DESK.x + 97, t("WEIGHTED", "PONDERADA")]]) {
     out.push(dial(P, { x, y: DESK.y + 24, z: dz, r: 9.5, h: 3, ticks: 50, every: 10, from: -Math.PI * 0.75, span: Math.PI * 1.5, name: "rate" + i, value: 0 }));
     out.push(faceText(P, [x, DESK.y + 42.5, dz], label, { face: "top", size: 3.4, tone: "hi", anchor: "middle" }));
@@ -220,7 +217,7 @@ function desk() {
     const r = 13.4, cy = DESK.y + 24;
     for (const [a, v] of [[-0.75, "0"], [0.75, "50%"]]) out.push(faceText(P, [x + Math.sin(a * Math.PI) * r, cy - Math.cos(a * Math.PI) * r + 1.4, dz], v, { face: "top", size: 3.4, tone: "hi", anchor: "middle" }));
   }
-  out.push(faceText(P, [DESK.x + 77, DESK.y + 6.4, dz], t("ERROR RATE", "TASA DE ERROR"), { face: "top", size: 3.8, tone: "hi", anchor: "middle" }));
+  out.push(faceText(P, [DESK.x + 87, DESK.y + 6.4, dz], t("ERROR RATE", "TASA DE ERROR"), { face: "top", size: 3.8, tone: "hi", anchor: "middle" }));
   return out.join("");
 }
 
@@ -249,8 +246,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A trace archive on a base plate. At the back left, users send requests along a track past three services on a bench: A, the edge, B, orders, and C, payments. Each service has a sampler with a flag it raises while it records and a plaque showing its rate, and writes one span card per request it records. The cards ride a belt across the middle to the collector at the back right, whose rack holds each trace's cards over a timer until it decides to keep or drop them; plaques in front of the rack give its keep rate and decision wait, a tag at the end of the rack counts the traces held beyond its slots, and a counter on its side shows all the traces held in memory. Kept cards are filed by trace in the archive's folders at the front left, three places per folder, with a plaque giving the trace's weight; counters show the traces kept and those kept with spans missing. Dropped cards fall into the discard bin at the right. On the tally desk in front, counters show errors and slow requests sent and kept, and two dials show the error rate the archive gives when you count its traces and when you weight them.",
-      "Un archivo de trazas sobre una placa base. Atrás a la izquierda, los usuarios envían solicitudes por un riel que pasa por tres servicios sobre un banco: A, la entrada, B, pedidos, y C, pagos. Cada servicio tiene un muestreador con una bandera que levanta mientras registra y una placa con su tasa, y escribe una tarjeta de span por cada solicitud que registra. Las tarjetas viajan por una cinta en el medio hasta el colector, atrás a la derecha, cuyo estante retiene las tarjetas de cada traza sobre un temporizador hasta que decide guardarlas o descartarlas; unas placas delante del estante dan su tasa de guardado y su espera de decisión, una etiqueta al final del estante cuenta las trazas retenidas que no caben en sus lugares, y un contador en su costado muestra todas las trazas retenidas en memoria. Las tarjetas guardadas se archivan por traza en las carpetas del archivo, adelante a la izquierda, con tres lugares por carpeta y una placa con el peso de la traza; los contadores muestran las trazas guardadas y las que se guardaron con spans faltantes. Las tarjetas descartadas caen al cajón de descarte, a la derecha. En el escritorio de conteo, adelante, los contadores muestran los errores y las solicitudes lentas enviados y guardados, y dos diales muestran la tasa de error que da el archivo si cuentas sus trazas y si las ponderas.",
+      "A trace archive on a base plate. At the back left, users send requests along a track past three services on a bench: A, the edge, B, orders, and C, payments. Each service has a sampler with a flag it raises while it records and a plaque showing its rate, and writes one span card per request it records. The cards ride a belt across the middle to the collector at the back right, whose rack holds each trace's cards over a timer until it decides to keep or drop them; plaques at the back left of the tally desk give the collector's keep rate and decision wait, a tag at the end of the rack counts the traces held beyond its slots, and a counter on its side shows all the traces held in memory. Kept cards are filed by trace in the archive's folders at the front left, three places per folder, with a plaque giving the trace's weight; counters show the traces kept and those kept with spans missing. Dropped cards fall into the discard bin at the right. On the tally desk in front, counters show errors and slow requests sent and kept, and two dials show the error rate the archive gives when you count its traces and when you weight them.",
+      "Un archivo de trazas sobre una placa base. Atrás a la izquierda, los usuarios envían solicitudes por un riel que pasa por tres servicios sobre un banco: A, la entrada, B, pedidos, y C, pagos. Cada servicio tiene un muestreador con una bandera que levanta mientras registra y una placa con su tasa, y escribe una tarjeta de span por cada solicitud que registra. Las tarjetas viajan por una cinta en el medio hasta el colector, atrás a la derecha, cuyo estante retiene las tarjetas de cada traza sobre un temporizador hasta que decide guardarlas o descartarlas; unas placas atrás a la izquierda del escritorio de conteo dan su tasa de guardado y su espera de decisión, una etiqueta al final del estante cuenta las trazas retenidas que no caben en sus lugares, y un contador en su costado muestra todas las trazas retenidas en memoria. Las tarjetas guardadas se archivan por traza en las carpetas del archivo, adelante a la izquierda, con tres lugares por carpeta y una placa con el peso de la traza; los contadores muestran las trazas guardadas y las que se guardaron con spans faltantes. Las tarjetas descartadas caen al cajón de descarte, a la derecha. En el escritorio de conteo, adelante, los contadores muestran los errores y las solicitudes lentas enviados y guardados, y dos diales muestran la tasa de error que da el archivo si cuentas sus trazas y si las ponderas.",
     ),
     body: [
       plate(),
