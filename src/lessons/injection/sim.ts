@@ -158,21 +158,22 @@ export function execute(ast, values, visible) {
 // ---------- the app: how one request becomes a statement ----------
 const esc = (s) => s.replace(/'/g, "''");
 // The statement as lines of segments [text, kind]: "tpl" is the app's own text, "in" the user's words pasted in,
-// "slot" a parameter placeholder, "list" a column name the app took from its allowlist.
+// "slot" a parameter placeholder, "list" a column name the app took from its allowlist. from[i] says where value i
+// came from: "app" (the shop, from the visitor's session) or "in" (words the visitor's request carried).
 export function build(req, cfg) {
   const lines = [[["SELECT * FROM orders", "tpl"]]];
-  const values = [];
-  const slot = (v) => { values.push(v); return ["$" + values.length, "slot"]; };
-  const shop = cfg.name === "param" ? slot(req.shop) : ["'" + req.shop + "'", "tpl"];
+  const values = [], from = [];
+  const slot = (v, src = "in") => { values.push(v); from.push(src); return ["$" + values.length, "slot"]; };
+  const shop = cfg.name === "param" ? slot(req.shop, "app") : ["'" + req.shop + "'", "tpl"];
   lines.push([["WHERE shop = ", "tpl"], shop]);
   const nameIn = cfg.name === "escape" ? esc(req.name) : req.name;
   lines.push(cfg.name === "param" ? [["  AND name = ", "tpl"], slot(req.name)] : [["  AND name = '", "tpl"], [nameIn, "in"], ["'", "tpl"]]);
   if (cfg.sort === "allow") {
-    if (!SORTS.includes(req.sort)) return { rejected: true, lines: [...lines, [["ORDER BY ", "tpl"], ["?", "tpl"]]], values };
+    if (!SORTS.includes(req.sort)) return { rejected: true, lines: [...lines, [["ORDER BY ", "tpl"], ["?", "tpl"]]], values, from };
     lines.push([["ORDER BY ", "tpl"], [req.sort, "list"]]);
   } else if (cfg.sort === "param") lines.push([["ORDER BY ", "tpl"], slot(req.sort)]);
   else lines.push([["ORDER BY ", "tpl"], [cfg.sort === "escape" ? esc(req.sort) : req.sort, "in"]]);
-  return { lines, values, sql: lines.map((l) => l.map((s) => s[0]).join("")).join("\n") };
+  return { lines, values, from, sql: lines.map((l) => l.map((s) => s[0]).join("")).join("\n") };
 }
 
 // The shapes the app means to send in this mode: the same build with an ordinary name and each offered sort.
@@ -181,7 +182,7 @@ const allowedShapes = (cfg) => new Set(SORTS.map((sort) => { const a = parse(bui
 // One request through the app and the database.
 export function serve(req, cfg) {
   const b = build(req, cfg);
-  const out = { req, lines: b.lines, values: b.values, sql: b.sql, rejected: !!b.rejected, error: null, rows: [], leaked: 0, asCode: false, unsorted: false };
+  const out = { req, lines: b.lines, values: b.values, from: b.from, sql: b.sql, rejected: !!b.rejected, error: null, rows: [], leaked: 0, asCode: false, unsorted: false };
   if (b.rejected) return out;
   const ast = parse(b.sql);
   if (ast.error) { out.error = ast.error; return out; }

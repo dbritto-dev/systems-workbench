@@ -12,6 +12,7 @@ import { clamp } from "../../lib/stats";
 import { makeDesk, ROWS, SORTS, CLASSIC, OFF_LIST } from "./sim";
 
 const CYCLE = 3.4, WALK = 0.7, RUN = 1.4;            // model seconds: a visitor's turn, the walk, when the query runs
+const HELD = 8;                                       // a sent visitor's turn (Send buttons, Watch): its result stays up
 
 export default function mount({ P, G, VISITOR_SVG }, root) {
   const { stage, svg } = root.figure;
@@ -23,6 +24,7 @@ export default function mount({ P, G, VISITOR_SVG }, root) {
   const vals = qa("[data-val]").map((g) => ({ g, text: g.querySelector("[data-val-text]") }));
   const slip = { shop: q('[data-slip="shop"]'), name: q('[data-slip="name"]'), sort: q('[data-slip="sort"]') };
   const drawers = qa("[data-drawer]");
+  const drawerBox = q("[data-drawers]");
   const shutters = qa("[data-shutter]");
   const cards = qa("[data-card]").map((g) => ({ g, text: g.querySelector("[data-card-text]") }));
   const errorPlaque = q("[data-error]");
@@ -41,13 +43,13 @@ export default function mount({ P, G, VISITOR_SVG }, root) {
 
   // ---------- settings and the run ----------
   const cfg = { name: "paste", sort: "allow", account: "full", attack: "0", tamper: "0", speed: 1 };
-  let desk, clock, turnAt, cur, prev, forced = [], seed = 3, outAt = new Map(), shown = null;
+  let desk, clock, turnAt, turnLen = CYCLE, cur, prev, forced = [], seed = 3, outAt = new Map(), shown = null;
   let people = [];                                   // { g, from, to, fade: "in" | "out" | null }
 
   function restart() {
     desk = makeDesk({ name: cfg.name, sort: cfg.sort, account: cfg.account, attack: Number(cfg.attack), tamper: Number(cfg.tamper) }, seed);
     seed = (seed * 7 + 3) % 9973 + 1;
-    clock = 0; turnAt = -CYCLE; cur = null; prev = null; shown = null;
+    clock = 0; turnAt = -CYCLE; turnLen = CYCLE; cur = null; prev = null; shown = null;
     for (const p of people) drop(p.g);
     people = [];
     // the line: the first turn walks the one at its front up to the window
@@ -87,7 +89,7 @@ export default function mount({ P, G, VISITOR_SVG }, root) {
     vals.forEach((v, i) => {
       const value = r && r.values[i] !== undefined ? String(r.values[i]) : "";
       setText(v.text, value);
-      setLit(v.g, value !== "");
+      setLit(v.g, value !== "" && r.from[i] === "in");      // the visitor's words; $1, the shop, is the app's
     });
     setText(slip.shop, r ? r.req.shop : "");
     setText(slip.name, r ? r.req.name : "");
@@ -117,12 +119,26 @@ export default function mount({ P, G, VISITOR_SVG }, root) {
     });
     shown = r;
   }
+  // painter's order for the drawers: lower row first, then by how far out and from left to right, so a pulled
+  // drawer covers the ones it stands in front of
+  const pulled = new Array(drawers.length).fill(0);
+  let drawerOrder = "";
+  function sortDrawers() {
+    const key = pulled.map((u) => (u > 0 ? 1 : 0)).join("");
+    if (key === drawerOrder) return;
+    drawerOrder = key;
+    const depth = (i) => depthOf([G.DRAWER_AT[i].x + G.DRAWER.w / 2, G.CAB_FRONT + (pulled[i] > 0 ? G.DRAWER.out : 0), G.DRAWER_AT[i].z], P);
+    drawers.map((_, i) => i).sort((a, b) => depth(a) - depth(b)).forEach((i) => drawerBox.appendChild(drawers[i]));
+  }
   function paintResult() {
+    pulled.fill(0);
     for (const [i, o] of outAt) {
       const u = o.back < Infinity ? 1 - clamp((clock - o.back) / 0.25) : clamp((clock - o.at) / 0.25);
+      pulled[i] = u;
       drawers[i].setAttribute("transform", u > 0 ? translateAlong(P, [0, G.DRAWER.out * easeInOutQuad(u), 0]) : "");
       if (o.back < Infinity && u <= 0) outAt.delete(i);
     }
+    sortDrawers();
     if (shown) shown.rows.forEach((_, k) => show(cards[k].g, clock >= cards[k].at));
   }
   function setShutters(r) {
@@ -165,6 +181,7 @@ export default function mount({ P, G, VISITOR_SVG }, root) {
   // ---------- the turn: walk up, write, run ----------
   function startTurn() {
     turnAt = clock;
+    turnLen = forced.length ? HELD : CYCLE;
     prev = cur; cur = null;
     // everyone steps forward; the one at the window leaves; a newcomer joins at the back
     for (const p of people) {
@@ -205,7 +222,7 @@ export default function mount({ P, G, VISITOR_SVG }, root) {
 
   function step(dt) {
     clock += dt * cfg.speed;
-    if (clock - turnAt >= CYCLE) startTurn();
+    if (clock - turnAt >= turnLen) startTurn();
     const t = clock - turnAt;
     if (!cur && t >= WALK) serveNow();
     if (cur && shown !== cur && t >= RUN) runNow();
