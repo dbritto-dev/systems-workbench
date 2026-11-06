@@ -1,7 +1,8 @@
 // @ts-nocheck: live code in the style of the other lessons; shared helpers come from src/runtime and src/lib.
 // The peg board in the browser: runs the filter one operation at a time (add, look up, delete), flies the key card
 // from the feed to the reader, threads it to the pegs its hashes pick, lights the answer, raises or lowers pegs when
-// the model commits a change, and carries the card on to the archive and the trays. mount() gets the build-time data
+// the model commits a change, and carries the card on to the archive and the trays. Lit is the current key's check
+// only: its pegs, threads and the board's answer; a wrong NO gets a pennant on its card in the tray instead. mount() gets the build-time data
 // from page.ts (projection, geometry, the card drawing) and root, the <wb-lesson>.
 import { translateAlong, iso } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
@@ -9,7 +10,7 @@ import { L, T } from "../../runtime/wb";
 import { show, setText, setLit, playPause } from "../../runtime/dom";
 import { lerp, smoothstep } from "../../lib/tween";
 import { clamp } from "../../lib/stats";
-import { makeLive, formula, M_LIVE } from "./sim";
+import { makeLive, formula, ratePct, M_LIVE } from "./sim";
 
 // Moments within an operation, in machine seconds (each operation's length is DUR in sim.ts).
 const AT = {
@@ -20,14 +21,14 @@ const AT = {
 };
 const PROBE_LEN = 0.3;
 
-export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
+export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG, MORE_SVG }, root) {
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const NS = "http://www.w3.org/2000/svg";
   const stat = (key, value) => root.stat(key, value);
   const boardG = q("[data-board]");
-  const pegs = G.PEG_XY.map((_, i) => ({ g: q('[data-peg="' + i + '"]'), hole: q('[data-hole="' + i + '"]'), pin: q('[data-pin="' + i + '"]'), rings: null, n: -1, lit: null }));
-  // the counting filter's rings: built the first time it's chosen, one spindle and RING.max rings per peg
+  const pegs = G.PEG_XY.map((_, i) => ({ g: q('[data-peg="' + i + '"]'), hole: q('[data-hole="' + i + '"]'), pin: q('[data-pin="' + i + '"]'), rings: null, more: null, n: -1, lit: null }));
+  // the counting filter's rings: built the first time it's chosen, one spindle, RING.max rings and a "+N" tag per peg
   function buildRings() {
     if (pegs[0].rings) return;
     pegs.forEach((p, i) => {
@@ -36,24 +37,26 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
       set.setAttribute("data-ringset", "");
       let html = '<g transform="' + translateAlong(P, [x, y, 0]) + '">' + SPINDLE_SVG + "</g>";
       for (let j = 0; j < G.RING.max; j++) html += '<g class="wb-lit-group" data-ring style="display:none" transform="' + translateAlong(P, [x, y, j * G.RING.pitch]) + '">' + RING_SVG + "</g>";
+      html += '<g data-more style="display:none" transform="' + translateAlong(P, [x, y, 0]) + '">' + MORE_SVG + "</g>";
       set.innerHTML = html;
       p.g.appendChild(set);
       p.rings = [...set.querySelectorAll("[data-ring]")];
+      const more = set.querySelector("[data-more]");
+      p.more = { g: more, txt: more.querySelector("[data-more-text]") };
     });
   }
   const signs = { no: q('[data-sign="no"]'), maybe: q('[data-sign="maybe"]') };
-  const lampSolids = q("[data-lamp]").querySelectorAll(".iso-solid"), lampBulb = lampSolids[lampSolids.length - 1];
-  // the trays: the latest cards stand in a row, newest on the left; a stored key the board said NO to stays lit
+  // the trays: the latest cards lie in a row, newest on the left; a stored key the board said NO to has a pennant
   const rest = Object.fromEntries(["no", "found", "fp"].map((n) => [n, { list: [], slots: G.TRAY_SLOTS[n].map((_, j) => {
     const g = q('[data-rest="' + n + "-" + j + '"]');
-    return { g, txt: g.querySelector("[data-rest-text]"), card: g.querySelector("[data-card]") };
+    return { g, txt: g.querySelector("[data-rest-text]"), flag: g.querySelector("[data-flag]") };
   }) }]));
   function paintTray(name) {
     const r = rest[name];
     r.slots.forEach((sl, j) => {
       const c = r.list[j];
       show(sl.g, !!c);
-      if (c) { setText(sl.txt, String(c.key)); setLit(sl.card, c.wrong); }
+      if (c) { setText(sl.txt, String(c.key)); if (sl.flag) show(sl.flag, c.wrong); }
     });
   }
   const counters = Object.fromEntries(["keys", "up", "fn", "hashes", "no", "found", "fp"].map((n) => [n, WB.counter(svg, n, P)]));
@@ -63,7 +66,7 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
   const card = document.createElementNS(NS, "g");
   card.innerHTML = CARD_SVG;
   fly.appendChild(card);
-  const cardTxt = card.querySelector("[data-card-text]"), cardLit = card.querySelector("[data-card]");
+  const cardTxt = card.querySelector("[data-card-text]");
   card.style.display = "none";
 
   // threads from the card to the pegs: one path per hash
@@ -89,7 +92,11 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
     p.n = n; p.lit = lit;
     show(p.hole, !!(lit && n === 0));
     if (mode() === "plain") { show(p.pin, n > 0); setLit(p.pin, lit && n > 0); }
-    else p.rings.forEach((r, j) => { show(r, n > j); setLit(r, lit && n > j); });
+    else {
+      p.rings.forEach((r, j) => { show(r, n > j); setLit(r, lit && n > j); });
+      show(p.more.g, n > G.RING.max);
+      if (n > G.RING.max) setText(p.more.txt, "+" + (n - G.RING.max));
+    }
   }
   function pegTop(i, n) {
     const [x, y] = G.PEG_XY[i];
@@ -149,17 +156,19 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
   const n1 = (k, en, es) => (k === 1 ? T("1 peg " + en, "1 clavija " + es) : T(k + " pegs " + en, k + " clavijas " + es));
   function line(o, s) {
     const a = AT[kind(o)], key = "#" + o.key, k = o.distinct;
+    // before the outcome: what the machine is doing with this card, from the moment it appears
+    const pk = n1(k, "", ""), its = k === 1 ? T("its peg", "su clavija") : T("its " + k + " pegs", "sus " + k + " clavijas");
     if (o.type === "add") {
-      if (s < a.commit) return null;
+      if (s < a.commit) return T(key + " · adding · its hashes pick " + pk.en.trim(), key + " · se agrega · sus hashes eligen " + pk.es.trim());
       const what = mode() === "count" ? T("a ring on each of " + n1(k, "", "").en.trim(), "un anillo en " + n1(k, "", "").es.trim()) : n1(k, "up", "arriba");
       return T(key + " added · " + what.en + " · card to the archive", key + " agregada · " + what.es + " · tarjeta al archivo");
     }
     if (o.type === "del") {
-      if (s < a.commit) return null;
+      if (s < a.commit) return T(key + " · deleting · its hashes pick " + pk.en.trim(), key + " · se borra · sus hashes eligen " + pk.es.trim());
       if (mode() === "count") return T(key + " deleted · a ring off each of " + n1(k, "", "").en.trim(), key + " borrada · un anillo menos en " + n1(k, "", "").es.trim());
       return T(key + " deleted · " + n1(k, "pulled down", "").en + ", shared or not", key + " borrada · " + n1(k, "abajo", "abajo").es + (k === 1 ? ", compartida o no" : ", compartidas o no"));
     }
-    if (s < a.verdict) return null;
+    if (s < a.verdict) return T(key + " · lookup · checking " + its.en, key + " · búsqueda · revisa " + its.es);
     if (!o.maybe) {
       const down = k === 1 ? T("its peg is down", "su clavija está abajo") : T(o.down + " of its " + k + " pegs are down", o.down + " de sus " + k + " clavijas están abajo");
       if (o.fn) return T(key + " is stored, but " + down.en + " · NO · a false negative", key + " está guardada, pero " + down.es + " · NO · falso negativo");
@@ -200,7 +209,6 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
     const verdict = o.type === "look" && s >= a.verdict;
     setLit(signs.no, !!(verdict && !o.maybe));
     setLit(signs.maybe, !!(verdict && o.maybe));
-    lampBulb.toggleAttribute("data-lit", !!(o.type === "look" && o.fp && s >= AT.maybe.found));
     // the card
     const c = cardAt(o, s);
     show(card, !!c);
@@ -208,7 +216,6 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
       setText(cardTxt, (o.type === "add" ? "+" : o.type === "del" ? "−" : "") + o.key);
       card.setAttribute("transform", translateAlong(P, c.p));
       card.style.opacity = c.o < 1 ? String(Math.max(0, c.o)) : "";
-      setLit(cardLit, !!((o.fp && s >= AT.maybe.found) || (o.fn && s >= a.verdict)));
     }
     // stats and counters change when the machine shows the outcome
     const statAt = o.type === "look" ? (o.maybe ? AT.maybe.found : a.verdict) : commitAt;
@@ -233,11 +240,10 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
     stat("keys", st.keys);
     stat("up", L(st.up + " of " + M_LIVE, st.up + " de " + M_LIVE));
     stat("no", st.saidNo);
-    stat("fp", st.absent ? L(st.fp + " of " + st.absent, st.fp + " de " + st.absent) + " · " + pctOf(st.fp / st.absent) : "0");
-    stat("pred", pctOf(formula(k, st.keys, M_LIVE)));
+    stat("fp", st.absent ? L(st.fp + " of " + st.absent, st.fp + " de " + st.absent) + " · " + ratePct(st.fp / st.absent) : "0");
+    stat("pred", ratePct(formula(k, st.keys, M_LIVE)));
     stat("fn", st.fn);
   }
-  const pctOf = (x) => (x >= 0.1 ? Math.round(100 * x) + "%" : (100 * x).toFixed(1) + "%");
 
   // ---------- the loop ----------
   let statTimer = 0;
@@ -258,11 +264,13 @@ export default function mount({ P, G, CARD_SVG, RING_SVG, SPINDLE_SVG }, root) {
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };
-  const actions = {
-    add: () => { model.force("add"); root.figure.say(L("next: a new key is added", "a continuación: se agrega una clave nueva")); wake(); },
-    check: () => { model.force("look"); root.figure.say(L("next: a lookup for a stored key", "a continuación: una búsqueda de una clave guardada")); wake(); },
-    reset: () => restart(),
-  };
+  // A button's operation starts at once: the one on the machine is cut short, its card straight to its tray.
+  function now(what) {
+    model.force(what);
+    finish(op); op = model.next(); opT = 0; said = null;
+    paint(); showStats(); wake();
+  }
+  const actions = { add: () => now("add"), check: () => now("look"), reset: () => restart() };
   root.on("action", (name) => actions[name]?.());
 
   // ---------- "Watch it on the machine": an experiment's settings ----------

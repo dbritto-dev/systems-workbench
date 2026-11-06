@@ -6,6 +6,16 @@
 import { fmix32, xorshift32 } from "../../lib/random";
 import { averageOver } from "../../lib/stats";
 
+/** A rate as a percentage with as many decimals as it needs: 0.138 → "14%", 0.0082 → "0.82%", 0.000064 → "0.0064%",
+ *  0 → "0%". Shared by the experiment cards and the panel. */
+export function ratePct(x) {
+  if (!(x > 0)) return "0%";
+  if (x >= 0.1) return Math.round(100 * x) + "%";
+  if (x >= 0.01) return (100 * x).toFixed(1) + "%";
+  if (x >= 0.001) return (100 * x).toFixed(2) + "%";
+  return (100 * x).toFixed(4).replace(/0+$/, "") + "%";
+}
+
 /** The counting filter's counters are 4 bits wide, the usual choice: they stop at 15 and a full one never goes down. */
 export const CAP = 15;
 

@@ -4,14 +4,14 @@ import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { n0, int, pct } from "../../lib/format";
 import { LIT_FILL_CSS } from "../../../workbench/parts.mjs";
-import { buildFigure, cardSvg, ringSvg, spindleSvg, P, GEOMETRY } from "./figure";
-import { paysRun, hashesRun, memoryRun, overRun, deletesRun, formula, bestK, N, PAYS, HASHES, MEMORY, OVER, DELETES, M_LIVE, REPLACE_EVERY, PRESENT_SHARE, CAP } from "./sim";
+import { buildFigure, cardSvg, ringSvg, spindleSvg, moreSvg, P, GEOMETRY } from "./figure";
+import { paysRun, hashesRun, memoryRun, overRun, deletesRun, formula, bestK, ratePct, N, PAYS, HASHES, MEMORY, OVER, DELETES, M_LIVE, REPLACE_EVERY, PRESENT_SHARE, CAP } from "./sim";
 
 // Experiment results, computed at build time from the same filter the machine runs (eight seeded runs each).
 const R = { pays: paysRun(), hashes: hashesRun(), memory: memoryRun(), over: overRun(), deletes: deletesRun() };
 
-// A rate as a percentage with as many decimals as it needs: 0.138 → "14%", 0.0082 → "0.82%", 0.000064 → "0.0064%".
-const rate = (x) => (x >= 0.1 ? pct(x) : x >= 0.01 ? (100 * x).toFixed(1) + "%" : x >= 0.001 ? (100 * x).toFixed(2) + "%" : (100 * x).toFixed(4).replace(/0+$/, "") + "%");
+// A rate as a percentage with as many decimals as it needs (the same helper as the panel's).
+const rate = ratePct;
 // "1 in N", N to two significant figures.
 const oneIn = (x) => { const n = 1 / x, p = 10 ** Math.max(0, Math.floor(Math.log10(n)) - 1); return int(Math.round(n / p) * p); };
 const top = (...xs) => Math.max(...xs) * 1.08 || 1;
@@ -203,13 +203,13 @@ export default defineLesson({
     plate: {
       title: t("Peg board", "Tablero de clavijas"),
       keys: [
-        { mark: "lit", label: t("The current key's pegs and threads, and the board's answer; a card the board got wrong; the archive lamp when a trip finds nothing", "Las clavijas e hilos de la clave actual y la respuesta del tablero; una tarjeta en la que el tablero se equivocó; la lámpara del archivo cuando un viaje no encuentra nada") },
-        { mark: "raised", label: t("Key cards: the key's number, + when it is being added, − when deleted; pegs that are up", "Tarjetas de claves: el número de la clave, + cuando se agrega, − cuando se borra; clavijas arriba") },
+        { mark: "lit", label: t("The current key's check: its pegs, the threads to them, and the board's answer", "La revisión de la clave actual: sus clavijas, los hilos hacia ellas y la respuesta del tablero") },
+        { mark: "raised", label: t("Key cards: the key's number, + when it is being added, − when deleted, with a pennant in SAID NO when the key was stored (a false negative); pegs that are up", "Tarjetas de claves: el número de la clave, + cuando se agrega, − cuando se borra, con un banderín en DIJO NO cuando la clave estaba guardada (un falso negativo); clavijas arriba") },
         { mark: "flat", label: t("The board: " + M_LIVE + " pegs in five rows of sixteen", "El tablero: " + M_LIVE + " clavijas en cinco filas de dieciséis") },
       ],
       caption: t(
-        "The board has " + M_LIVE + " pegs (the filter's bits); pegs per key sets how many keys it is planned for (" + M_LIVE + " ÷ 5 = 16). A key's hashes pick its pegs, and two hashes can pick the same one. Adding a key raises its pegs and files the card in the archive. A lookup checks them: one peg down is a sure NO, and the card goes to SAID NO without a trip; all up is MAYBE, and the card goes to the archive, then to FOUND, or to FALSE POSITIVES when other keys had raised all its pegs. Lookups are " + pct(PRESENT_SHARE) + " stored keys and " + pct(1 - PRESENT_SHARE) + " new ones. With deletes on, after every " + REPLACE_EVERY + " lookups one stored key is deleted and a new one added: pulling its pegs down also pulls pegs other keys need, which shows up as FALSE NEGATIVES; a counting filter stacks one ring per key on each peg and takes one off instead.",
-        "El tablero tiene " + M_LIVE + " clavijas (los bits del filtro); clavijas por clave fija para cuántas claves está planeado (" + M_LIVE + " ÷ 5 = 16). Los hashes de una clave eligen sus clavijas, y dos hashes pueden elegir la misma. Agregar una clave levanta sus clavijas y guarda la tarjeta en el archivo. Una búsqueda las revisa: una clavija abajo es un NO seguro, y la tarjeta va a DIJO NO sin viaje; todas arriba es QUIZÁS, y la tarjeta va al archivo y después a ENCONTRADAS, o a FALSOS POSITIVOS cuando otras claves habían levantado todas sus clavijas. Las búsquedas son un " + pct(PRESENT_SHARE) + " de claves guardadas y un " + pct(1 - PRESENT_SHARE) + " de claves nuevas. Con borrados, después de cada " + REPLACE_EVERY + " búsquedas se borra una clave guardada y se agrega una nueva: bajar sus clavijas también baja clavijas que otras claves necesitan, y eso aparece como FALSOS NEGATIVOS; un filtro con contadores apila un anillo por clave en cada clavija y quita uno en su lugar.",
+        "The board has " + M_LIVE + " pegs (the filter's bits); pegs per key sets how many keys it is planned for (" + M_LIVE + " ÷ 5 = 16). A key's hashes pick its pegs, and two hashes can pick the same one. Adding a key raises its pegs and files the card in the archive. A lookup checks them: one peg down is a sure NO, and the card goes to SAID NO without a trip; all up is MAYBE, and the card goes to the archive, then to FOUND, or to FALSE POSITIVES when other keys had raised all its pegs. Lookups are " + pct(PRESENT_SHARE) + " stored keys and " + pct(1 - PRESENT_SHARE) + " new ones. With deletes on, after every " + REPLACE_EVERY + " lookups one stored key is deleted and a new one added: pulling its pegs down also pulls pegs other keys need, which shows up as FALSE NEGATIVES; a counting filter stacks one ring per key on each peg (past four, +N) and takes one off instead.",
+        "El tablero tiene " + M_LIVE + " clavijas (los bits del filtro); clavijas por clave fija para cuántas claves está planeado (" + M_LIVE + " ÷ 5 = 16). Los hashes de una clave eligen sus clavijas, y dos hashes pueden elegir la misma. Agregar una clave levanta sus clavijas y guarda la tarjeta en el archivo. Una búsqueda las revisa: una clavija abajo es un NO seguro, y la tarjeta va a DIJO NO sin viaje; todas arriba es QUIZÁS, y la tarjeta va al archivo y después a ENCONTRADAS, o a FALSOS POSITIVOS cuando otras claves habían levantado todas sus clavijas. Las búsquedas son un " + pct(PRESENT_SHARE) + " de claves guardadas y un " + pct(1 - PRESENT_SHARE) + " de claves nuevas. Con borrados, después de cada " + REPLACE_EVERY + " búsquedas se borra una clave guardada y se agrega una nueva: bajar sus clavijas también baja clavijas que otras claves necesitan, y eso aparece como FALSOS NEGATIVOS; un filtro con contadores apila un anillo por clave en cada clavija (más de cuatro, +N) y quita uno en su lugar.",
       ),
       stage: { "data-pegboard": "" },
       label: t("Bloom filter simulation. Space pauses or resumes.", "Simulación de un filtro de Bloom. Espacio pausa o reanuda."),
@@ -249,5 +249,5 @@ export default defineLesson({
 .iso-stage [data-layer] text,.iso-stage [data-threads]{pointer-events:none}
 ${LIT_FILL_CSS}
 `,
-  data: { P, G: GEOMETRY, CARD_SVG: cardSvg(), RING_SVG: ringSvg(), SPINDLE_SVG: spindleSvg() },
+  data: { P, G: GEOMETRY, CARD_SVG: cardSvg(), RING_SVG: ringSvg(), SPINDLE_SVG: spindleSvg(), MORE_SVG: moreSvg() },
 });

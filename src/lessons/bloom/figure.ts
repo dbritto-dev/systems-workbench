@@ -6,12 +6,12 @@
 //   Right: the board, 80 pegs in five rows of sixteen. A peg is up once some key has raised it; in a counting filter
 //         each peg is a spindle of rings, one per key. Behind it the ARCHIVE cabinet, the slow store the filter
 //         protects (a disk), with its KEYS counter; on its top, the inbox where a MAYBE card is checked, and the FOUND
-//         and FALSE POSITIVES trays.
+//         and FALSE POSITIVES trays. A spindle shows four rings at most; past that a "+N" tag above it counts the rest.
 // Cards only travel behind or beside the faces that carry counters and captions, never in front of them, so nothing
 // moving covers a number or a word. Cards that land in a tray lie flat. Every number is a counter on a real object.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, faceText, sign, lamp } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, faceText, sign, pennant } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { makeLive, M_LIVE } from "./sim";
@@ -45,7 +45,6 @@ const TOP_TRAYS = {
   fp: { x: ARCH.x + 102, y: ARCH.y + 4, w: 80, d: 26, r: 1.2 },
 };
 const TOP_TRAY_H = 9;
-const LAMP_AT = [TOP_TRAYS.fp.x + TOP_TRAYS.fp.w - 7, TOP_TRAYS.fp.y + 7, ARCH_H + TOP_TRAY_H];
 
 // ---------- the board ----------
 export const BOARD = { x: -64, y: -44, w: 186, d: 82, r: 2 };
@@ -69,7 +68,7 @@ const slotsIn = (p, z) => {
 export const TRAY_SLOTS = {
   no: slotsIn(NO_TRAY, TRAY_H),
   found: slotsIn(TOP_TRAYS.found, ARCH_H + TOP_TRAY_H),
-  fp: slotsIn(TOP_TRAYS.fp, ARCH_H + TOP_TRAY_H).slice(0, -1),       // the last place is the lamp's
+  fp: slotsIn(TOP_TRAYS.fp, ARCH_H + TOP_TRAY_H),
 };
 // Where the moving (upright) card lands: at the back of the tray, behind the newest slot, well clear of the counter.
 const BACKS = { no: NO_TRAY, found: TOP_TRAYS.found, fp: TOP_TRAYS.fp };
@@ -120,7 +119,9 @@ function tray(name, p, z0, h, words) {
   const out = [S(k.slabOf(p, z0, h, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(p, 2), z0 + h, P), { tone: "lo" }) })];
   out.push(counter({ x: p.x + 4, y: front, z: z0 + 0.7, count: 3, name }));
   out.push(text(p.x + 4 + 3 * CW + 2, front, z0 + 2.3, words));
-  TRAY_SLOTS[name].forEach((spot, j) => out.push(`<g data-rest="${name}-${j}" style="display:none">${flatCard(spot)}</g>`));
+  // a pennant on a card the board got wrong: a stored key it said NO to (a false negative)
+  const flag = ([x, y, z]) => `<g data-flag style="display:none">${pennant(P, { x: x - CARD.w / 2 + 1.2, y: y - CARD.h / 2 + 1.2, z: z + 0.6, height: 6, length: 4.5, drop: 3 })}</g>`;
+  TRAY_SLOTS[name].forEach((spot, j) => out.push(`<g data-rest="${name}-${j}" style="display:none">${flatCard(spot)}${name === "no" ? flag(spot) : ""}</g>`));
   return out.join("");
 }
 
@@ -146,8 +147,6 @@ function archive() {
   out.push(S(k.slabOf({ x: ix - 8.5, y: iy - 2.4, w: 17, d: 4.8, r: 0.6 }, ARCH_H, 0.8, P, 2, 0.2), { tone: "hi", crease: "lo" }));
   out.push(tray("found", TOP_TRAYS.found, ARCH_H, TOP_TRAY_H, t("FOUND", "ENCONTRADAS")));
   out.push(tray("fp", TOP_TRAYS.fp, ARCH_H, TOP_TRAY_H, t("FALSE POSITIVES", "FALSOS POSITIVOS")));
-  // the lamp: lit when a trip finds nothing (a false positive)
-  out.push(`<g data-lamp>${lamp(P, LAMP_AT, { r: 3 })}</g>`);
   return out.join("");
 }
 
@@ -158,6 +157,8 @@ function archive() {
 const pinSvg = () => S(k.cylinder(0, 0, PIN.r, BOARD_H + 0.3, PIN.h, P, 12), { tone: "hi", crease: "lo" });
 export const ringSvg = () => S(k.cylinder(0, 0, RING.r, BOARD_H + 0.3, RING.h, P, 12), { tone: "hi", crease: "lo" });
 export const spindleSvg = () => L(k.segment([0, 0, BOARD_H], [0, 0, BOARD_H + RING.max * RING.pitch + 0.8], P), { tone: "mid" });
+/** The "+N" tag over a spindle with more rings than it shows: upright, just above the top of the spindle. */
+export const moreSvg = () => faceText(P, [0, 0, BOARD_H + RING.max * RING.pitch + 2], "+1", { size: 3.2, tone: "hi", anchor: "middle", attr: "data-more-text" });
 const disc = (x, y, r, z) => k.onTop(k.circleRing(x, y, r, 14), z, P, true);
 function peg(i, n, pin) {
   const [x, y] = PEG_XY[i];
@@ -207,8 +208,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A Bloom filter as a peg board beside a reader, in front of an archive, on a base plate. On the left, the reader: a desk where the current key card stands, with a verdict board at its back carrying a NO sign, a MAYBE sign and a counter of hashes; in front of it, the SAID NO tray. To the right, a board carries 80 pegs in five rows of sixteen, with counters for the pegs that are up and the false negatives. Threads run from the card to the pegs its hashes pick. Adding a key raises its pegs; a lookup answers no if any of them is down and maybe if all are up. In a counting filter each peg is a spindle of rings, one ring per key. Behind the board stands the archive, the slow store, with a counter of the keys it holds; on its top, an inbox where a maybe card is checked, a FOUND tray and a FALSE POSITIVES tray, for cards the board let through that the archive didn't have, with a lamp that lights when that happens.",
-      "Un filtro de Bloom como un tablero de clavijas junto a un lector, frente a un archivo, sobre una placa base. A la izquierda, el lector: un escritorio donde se para la tarjeta de la clave actual, con un tablero de veredicto atrás que lleva un letrero NO, un letrero QUIZÁS y un contador de hashes; delante, la bandeja DIJO NO. A la derecha, un tablero lleva 80 clavijas en cinco filas de dieciséis, con contadores de clavijas arriba y de falsos negativos. Unos hilos van de la tarjeta a las clavijas que eligen sus hashes. Agregar una clave levanta sus clavijas; una búsqueda responde no si alguna está abajo y quizás si todas están arriba. En un filtro con contadores, cada clavija es un eje con anillos, un anillo por clave. Detrás del tablero está el archivo, el almacenamiento lento, con un contador de las claves que guarda; encima, una bandeja de entrada donde se revisa una tarjeta con quizás, una bandeja ENCONTRADAS y una bandeja FALSOS POSITIVOS, para las tarjetas que el tablero dejó pasar y el archivo no tenía, con una lámpara que se enciende cuando eso pasa.",
+      "A Bloom filter as a peg board beside a reader, in front of an archive, on a base plate. On the left, the reader: a desk where the current key card stands, with a verdict board at its back carrying a NO sign, a MAYBE sign and a counter of hashes; in front of it, the SAID NO tray. To the right, a board carries 80 pegs in five rows of sixteen, with counters for the pegs that are up and the false negatives. Threads run from the card to the pegs its hashes pick. Adding a key raises its pegs; a lookup answers no if any of them is down and maybe if all are up. A card in the SAID NO tray with a pennant was a stored key: a false negative. In a counting filter each peg is a spindle of rings, one ring per key, with a +N tag above a spindle holding more than four. Behind the board stands the archive, the slow store, with a counter of the keys it holds on its right side; on its top, from left to right, an inbox where a maybe card is checked, a FOUND tray and a FALSE POSITIVES tray, for cards the board let through that the archive didn't have.",
+      "Un filtro de Bloom como un tablero de clavijas junto a un lector, frente a un archivo, sobre una placa base. A la izquierda, el lector: un escritorio donde se para la tarjeta de la clave actual, con un tablero de veredicto atrás que lleva un letrero NO, un letrero QUIZÁS y un contador de hashes; delante, la bandeja DIJO NO. A la derecha, un tablero lleva 80 clavijas en cinco filas de dieciséis, con contadores de clavijas arriba y de falsos negativos. Unos hilos van de la tarjeta a las clavijas que eligen sus hashes. Agregar una clave levanta sus clavijas; una búsqueda responde no si alguna está abajo y quizás si todas están arriba. Una tarjeta con un banderín en la bandeja DIJO NO era una clave guardada: un falso negativo. En un filtro con contadores, cada clavija es un eje con anillos, un anillo por clave, con una etiqueta +N sobre un eje que tiene más de cuatro. Detrás del tablero está el archivo, el almacenamiento lento, con un contador de las claves que guarda en su costado derecho; encima, de izquierda a derecha, una bandeja de entrada donde se revisa una tarjeta con quizás, una bandeja ENCONTRADAS y una bandeja FALSOS POSITIVOS, para las tarjetas que el tablero dejó pasar y el archivo no tenía.",
     ),
     body: [
       plate(),
