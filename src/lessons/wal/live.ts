@@ -22,7 +22,8 @@ export default function mount({ P, G, SLIP_SVG }, root) {
   const dirty = Array.from({ length: PAGES }, (_, i) => q(`[data-dirty="${i}"]`));
   const clientEls = qa("[data-client]");
   const clientsText = q("[data-clients]");
-  const clerk = q("[data-clerk]"), clerkBody = q("[data-clerk-body]");
+  const clerk = q("[data-clerk]");
+  const more = q("[data-more]"), moreLabel = q("[data-more-label]");
   const counters = Object.fromEntries(["replay", "os", "buffer", "acked", "ondisk", "lost"].map((n) => [n, WB.counter(svg, n, P)]));
   const fsync = WB.dial(svg, "fsync", P);
 
@@ -30,6 +31,7 @@ export default function mount({ P, G, SLIP_SVG }, root) {
   const cfg = { log: "on", commit: "group", ckpt: 1000, clients: 4, speed: 0.01 };
   let model, clock, logAt, seed = 5, pages = null, lost = 0, phase = "run", phaseT = 0, crashRes = null, plan = [], screenT = 0;
   let saidAt = -9, saidRank = 0, lastCk = null, saidLsn = 0;
+  let warm = 0;                                        // a Watch's warm-up: model ms run unseen at the start of each run it stages
   const slips = [], freeSlips = [];
 
   function restart(keepPages) {
@@ -40,8 +42,15 @@ export default function mount({ P, G, SLIP_SVG }, root) {
     WB.pose(svg, "lever", "on"); WB.pose(svg, "plunger", "up");
     show(clerk, false);
     const n = Number(cfg.clients);
-    clientEls.forEach((el, i) => show(el, i < Math.min(n, 8)));
+    clientEls.forEach((el, i) => show(el, i < Math.min(n, clientEls.length)));
+    show(more, n > clientEls.length); setText(moreLabel, "+" + (n - clientEls.length));
     setText(clientsText, L(n + " CLIENTS", n + " CLIENTES"));
+    // a Watch that still has crashes to stage starts each run warmed up, past the first checkpoint and flush
+    if (warm && plan.length) {
+      clock = warm; model.runTo(clock);
+      logAt = model.log.length;
+      saidLsn = model.recs.length ? model.recs[model.recs.length - 1].lsn : 0;
+    }
     paint();
     showStats();
   }
@@ -55,6 +64,8 @@ export default function mount({ P, G, SLIP_SVG }, root) {
   }
   const int = (x) => Math.round(x).toLocaleString("en");
   const ms = (x) => (x < 10 ? x.toFixed(1) : String(Math.round(x))) + " ms";
+  // "1 record" / "2 records", in both languages
+  const nOf = (n, en1, en, es1, es) => (n === 1 ? T("1 " + en1, "1 " + es1) : T(int(n) + " " + en, int(n) + " " + es));
   function narrate() {
     for (; logAt < model.log.length; logAt++) {
       const e = model.log[logAt];
@@ -63,12 +74,12 @@ export default function mount({ P, G, SLIP_SVG }, root) {
       switch (e.type) {
         case "flush":
           if (cfg.commit === "group" || cfg.commit === "each") say(1, nRec > 1 ? T("fsync: " + nRec + " commits in one flush · OK after it", "fsync: " + nRec + " commits en una escritura · OK después") : T("fsync: one commit · OK once it's on disk", "fsync: un commit · OK cuando está en disco"));
-          else say(3, T("flush: " + int(nRec) + " acknowledged records reach disk", "escritura: " + int(nRec) + " registros ya confirmados llegan al disco"));
+          else { const w = nOf(nRec, "acknowledged record reaches", "acknowledged records reach", "registro ya confirmado llega", "registros ya confirmados llegan"); say(3, T("flush: " + w.en + " disk", "escritura: " + w.es + " al disco")); }
           break;
         case "ckptStart": say(2, T("checkpoint: log on disk up to record " + int(e.redo) + ", then the dirty pages", "checkpoint: log en disco hasta el registro " + int(e.redo) + ", luego las páginas sucias")); break;
-        case "ckptDone": say(3, cfg.log === "on"
-          ? T("checkpoint done: " + e.pages + " pages written · recovery would start at record " + int(e.redo), "checkpoint listo: " + e.pages + " páginas escritas · la recuperación empezaría en el registro " + int(e.redo))
-          : T(e.pages + " pages written · the only copy that survives a crash", e.pages + " páginas escritas · la única copia que sobrevive a una caída")); break;
+        case "ckptDone": { const pw = nOf(e.pages, "page written", "pages written", "página escrita", "páginas escritas"); say(3, cfg.log === "on"
+          ? T("checkpoint done: " + pw.en + " · recovery would start at record " + int(e.redo), "checkpoint listo: " + pw.es + " · la recuperación empezaría en el registro " + int(e.redo))
+          : T(pw.en + " · the only copy that survives a crash", pw.es + " · la única copia que sobrevive a una caída")); break; }
       }
     }
     if (logAt > 4000) { model.log.splice(0, logAt); logAt = 0; }
@@ -91,9 +102,9 @@ export default function mount({ P, G, SLIP_SVG }, root) {
     sheets[name].forEach((el, i) => { show(el, i < k); setLit(el, lit && i < k); });
   }
   const perBook = () => Math.max(1, Number(cfg.ckpt) / G.BOOKS);
-  function shelf(count, litAt = -1) {
+  function shelf(count) {
     const k = Math.min(G.BOOKS, Math.ceil(count / perBook()));
-    books.forEach((el, i) => { show(el, i < k); setLit(el, i === litAt); });
+    books.forEach((el, i) => show(el, i < k));
   }
   function drawers(on) { for (let i = 0; i < PAGES; i++) WB.pose(svg, "drawer-" + i, on.includes(i) ? "out" : "in"); }
 
@@ -170,13 +181,14 @@ export default function mount({ P, G, SLIP_SVG }, root) {
     // memory is gone: the log buffer and the pages in memory; the OS cache too on a power cut
     stack("buf", 0, false); counters.buffer.set(0);
     const osLeft = cfg.log === "on" && kind === "process" ? model.osLsn - model.diskLsn : 0;
-    stack("os", osLeft, false); counters.os.setClamped(osLeft);
+    // a process crash leaves the OS cache: records there still reach disk, but until then they stay at risk
+    stack("os", osLeft, cfg.commit === "async" || cfg.commit === "write"); counters.os.setClamped(osLeft);
     cards.forEach((c) => show(c, false)); dirty.forEach((d) => show(d, false));
     fsync.set(0);
     counters.lost.setClamped(lost);
     const what = kind === "power" ? T("power cut", "corte de energía") : T("process killed", "proceso matado");
     const tail = lost
-      ? T(" · " + int(lost) + " acknowledged commits lost", " · " + int(lost) + " commits confirmados perdidos")
+      ? (({ en, es }) => T(" · " + en, " · " + es))(nOf(lost, "acknowledged commit lost", "acknowledged commits lost", "commit confirmado perdido", "commits confirmados perdidos"))
       : T(" · no acknowledged commit lost", " · ningún commit confirmado perdido");
     say(9, T(what.en + tail.en, what.es + tail.es));
     showStats();
@@ -192,8 +204,12 @@ export default function mount({ P, G, SLIP_SVG }, root) {
       r.screen = clamp(r.replayMs / (1000 * cfg.speed), 1.2, 10);
       if (cfg.log === "on") {
         if (!r.replay) say(9, T("restart: nothing in the log after the checkpoint to replay", "reinicio: no hay nada en el log después del checkpoint que reproducir"));
-        else say(9, T("restart: replaying " + int(r.replay) + " records after the checkpoint · " + ms(r.replayMs), "reinicio: reproduce " + int(r.replay) + " registros después del checkpoint · " + ms(r.replayMs)));
-        show(clerk, true); setLit(clerkBody, true);
+        else {
+          const rec = nOf(r.replay, "record", "records", "registro", "registros");
+          if (!r.redo) say(9, T("restart: no checkpoint yet · replaying " + rec.en + " from the start of the log · " + ms(r.replayMs), "reinicio: todavía sin checkpoint · reproduce " + rec.es + " desde el principio del log · " + ms(r.replayMs)));
+          else say(9, T("restart: replaying " + rec.en + " after the checkpoint · " + ms(r.replayMs), "reinicio: reproduce " + rec.es + " después del checkpoint · " + ms(r.replayMs)));
+        }
+        show(clerk, true);
       } else {
         say(9, T("restart: no log to replay · the pages on disk are all there is", "reinicio: no hay log que reproducir · las páginas en disco son todo lo que queda"));
       }
@@ -203,8 +219,7 @@ export default function mount({ P, G, SLIP_SVG }, root) {
       const u = clamp(phaseT / r.screen);
       if (cfg.log === "on") {
         const k = Math.min(G.BOOKS, Math.ceil(r.replay / perBook()));
-        const at = Math.min(k - 1, Math.floor(u * k));
-        shelf(r.replay, at);
+        shelf(r.replay);
         counters.replay.setClamped(Math.round(r.replay * (1 - u)));
         const x = k ? lerp(G.bookXs[0], G.bookXs[Math.max(0, k - 1)], u) : G.bookXs[0];
         clerk.setAttribute("transform", translateAlong(P, [x, G.CLERK_Y, G.PLINTH_H]));
@@ -256,24 +271,26 @@ export default function mount({ P, G, SLIP_SVG }, root) {
     root.press(name, raw);
     if (name === "speed") { cfg.speed = Number(raw); return; }
     cfg[name] = String(raw);
-    if (!quiet) { plan = []; restart(); phaseT = 0; say(9, T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
+    if (!quiet) { plan = []; warm = 0; restart(); phaseT = 0; say(9, T("settings applied · run restarted", "ajustes aplicados · ejecución reiniciada")); }
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };
   const actions = {
     power: () => { crash("power"); wake(); },
     kill: () => { crash("process"); wake(); },
-    reset: () => { plan = []; restart(); phaseT = 0; say(9, T("started over", "empezó de nuevo")); },
+    reset: () => { plan = []; warm = 0; restart(); phaseT = 0; say(9, T("started over", "empezó de nuevo")); },
   };
   root.on("action", (name) => actions[name]?.());
 
   // ---------- "Watch it on the machine": an experiment's settings, and its crashes ----------
   root.on("watch", (w) => {
     for (const key of ["log", "commit", "ckpt", "clients", "speed"]) set(key, w[key], true);
+    // crashes at page seconds after the start; after a crash, the next one counts from the restart. While crashes
+    // are still to come, each run starts w.warm model ms in, so the first one lands after a checkpoint and a flush.
+    plan = (w.crashes || []).map(([kind, after]) => [kind, after]);
+    warm = w.warm || 0;
     restart();
     say(9, T("experiment's settings applied · run restarted", "ajustes del experimento aplicados · ejecución reiniciada"));
-    // crashes at page seconds after the start; after a crash, the next one counts from the restart
-    plan = (w.crashes || []).map(([kind, after]) => [kind, after]);
     wake();
   });
 

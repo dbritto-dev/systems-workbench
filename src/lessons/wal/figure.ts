@@ -1,11 +1,12 @@
 // @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
-// A ledger room. At the back, on the DISK plinth, what survives a power cut: the cabinet of PAGES ON DISK (drawers A
-// to F) and the shelf of the LOG ON DISK, whose books are the log records written since the last checkpoint (the
-// pennant marks its redo point; TO REPLAY counts them). In the middle, the power box (POWER lever, KILL plunger), the
-// OS CACHE tray with the FSYNC dial beside it, and the COMMITS board (ACKED, ON DISK, LOST). In front, the database's
-// desk, its memory: the page cards A to F lying on it (a pennant on a page that is newer than its copy on disk) and the LOG BUFFER
-// tray. The clients stand at the front right and send their commits to the desk. During recovery a clerk with a
-// clipboard walks the shelf, replaying its books.
+// A ledger room. At the back, on the disk plinth, what survives a power cut: the cabinet of PAGES ON DISK (drawers A
+// to F) and the shelf of the LOG ON DISK, whose books are the log records written since the last checkpoint's redo
+// point (TO REPLAY counts them). In the middle, the power box (POWER lever, KILL plunger), the OS CACHE tray with the
+// FSYNC dial beside it, and the low COMMITS board (ACKED, ON DISK, LOST), kept low so the books behind it show. In
+// front, the database's desk, its memory: the page cards A to F lying on it (a pennant on a page that is newer than its
+// copy on disk) and the LOG BUFFER tray. The clients stand at the front right and send their commits to the desk; past
+// eight, a "+N" tag counts the ones not drawn. During recovery a clerk with a clipboard walks the shelf, replaying its
+// books.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, digitCounter, person, figurine, dial, plaque, pennant, faceText, variants, litFill } from "../../../workbench/parts.mjs";
@@ -46,8 +47,8 @@ const OSC = { x: -40, y: -38, w: 70, d: 22, r: 1.4 };
 const OSC_H = 10;
 export const OS_TRAY = { x: OSC.x + 4, y: OSC.y + 4, w: 30, d: 14, z: OSC_H };
 const DIAL_AT = [OSC.x + OSC.w - 14, OSC.y + 11];
-const BOARD = { x: 36, y: -26, w: 70, d: 3, r: 0.6 };
-const BOARD_Z = 4, BOARD_H = 28;
+const BOARD = { x: 33, y: -26, w: 74, d: 3, r: 0.6 };
+const BOARD_Z = 2, BOARD_H = 25;           // low enough that the books on the shelf behind it show
 
 // ---------- the desk, in front ----------
 const DESK = { x: -102, y: 6, w: 134, d: 24, r: 2 };
@@ -112,20 +113,18 @@ function shelf() {
   // the shelf board the books stand on
   const board = { x: SHELF.x, y: SHELF.y + 3, w: SHELF.w, d: SHELF.d - 3, r: 0.6 };
   out.push(S(k.slabOf(board, PLINTH_H, 2, P, 2, 0.3), { tone: "mid", crease: "none" }));
-  // the redo point: a pennant at the left end
-  out.push(pennant(P, { x: SHELF.x + 3, y: BOOK.y + BOOK.d / 2, z: BOOK.z, height: 19, length: 7, drop: 5 }));
-  // the books, hidden until the log has records since the checkpoint
+  // the books, hidden until the log has records since the checkpoint's redo point (the shelf's left end)
   for (let i = 0; i < BOOKS; i++) {
     const x = BOOK.x0 + i * BOOK.step;
     const plan = { x, y: BOOK.y, w: BOOK.w, d: BOOK.d, r: 0.4 };
     const h = BOOK.h - (i % 3) * 1.2;
-    out.push(`<g class="wb-lit-group" data-book="${i}" style="display:none">${S(k.slabOf(plan, BOOK.z, h, P, 2, 0.2), { tone: "hi", crease: "lo" })}`
+    out.push(`<g data-book="${i}" style="display:none">${S(k.slabOf(plan, BOOK.z, h, P, 2, 0.2), { tone: "hi", crease: "lo" })}`
       + L(k.segment([x + 0.6, BOOK.y + BOOK.d, BOOK.z + h - 3], [x + BOOK.w - 0.6, BOOK.y + BOOK.d, BOOK.z + h - 3], P), { tone: "faint" }) + `</g>`);
   }
   return out.join("");
 }
 function clerk() {
-  return `<g data-clerk style="display:none"><g class="wb-lit-group" data-clerk-body>${litFill(person(P, [0, 0, 0], { scale: 0.85, holding: "clipboard" }))}</g></g>`;
+  return `<g data-clerk style="display:none">${person(P, [0, 0, 0], { scale: 0.85, holding: "clipboard" })}</g>`;
 }
 
 // ---------- middle row ----------
@@ -180,12 +179,13 @@ function board() {
   for (const x of [BOARD.x + 5, x1 - 5]) out.push(S(k.cylinder(x, BOARD.y + 1.5, 1.1, 0, z0, P, 12), { tone: "mid", crease: "none" }));
   out.push(S(k.slabOf(BOARD, z0, BOARD_H, P, 3, 0.4), { tone: "mid", crease: "lo" }));
   out.push(L(k.faceRectY(P, BOARD.x + 2, x1 - 2, face, z0 + 2, top - 2), { tone: "faint" }));
-  out.push(words(BOARD.x + 4.5, face, top - 6.4, t("COMMITS", "COMMITS"), 3.4, { tone: "hi" }));
-  const cnt = (x, name, w) => digitCounter(P, { x, y: face, z: z0 + 4, count: 4, w: 4.2, h: 6.4, gap: 0.5, pad: 0.9, name })
-    + words(x + 9.15, face, z0 + 13.2, w, 2.8, { anchor: "middle" });
-  out.push(cnt(BOARD.x + 4, "acked", t("ACKED", "CONFIRMADOS")));
-  out.push(cnt(BOARD.x + 27, "ondisk", t("ON DISK", "EN DISCO")));
-  out.push(cnt(BOARD.x + 50, "lost", t("LOST", "PERDIDOS")));
+  out.push(words(BOARD.x + 4.5, face, top - 5.2, t("COMMITS", "COMMITS"), 3.4, { tone: "hi" }));
+  // ACKED and ON DISK need five wheels: a Watch warmed up past a 10,000-record checkpoint counts beyond 9,999
+  const cnt = (x, name, w, count) => digitCounter(P, { x, y: face, z: z0 + 3.4, count, w: 3.9, h: 6.4, gap: 0.5, pad: 0.9, name })
+    + words(x + (count * 4.4 - 0.5) / 2, face, z0 + 12.6, w, 2.8, { anchor: "middle" });
+  out.push(cnt(BOARD.x + 3.5, "acked", t("ACKED", "CONFIRMADOS"), 5));
+  out.push(cnt(BOARD.x + 28.5, "ondisk", t("ON DISK", "EN DISCO"), 5));
+  out.push(cnt(BOARD.x + 53.5, "lost", t("LOST", "PERDIDOS"), 4));
   return out.join("");
 }
 
@@ -210,6 +210,8 @@ function clients() {
   const out = CLIENT_AT.map(([x, y], i) => `<g data-client="${i}"${i < 4 ? "" : ' style="display:none"'}>${figurine(P, [x, y, 0], { scale: 0.95 })}</g>`);
   out.push(plaque(P, { x: 58, y: 24, w: 40, d: 10 }));
   out.push(faceText(P, [78, 24 + 7, 0.8], t("4 CLIENTS", "4 CLIENTES"), { face: "top", size: 4, tone: "hi", anchor: "middle", attr: "data-clients" }));
+  // past eight clients, the ones not drawn: a "+N" tag after the last figure
+  out.push(`<g data-more style="display:none">${faceText(P, [103, 12, 0], "+8", { face: "top", size: 4, tone: "hi", anchor: "middle", attr: "data-more-label" })}</g>`);
   return out.join("");
 }
 
@@ -224,8 +226,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A ledger room on a base plate. At the back, a plinth marked DISK holds what survives a power cut: a cabinet of PAGES ON DISK with drawers A to F, and a shelf labelled LOG ON DISK whose books are the log records flushed since the last checkpoint; a pennant at its left end marks the checkpoint's redo point, and a TO REPLAY counter shows how many records recovery would replay. In the middle stand a power box with a POWER lever and a KILL plunger, an OS CACHE tray holding records handed to the operating system but not yet flushed, with an FSYNC dial whose needle sweeps on every flush, and a COMMITS board counting ACKED commits, commits ON DISK and acknowledged commits LOST in the last crash. In front, the database's desk holds its memory: page cards A to F, each with a pennant while it is newer than its copy on disk, and a LOG BUFFER tray. Sheets stacked in the trays are lit while they hold commits that were already acknowledged. Clients at the front right send their commits to the desk. During recovery a clerk with a clipboard walks along the shelf, replaying its books.",
-      "Una sala de libros contables sobre una placa base. Al fondo, una plataforma marcada DISCO tiene lo que sobrevive a un corte de energía: un gabinete de PÁGINAS EN DISCO con cajones de la A a la F, y un estante rotulado LOG EN DISCO cuyos libros son los registros del log escritos en disco desde el último checkpoint; un banderín en su extremo izquierdo marca el punto de rehacer (redo point) del checkpoint, y un contador POR REHACER muestra cuántos registros reproduciría la recuperación. En el medio hay una caja de energía con una palanca ENERGÍA y un pulsador MATAR, una bandeja CACHÉ DEL SO con los registros entregados al sistema operativo pero aún no escritos en disco, con un dial FSYNC cuya aguja da una vuelta en cada escritura a disco, y un tablero COMMITS que cuenta los commits CONFIRMADOS, los commits EN DISCO y los commits confirmados PERDIDOS en la última caída. Adelante, el escritorio de la base de datos tiene su memoria: tarjetas de página de la A a la F, cada una con un banderín mientras es más nueva que su copia en disco, y una bandeja BÚFER DEL LOG. Las hojas apiladas en las bandejas se encienden mientras tienen commits ya confirmados. Los clientes, adelante a la derecha, mandan sus commits al escritorio. Durante la recuperación, un empleado con un portapapeles recorre el estante y reproduce sus libros.",
+      "A ledger room on a base plate. At the back, a plinth holds what is on disk and survives a power cut: on the left, a cabinet of PAGES ON DISK with drawers A to F; on the right, a shelf labelled LOG ON DISK whose books are the log records flushed since the last checkpoint's redo point, starting at its left end, and a TO REPLAY counter showing how many records recovery would replay. In the middle, from left to right, stand a power box with a POWER lever and a KILL plunger, an OS CACHE tray holding records handed to the operating system but not yet flushed, with an FSYNC dial whose needle sweeps on every flush, and a low COMMITS board in front of the shelf counting ACKED commits, commits ON DISK and acknowledged commits LOST in the last crash. In front, the database's desk holds its memory: page cards A to F on the left, each with a pennant while it is newer than its copy on disk, and a LOG BUFFER tray on the right. Sheets in the trays and page cards are lit while they hold commits that were acknowledged but aren't on disk yet. Clients at the front right, behind a plaque that says how many there are, send their commits to the desk. During recovery a clerk with a clipboard walks along the shelf, replaying its books.",
+      "Una sala de libros contables sobre una placa base. Al fondo, una plataforma tiene lo que está en disco y sobrevive a un corte de energía: a la izquierda, un gabinete de PÁGINAS EN DISCO con cajones de la A a la F; a la derecha, un estante rotulado LOG EN DISCO cuyos libros son los registros del log escritos en disco desde el punto de rehacer (redo point) del último checkpoint, a partir de su extremo izquierdo, y un contador POR REHACER que muestra cuántos registros reproduciría la recuperación. En el medio, de izquierda a derecha, hay una caja de energía con una palanca ENERGÍA y un pulsador MATAR, una bandeja CACHÉ DEL SO con los registros entregados al sistema operativo pero aún no escritos en disco, con un dial FSYNC cuya aguja da una vuelta en cada escritura a disco, y un tablero COMMITS bajo, delante del estante, que cuenta los commits CONFIRMADOS, los commits EN DISCO y los commits confirmados PERDIDOS en la última caída. Adelante, el escritorio de la base de datos tiene su memoria: tarjetas de página de la A a la F a la izquierda, cada una con un banderín mientras es más nueva que su copia en disco, y una bandeja BÚFER DEL LOG a la derecha. Las hojas de las bandejas y las tarjetas de página se encienden mientras tienen commits confirmados que todavía no están en disco. Los clientes, adelante a la derecha, detrás de una placa que dice cuántos son, mandan sus commits al escritorio. Durante la recuperación, un empleado con un portapapeles recorre el estante y reproduce sus libros.",
     ),
     body: [
       plate(),
