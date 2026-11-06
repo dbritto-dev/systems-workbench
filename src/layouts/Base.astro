@@ -2,12 +2,15 @@
 // Every page: document head (title, description, language alternates), the theme set before first paint,
 // old ?lang= links sent to the right language's URL, and the UX foundation: styles/ux.css (focus ring, motion,
 // disabled, target sizes) and the input modality on <html data-ux-modality>, heard from the first key or tap
-// (runtime/modality.ts, inlined in the head).
+// (runtime/modality.ts, inlined in the head). With skipTo, a "Skip to content" link to that id is the first Tab stop
+// (styles/chrome.css).
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { Font } from "astro:assets";
 import { LOCALES, type Locale } from "../i18n";
 import "../styles/fonts.css";
 import "../styles/ux.css";
+import "../styles/chrome.css";
+import { useUi } from "../i18n/ui";
 import { trackModality } from "../runtime/modality";
 
 interface Props {
@@ -17,8 +20,11 @@ interface Props {
   /** This page's path without the language prefix, e.g. "lessons/cache/" ("" for the home page). */
   path: string;
   bodyClass?: string;
+  /** The id of the page's main content: adds a "Skip to content" link to it as the first Tab stop. */
+  skipTo?: string;
 }
-const { locale, title, description, path, bodyClass } = Astro.props;
+const { locale, title, description, path, bodyClass, skipTo } = Astro.props;
+const ui = useUi(locale);
 const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
 ---
 <!doctype html>
@@ -51,6 +57,7 @@ const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
     <slot name="head" />
   </head>
   <body class={bodyClass}>
+    {skipTo && <a class="skip-link" href={`#${skipTo}`}>{ui("chrome.skip")}</a>}
     <slot />
   </body>
 </html>

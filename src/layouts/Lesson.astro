@@ -1,5 +1,7 @@
 ---
-// A lesson page: header, the machine (figure + panel), predict-then-run cards, explain-back questions.
+// A lesson page: the top navigation (the way back, language and theme), then <main>: the header, the machine
+// (figure + panel), predict-then-run cards, explain-back questions and related lessons; then the footer. Base.astro
+// puts a "Skip to content" link to <main> first. The chrome's look and link behaviour is styles/chrome.css.
 // The figure's still frame is plain HTML/SVG, so the page reads and prints without JavaScript. <wb-lesson> holds the
 // machine and the experiments and loads the lesson's live code (the model and the animation) as they come into view.
 import { getRelativeLocaleUrl } from "astro:i18n";
@@ -12,6 +14,7 @@ import Panel from "../components/lesson/Panel.astro";
 import { pick, type Locale } from "../i18n";
 import { useUi } from "../i18n/ui";
 import { plain, conceptOf, two, type Lesson } from "../lib/lessons";
+import { markNewTabLinks } from "../lib/links";
 import "virtual:workbench.css";
 import "../styles/lesson.css";
 
@@ -23,22 +26,27 @@ const ui = useUi(locale);
 const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const path = `lessons/${lesson.slug}/`;
 ---
-<Base locale={locale} title={plain(p.title, locale)} description={plain(p.lede, locale).slice(0, 300)} path={path} bodyClass={p.litFill ? "iso lit-fill" : "iso"}>
+<Base locale={locale} title={plain(p.title, locale)} description={plain(p.lede, locale).slice(0, 300)} path={path} bodyClass={p.litFill ? "iso lit-fill" : "iso"} skipTo="main">
   <Fragment slot="head">{p.css && <Fragment set:html={`<style>${p.css}</style>`} />}</Fragment>
-  <main class="page">
-    <div class="topbar">
-      <a class="back" href={getRelativeLocaleUrl(locale)}>← {ui("lesson.back")}</a>
-      <Switches locale={locale} path={path} class="theme-switch" />
-    </div>
-    <header>
+  <div class="page">
+  <header class="topbar">
+    <nav class="topnav" aria-label={ui("chrome.topNav")}>
+      <a class="back" href={getRelativeLocaleUrl(locale)}><span aria-hidden="true">←</span>{ui("lesson.back")}</a>
+      <Switches locale={locale} path={path} nav={false} />
+    </nav>
+  </header>
+  <main id="main">
+    <header class="lesson-head">
       <div class="eyebrow" set:html={L(p.eyebrow)} />
       <h1 set:html={L(p.title)} />
       <p class="lede" set:html={L(p.lede)} />
-      <ul class="parts">
-        <li><a href="#machine">{ui("lesson.parts.machine")}</a></li>
-        <li><a href="#predict">{ui("lesson.parts.predict")}</a></li>
-        <li><a href="#explain">{ui("lesson.parts.explain")}</a></li>
-      </ul>
+      <nav aria-label={ui("chrome.onPage")}>
+        <ul class="parts">
+          <li><a href="#machine">{ui("lesson.parts.machine")}</a></li>
+          <li><a href="#predict">{ui("lesson.parts.predict")}</a></li>
+          <li><a href="#explain">{ui("lesson.parts.explain")}</a></li>
+        </ul>
+      </nav>
     </header>
 
     <wb-lesson slug={lesson.slug}>
@@ -71,8 +79,9 @@ const path = `lessons/${lesson.slug}/`;
       </nav>
     )}
 
-    <footer set:html={p.footer ? L(p.footer) : ui("lesson.footer")} />
   </main>
+  <footer set:html={markNewTabLinks(p.footer ? L(p.footer) : ui("lesson.footer"), ui("chrome.newTab"))} />
+  </div>
   <script>
     import "../elements/wb-lesson";
   </script>

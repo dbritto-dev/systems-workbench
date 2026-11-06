@@ -53,6 +53,11 @@ const en = {
   "q.covers": "A good answer covers",
   // ux-collection
   "search.shortcut": "Slash",
+  // ux-chrome
+  "chrome.skip": "Skip to content",
+  "chrome.topNav": "Top navigation",
+  "chrome.onPage": "On this page",
+  "chrome.newTab": "(opens in a new tab)",
 } as const;
 
 export type UiKey = keyof typeof en;
@@ -109,6 +114,11 @@ const es: Record<UiKey, string> = {
   "q.covers": "Una buena respuesta cubre",
   // ux-collection
   "search.shortcut": "Barra diagonal",
+  // ux-chrome
+  "chrome.skip": "Saltar al contenido",
+  "chrome.topNav": "Navegación superior",
+  "chrome.onPage": "En esta página",
+  "chrome.newTab": "(se abre en una pestaña nueva)",
 };
 
 const TABLES: Record<Locale, Record<UiKey, string>> = { en, es };
