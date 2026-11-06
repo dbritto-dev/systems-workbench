@@ -1,15 +1,17 @@
 // @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
-// Two storage rooms on one plate, fed the same writes by the writer at the back.
+// Two storage rooms on one plate, fed the same writes by the writer standing at the front between them; his desk,
+// with a tray of waiting writes for each engine, is in the middle at the back.
 //   Left, the B-tree: a filing cabinet whose drawers are its leaf pages (each drawer stands for a stretch of them).
 //   A write pulls out its drawer (lit) and the page table in front shows what that costs: one record changed, the
-//   whole 40-record page written back. Writes the disk can't keep up with wait in the tray beside the writer.
+//   whole 40-record page written back. Writes the disk can't keep up with wait in the left tray on the writer's desk.
 //   Right, the LSM tree: writes land in the memtable tray; a full tray is bound into a file that goes on the L0 shelf
 //   of the rack; the merge press (compaction) merges files down the shelves L1, L2, L3 (lit while it works on them).
-// Each room has a bench of counters at the front: bytes written per byte (WRITE AMP), pages or files a read touches,
-// space used against the data, and a meter for how busy its disk is.
+//   Its waiting writes are in the right tray; a WRITE STALL sign stands on the rack while writes are slowed.
+// Each room has a bench of counters at the front: bytes written per byte (WRITE AMP), pages a read touches, space
+// used against the data, and a meter for how busy its disk is. Fractions show their decimal point inside one housing.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, meter, person, sign, plaque, faceText, card } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, meter, person, sign, faceText } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { PER_PAGE, TARGET, runLen } from "./sim";
@@ -36,7 +38,7 @@ const BENCH_B = { x: -102, y: -2, w: 86, d: 20, r: 1.6 };
 const BENCH_H = 9;
 
 // ---------- the writer's desk (centre back): two out-trays, writes waiting for each engine ----------
-export const WRITER = [-9, 12, 0];
+export const WRITER = [-9, 12, 0];                // at the front, between the two benches
 export const DESK = { x: -23, y: -46, w: 46, d: 26, r: 1.2 };
 export const DESK_H = 8;
 export const TRAYS = [{ x: -19, y: -43, w: 16, d: 13 }, { x: 3, y: -43, w: 16, d: 13 }];
@@ -65,7 +67,7 @@ export const P = k.fitProjection(
   { pad: 14, azimuth: 50 },
 );
 
-const { S, L, D } = shorthand(P);
+const { S, L, D, at } = shorthand(P);
 const text = (x, y, z, words, size = 2.8, opts = {}) => faceText(P, [x, y, z], words, { size, tone: "mid", ...opts });
 export const SIZE = 2.8;        // the smallest words on the machine
 
@@ -108,15 +110,17 @@ function pageTable() {
   out.push(text(PTAB.x + 4, PTAB.y + PTAB.d - 3, PTAB_H, t("ONE CHANGE · WHOLE PAGE", "UN CAMBIO · PÁGINA ENTERA"), SIZE, { face: "top" }));
   return out.join("");
 }
+// A counter column on a bench face: the wheels, and with tenths a decimal point and one more wheel inside the same
+// housing (as the passwords lesson's WAIT S), with its caption on the bench top in front of it.
 function counterCol(x, y, name, count, words, { tenths = false } = {}) {
-  const w = 4.4, gap = 0.6;
-  const out = [digitCounter(P, { x, y, z: 1.6, count, w, h: 6, gap, pad: 1, name })];
-  if (tenths) {
-    // a decimal point, then one wheel for tenths in its own housing (as the BM25 lesson's score wheels)
-    const end = x + count * w + (count - 1) * gap;
-    out.push(k.dotsSvg([k.iso([end + 2.3, y + 0.6, 2.2], P)], { size: 2.2, tone: "hi" }));
-    out.push(digitCounter(P, { x: end + 4.6, y, z: 1.6, count: 1, w, h: 6, gap, pad: 1, name: name + "f" }));
-  }
+  const w = 4.4, h = 6, gap = 0.6, z = 1.6, pad = 1;
+  const span = (n) => n * w + (n - 1) * gap;
+  if (!tenths) return digitCounter(P, { x, y, z, count, w, h, gap, pad, name }) + text(x - 1, y - 3.2, BENCH_H, words, SIZE, { face: "top" });
+  const end = x + span(count), fx = end + 1.8;
+  const out = [S(k.slabOf({ x: x - pad, y: y - 1.4, w: fx + w + pad - (x - pad), d: 1.4, r: 0.5 }, z - pad, h + 2 * pad, P, 2), { tone: "hi", crease: "lo" })];
+  out.push(digitCounter(P, { x, y, z, count, w, h, gap, housing: false, name }));
+  out.push(D([at([end + 0.9, y + 0.1, z + 0.6])], { size: 1.1, tone: "hi" }));
+  out.push(digitCounter(P, { x: fx, y, z, count: 1, w, h, gap, housing: false, name: name + "f" }));
   out.push(text(x - 1, y - 3.2, BENCH_H, words, SIZE, { face: "top" }));
   return out.join("");
 }
@@ -125,7 +129,7 @@ function benchB() {
   out.push(L(k.planOutline(k.insetPlan(BENCH_B, 2.2), BENCH_H, P), { tone: "faint" }));
   const f = BENCH_B.y + BENCH_B.d, x = BENCH_B.x;
   out.push(counterCol(x + 5, f, "waB", 2, t("WRITE AMP", "AMP. ESCR.")));
-  out.push(counterCol(x + 26, f, "rdB", 1, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
+  out.push(counterCol(x + 26, f, "rdB", 2, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
   out.push(counterCol(x + 51, f, "spB", 3, t("SPACE %", "ESPACIO %")));
   out.push(meter(P, { x: x + 77, y: f, z: 1.4, r: 6.4, ticks: 10, zone: 0.8, name: "diskB" }));
   out.push(text(x + 77, f - 3.2, BENCH_H, t("DISK", "DISCO"), SIZE, { face: "top", anchor: "middle" }));
@@ -146,6 +150,9 @@ function writer() {
   const front = DESK.y + DESK.d;
   out.push(digitCounter(P, { x: DESK.x + 2.2, y: front, z: 1.6, count: 5, w: 3.6, h: 5, gap: 0.4, pad: 0.8, name: "waitB" }));
   out.push(digitCounter(P, { x: DESK.x + 24.6, y: front, z: 1.6, count: 5, w: 3.6, h: 5, gap: 0.4, pad: 0.8, name: "waitL" }));
+  // on the desk top, in front of each counter: whose writes it counts; behind them, what it counts
+  out.push(text(TRAYS[0].x + TRAYS[0].w / 2, front - 6.6, DESK_H, t("B-TREE", "ÁRBOL B"), SIZE, { face: "top", anchor: "middle" }));
+  out.push(text(TRAYS[1].x + TRAYS[1].w / 2, front - 6.6, DESK_H, "LSM", SIZE, { face: "top", anchor: "middle" }));
   out.push(text(0, front - 2.2, DESK_H, t("WAITING", "EN ESPERA"), SIZE, { face: "top", anchor: "middle" }));
   return out.join("");
 }
@@ -191,15 +198,15 @@ function press() {
   return out.join("");
 }
 function stallSign() {
-  // on top of the rack, at its right end: lit while writes are slowed or stopped
-  return `<g class="wb-lit-group" data-stall>${sign(P, { x: RACK.x + RACK.w - 34, y: RACK.y + 8, z: RACK_H, w: 32, h: 8, text: t("WRITE STALL", "FRENO"), size: 3.6, posts: false })}</g>`;
+  // on top of the rack, at its right end: put up while writes are slowed or stopped (lit means "being written" here)
+  return `<g data-stall style="display:none">${sign(P, { x: RACK.x + RACK.w - 34, y: RACK.y + 8, z: RACK_H, w: 32, h: 8, text: t("WRITE STALL", "FRENO"), size: 3.6, posts: false })}</g>`;
 }
 function benchL() {
   const out = [S(k.slabOf(BENCH_L, 0, BENCH_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(BENCH_L, 2.2), BENCH_H, P), { tone: "faint" }));
   const f = BENCH_L.y + BENCH_L.d, x = BENCH_L.x;
-  out.push(counterCol(x + 5, f, "waL", 2, t("WRITE AMP", "AMP. ESCR.")));
-  out.push(counterCol(x + 26, f, "rdL", 2, t("FILES/READ", "ARCH./LECT."), { tenths: true }));
+  out.push(counterCol(x + 5, f, "waL", 2, t("WRITE AMP", "AMP. ESCR."), { tenths: true }));
+  out.push(counterCol(x + 26, f, "rdL", 2, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
   out.push(counterCol(x + 51, f, "spL", 3, t("SPACE %", "ESPACIO %")));
   out.push(meter(P, { x: x + 77, y: f, z: 1.4, r: 6.4, ticks: 10, zone: 0.8, name: "diskL" }));
   out.push(text(x + 77, f - 3.2, BENCH_H, t("DISK", "DISCO"), SIZE, { face: "top", anchor: "middle" }));
@@ -211,8 +218,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "Two storage rooms on one base plate, fed the same writes by a writer standing at the back between them. Left, the B-tree: a filing cabinet whose drawers are its pages; a write pulls out its drawer, and a page table in front shows one leaf page as 40 record tiles, with the changed record lit while the whole page is written back. Writes the B-tree's disk can't take yet wait in a tray beside the writer. Right, the LSM tree: writes land in the memtable tray; a full tray is bound into a file that goes on the top shelf, L0, of a rack; a merge press merges files down the shelves L1, L2 and L3, and the files it is working on light up. A STALL sign lights when writes are slowed. Each room has a bench of counters at the front: write amplification, pages or files a read checks, space used against the data, and a meter for how busy its disk is.",
-      "Dos salas de almacenamiento sobre una placa base, que reciben las mismas escrituras de un escritor parado al fondo entre ambas. A la izquierda, el árbol B: un archivador cuyos cajones son sus páginas; una escritura abre su cajón, y una mesa de página adelante muestra una página hoja como 40 fichas de registro, con el registro cambiado encendido mientras se reescribe la página entera. Las escrituras que el disco del árbol B todavía no puede tomar esperan en una bandeja junto al escritor. A la derecha, el árbol LSM: las escrituras caen en la bandeja de la memtable; una bandeja llena se encuaderna en un archivo que va al estante de arriba, L0, de un mueble; una prensa de fusión combina archivos hacia los estantes L1, L2 y L3, y los archivos en los que trabaja se encienden. Un letrero FRENO se enciende cuando se frenan las escrituras. Cada sala tiene adelante un banco de contadores: amplificación de escritura, páginas o archivos que revisa una lectura, espacio usado frente a los datos y un indicador de qué tan ocupado está su disco.",
+      "Two storage rooms on one base plate, fed the same writes by a writer standing at the front between them; his desk, with two trays, stands in the middle at the back. Left, the B-tree: a filing cabinet whose drawers are its pages; a write pulls out its drawer, and a page table in front of the cabinet shows one leaf page as 40 record tiles, with the changed record lit while the whole page is written back. Writes an engine's disk can't take yet wait in its tray on the writer's desk, the B-tree's on the left and the LSM tree's on the right, each with a WAITING counter. Right, the LSM tree: writes land in the memtable tray; a full tray is bound into a file that goes on the top shelf, L0, of a rack at the back; a merge press in front of the rack merges files down the shelves L1, L2 and L3, and the press and the files it is working on light up. A WRITE STALL sign goes up on top of the rack while writes are slowed. Each room has a bench of counters at the front: write amplification, pages a read checks, space used against the data, and a meter for how busy its disk is.",
+      "Dos salas de almacenamiento sobre una placa base, que reciben las mismas escrituras de un escritor parado adelante entre ambas; su escritorio, con dos bandejas, está en el medio, al fondo. A la izquierda, el árbol B: un archivador cuyos cajones son sus páginas; una escritura abre su cajón, y una mesa de página delante del archivador muestra una página hoja como 40 fichas de registro, con el registro cambiado encendido mientras se reescribe la página entera. Las escrituras que el disco de un motor todavía no puede tomar esperan en su bandeja del escritorio del escritor, la del árbol B a la izquierda y la del árbol LSM a la derecha, cada una con un contador EN ESPERA. A la derecha, el árbol LSM: las escrituras caen en la bandeja de la memtable; una bandeja llena se encuaderna en un archivo que va al estante de arriba, L0, de un mueble al fondo; una prensa de fusión delante del mueble combina archivos hacia los estantes L1, L2 y L3, y la prensa y los archivos en los que trabaja se encienden. Un letrero FRENO aparece sobre el mueble mientras se frenan las escrituras. Cada sala tiene adelante un banco de contadores: amplificación de escritura, páginas que revisa una lectura, espacio usado frente a los datos y un indicador de qué tan ocupado está su disco.",
     ),
     body: [
       plate(),

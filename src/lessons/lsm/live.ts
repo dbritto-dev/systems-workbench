@@ -25,7 +25,7 @@ export default function mount({ P, G }, root) {
   const press = q("[data-press]"), needle = q("[data-progress]"), stallSign = q("[data-stall]");
   const labels = { leveled: qa('[data-labels="leveled"]'), tiered: qa('[data-labels="tiered"]'), ticks: qa("[data-target]") };
   const fly = q('[data-layer="fly"]');
-  const counters = Object.fromEntries(["waitB", "waitL", "waB", "waL", "rdB", "rdBf", "rdL", "rdLf", "spB", "spL"].map((n) => [n, WB.counter(svg, n, P)]));
+  const counters = Object.fromEntries(["waitB", "waitL", "waB", "waL", "waLf", "rdB", "rdBf", "rdL", "rdLf", "spB", "spL"].map((n) => [n, WB.counter(svg, n, P)]));
   const meters = { diskB: WB.meter(svg, "diskB", P), diskL: WB.meter(svg, "diskL", P) };
 
   // ---------- settings and the run ----------
@@ -125,12 +125,15 @@ export default function mount({ P, G }, root) {
   const say = (text) => root.figure.say(L(text));
   const SHOW = 1.6;              // seconds of page time a note stays up before a less important one may replace it
   let noteWall = 0;
-  function put(rank, text, t) {
+  // A merge note names its job: it reads "merging" while the press works and "merged" once the job is done; the
+  // next merge to start replaces a "merged" note at once, so the readout follows the press.
+  function put(rank, text, t, job = null, doneText = null) {
     const wall = performance.now() / 1000;
+    if (job && note && note.past) { note = { t, rank, text, job, doneText }; noteWall = wall; return; }
     if (note && rank < note.rank && wall - noteWall < SHOW * (note.rank >= 3 ? 2 : 1)) return;
     if (note && rank === note.rank && rank < 2 && wall - noteWall < SHOW) return;
     if (rank < 1 && wall - noteWall < 4.5) return;      // frequent events (flushes, single-file merges) now and then
-    note = { t, rank, text }; noteWall = wall;
+    note = { t, rank, text, job, doneText }; noteWall = wall;
   }
   // the stall flickers around its trigger while it lasts: say it's over only once L0 is well below it
   let stalled = false;
@@ -140,16 +143,25 @@ export default function mount({ P, G }, root) {
     for (; logAt < lg.length; logAt++) {
       const e = lg[logAt];
       if (e.type === "start") {
-        const j = e.job, out = j.out.length;
-        if (j.kind === "l0") put(1, T("merge: " + j.inputs.length + " L0 files into L1 · " + out + " records rewritten", "fusión: " + j.inputs.length + " archivos de L0 en L1 · " + out + " registros reescritos"), e.t);
-        else if (j.kind === "lv" && !j.trivial) put(0.5, T("merge: one L" + j.from + " file into L" + j.to + " · " + out + " records rewritten", "fusión: un archivo de L" + j.from + " en L" + j.to + " · " + out + " registros reescritos"), e.t);
-        else if (j.kind === "tier") put(1, T("merge: " + j.inputs.length + " runs of about " + Math.round(j.inN / j.inputs.length) + " records · " + out + " rewritten", "fusión: " + j.inputs.length + " secuencias de unos " + Math.round(j.inN / j.inputs.length) + " registros · " + out + " reescritos"), e.t);
+        const j = e.job, out = j.out.length, n = j.inputs ? j.inputs.length : 1;
+        if (j.kind === "l0") put(1, T("merging " + n + " L0 files into L1 · " + out + " records to rewrite", "fusionando " + n + " archivos de L0 en L1 · " + out + " registros por reescribir"), e.t, j,
+          T("merged " + n + " L0 files into L1 · " + out + " records rewritten", "fusionados " + n + " archivos de L0 en L1 · " + out + " registros reescritos"));
+        else if (j.kind === "lv" && !j.trivial) put(0.5, T("merging one L" + j.from + " file into L" + j.to + " · " + out + " records to rewrite", "fusionando un archivo de L" + j.from + " en L" + j.to + " · " + out + " registros por reescribir"), e.t, j,
+          T("merged one L" + j.from + " file into L" + j.to + " · " + out + " records rewritten", "fusionado un archivo de L" + j.from + " en L" + j.to + " · " + out + " registros reescritos"));
+        else if (j.kind === "tier") {
+          const each = Math.round(j.inN / n);
+          put(1, T("merging " + n + " runs of about " + each + " records · " + out + " to rewrite", "fusionando " + n + " secuencias de unos " + each + " registros · " + out + " por reescribir"), e.t, j,
+            T("merged " + n + " runs of about " + each + " records · " + out + " rewritten", "fusionadas " + n + " secuencias de unos " + each + " registros · " + out + " reescritos"));
+        }
+      } else if (e.type === "done") {
+        if (note && note.job === e.job) { note.text = note.doneText; note.job = null; note.past = true; }
       } else if (e.type === "stall") {
         if (e.stall === "slow" && !stalled) put(3, T(L0_SLOW + " files in L0: writes slowed so compaction can catch up", L0_SLOW + " archivos en L0: escrituras frenadas para que la compactación se ponga al día"), e.t);
         else if (e.stall === "stop" && e.was !== "stop") put(3, T(L0_STOP + " files in L0: writes stopped", L0_STOP + " archivos en L0: escrituras detenidas"), e.t);
         if (e.stall !== "off") stalled = true;
       } else if (e.type === "flush") {
-        put(0, T("memtable full: " + e.run.keys.length + " records sorted into a new L0 file", "memtable llena: " + e.run.keys.length + " registros ordenados en un archivo nuevo de L0"), e.t);
+        put(0, model.lsm.tiered ? T("memtable full: " + e.run.keys.length + " records sorted into a new run", "memtable llena: " + e.run.keys.length + " registros ordenados en una secuencia nueva")
+          : T("memtable full: " + e.run.keys.length + " records sorted into a new L0 file", "memtable llena: " + e.run.keys.length + " registros ordenados en un archivo nuevo de L0"), e.t);
       }
     }
   }
@@ -171,9 +183,10 @@ export default function mount({ P, G }, root) {
     hist.push(snapshot(clock));
     while (hist.length > 2 && hist[1].t <= clock - 30) hist.shift();     // keep one entry at least 30 s old
 
-    // B-tree: the drawers of the latest writes slide out and light; the page table shows the last page written
+    // B-tree: the drawer of the latest write slides out and lights, one at a time (at high rates the rest blur into
+    // a cabinet of black); the page table shows the same page
     const fresh = bt.recent.filter((r) => r[1] > clock - 0.25 * cfg.speed - 0.02);
-    for (const [li] of fresh.slice(-3)) drawerLit[Math.min(nDrawers - 1, Math.floor((li / bt.pages) * nDrawers))] = now + 220;
+    if (fresh.length) { drawerLit.fill(0); drawerLit[Math.min(nDrawers - 1, Math.floor((fresh[fresh.length - 1][0] / bt.pages) * nDrawers))] = now + 220; }
     drawers.forEach((d, i) => {
       const on = drawerLit[i] > now;
       if (d._on !== on) { d._on = on; setLit(d, on); d.setAttribute("transform", on ? translateAlong(P, [0, 2, 0]) : ""); }
@@ -199,7 +212,7 @@ export default function mount({ P, G }, root) {
     setLit(press, !!job);
     const frac = job ? (job.cost ? job.done / job.cost : 1) : 0, a = frac * Math.PI * 2, r = G.DIAL.r - 1.4;
     needle.setAttribute("d", pathOf([iso([G.DIAL.x, G.DIAL.y, G.PRESS_H + 1.3], P), iso([G.DIAL.x + Math.sin(a) * r, G.DIAL.y - Math.cos(a) * r, G.PRESS_H + 1.3], P)]));
-    setLit(stallSign, ls.stall !== "off");
+    show(stallSign, stalled || ls.stall !== "off");
 
     // waiting writes: slips in the out-trays (one more slip each time the line doubles) and the counters
     const wb = bt.queue.length, wl = ls.queue.length;
@@ -209,11 +222,12 @@ export default function mount({ P, G }, root) {
     // the benches
     const waB = windowAmp("b"), waL = windowAmp("l");
     if (waB !== null) counters.waB.setClamped(Math.round(waB));
-    if (waL !== null) counters.waL.setClamped(Math.round(waL));
-    const rb = mean(m.reads.bt.map((x) => x.pages)), rl = mean(m.reads.lsm.map((x) => x.pages)), fl = mean(m.reads.lsm.map((x) => x.files));
     const tenthsOf = (v) => { const n = Math.min(999, Math.round(v * 10)); return [Math.floor(n / 10), n % 10]; };
+    if (waL !== null) { const [i, f] = tenthsOf(waL); counters.waL.set(i); counters.waLf.set(f); }
+    // pages per read on both benches, as the panel shows them (the panel adds the LSM tree's files checked)
+    const rb = mean(m.reads.bt.map((x) => x.pages)), rl = mean(m.reads.lsm.map((x) => x.pages)), fl = mean(m.reads.lsm.map((x) => x.files));
     { const [i, f] = tenthsOf(rb); counters.rdB.set(i); counters.rdBf.set(f); }
-    { const [i, f] = tenthsOf(fl); counters.rdL.set(i); counters.rdLf.set(f); }
+    { const [i, f] = tenthsOf(rl); counters.rdL.set(i); counters.rdLf.set(f); }
     counters.spB.setClamped(Math.round(bt.space * 100)); counters.spL.setClamped(Math.round(ls.space * 100));
     meters.diskB.set(Math.min(1, m.busy.bt)); meters.diskL.set(Math.min(1, m.busy.lsm));
 
@@ -231,7 +245,8 @@ export default function mount({ P, G }, root) {
     else {
       note = null;
       const n = ls.tiered ? ls.runs.length : ls.l0.length;
-      const files = ls.tiered ? L(n + " sorted runs", n + " secuencias ordenadas") : L(n + " files in L0", n + " archivos en L0");
+      const files = ls.tiered ? (n === 1 ? L("1 sorted run", "1 secuencia ordenada") : L(n + " sorted runs", n + " secuencias ordenadas"))
+        : n === 1 ? L("1 file in L0", "1 archivo en L0") : L(n + " files in L0", n + " archivos en L0");
       if (wb > 0) say(T("B-tree: " + wb + " writes waiting for its disk · LSM tree: " + files, "árbol B: " + wb + " escrituras esperando su disco · árbol LSM: " + files));
       else say(T("B-tree: a 4 KB page written per write · LSM tree: memtable " + Math.round(ls.memFill * MEM) + " of " + MEM + " · " + files, "árbol B: una página de 4 KB por escritura · árbol LSM: memtable " + Math.round(ls.memFill * MEM) + " de " + MEM + " · " + files));
     }
