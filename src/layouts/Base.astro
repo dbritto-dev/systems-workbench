@@ -4,6 +4,13 @@
 // disabled, target sizes) and the input modality on <html data-ux-modality>, heard from the first key or tap
 // (runtime/modality.ts, inlined in the head). With skipTo, a "Skip to content" link to that id is the first Tab stop
 // (styles/chrome.css).
+// Fonts: the faces a page draws above the fold are preloaded, so the first paint already uses them instead of
+// swapping from the fallback (a swap shifts text sideways): headings 600, text 400, and the mono weights the page
+// names (lessons label in 400 and 500; the collection only in 500).
+// paintAfter: the first paint waits until the element with that id is parsed (a render-blocking
+// <link rel="expect">), so it shows everything above the fold at once. The parser sometimes yields at an inline
+// script near the top (the switches' markTheme), and a paint there showed the top bar alone, the rest a frame
+// later. Browsers without rel="expect" paint as before.
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { Font } from "astro:assets";
 import { LOCALES, type Locale } from "../i18n";
@@ -22,8 +29,12 @@ interface Props {
   bodyClass?: string;
   /** The id of the page's main content: adds a "Skip to content" link to it as the first Tab stop. */
   skipTo?: string;
+  /** Inconsolata weights to preload (the ones the page uses above the fold). */
+  monoWeights?: number[];
+  /** The id of the last element above the fold: the first paint waits until it is parsed. */
+  paintAfter?: string;
 }
-const { locale, title, description, path, bodyClass, skipTo } = Astro.props;
+const { locale, title, description, path, bodyClass, skipTo, monoWeights = [500], paintAfter } = Astro.props;
 const ui = useUi(locale);
 const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
 ---
@@ -35,9 +46,10 @@ const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {paintAfter && <link rel="expect" href={`#${paintAfter}`} blocking="render" />}
     <Font cssVariable="--font-heading" preload={[{ weight: 600 }]} />
     <Font cssVariable="--font-body" preload={[{ weight: 400, style: "normal" }]} />
-    <Font cssVariable="--font-mono" preload={[{ weight: 500 }]} />
+    <Font cssVariable="--font-mono" preload={monoWeights.map((weight) => ({ weight }))} />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}favicon.svg`} />
     {LOCALES.map((l) => <link rel="alternate" hreflang={l} href={new URL(getRelativeLocaleUrl(l, path), Astro.site)} />)}
     <link rel="alternate" hreflang="x-default" href={new URL(getRelativeLocaleUrl("en", path), Astro.site)} />
