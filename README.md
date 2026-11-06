@@ -123,7 +123,7 @@ src/
                             collection's search filters (lesson-filters.ts), links (marks new-tab links)
   elements/                 the custom elements every page is built from: wb-lesson (loads a lesson's live code),
                             wb-figure, wb-stats + wb-stat, wb-controls + wb-control, wb-seg, wb-actions,
-                            wb-experiment; site-switches, power-search (a structured filter bar), lesson-collection,
+                            wb-experiment, wb-button (press, busy, disabled with a reason); site-switches, power-search (a structured filter bar), lesson-collection,
                             lesson-preview
   runtime/                  shared browser code for live code: wb.ts (loop, counters, dials, meters, L/T),
                             dom.ts (show, setText, setD, setLit, playPause); and for components (the UX foundation,

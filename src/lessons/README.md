@@ -23,12 +23,13 @@ export default function mount({ P, G }, root) {
   const say = (text) => root.figure.say(text);     // the readout corner
   root.stat("done", 12);                           // the <wb-stat key="done"> in <wb-stats>
   root.controls.showFor("lookups");                // <wb-controls>: show the rows for one group
-  root.on("change", (name, value) => { … });       // a <wb-seg> option was clicked (pressed for you)
-  root.press("speed", 3);                          // press an option without an event
+  root.on("change", (name, value) => { … });       // a <wb-seg> option was chosen (selected for you)
+  root.press("speed", 3);                          // select an option without an event
+  root.disable("flip", true, L("Blue is rebuilding", "Azul se está reconstruyendo"));  // never btn.disabled
   const actions = { burst: () => { … } };
   root.on("action", (name) => actions[name]?.());  // a <wb-actions> button
   root.on("watch", (settings, id) => { … });       // an experiment's "Watch it on the machine"
-  const pause = playPause(root);                   // Pause button and Space on the stage
+  const pause = playPause(root);                   // Pause toggle (aria-pressed) and Space on the stage
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(loop);
 }
@@ -38,6 +39,16 @@ The cards (`<wb-experiment>`) run without the lesson's code: their results come 
 `page.ts` is a `<wb-control>` row: a segment (`seg`; `multiple: true` switches options on and off independently),
 buttons (`actions`) or a text box (`input`, read with `root.$('[data-input="name"]')`). Look up anything else with
 `root.$(selector)` / `root.$$(selector)`, never `document`.
+
+How they behave (Astryx's components, our look): a one-of-N segment is a radiogroup with one Tab stop, arrows that
+select (wrapping, Home and End), a sliding selected surface and the "← → to navigate" hint; choosing the selected
+option again sends nothing. A `multiple` segment is a toggle group (each option its own Tab stop). Action buttons
+are separate Tab stops; Pause is a toggle that keeps its label. Disable a control with `root.disable(name, on,
+reason?)` (aria-disabled: it keeps its Tab stop, and the reason shows as a tooltip on hover, keyboard focus or a
+tap), never with the native `disabled`. A press before the live code has loaded is kept and sent again after
+`mount()`; the action button is busy (`aria-busy`, a spinner after 310 ms) until then. The prediction cards are
+native radios inside labels (one Tab stop, the whole card clickable, Enter selects); Run is disabled with its reason
+until one is picked, and the verdict is said through `announce()`.
 
 ## Shared code: import it, don't copy it
 
