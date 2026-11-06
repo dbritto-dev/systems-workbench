@@ -58,7 +58,9 @@ const RUNS = {
   },
 };
 
-const w = (s) => ({ samesite: s.samesite, token: s.token, origin: s.origin, getpay: s.getPay ? "on" : "off", errand: s.errand });
+// kick: the errands Watch sends at once (forged ones by kind, "visit" for the customer's link), so the outcome
+// reaches the bank within seconds
+const w = (s, kick) => ({ samesite: s.samesite, token: s.token, origin: s.origin, getpay: s.getPay ? "on" : "off", errand: s.errand, kick });
 
 const EXPERIMENTS = [
   {
@@ -77,7 +79,7 @@ const EXPERIMENTS = [
       "The browser attaches a cookie because of where a request goes, not who asked for it, and a session cookie is all the bank uses to know who is asking. A form submit is a plain navigation: no CORS preflight, nothing for CORS to refuse. CORS decides only whether a script on other.example may read the answer, and the money has already moved by then: " + pct(R.cors.formShare) + " of the forged POSTs were paid. Blocking third-party cookies doesn't help either: a form that navigates the whole tab to bank.example is a first-party visit, so the bank's cookies go along. That is cross-site request forgery (CSRF): the request is real, signed in and forged at the same time.",
       "El navegador adjunta una cookie según a dónde va la solicitud, no según quién la pidió, y la cookie de sesión es lo único que usa el banco para saber quién pide. Enviar un formulario es una navegación común: sin verificación previa (preflight) de CORS, nada que CORS pueda rechazar. CORS solo decide si un script de other.example puede leer la respuesta, y para entonces el dinero ya se movió: se pagó el " + pct(R.cors.formShare) + " de los POST falsos. Bloquear las cookies de terceros tampoco ayuda: un formulario que lleva toda la pestaña a bank.example es una visita de primera parte, así que las cookies del banco van con ella. Eso es la falsificación de solicitudes entre sitios (cross-site request forgery, CSRF): la solicitud es real, tiene sesión y es falsa a la vez.",
     ),
-    watch: w(SETUPS.cors),
+    watch: w(SETUPS.cors, ["form"]),
   },
   {
     id: "lax",
@@ -94,7 +96,7 @@ const EXPERIMENTS = [
     why: t(
       "Lax keeps the card off cross-site requests except top-level navigations with a safe method. The hidden form POST from other.example arrived without the card (" + pct(R.lax.formShare) + " paid). A link is a top-level GET, so it carries the card, and an endpoint that moves money on GET pays it (" + pct(R.lax.linkShare) + "). The forum's POST isn't cross-site at all: forum.bank.example and www.bank.example share the registrable domain bank.example, so to SameSite it's the same site (" + pct(R.lax.forumShare) + "). Lax closes the most common hole, a cross-site form POST, and nothing else. Chromium browsers apply Lax to a cookie that sets no SameSite (still sending a cookie set in the last two minutes on cross-site top-level POSTs); Firefox and Safari don't, so set it yourself.",
       "Lax deja la tarjeta fuera de las solicitudes de otro sitio, salvo en navegaciones de nivel superior con un método seguro. El POST del formulario oculto de other.example llegó sin tarjeta (" + pct(R.lax.formShare) + " pagados). Un enlace es un GET de nivel superior, así que lleva la tarjeta, y un endpoint que mueve dinero con GET lo paga (" + pct(R.lax.linkShare) + "). El POST del foro ni siquiera es de otro sitio: forum.bank.example y www.bank.example comparten el dominio registrable bank.example, así que para SameSite son el mismo sitio (" + pct(R.lax.forumShare) + "). Lax cierra el hueco más común, un POST de formulario de otro sitio, y nada más. Los navegadores Chromium aplican Lax a una cookie que no define SameSite (aunque una cookie creada en los últimos dos minutos todavía viaja en los POST de nivel superior de otro sitio); Firefox y Safari no, así que defínelo tú."),
-    watch: w(SETUPS.lax),
+    watch: w(SETUPS.lax, ["link", "forum"]),
   },
   {
     id: "strict",
@@ -111,7 +113,7 @@ const EXPERIMENTS = [
     why: t(
       "Strict means same site, not same origin. A site is the scheme plus the registrable domain (from the Public Suffix List), so every subdomain of bank.example counts: " + pct(R.strict.strict.forumShare) + " of the forum's POSTs were paid with Strict. A forum with user content, a forgotten subdomain someone took over, or a marketing page on a hosted service can all send the card along. Strict does stop the link to GET /pay, but at a cost: every visit that followed a link from another site arrived signed out (" + pct(R.strict.strict.outShare) + ", against " + pct(R.strict.lax.outShare) + " with Lax), because that navigation started cross-site. Many sites pair a Lax session cookie with a separate Strict cookie for sensitive actions.",
       "Strict significa mismo sitio, no mismo origen. Un sitio es el esquema más el dominio registrable (según la Public Suffix List), así que cuenta cualquier subdominio de bank.example: con Strict se pagó el " + pct(R.strict.strict.forumShare) + " de los POST del foro. Un foro con contenido de usuarios, un subdominio olvidado que alguien tomó o una página de marketing en un servicio alojado pueden hacer que la tarjeta vaya. Strict sí detiene el enlace a GET /pay, pero con un costo: cada visita que siguió un enlace desde otro sitio llegó sin sesión (" + pct(R.strict.strict.outShare) + ", contra " + pct(R.strict.lax.outShare) + " con Lax), porque esa navegación empezó en otro sitio. Muchos sitios combinan una cookie de sesión Lax con otra cookie Strict aparte para las acciones sensibles."),
-    watch: w(SETUPS.strict),
+    watch: w(SETUPS.strict, ["forum", "visit"]),
   },
   {
     id: "tokens",
@@ -128,7 +130,7 @@ const EXPERIMENTS = [
     why: t(
       "A plain double-submit check asks whether the form's value equals a cookie's value. It never asks whether the bank chose that value for this session. A sibling subdomain can't read the bank's cookies, but it can write cookies for the whole of bank.example, so it can make the two values agree: " + pct(R.tokens.copy.forumShare) + " paid. A token the server keeps with the session (the synchronizer token pattern) is something only the bank's own pages receive, and the same-origin policy keeps the forum from reading those pages: " + pct(R.tokens.session.forumShare) + ". If you want a stateless token, sign it with a server key and bind it to the session (OWASP's signed double-submit), and name the cookie with the __Host- prefix so subdomains can't set it. A check on Sec-Fetch-Site or Origin that accepts only the bank's own origin stops the forum too (" + pct(R.tokens.origin.forumShare) + "), because the forum is same-site but not same-origin.",
       "Una comprobación double-submit simple pregunta si el valor del formulario es igual al de una cookie. Nunca pregunta si el banco eligió ese valor para esta sesión. Un subdominio hermano no puede leer las cookies del banco, pero sí puede escribir cookies para todo bank.example, así que puede hacer que los dos valores coincidan: " + pct(R.tokens.copy.forumShare) + " pagados. Un token que el servidor guarda con la sesión (el patrón de token sincronizador, synchronizer token) solo lo reciben las páginas del propio banco, y la política del mismo origen (same-origin policy) impide que el foro las lea: " + pct(R.tokens.session.forumShare) + ". Si quieres un token sin estado, fírmalo con una clave del servidor y átalo a la sesión (el double-submit firmado de OWASP), y nombra la cookie con el prefijo __Host- para que los subdominios no puedan fijarla. Una comprobación de Sec-Fetch-Site u Origin que solo acepta el origen del banco también detiene al foro (" + pct(R.tokens.origin.forumShare) + "), porque el foro es del mismo sitio pero no del mismo origen."),
-    watch: w(SETUPS.tokens),
+    watch: w(SETUPS.tokens, ["forum"]),
   },
   {
     id: "get",
@@ -145,7 +147,7 @@ const EXPERIMENTS = [
     why: t(
       "All three defences are built around one promise: GET, HEAD and OPTIONS don't change anything (RFC 9110 calls them safe methods). Lax sends the card on a top-level GET so links into the bank keep working; CSRF middleware in Django, Rails and most frameworks checks tokens only on unsafe methods; origin checks, such as Go 1.25's http.CrossOriginProtection, let safe methods through. So a GET that moves money passes them all: " + pct(R.get.old.linkShare) + " paid. Once paying needs a POST, the same link only reaches a page that can't pay: " + pct(R.get.postOnly.linkShare) + ". Putting a token in a GET URL is no fix either, since URLs end up in logs, history and Referer headers. Keep state changes on POST, PUT, PATCH and DELETE, and the defences above cover them.",
       "Las tres defensas se apoyan en una promesa: GET, HEAD y OPTIONS no cambian nada (la RFC 9110 los llama métodos seguros). Lax envía la tarjeta en un GET de nivel superior para que los enlaces al banco sigan funcionando; el middleware CSRF de Django, Rails y la mayoría de los frameworks revisa tokens solo en métodos no seguros; las comprobaciones de origen, como http.CrossOriginProtection de Go 1.25, dejan pasar los métodos seguros. Así que un GET que mueve dinero las pasa todas: " + pct(R.get.old.linkShare) + " pagados. Cuando pagar exige un POST, el mismo enlace solo llega a una página que no puede pagar: " + pct(R.get.postOnly.linkShare) + ". Poner un token en una URL GET tampoco arregla nada, porque las URL terminan en logs, en el historial y en encabezados Referer. Deja los cambios de estado en POST, PUT, PATCH y DELETE, y las defensas de arriba los cubren."),
-    watch: w(SETUPS.get),
+    watch: w(SETUPS.get, ["link"]),
   },
 ];
 
@@ -181,13 +183,13 @@ export default defineLesson({
     plate: {
       title: t("Bank street", "Calle del banco"),
       keys: [
-        { mark: "lit", label: t("The customer's ID card (the session cookie), a gate that refuses, the teller paying a forged errand", "La tarjeta del cliente (la cookie de sesión), una barrera que rechaza, el cajero pagando un encargo falso") },
-        { mark: "raised", label: t("Couriers: the browser running each errand, POST or GET", "Mensajeros: el navegador haciendo cada encargo, POST o GET") },
+        { mark: "lit", label: t("The customer's ID card (the session cookie), and a gate's lamp while the gate refuses", "La tarjeta del cliente (la cookie de sesión), y la lámpara de una barrera mientras rechaza") },
+        { mark: "raised", label: t("Couriers: the browser running each errand, POST or GET, with a pennant when a hostile page sent it; gate arms, raised while open", "Mensajeros: el navegador haciendo cada encargo, POST o GET, con un banderín si lo envió una página hostil; brazos de las barreras, levantados mientras están abiertas") },
         { mark: "flat", label: t("The road from the pages to the bank's window", "La calle de las páginas a la ventanilla del banco") },
       ],
       caption: t(
-        "Hosts: www.bank.example (the bank and its page), forum.bank.example (same site, other origin), other.example (cross-site). Every request here is a top-level navigation: a form submit or a followed link. The customer sends their own transfers from the bank's page, with its token, and now and then follows a link to the bank from another site. Gates check only unsafe methods except CARD, which every request needs. Counters: forged errands the bank paid (FORGED PAID), errands refused at a gate or the window (BLOCKED), and the customer's link visits that arrived without the card (SIGNED OUT). Rates are illustrative.",
-        "Hosts: www.bank.example (el banco y su página), forum.bank.example (mismo sitio, otro origen), other.example (otro sitio). Cada solicitud aquí es una navegación de nivel superior: el envío de un formulario o un enlace seguido. El cliente envía sus propias transferencias desde la página del banco, con su token, y de vez en cuando sigue un enlace al banco desde otro sitio. Las barreras revisan solo los métodos no seguros, salvo TARJETA, que toda solicitud necesita. Contadores: encargos falsos que el banco pagó (FALSAS PAGADAS), encargos rechazados en una barrera o en la ventanilla (BLOQUEADAS) y visitas del cliente por enlace que llegaron sin la tarjeta (SIN SESIÓN). Las tasas son ilustrativas.",
+        "Every request here is a top-level navigation: a form submit or a followed link. The customer sends their own transfers from the bank's page, with its token, and now and then follows a link to the bank from another site. The pages flying a pennant (other.example, and a forum page someone controls) send forged errands, and their couriers carry the pennant; the bank can't see it. CARD refuses a payment that arrives without the card, and lets a page view through signed out; the other gates check only unsafe methods. The teller holds up a slip for every payment. Counters: forged errands the bank paid (FORGED PAID), errands refused at a gate or the window (BLOCKED), and the customer's link visits that arrived without the card (SIGNED OUT). Rates are illustrative.",
+        "Cada solicitud aquí es una navegación de nivel superior: el envío de un formulario o un enlace seguido. El cliente envía sus propias transferencias desde la página del banco, con su token, y de vez en cuando sigue un enlace al banco desde otro sitio. Las páginas con banderín (other.example y una página del foro que alguien controla) envían encargos falsos, y sus mensajeros llevan el banderín; el banco no puede verlo. TARJETA rechaza un pago que llega sin la tarjeta y deja pasar una visita a una página, sin sesión; las otras barreras revisan solo los métodos no seguros. El cajero levanta un comprobante en cada pago. Contadores: encargos falsos que el banco pagó (FALSAS PAGADAS), encargos rechazados en una barrera o en la ventanilla (BLOQUEADAS) y visitas del cliente por enlace que llegaron sin la tarjeta (SIN SESIÓN). Las tasas son ilustrativas.",
       ),
       stage: { "data-bank-street": "" },
       label: t("CSRF simulation. Space pauses or resumes.", "Simulación de CSRF. Espacio pausa o reanuda."),
@@ -203,14 +205,14 @@ export default defineLesson({
     controls: [
       { seg: "samesite", label: "SameSite", options: [["none", "None"], ["lax", "Lax"], ["strict", "Strict"]], value: "lax" },
       { seg: "token", label: t("CSRF token", "Token CSRF"), options: [["off", t("Off", "Apagado")], ["copy", t("Cookie copy", "Copia en cookie")], ["session", t("Session", "De sesión")]], value: "off" },
-      { seg: "origin", label: t("Origin check", "Comprobar origen"), options: [["off", t("Off", "Apagada")], ["site", t("Same site", "Mismo sitio")], ["origin", t("Same origin", "Mismo origen")]], value: "off" },
+      { seg: "origin", label: t("Origin check", "Comprobar origen"), options: [["off", t("Off", "Apagado")], ["site", t("Same site", "Mismo sitio")], ["origin", t("Same origin", "Mismo origen")]], value: "off" },
       { seg: "getpay", label: t("GET /pay", "GET /pay"), options: [["on", t("Old link works", "Enlace viejo activo")], ["off", t("POST only", "Solo POST")]], value: "on" },
       { seg: "errand", label: t("Forged errand", "Encargo falso"), options: [["form", t("Form POST", "Formulario POST")], ["link", t("Link GET", "Enlace GET")], ["forum", t("Forum POST", "POST del foro")], ["mix", t("All three", "Los tres")]], value: "mix" },
       { speed: true },
       { actions: [["forge", t("Send a forged errand", "Enviar un encargo falso"), { primary: true }], ["visit", t("Follow a link to the bank", "Seguir un enlace al banco")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
-    note: t("Changing a setting starts the run again. Same site lets the forum through and refuses other.example; Same origin accepts only www.bank.example. Cookie copy is a plain double-submit token; Session is a token the server keeps with the session.",
-      "Cambiar un ajuste reinicia la ejecución. Mismo sitio deja pasar al foro y rechaza other.example; Mismo origen acepta solo www.bank.example. Copia en cookie es un token double-submit simple; De sesión es un token que el servidor guarda con la sesión."),
+    note: t("Changing a setting starts the run again. Same site lets the forum through and refuses other.example; Same origin accepts only www.bank.example. Cookie copy is a plain double-submit token; Session is a token the server keeps with the session. Watch it in the figure sends the experiment's errands at once.",
+      "Cambiar un ajuste reinicia la ejecución. Mismo sitio deja pasar al foro y rechaza other.example; Mismo origen acepta solo www.bank.example. Copia en cookie es un token double-submit simple; De sesión es un token que el servidor guarda con la sesión. Míralo en la figura envía de una vez los encargos del experimento."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs of " + MIN + " minutes each.",
     "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija de " + MIN + " minutos cada una."), experiments: withResults(EXPERIMENTS, RUNS) },

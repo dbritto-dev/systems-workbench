@@ -1,8 +1,9 @@
 // @ts-nocheck: model code in the style of the other lessons; shared helpers come from src/lib.
 // CSRF as a bank counter. The customer's browser is a courier that runs every errand a page asks for, and it brings
 // the customer's ID card (the bank's session cookie) whenever the cookie's SameSite rule lets it go to the bank. The
-// bank then checks, in order: the card (is anyone signed in?), the origin (Sec-Fetch-Site, or Origin where the browser
-// sends no Fetch Metadata), the CSRF token, and at the teller whether the action exists for that method.
+// bank then checks, in order: the card (a payment needs one; a page view without it is served signed out), the
+// origin (Sec-Fetch-Site, or Origin where the browser sends no Fetch Metadata), the CSRF token, and at the teller
+// whether the action exists for that method.
 //
 // Three pages are open in the customer's browser:
 //   bank   www.bank.example    the bank's own page: same origin as the bank
@@ -50,7 +51,8 @@ export function decide(kind, cfg) {
   const card = cfg.samesite === "none" || rel !== "cross-site" || (cfg.samesite === "lax" && k.method === "GET");
   const unsafe = k.method !== "GET";
   let stop = null;
-  if (!card) stop = "card";
+  // Without the card a payment is refused at the CARD gate; a plain page view is served, signed out.
+  if (!card && k.pay) stop = "card";
   // Origin / Fetch Metadata checks, like CSRF middleware, look only at unsafe methods.
   else if (unsafe && cfg.origin !== "off" && (rel === "cross-site" || (cfg.origin === "origin" && rel !== "same-origin"))) stop = "origin";
   // Token checks skip safe methods too (Django, Rails and most frameworks do the same). A plain double-submit token
@@ -58,7 +60,7 @@ export function decide(kind, cfg) {
   // subdomain can; OWASP recommends a session-bound or signed token instead. Another site can't pass either check.
   else if (unsafe && cfg.token !== "off" && !(k.from === "bank" || (cfg.token === "copy" && k.from === "forum"))) stop = "token";
   else if (k.pay && k.method === "GET" && !cfg.getPay) stop = "teller";
-  const outcome = k.forged ? (stop ? "blocked" : "paid") : stop ? (stop === "card" && kind === "visit" ? "signedout" : "refused") : "ok";
+  const outcome = k.forged ? (stop ? "blocked" : "paid") : stop ? "refused" : card ? "ok" : "signedout";
   return { card, stop, outcome };
 }
 
@@ -98,7 +100,7 @@ export function makeSim(cfgIn, seed = 1) {
   return {
     cfg, reqs, st, runTo,
     /** One forged errand now (the "Send a forged errand" button): the errand setting, or one at random for mix. */
-    forge: (at) => { runTo(at); return send(at, pickForged()); },
+    forge: (at, kind) => { runTo(at); return send(at, kind || pickForged()); },
     visit: (at) => { runTo(at); return send(at, "visit"); },
     get t() { return t; },
   };

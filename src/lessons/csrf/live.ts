@@ -1,7 +1,7 @@
 // @ts-nocheck: live code in the style of the other lessons; shared helpers come from src/runtime and src/lib.
 // The bank street in the browser: runs the model in slow motion, walks a courier out of each page's door, past the
 // cookie jar (where it picks up the customer's card when the cookie rule allows), to the bank's gates and window.
-// A gate that refuses drops its arm and lights its lamp; the teller lights for a forged payment. mount() gets the
+// A gate that refuses drops its arm and lights its lamp; the teller holds up a slip while it pays. mount() gets the
 // build-time data from page.ts (projection, geometry, the courier drawing) and root, the <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
@@ -22,11 +22,11 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
   const q = (s) => svg.querySelector(s);
   const NS = "http://www.w3.org/2000/svg";
   const flyLayer = q('[data-layer="fly"]'), roadLayer = q('[data-layer="road"]');
-  const tellerLit = q("[data-teller-lit]");
+  const teller = { idle: q('[data-teller="idle"]'), paying: q('[data-teller="paying"]') };
   const gateX = Object.fromEntries(G.GATES.map((g) => [g.key, g.x]));
   const gates = Object.fromEntries(G.GATES.map((g) => [g.key, {
-    armClosed: q(`[data-gate="${g.key}"] [data-arm="closed"]`),
-    lampOn: q(`[data-gate="${g.key}"] [data-lamp="on"]`), lampOff: q(`[data-gate="${g.key}"] [data-lamp="off"]`),
+    armClosed: q(`[data-gate="${g.key}"] [data-arm="closed"]`), armOpen: q(`[data-gate="${g.key}"] [data-arm="open"]`),
+    lampOn: q(`[data-gate-lamp="${g.key}"][data-lamp="on"]`), lampOff: q(`[data-gate-lamp="${g.key}"][data-lamp="off"]`),
   }]));
   const modeText = q("[data-mode]");
   const getpay = { on: q('[data-getpay="on"]'), off: q('[data-getpay="off"]') };
@@ -45,7 +45,7 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
   function makeEl() {
     const g = document.createElementNS(NS, "g");
     g.innerHTML = COURIER_SVG;
-    return { g, card: g.querySelector("[data-card]"), method: g.querySelector("[data-method]"), shownCard: null, shownMethod: null };
+    return { g, card: g.querySelector("[data-card]"), flag: g.querySelector("[data-flag]"), method: g.querySelector("[data-method]"), shownCard: null, shownMethod: null, shownFlag: null };
   }
   // flying cards from the jar to a courier
   const flights = [];
@@ -88,7 +88,12 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
     paintStatic();
     paint(true);
     showStats();
+    root.figure.say(L(T("SameSite=" + cap(cfg.samesite) + " · token " + tokenWord[cfg.token].en + " · origin check " + originWord[cfg.origin].en + " · errands on their way",
+      "SameSite=" + cap(cfg.samesite) + " · token " + tokenWord[cfg.token].es + " · comprobación de origen " + originWord[cfg.origin].es + " · encargos en camino")));
   }
+  const cap = (x) => x[0].toUpperCase() + x.slice(1);
+  const tokenWord = { off: T("off", "apagado"), copy: T("cookie copy", "copia en cookie"), session: T("session", "de sesión") };
+  const originWord = { off: T("off", "apagada"), site: T("same site", "mismo sitio"), origin: T("same origin", "mismo origen") };
 
   // ---------- static readouts that follow the controls ----------
   function paintStatic() {
@@ -137,6 +142,8 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
       }
       const method = KINDS[r.kind].method;
       if (x.el.shownMethod !== method) { x.el.shownMethod = method; setText(x.el.method, method); }
+      const forged = KINDS[r.kind].forged;
+      if (x.el.shownFlag !== forged) { x.el.shownFlag = forged; show(x.el.flag, forged); }
       const hasCard = pastJar(r, clock);
       if (x.el.shownCard !== hasCard) { x.el.shownCard = hasCard; show(x.el.card, hasCard); }
       // a card flies from the jar the moment the courier reaches it
@@ -147,7 +154,7 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
       const atStop = u >= OUT(r) && u < OUT(r) + DWELL;
       if (atStop) {
         if (r.stop && r.stop !== "teller") activeGate[r.stop] = true;
-        if (r.outcome === "paid") tellerOn = true;
+        if (KINDS[r.kind].pay && (r.outcome === "paid" || r.outcome === "ok")) tellerOn = true;
       }
       const fade = u < 0.2 ? u / 0.2 : u > OUT(r) + DWELL ? clamp((DUR(r) - u) / (r.stop ? BACK : LINGER)) : 1;
       x.el.g.style.opacity = fade < 1 ? String(clamp(fade)) : "";
@@ -163,10 +170,10 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
     // gates and teller
     for (const key of ["card", "origin", "token"]) {
       const g = gates[key], on = activeGate[key];
-      show(g.armClosed, on);
+      show(g.armClosed, on); show(g.armOpen, !on);
       show(g.lampOn, on); show(g.lampOff, !on);
     }
-    show(tellerLit, tellerOn);
+    show(teller.paying, tellerOn); show(teller.idle, !tellerOn);
 
     // flying cards: jar → courier
     for (let i = flights.length - 1; i >= 0; i--) {
@@ -218,9 +225,11 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
   root.on("action", (name) => actions[name]?.());
 
   // ---------- "Watch it on the machine" ----------
+  // The experiment's settings, plus the errands it is about sent at once (kick), so the outcome shows within seconds.
   root.on("watch", (w) => {
     for (const key of ["samesite", "token", "origin", "getpay", "errand"]) set(key, w[key], true);
     restart();
+    for (const what of w.kick || []) what === "visit" ? model.visit(0) : model.forge(0, what);
     wake();
   });
 
