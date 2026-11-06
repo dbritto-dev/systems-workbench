@@ -22,6 +22,7 @@ export const picker = (locale: Locale) => ({
   T: (en: string, es: string) => (locale === "es" ? es : en),
 });
 
-/** Sent by <lesson-collection> when a card's Preview button is pressed; <lesson-preview> opens on it. */
+/** Sent by <lesson-collection> when a card's Preview button is pressed; <lesson-preview> opens on it, and hands focus
+ *  back to the opener when it closes. */
 export const PREVIEW_EVENT = "lesson-preview";
-export type PreviewDetail = { card: HTMLElement };
+export type PreviewDetail = { card: HTMLElement; opener?: HTMLElement };
