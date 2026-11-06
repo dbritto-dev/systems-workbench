@@ -202,7 +202,7 @@ export default defineLesson({
     plate: {
       title: t("Error-budget tank", "Tanque de presupuesto"),
       keys: [
-        { mark: "lit", label: t("A firing alarm: the static lamp, a tier's beacon; the engineer on call while a page is open", "Una alarma disparada: la lámpara fija, la baliza de un nivel; la persona de guardia mientras hay un aviso abierto") },
+        { mark: "lit", label: t("A firing alarm: the static lamp, a tier's beacon; the pager the engineer on call holds up while a page is open", "Una alarma disparada: la lámpara fija, la baliza de un nivel; el buscapersonas que levanta la persona de guardia mientras hay un aviso abierto") },
         { mark: "raised", label: t("The recorder (static alarm), the tank (error budget) and the console (burn-rate alarm)", "El registrador (alarma fija), el tanque (presupuesto de errores) y la consola (alarma por tasa de consumo)") },
         { mark: "flat", label: t("The drain: every failed request leaves the tank through it", "El desagüe: cada solicitud fallida sale del tanque por ahí") },
       ],

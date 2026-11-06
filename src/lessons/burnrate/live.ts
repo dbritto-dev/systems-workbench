@@ -32,12 +32,15 @@ export default function mount({ P, G }, root) {
     if (outage) model.addFault(FAULTS.outage, outage);
     now = WARM; logAt = model.log.length; note = null; shownLeft = -1;
     for (const d of liveDrops) d.el.remove();
+    for (const key of Object.keys(litAt)) delete litAt[key];
     liveDrops.length = 0;
     paint(0);
   }
 
   // ---------- notes for the readout, from the model's log ----------
   const pctOf = (x) => (x >= 0.1 ? Math.round(100 * x) + "%" : x >= 0.01 ? (100 * x).toFixed(1) + "%" : (100 * x).toFixed(2) + "%");
+  // a rate just past the 1% line, with enough decimals that it doesn't print as 1.0%
+  const pctOver = (x, line) => { let d = 1; while (d < 3 && Number((100 * x).toFixed(d)) <= 100 * line) d++; return (100 * x).toFixed(d) + "%"; };
   const TIER_EN = ["14.4× over 1 h", "6× over 6 h", "1× over 3 days"], TIER_ES = ["14.4× en 1 h", "6× en 6 h", "1× en 3 días"];
   const SHORT_EN = ["5 min", "30 min", "6 h"], SHORT_ES = SHORT_EN;
   function scanLog() {
@@ -45,7 +48,7 @@ export default function mount({ P, G }, root) {
       const e = model.log[logAt], multi = model.cfg.multi;
       let text = null, rank = 1;
       if (e.type === "blip") text = L("blip: " + pctOf(e.rate) + " of requests failing for " + e.mins + " min", "pico: falla el " + pctOf(e.rate) + " de las solicitudes durante " + e.mins + " min");
-      if (e.type === "static") { rank = 2; text = L("static alarm pages: 5-min error rate " + pctOf(model.ratio(STATIC.window, e.t + 1)) + ", over 1%", "la alarma fija avisa: tasa de error de 5 min " + pctOf(model.ratio(STATIC.window, e.t + 1)) + ", sobre 1%"); }
+      if (e.type === "static") { rank = 2; const r = pctOver(model.ratio(STATIC.window, e.t + 1), STATIC.threshold); text = L("static alarm pages: 5-min error rate " + r + ", over 1%", "la alarma fija avisa: tasa de error de 5 min " + r + ", sobre 1%"); }
       if (e.type === "page") { rank = 3; text = L("burn-rate page: " + TIER_EN[e.tier] + (multi ? " and over " + SHORT_EN[e.tier] : "") + " · " + pctOf(model.used(e.t + 1)) + " of the budget spent",
         "aviso por tasa de consumo: " + TIER_ES[e.tier] + (multi ? " y en " + SHORT_ES[e.tier] : "") + " · gastado el " + pctOf(model.used(e.t + 1)) + " del presupuesto"); }
       if (e.type === "page-off") { rank = 2; text = L("burn-rate page clears", "el aviso por tasa de consumo se cierra"); }
@@ -96,6 +99,10 @@ export default function mount({ P, G }, root) {
   }
 
   function pose(name, key) { if (poses[name] !== key) { poses[name] = key; WB.pose(svg, name, key); } }
+  // An alarm can fire for a single model minute, a few hundredths of a second at 6 h/s: each lamp and the pager stay
+  // lit 2.6 s of page time after they were last on, as long as the readout keeps the alarm's message.
+  const HOLD = 2600, litAt = {};
+  function held(name, on) { const w = performance.now(); if (on) litAt[name] = w; return on || w - (litAt[name] ?? -1e9) < HOLD; }
 
   function paint(dt) {
     scanLog();
@@ -107,10 +114,10 @@ export default function mount({ P, G }, root) {
     TIERS.forEach((tier, i) => {
       meters[i].long.set(model.burn(tier.long) / (2 * tier.burn));
       meters[i].short.set(model.burn(tier.short) / (2 * tier.burn));
-      pose("lamp-tier" + i, st.tiers[i] ? "on" : "off");
+      pose("lamp-tier" + i, held("tier" + i, st.tiers[i]) ? "on" : "off");
     });
-    pose("lamp-static", st.staticOn ? "on" : "off");
-    pose("engineer", st.staticOn || st.page ? "paged" : "idle");
+    pose("lamp-static", held("static", st.staticOn) ? "on" : "off");
+    pose("engineer", held("engineer", st.staticOn || st.page) ? "paged" : "idle");
     const day = Math.floor(t / DAY), mins = t % DAY;
     clock.set(mins / DAY);
     counters.staticPages.setClamped(st.staticPages); counters.pages.setClamped(st.pages); counters.tickets.setClamped(st.tickets);
@@ -123,7 +130,7 @@ export default function mount({ P, G }, root) {
     else {
       const r5 = model.ratio(STATIC.window);
       say(L("day " + day + " · " + pctOf(r5) + " failing (5 min) · burn " + model.burn(HOUR).toFixed(1) + "× (1 h) · budget left " + Math.round(100 * Math.max(0, left)) + "%",
-        "día " + day + " · falla el " + pctOf(r5) + " (5 min) · consumo " + model.burn(HOUR).toFixed(1) + "× (1 h) · queda " + Math.round(100 * Math.max(0, left)) + "% del presupuesto"));
+        "día " + day + " · falla el " + pctOf(r5) + " (5 min) · consumo " + model.burn(HOUR).toFixed(1) + "× (1 h) · presupuesto restante " + Math.round(100 * Math.max(0, left)) + "%"));
     }
   }
 

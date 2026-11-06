@@ -4,7 +4,7 @@
 // for pages and the day. In the middle, the error budget: a glass tank that every failed request drains through the
 // spout. On the right, the burn-rate console: three tiers (14.4× over 1 h, 6× over 6 h, 1× over 3 days), each with a
 // meter for its long window, one for its short window and a beacon on top; counters for pages and tickets. At the
-// right end stands the engineer on call, lit while a page is open.
+// right end stands the engineer on call, who holds up a pager, lit, while a page is open.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, dial, lamp, faceText, litFill, variants } from "../../../workbench/parts.mjs";
@@ -108,7 +108,7 @@ function tankBack() {
   const front = TPL.y + TPL.d;
   out.push(digitCounter(P, { x: TPL.x + 10, y: front, z: 1.8, count: 3, w: W, h: 5.4, gap: GAP, pad: 1, name: "left" }));
   out.push(text(TPL.x + 10 + 13.8 + 3, front, 4.6, t("BUDGET", "PRESUPUESTO"), 2.8));
-  out.push(text(TPL.x + 10 + 13.8 + 3, front, 1.4, t("LEFT %", "QUEDA %"), 2.8));
+  out.push(text(TPL.x + 10 + 13.8 + 3, front, 1.4, t("LEFT %", "RESTANTE %"), 2.8));
   return out.join("");
 }
 function tankFront() {
@@ -163,15 +163,19 @@ function consoleTop() {
   return COLS.map((x, i) => beacon("lamp-tier" + i, [x, CON.y + CON.d - 5, CON_H], 2.6)).join("");
 }
 
-// The engineer on call, holding the pager: lit while a page is open.
+// The engineer on call: hands down while all is quiet; holding up the pager, lit, while a page is open (the person
+// itself never lights: lit is the alarm, not who answers it).
 function engineer() {
-  const at = { scale: 1.05, hat: "cap", holding: "slip" };
-  return variants("engineer", { idle: person(P, ENGINEER, at), paged: litFill(person(P, ENGINEER, { ...at, lit: true })) }, "idle");
+  const s = 1.05, [x, y] = ENGINEER;
+  const pager = { x: x - 4.2 * s, y: y + 4.6 * s, w: 8.4 * s, d: 0.5 * s, r: 0.15 * s };
+  const lit = litFill(S(k.slabOf(pager, 7 * s, 7 * s, P, 1, 0.2 * s), { tone: "hi", crease: "lo", lit: true }));
+  const body = person(P, ENGINEER, { scale: s, hat: "cap" });
+  return variants("engineer", { idle: body, paged: body + lit }, "idle");
 }
 
 const LABEL = t(
-  "An error-budget tank between two alarms, in a row on a base plate. On the left, the static alarm: a chart recorder plots the error rate over the last 5 minutes across the last 24 hours, with a dashed line at 1%; its lamp lights and its counter adds a page whenever the line is crossed, and a clock and a day counter keep the time. In the middle, a glass tank holds the error budget, the 0.1% of requests the SLO lets fail in 30 days; every failure drains it through a spout into a drain, and a counter shows the share left. On the right, the burn-rate console: three tiers, 14.4 times over 1 hour, 6 times over 6 hours and 1 time over 3 days, each with a meter for its long window and one for its short window, and a beacon that lights while both are past the line; the first two page, the third opens a ticket, and counters add them up. At the right end stands the engineer on call, who lights up while a page is open.",
-  "Un tanque de presupuesto de errores entre dos alarmas, en fila sobre una placa base. A la izquierda, la alarma fija: un registrador grafica la tasa de error de los últimos 5 minutos durante las últimas 24 horas, con una línea punteada en 1%; su lámpara se enciende y su contador suma un aviso cada vez que se cruza la línea, y un reloj y un contador de días marcan el tiempo. En el medio, un tanque de vidrio guarda el presupuesto de errores, el 0.1% de las solicitudes que el SLO deja fallar en 30 días; cada fallo lo vacía por un pico hacia un desagüe, y un contador muestra la parte que queda. A la derecha, la consola de tasa de consumo: tres niveles, 14.4 veces en 1 hora, 6 veces en 6 horas y 1 vez en 3 días, cada uno con un medidor para su ventana larga y otro para su ventana corta, y una baliza que se enciende mientras los dos pasan la línea; los dos primeros avisan a la guardia, el tercero abre un ticket, y unos contadores los suman. En el extremo derecho está la persona de guardia, que se enciende mientras hay un aviso abierto.",
+  "An error-budget tank between two alarms, in a row on a base plate. On the left, the static alarm: a chart recorder plots the error rate over the last 5 minutes across the last 24 hours, with a dashed line at 1%; its lamp lights and its counter adds a page whenever the line is crossed, and a clock and a day counter keep the time. In the middle, a glass tank holds the error budget, the 0.1% of requests the SLO lets fail in 30 days; every failure drains it through a spout into a drain, and a counter shows the share left. On the right, the burn-rate console: three tiers, 14.4 times over 1 hour, 6 times over 6 hours and 1 time over 3 days, each with a meter for its long window and one for its short window, and a beacon that lights while both are past the line; the first two page, the third opens a ticket, and counters add them up. At the right end stands the engineer on call, who holds up a lit pager while a page is open.",
+  "Un tanque de presupuesto de errores entre dos alarmas, en fila sobre una placa base. A la izquierda, la alarma fija: un registrador grafica la tasa de error de los últimos 5 minutos durante las últimas 24 horas, con una línea punteada en 1%; su lámpara se enciende y su contador suma un aviso cada vez que se cruza la línea, y un reloj y un contador de días marcan el tiempo. En el medio, un tanque de vidrio guarda el presupuesto de errores, el 0.1% de las solicitudes que el SLO deja fallar en 30 días; cada fallo lo vacía por una boquilla hacia un desagüe, y un contador muestra la parte que queda. A la derecha, la consola de tasa de consumo: tres niveles, 14.4 veces en 1 hora, 6 veces en 6 horas y 1 vez en 3 días, cada uno con un medidor para su ventana larga y otro para su ventana corta, y una baliza que se enciende mientras los dos pasan la línea; los dos primeros avisan a la guardia, el tercero abre un ticket, y unos contadores los suman. En el extremo derecho está la persona de guardia, que levanta un buscapersonas encendido mientras hay un aviso abierto.",
 );
 
 export function buildFigure() {
