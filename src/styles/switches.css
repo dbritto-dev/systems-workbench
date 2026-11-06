@@ -1,42 +1,99 @@
-/* Language links and theme buttons share one look: small mono segments, the current one filled. */
-.switches,
-.theme-switch {
+/* The site switches (components/Switches.astro): the language links and the theme radiogroup share one look, small
+   mono segments with the current one filled in ink. Behaviour follows Astryx (src/lessons/README.md, "UX
+   foundation"): hover paints only on a hover-capable pointer and never on the current segment; a press tints an
+   unselected segment at once and fades out on release; the focus ring is ux.css's, drawn above the neighbours.
+   Two sizes: sm (28px, lesson pages) and md (32px, the collection page). */
+.switches {
+  --sw-edge: var(--edge, var(--anatomy-lo));
+  --sw-ink: var(--ink, var(--anatomy-strong));
+  --sw-plate: var(--plate, var(--anatomy-card));
+  --sw-text: var(--anatomy-muted);
+  --sw-press: color-mix(in srgb, var(--sw-ink) 12%, transparent);
+  --sw-height: var(--ux-size-sm);
+  --sw-pad: 5px 10px;
+  --sw-font: 500 11px/1.2 var(--mono, var(--anatomy-mono));
+  --sw-tracking: 0.06em;
   display: flex;
-  gap: 10px;
+  gap: 10px 20px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.lang-seg a,
-.theme-seg button {
+.switches[data-size="md"] {
+  --sw-text: var(--anatomy-text);
+  --sw-height: var(--ux-size-md);
+  --sw-pad: 7px 11px;
+  --sw-font: 500 11.5px/1.2 var(--mono, var(--anatomy-mono));
+  --sw-tracking: 0.04em;
+  column-gap: 10px;
+}
+.switches .sw-group {
+  display: flex;
+}
+.switches .sw-group > :is(a, button) {
+  /* On a coarse pointer the tappable area grows toward 44px above and below (.ux-hit), by at most half the 10px gap
+     to a wrapped row or the top navigation's other row; the segments touch side by side, so not sideways. */
+  --ux-hit-gap-block: 5px;
   appearance: none;
+  position: relative;
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--edge, var(--anatomy-lo));
+  min-height: var(--sw-height);
+  margin: 0;
+  padding: var(--sw-pad);
+  border: 1px solid var(--sw-edge);
+  border-radius: 0;
   background: transparent;
-  color: var(--muted, var(--anatomy-muted));
-  font: 500 11px/1.2 var(--mono, var(--anatomy-mono));
-  letter-spacing: 0.06em;
-  padding: 5px 10px;
-  min-height: 28px;
-  cursor: pointer;
+  color: var(--sw-text);
+  font: var(--sw-font);
+  letter-spacing: var(--sw-tracking);
   text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* The press fades out on release (the press itself shows at once, below). */
+  transition: background-color var(--ux-duration-exit) var(--ux-ease-exit);
 }
-.lang-seg a + a,
-.theme-seg button + button {
-  margin-left: -1px;
+.switches .sw-group > :is(a, button) + :is(a, button) {
+  margin-inline-start: -1px;
 }
-.lang-seg a:hover,
-.theme-seg button:hover {
-  color: var(--ink, var(--anatomy-strong));
-  border-color: var(--anatomy-hi);
-  position: relative;
-  z-index: 2;
-}
-.lang-seg a[aria-current="page"],
-.theme-seg button[aria-pressed="true"] {
-  background: var(--ink, var(--anatomy-strong));
-  border-color: var(--ink, var(--anatomy-strong));
-  color: var(--plate, var(--anatomy-card));
-  position: relative;
+/* The current segment: an ink fill (the language link with aria-current, the checked theme). It shows no hover or
+   press paint: a persistent selection wins. */
+.switches .sw-group > :is(a[aria-current="page"], button[aria-checked="true"]) {
   z-index: 1;
+  background: var(--sw-ink);
+  border-color: var(--sw-ink);
+  color: var(--sw-plate);
+  cursor: default;
+}
+.switches .sw-group > a[aria-current="page"] {
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .switches .sw-group > :is(a:not([aria-current="page"]), button:not([aria-checked="true"])):where(:not([aria-disabled="true"])):hover {
+    z-index: 2;
+    border-color: var(--anatomy-hi);
+    color: var(--sw-ink);
+  }
+}
+.switches .sw-group > :is(a:not([aria-current="page"]), button:not([aria-checked="true"])):where(:not([aria-disabled="true"])):is(:active, [data-pressed]) {
+  background-color: var(--sw-press);
+  transition-duration: 0s;
+}
+/* The ring is drawn above both neighbours, so the segments' shared edges don't cover it. */
+.switches .sw-group > :focus-visible {
+  z-index: 3;
+}
+/* Without JavaScript the theme can't change, so the theme switch isn't shown (the page follows the device). */
+@media (scripting: none) {
+  .switches .sw-theme {
+    display: none;
+  }
+}
+/* Forced colours: the current segment is the system's selection colour. */
+@media (forced-colors: active) {
+  .switches .sw-group > :is(a[aria-current="page"], button[aria-checked="true"]) {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-color: Highlight;
+    color: HighlightText;
+  }
 }

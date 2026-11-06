@@ -1,27 +1,41 @@
 ---
-// Language links (EN / ES) and the theme switch (Auto / Light / Dark). The language is part of the URL, so
-// switching is a link to the same page in the other language; the theme is remembered in this browser. The switches
-// mark the current theme while the page is parsed (markTheme in elements/site-switches.ts), before the first paint.
+// The language links (EN / ES) and the theme switch (Auto / Light / Dark), on every page.
+// - Language: part of the URL, so each is a link to this page in that language, the current one marked
+//   aria-current="page" (Astryx's TopNavItem). In a page's top navigation they are a labelled group; on their own
+//   they are a <nav> landmark (nav={false|true}).
+// - Theme: a one-of-N segmented control (Astryx's SegmentedControl): role="radiogroup" of role="radio" buttons, one
+//   Tab stop, ← → / Home / End move and select, the "← → to navigate" hint once (elements/site-switches.ts). The
+//   choice is remembered in this browser. Auto is checked in the HTML (no stored choice: the page follows the
+//   device); markTheme, inlined right after the markup, checks the stored one before the first paint.
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { LOCALES, type Locale } from "../i18n";
 import { useUi } from "../i18n/ui";
 import "../styles/switches.css";
 import { markTheme } from "../elements/site-switches";
 
-interface Props { locale: Locale; path: string; class?: string }
-const { locale, path, class: className = "switches" } = Astro.props;
+interface Props {
+  locale: Locale;
+  path: string;
+  /** sm: 28px segments (lesson pages); md: 32px (the collection). */
+  size?: "sm" | "md";
+  /** The language links as their own navigation landmark (false inside a page's top <nav>). */
+  nav?: boolean;
+}
+const { locale, path, size = "sm", nav = true } = Astro.props;
 const ui = useUi(locale);
+const Lang = nav ? "nav" : "div";
+const choices = [["auto", "Auto"], ["light", ui("theme.light")], ["dark", ui("theme.dark")]] as const;
 ---
-<site-switches class={className}>
-  <nav class="seg lang-seg" aria-label={ui("lang.label")}>
+<site-switches class="switches" data-size={size}>
+  <Lang class="sw-group sw-lang" role={nav ? undefined : "group"} aria-label={ui("lang.label")}>
     {LOCALES.map((l) => (
-      <a href={getRelativeLocaleUrl(l, path)} hreflang={l} lang={l} aria-current={l === locale ? "page" : undefined} data-lang-link={l}>{l.toUpperCase()}</a>
+      <a class="ux-hit" href={getRelativeLocaleUrl(l, path)} hreflang={l} lang={l} aria-current={l === locale ? "page" : undefined} data-lang-link={l}>{l.toUpperCase()}</a>
     ))}
-  </nav>
-  <div class="seg theme-seg" role="group" aria-label={ui("theme.label")}>
-    <button type="button" data-theme-choice="auto">Auto</button>
-    <button type="button" data-theme-choice="light">{ui("theme.light")}</button>
-    <button type="button" data-theme-choice="dark">{ui("theme.dark")}</button>
+  </Lang>
+  <div class="sw-group sw-theme" role="radiogroup" aria-label={ui("theme.label")}>
+    {choices.map(([value, label]) => (
+      <button type="button" class="ux-hit" role="radio" aria-checked={String(value === "auto")} data-theme-choice={value}>{label}</button>
+    ))}
   </div>
 </site-switches>
 <script is:inline set:html={`(${markTheme})(document.currentScript.previousElementSibling)`} />

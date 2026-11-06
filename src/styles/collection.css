@@ -125,8 +125,6 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
 }
 @media (hover:hover){.card:hover{border-color:var(--edge)}}
 @media (prefers-reduced-motion:no-preference){.card{transition:border-color var(--ux-duration-fast) var(--ux-ease-standard)}}
-.switches .lang-seg a{padding:7px 11px;min-height:32px;font-size:11.5px;letter-spacing:.04em}
-.switches .lang-seg a:not([aria-current]){color:var(--text)}
 .shot picture,.shot img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:contain}
 /* A preview fades in once loaded (LessonCard.astro marks it data-loaded) rather than popping into an empty plate. */
 @media (scripting:enabled){.shot img:not([data-loaded]){opacity:0}}
