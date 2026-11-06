@@ -1,6 +1,7 @@
 // @ts-nocheck: live code in the style of the other lessons; shared helpers come from src/runtime and src/lib.
 // The vault row in the browser: runs the model a few hundred times slower than real time, slides the slips along the
-// tracks, lights the doors that hold the newest version, and answers the controls. mount() gets the build-time data
+// tracks, lights the doors that hold the newest version, and answers the controls. "Watch it on the machine" jumps
+// the run to a few seconds before the moment the experiment is about, found by running the same seed ahead. mount() gets the build-time data
 // from page.ts (projection, geometry, the slip drawing) and root, the <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
@@ -18,8 +19,8 @@ export default function mount({ P, G, SLIP_SVG }, root) {
   const doors = Array.from({ length: N }, (_, i) => q(`[data-door="${i}"]`));
   const downs = Array.from({ length: N }, (_, i) => q(`[data-down="${i}"]`));
   const vCounters = Array.from({ length: N }, (_, i) => WB.counter(svg, "v" + i, P));
-  const counters = Object.fromEntries(["ok", "failed", "stale", "lastOk", "read"].map((n) => [n, WB.counter(svg, n, P)]));
-  const staleOn = q('[data-stale="on"]'), staleOff = q('[data-stale="off"]');
+  const counters = Object.fromEntries(["ok", "failed", "stale", "back", "lastOk", "read"].map((n) => [n, WB.counter(svg, n, P)]));
+  const staleSign = q("[data-stale]");
   const readers = q("[data-readers]");
   const plaques = { W: q('[data-plaque="W"]'), R: q('[data-plaque="R"]') };
   const LINGER = 0.15;                       // model ms a slip stays at the desk after it's back
@@ -33,17 +34,19 @@ export default function mount({ P, G, SLIP_SVG }, root) {
   }
   function dress(el, lit, label) {
     if (el.lit !== lit) { el.lit = lit; setLit(el.slip, lit); }
-    if (el.label !== label) { el.label = label; setText(el.text, label); el.text.setAttribute("font-size", label.length > 3 ? 3.1 : 3.8); }
+    if (el.label !== label) { el.label = label; setText(el.text, label); el.text.setAttribute("font-size", label.length > 4 ? 3 : 3.6); }
   }
 
   // ---------- settings and the run ----------
   const cfg = { R: 2, W: 2, down: 0, repl: "busy", repair: "off", readers: "one", speed: 0.0025 };
-  let model, clock, logAt, from, seed = 5, lastRead = null, saidAt = -9, saidRank = 0, held = null;
+  let model, clock, logAt, from, seed = 5, runSeed = 5, lastRead = null, saidAt = -9, saidRank = 0, held = null;
+  const simCfg = () => ({ R: Number(cfg.R), W: Number(cfg.W), down: Number(cfg.down), repl: cfg.repl, repair: cfg.repair, readers: cfg.readers });
 
   function restart() {
     for (const r of recs.values()) { r.el.g.remove(); free.push(r.el); }
     recs.clear();
-    model = makeSim({ R: Number(cfg.R), W: Number(cfg.W), down: Number(cfg.down), repl: cfg.repl, repair: cfg.repair, readers: cfg.readers }, seed);
+    runSeed = seed;
+    model = makeSim(simCfg(), seed);
     seed = (seed * 7 + 3) % 9973 + 1;
     clock = 0; logAt = 0; from = 0; lastRead = null; saidAt = -9; saidRank = 0; held = null;
     for (let i = 0; i < N; i++) show(downs[i], isDown(i, Number(cfg.down)));
@@ -55,19 +58,27 @@ export default function mount({ P, G, SLIP_SVG }, root) {
   }
 
   // ---------- narration: the model's log ----------
-  function say(rank, text) {
-    // a message stays up at least 1.4 s of page time unless a more important one comes; a less important one waits
+  // a message stays up at least 1.4 s of page time (3 s for a stale or backward read, a failure) unless a more
+  // important one comes; a less important one waits
+  const holdFor = (rank) => (rank >= 4 ? 3 : 1.4);
+  // read: the read a message is about; the desk's READ and STALE sign show it once the message is up, so the desk
+  // and the readout always talk about the same read
+  function say(rank, text, read = null) {
     const wall = performance.now() / 1000;
-    if (rank < saidRank && wall - saidAt < 1.4) { held = { rank, text }; return; }
+    if (rank < saidRank && wall - saidAt < holdFor(saidRank)) { held = { rank, text, read }; return; }
     held = null;
     saidRank = rank; saidAt = wall;
+    if (read) lastRead = read;
     root.figure.say(L(text));
   }
   function sayHeld() {
-    if (held && performance.now() / 1000 - saidAt >= 1.4) { const h = held; held = null; saidRank = -1; say(h.rank, h.text); }
+    if (held && performance.now() / 1000 - saidAt >= holdFor(saidRank)) { const h = held; held = null; saidRank = -1; say(h.rank, h.text, h.read); }
   }
   const names = (list) => list.map((i) => NAMES[i]).join(", ");
   const msText = (x) => x.toFixed(1) + " ms";
+  const acks = (n) => n + (n === 1 ? " ack" : " acks");
+  // live vaults that haven't applied a write yet
+  const behind = (op) => model.live.filter((i) => model.reps[i].version < op.v);
   function narrate() {
     for (; logAt < model.log.length; logAt++) {
       const e = model.log[logAt];
@@ -75,19 +86,23 @@ export default function mount({ P, G, SLIP_SVG }, root) {
       const op = e.op, v = op && op.v ? "v" + op.v : "";
       const mine = op && op.who !== "reader";
       switch (e.type) {
-        case "wSent": say(1, T("write " + v + " goes to every live vault · OK after " + op.need + " acks", "escritura " + v + " va a cada bóveda viva · OK tras " + op.need + " acks")); break;
-        case "wOk": say(2, T(v + " acknowledged: " + op.need + " acks in " + msText(op.doneAt - op.t), v + " confirmada: " + op.need + " acks en " + msText(op.doneAt - op.t))); break;
+        case "wSent": say(1, T("write " + v + " goes to every live vault · OK after " + acks(op.need), "escritura " + v + " va a cada bóveda viva · OK tras " + acks(op.need))); break;
+        case "wOk": {
+          const late = behind(op), ok = T(v + " acknowledged: " + acks(op.need) + " in " + msText(op.doneAt - op.t), v + " confirmada: " + acks(op.need) + " en " + msText(op.doneAt - op.t));
+          if (late.length) say(2, T(ok.en + " · " + names(late) + " still applying it", ok.es + " · " + names(late) + " todavía la aplica" + (late.length > 1 ? "n" : "")));
+          else say(2, ok);
+          break;
+        }
         case "wUnavailable": say(4, T("write refused: W = " + op.need + ", only " + model.live.length + " vaults up · FAILED", "escritura rechazada: W = " + op.need + ", solo " + model.live.length + " bóvedas arriba · FALLIDA")); break;
         case "rUnavailable": if (mine) say(4, T("read refused: R = " + op.need + ", only " + model.live.length + " vaults up · FAILED", "lectura rechazada: R = " + op.need + ", solo " + model.live.length + " bóvedas arriba · FALLIDA")); break;
         case "rSent": if (mine) say(1, T((op.who === "writer" ? "read-back" : "your read") + " asks " + names(op.asked), (op.who === "writer" ? "la relectura" : "tu lectura") + " pregunta a " + names(op.asked))); break;
         case "lateApply": if (e.m.v === model.seq) say(0, T(NAMES[e.m.rep] + " is behind: applies v" + e.m.v + " late", NAMES[e.m.rep] + " va atrasada: aplica v" + e.m.v + " tarde")); break;
         case "repair": say(3, T("replies disagree · writing v" + op.result + " to " + names(e.old.map((m) => m.rep)) + " before answering", "las respuestas no coinciden · escribe v" + op.result + " en " + names(e.old.map((m) => m.rep)) + " antes de responder")); break;
         case "rDone": {
-          lastRead = op;
           const got = "v" + op.result, from_ = names(op.asked);
-          if (op.stale) say(5, T("read got " + got + " from " + from_ + " · STALE: v" + op.okBefore + " was acknowledged", "la lectura obtuvo " + got + " de " + from_ + " · VIEJA: v" + op.okBefore + " ya estaba confirmada"));
-          else if (op.backwards) say(5, T("read got " + got + " from " + from_ + " · went back: a read already returned v" + op.seenBefore, "la lectura obtuvo " + got + " de " + from_ + " · retrocedió: otra ya había devuelto v" + op.seenBefore));
-          else if (mine) say(2, T((op.who === "writer" ? "read-back" : "your read") + " got " + got + " from " + from_ + " · up to date", (op.who === "writer" ? "la relectura" : "tu lectura") + " obtuvo " + got + " de " + from_ + " · al día"));
+          if (op.stale) say(5, T("read got " + got + " from " + from_ + " · STALE: v" + op.okBefore + " was acknowledged", "la lectura obtuvo " + got + " de " + from_ + " · VIEJA: v" + op.okBefore + " ya estaba confirmada"), op);
+          else if (op.backwards) say(5, T("read got " + got + " from " + from_ + " · went back: a read already returned v" + op.seenBefore, "la lectura obtuvo " + got + " de " + from_ + " · retrocedió: otra ya había devuelto v" + op.seenBefore), op);
+          else if (mine) say(2, T((op.who === "writer" ? "read-back" : "your read") + " got " + got + " from " + from_ + " · up to date", (op.who === "writer" ? "la relectura" : "tu lectura") + " obtuvo " + got + " de " + from_ + " · al día"), op);
           break;
         }
       }
@@ -106,7 +121,7 @@ export default function mount({ P, G, SLIP_SVG }, root) {
       const lit = m.kind !== "r" && m.v === model.seq;
       return { lit, label: m.kind === "r" ? "GET" : "v" + m.v };
     }
-    if (m.kind === "r") return { lit: m.v === model.seq && m.v > 0, label: "v" + m.v };
+    if (m.kind === "r") return { lit: false, label: L("GOT", "VIO") + " v" + m.v };
     return { lit: false, label: "ACK" };
   }
 
@@ -123,10 +138,10 @@ export default function mount({ P, G, SLIP_SVG }, root) {
     counters.ok.setClamped(model.st.okW);
     counters.failed.setClamped(model.st.failW + model.st.failR);
     counters.stale.setClamped(model.st.stale);
+    counters.back.setClamped(model.st.back);
     counters.lastOk.setClamped(model.lastOk);
     counters.read.setClamped(lastRead ? lastRead.result : 0);
-    const stale = !!(lastRead && lastRead.stale);
-    show(staleOn, stale); show(staleOff, !stale);
+    show(staleSign, !!(lastRead && lastRead.stale));
 
     // slips
     const msgs = model.msgs;
@@ -149,8 +164,8 @@ export default function mount({ P, G, SLIP_SVG }, root) {
       let u;
       if (clock < m.arrive) u = clamp((clock - m.sent) / (m.arrive - m.sent));
       else if (clock < m.served) {
-        // waiting at the door: slips queue back along the track
-        u = 1 - (waiting[m.rep]++ * 7) / LEN;
+        // waiting at the door: slips queue back along the track (the fifth and later stack on the fourth)
+        u = 1 - (Math.min(4, waiting[m.rep]++) * 8) / LEN;
       } else u = 1 - clamp((clock - m.served) / (m.done - m.served));
       const [px, py] = pointOn(m.rep, u);
       const { lit, label } = slipOf(m, clock);
@@ -204,10 +219,41 @@ export default function mount({ P, G, SLIP_SVG }, root) {
   };
   root.on("action", (name) => actions[name]?.());
 
-  // ---------- "Watch it on the machine": an experiment's settings ----------
+  // ---------- "Watch it on the machine": an experiment's settings, and the moment it's about ----------
+  // The first time the run does what the experiment asks about (a stale read-back, a read that went back), found by
+  // running the same seed ahead without drawing it.
+  const MOMENTS = {
+    stale: (e) => e.type === "rDone" && e.op.who === "writer" && e.op.stale,
+    back: (e) => e.type === "rDone" && e.op.backwards,
+  };
+  function firstMoment(pred, cap = 3000) {
+    const m = makeSim(simCfg(), runSeed);
+    for (let T = 25, j = 0; T <= cap; T += 25) {
+      m.runTo(T);
+      for (; j < m.log.length; j++) if (pred(m.log[j])) return m.log[j].t;
+    }
+    return null;
+  }
+  // Run the model to T without narrating what happened before it, keeping what the desk shows.
+  function jumpTo(T) {
+    if (T <= clock) return;
+    model.runTo(T);
+    clock = T;
+    for (; logAt < model.log.length && model.log[logAt].t <= T; logAt++) {
+      const e = model.log[logAt];
+      if (e.type === "rDone" && (e.op.who !== "reader" || e.op.stale || e.op.backwards)) lastRead = e.op;
+    }
+    paint();
+    showStats();
+  }
   root.on("watch", (w) => {
     for (const key of ["R", "W", "down", "repl", "repair", "readers"]) set(key, w[key], true);
     restart();
+    if (w.until && MOMENTS[w.until]) {
+      const t = firstMoment(MOMENTS[w.until]);
+      // land about 5 s of page time before it
+      if (t !== null) jumpTo(t - 5000 * cfg.speed);
+    }
     wake();
   });
 
