@@ -49,9 +49,9 @@ section{margin-top:72px}
 .seg{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start}
 button{font:inherit;color:inherit}
 /* Controls behave like Astryx's (src/lessons/README.md, "UX foundation"; elements/wb-controls.ts, wb-button.ts). Press feedback: an overlay under the label, at once on pointerdown (data-pressed), fading on release; never on a disabled control, nor on a selected segment. */
-wb-seg>button,.btn{position:relative;isolation:isolate}
-wb-seg>button::before,.btn::before{content:"";position:absolute;inset:0;z-index:-1;background:currentColor;opacity:0;pointer-events:none;transition:opacity var(--ux-duration-exit) var(--ux-ease-exit)}
-wb-seg>button[data-pressed]:not([aria-checked="true"],[aria-pressed="true"])::before,.btn[data-pressed]::before{opacity:.1;transition:none}
+wb-seg>button,.btn,.choice{position:relative;isolation:isolate}
+wb-seg>button::before,.btn::before,.choice::before{content:"";position:absolute;inset:0;z-index:-1;background:currentColor;opacity:0;pointer-events:none;transition:opacity var(--ux-duration-exit) var(--ux-ease-exit)}
+wb-seg>button[data-pressed]:not([aria-checked="true"],[aria-pressed="true"])::before,.btn[data-pressed]::before,.choice[data-pressed]::before{opacity:.1;transition:none}
 /* A segmented control (one of N, radiogroup) or a toggle group (multiple): joined mono segments, the selected one ink-filled. */
 wb-seg{position:relative;isolation:isolate}
 wb-seg>button{appearance:none;border:1px solid var(--anatomy-lo);background:transparent;color:var(--anatomy-text);font-family:var(--anatomy-mono);font-size:12px;padding:6px 10px;cursor:pointer;line-height:1.2;min-height:32px;transition:color var(--ux-duration-fast) var(--ux-ease-standard),border-color var(--ux-duration-fast) var(--ux-ease-standard)}
@@ -72,7 +72,6 @@ wb-seg[data-slide]>button[aria-checked="true"]{background:transparent;border-col
 .btn.primary,.btn[aria-pressed="true"]{background:var(--anatomy-strong);border-color:var(--anatomy-strong);color:var(--anatomy-card)}
 .btn[data-pressed]{transform:scale(.98)}
 .btn[aria-busy="true"][data-busy-refuses]{opacity:1;cursor:progress}
-.btn[disabled]{opacity:.4;cursor:default}
 .btn[data-busy]{color:transparent}
 .wb-spin{position:absolute;inset:0;margin:auto;width:12px;height:12px;border:1.5px solid var(--anatomy-text);border-inline-end-color:transparent;border-radius:50%;animation:wb-spin-in var(--ux-duration-fast) var(--ux-ease-standard) both,wb-spin .8s linear infinite}
 .btn.primary .wb-spin{border-color:var(--anatomy-card);border-inline-end-color:transparent}
@@ -91,21 +90,29 @@ wb-seg[data-slide]>button[aria-checked="true"]{background:transparent;border-col
 .exp-head{display:flex;gap:12px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
 .exp-change{font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-muted);margin:4px 0 12px}
 .exp-q{color:var(--anatomy-strong);margin-bottom:10px}
+/* Predictions: selectable cards, each a label around a visually hidden radio; selected is a 2 px ink ring drawn inside (border + inset shadow), so nothing moves. One focus ring, on the card. */
 .choices{display:grid;gap:6px;margin-bottom:12px}
-.choice{display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid var(--anatomy-lo);background:transparent;padding:9px 12px;cursor:pointer;color:var(--anatomy-text);font-size:14px;line-height:1.45}
-.choice:hover{border-color:var(--anatomy-hi);color:var(--anatomy-strong)}
+.choice{display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid var(--anatomy-lo);background:transparent;padding:9px 12px;cursor:pointer;color:var(--anatomy-text);font-size:14px;line-height:1.45;transition:color var(--ux-duration-fast) var(--ux-ease-standard),border-color var(--ux-duration-fast) var(--ux-ease-standard),box-shadow var(--ux-duration-fast) var(--ux-ease-standard)}
+.choice>input{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;appearance:none;outline-style:none}
+@media (hover:hover){.choices:where(:not([aria-readonly="true"])) .choice:hover{border-color:var(--anatomy-hi);color:var(--anatomy-strong)}}
 .choice .mark{font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-muted);padding-top:2px;flex:none}
-.choice[aria-pressed="true"]{border-color:var(--anatomy-strong);color:var(--anatomy-strong);box-shadow:inset 3px 0 0 var(--anatomy-strong)}
-.choice[data-verdict="right"]{box-shadow:inset 3px 0 0 var(--anatomy-green);border-color:var(--anatomy-green)}
-.choice[data-verdict="wrong"]{box-shadow:inset 3px 0 0 var(--anatomy-red);border-color:var(--anatomy-red)}
-.choice[disabled]{cursor:default}
+.choice .text{flex:1;min-width:0}
+.choice:has(>input:checked){border-color:var(--anatomy-strong);color:var(--anatomy-strong);box-shadow:inset 0 0 0 1px var(--anatomy-strong)}
+:root:not([data-ux-modality="pointer"]) .choice:has(>input:focus-visible){outline-width:var(--ux-focus-width);outline-style:var(--ux-focus-style);outline-color:var(--ux-focus-color);outline-offset:var(--ux-focus-offset)}
+.choices[aria-readonly="true"] .choice{cursor:default}
+.choices[aria-readonly="true"] .choice::before{display:none}
+.choice[data-verdict="right"]{border-color:var(--anatomy-green);box-shadow:inset 0 0 0 1px var(--anatomy-green)}
+.choice[data-verdict="wrong"]{border-color:var(--anatomy-red);box-shadow:inset 0 0 0 1px var(--anatomy-red)}
+.choice .tag{flex:none;margin-inline-start:auto;padding-top:2px;font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--anatomy-strong)}
 .result{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--anatomy-faint)}
 .exp[data-done] .result{display:block}
 .verdict{font-weight:600;color:var(--anatomy-strong);margin-bottom:10px}
+/* Result bars: role="meter"; the fill is full width, moved by transform, so a new value animates on the compositor (and lands at once under reduced motion). */
 .bars{display:grid;gap:8px;margin:4px 0 14px}
 .bar{display:grid;grid-template-columns:150px 1fr 64px;gap:10px;align-items:center;font-family:var(--anatomy-mono);font-size:12px}
-.bar .track{height:12px;border:1px solid var(--anatomy-lo);position:relative}
-.bar .fill{position:absolute;inset:0 auto 0 0;background:var(--anatomy-mid);transition:width .7s var(--anatomy-ease)}
+.bar .track{height:12px;border:1px solid var(--anatomy-lo);position:relative;overflow:hidden}
+.bar .fill{position:absolute;inset:0;background:var(--anatomy-mid);transform:translateX(calc(var(--fill,0%) - 100%));transition:transform var(--ux-duration-medium) var(--ux-ease-standard)}
+.bar .track:dir(rtl) .fill{transform:translateX(calc(100% - var(--fill,0%)))}
 .bar[data-after] .fill{background:var(--anatomy-strong)}
 .bar b{font-weight:500;color:var(--anatomy-strong);text-align:right;font-variant-numeric:tabular-nums}
 details{border:1px solid var(--anatomy-faint);background:var(--anatomy-card);margin-top:10px}
@@ -115,7 +122,7 @@ summary .n{font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-mu
 details[open] summary{border-bottom:1px solid var(--anatomy-faint)}
 .answer{padding:12px 16px 14px 44px;font-size:14px}
 .answer .eyebrow{display:block;margin-bottom:4px}
-@media (forced-colors:active){wb-seg>button:is([aria-checked="true"],[aria-pressed="true"]),.btn[aria-pressed="true"]{forced-color-adjust:none;background:Highlight;border-color:Highlight;color:HighlightText}wb-seg::before{background:Highlight}}
+@media (forced-colors:active){wb-seg>button:is([aria-checked="true"],[aria-pressed="true"]),.btn[aria-pressed="true"]{forced-color-adjust:none;background:Highlight;border-color:Highlight;color:HighlightText}wb-seg::before{background:Highlight}.choice:has(>input:checked){border-color:Highlight;outline:2px solid Highlight;outline-offset:-3px}}
 @media (prefers-reduced-motion:reduce){.btn[data-pressed]{transform:none}}
 footer{margin-top:72px;padding-top:16px;border-top:1px solid var(--anatomy-faint);font-size:12.5px;color:var(--anatomy-muted)}
 footer a{color:inherit}
