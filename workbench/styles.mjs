@@ -49,9 +49,10 @@ section{margin-top:72px}
 .seg{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start}
 button{font:inherit;color:inherit}
 /* Controls behave like Astryx's (src/lessons/README.md, "UX foundation"; elements/wb-controls.ts, wb-button.ts). Press feedback: an overlay under the label, at once on pointerdown (data-pressed), fading on release; never on a disabled control, nor on a selected segment. */
-wb-seg>button,.btn,.choice{position:relative;isolation:isolate}
-wb-seg>button::before,.btn::before,.choice::before{content:"";position:absolute;inset:0;z-index:-1;background:currentColor;opacity:0;pointer-events:none;transition:opacity var(--ux-duration-exit) var(--ux-ease-exit)}
+wb-seg>button,.btn,.choice,summary{position:relative;isolation:isolate}
+wb-seg>button::before,.btn::before,.choice::before,summary::before{content:"";position:absolute;inset:0;z-index:-1;background:currentColor;opacity:0;pointer-events:none;transition:opacity var(--ux-duration-exit) var(--ux-ease-exit)}
 wb-seg>button[data-pressed]:not([aria-checked="true"],[aria-pressed="true"])::before,.btn[data-pressed]::before,.choice[data-pressed]::before{opacity:.1;transition:none}
+summary:active::before{opacity:.06;transition:none}
 /* A segmented control (one of N, radiogroup) or a toggle group (multiple): joined mono segments, the selected one ink-filled. */
 wb-seg{position:relative;isolation:isolate}
 wb-seg>button{appearance:none;border:1px solid var(--anatomy-lo);background:transparent;color:var(--anatomy-text);font-family:var(--anatomy-mono);font-size:12px;padding:6px 10px;cursor:pointer;line-height:1.2;min-height:32px;transition:color var(--ux-duration-fast) var(--ux-ease-standard),border-color var(--ux-duration-fast) var(--ux-ease-standard)}
@@ -115,10 +116,14 @@ wb-seg[data-slide]>button[aria-checked="true"]{background:transparent;border-col
 .bar .track:dir(rtl) .fill{transform:translateX(calc(100% - var(--fill,0%)))}
 .bar[data-after] .fill{background:var(--anatomy-strong)}
 .bar b{font-weight:500;color:var(--anatomy-strong);text-align:right;font-variant-numeric:tabular-nums}
+/* Explain-back answers: native details (a Collapsible that works without JavaScript); the trigger row gets the press overlay, no hover surface; the chevron points down when closed and up when open. */
 details{border:1px solid var(--anatomy-faint);background:var(--anatomy-card);margin-top:10px}
 summary{cursor:pointer;padding:14px 16px;color:var(--anatomy-strong);list-style:none;display:flex;gap:12px}
 summary::-webkit-details-marker{display:none}
 summary .n{font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-muted);padding-top:3px;flex:none}
+summary .q{flex:1;min-width:0}
+summary::after{content:"";flex:none;align-self:center;width:6px;height:6px;margin:0 2px 3px;border:solid var(--anatomy-muted);border-width:0 1.5px 1.5px 0;rotate:45deg;transition:rotate var(--ux-duration-fast) var(--ux-ease-standard)}
+details[open]>summary::after{rotate:225deg;margin-block:3px 0}
 details[open] summary{border-bottom:1px solid var(--anatomy-faint)}
 .answer{padding:12px 16px 14px 44px;font-size:14px}
 .answer .eyebrow{display:block;margin-bottom:4px}
