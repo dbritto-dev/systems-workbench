@@ -1,6 +1,7 @@
 ---
 // One lesson on the collection page: the running machine's preview (light and dark), what it teaches, and links.
-// Previews go through astro:assets, so each is served at the width the layout needs and loaded lazily.
+// Previews go through astro:assets, so each is served at the width the layout needs. The first cards' previews load
+// at once (they are on screen); the rest load lazily. Each fades in once it has loaded instead of popping in.
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { Image } from "astro:assets";
 import type { ImageMetadata } from "astro";
@@ -8,8 +9,8 @@ import { pick, type Locale } from "../../i18n";
 import { useUi, AREA_NAMES } from "../../i18n/ui";
 import { two, conceptOf, machineOf, blurbOf, plain, type Lesson } from "../../lib/lessons";
 
-interface Props { lesson: Lesson; locale: Locale }
-const { lesson: l, locale } = Astro.props;
+interface Props { lesson: Lesson; locale: Locale; eager?: boolean }
+const { lesson: l, locale, eager = false } = Astro.props;
 const ui = useUi(locale);
 const previews = import.meta.glob<{ default: ImageMetadata }>("/workbench/collection/previews/*.webp", { eager: true });
 const img = (scheme: "light" | "dark") => previews[`/workbench/collection/previews/${l.slug}-${scheme}.webp`]?.default;
@@ -17,11 +18,13 @@ const title = plain(l.page.title, locale);
 const machine = pick(machineOf(l), locale);
 const sizes = "(max-width: 760px) calc(100vw - 32px), 540px";
 const widths = [400, 560, 800, 1100];
+const load = eager ? { loading: "eager" as const, fetchpriority: "high" as const } : { loading: "lazy" as const };
+const shown = "this.dataset.loaded=''";
 ---
 <article class="card" data-area={l.area} data-slug={l.slug} id={`lesson-${two(l.n)}`}>
   <button type="button" class="shot" data-preview={l.slug} aria-label={`${ui("card.previewOf")} ${title}`}>
-    {img("light") && <Image class="on-light" src={img("light")!} alt={ui("card.alt", { machine, title })} widths={widths} sizes={sizes} loading="lazy" />}
-    {img("dark") && <Image class="on-dark" src={img("dark")!} alt="" widths={widths} sizes={sizes} loading="lazy" />}
+    {img("light") && <Image class="on-light" src={img("light")!} alt={ui("card.alt", { machine, title })} widths={widths} sizes={sizes} {...load} onload={shown} />}
+    {img("dark") && <Image class="on-dark" src={img("dark")!} alt="" widths={widths} sizes={sizes} {...load} onload={shown} />}
     <span class="plate-corner tl">{ui("card.lesson")} {two(l.n)}</span>
     <span class="plate-corner tr">{machine}</span>
   </button>

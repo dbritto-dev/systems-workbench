@@ -1,10 +1,12 @@
 ---
 // Language links (EN / ES) and the theme switch (Auto / Light / Dark). The language is part of the URL, so
-// switching is a link to the same page in the other language; the theme is remembered in this browser.
+// switching is a link to the same page in the other language; the theme is remembered in this browser. The switches
+// mark the current theme while the page is parsed (markTheme in elements/site-switches.ts), before the first paint.
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { LOCALES, type Locale } from "../i18n";
 import { useUi } from "../i18n/ui";
 import "../styles/switches.css";
+import { markTheme } from "../elements/site-switches";
 
 interface Props { locale: Locale; path: string; class?: string }
 const { locale, path, class: className = "switches" } = Astro.props;
@@ -22,6 +24,7 @@ const ui = useUi(locale);
     <button type="button" data-theme-choice="dark">{ui("theme.dark")}</button>
   </div>
 </site-switches>
+<script is:inline set:html={`(${markTheme})(document.currentScript.previousElementSibling)`} />
 <script>
   import "../elements/site-switches";
 </script>

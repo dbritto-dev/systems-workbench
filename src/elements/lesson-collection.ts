@@ -11,6 +11,7 @@ import type { Scope, SearchRun } from "../lib/search";
 import type { SearchDoc } from "../lib/search-index";
 import type { ChangeDetail, Filter, PowerSearch } from "./power-search";
 import { loadIndex, picker, PREVIEW_EVENT, type Locale, type PreviewDetail } from "./lesson-index";
+import { measureStrip } from "./filter-strip";
 
 export class LessonCollection extends HTMLElement {
   connectedCallback() {
@@ -71,18 +72,10 @@ function init(root: HTMLElement) {
   };
   chips.forEach((b) => b.addEventListener("click", () => { setArea(b.dataset.filter!); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" }); }));
 
+  // The strip was measured before first paint (Toolbar.astro); measure again when it can change.
   const strip = root.querySelector<HTMLElement>(".filters")!, wrap = root.querySelector<HTMLElement>(".filters-wrap")!;
   const arrows = wrap.querySelectorAll<HTMLButtonElement>("[data-scroll]");
-  const edges = () => {
-    wrap.removeAttribute("data-fits");
-    const max = strip.scrollWidth - strip.clientWidth;
-    if (max <= 2) { wrap.setAttribute("data-fits", ""); wrap.removeAttribute("data-more-left"); wrap.removeAttribute("data-more-right"); return; }
-    const left = strip.scrollLeft > 2, right = strip.scrollLeft < max - 2;
-    wrap.toggleAttribute("data-more-left", left);
-    wrap.toggleAttribute("data-more-right", right);
-    arrows[0].disabled = !left;
-    arrows[1].disabled = !right;
-  };
+  const edges = () => measureStrip(wrap);
   arrows.forEach((b) => b.addEventListener("click", () => strip.scrollBy({ left: Number(b.dataset.scroll) * Math.max(120, strip.clientWidth * 0.75), behavior: reduce() ? "auto" : "smooth" })));
   strip.addEventListener("scroll", edges, { passive: true });
   addEventListener("resize", edges);
@@ -94,6 +87,7 @@ function init(root: HTMLElement) {
     strip.scrollLeft += e.deltaY;
   }, { passive: false });
   edges();
+  void document.fonts?.ready.then(edges);
 
   // ---- previews: <lesson-preview> opens on this event; hovering a Preview button starts fetching the index ----
   root.querySelectorAll<HTMLElement>("[data-preview]").forEach((b) => {

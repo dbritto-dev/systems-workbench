@@ -28,7 +28,7 @@ h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:
 .tools{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:center}
 .search{position:relative;min-width:0}
 .status{min-height:18px;margin:8px 0 14px;font:500 11px/1.6 var(--mono);letter-spacing:.04em;color:var(--muted)}
-mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:inherit;padding:0 1px}
+mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:var(--ink);padding:0 1px}
 .hit{font:500 11.5px/1.45 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hit b{font-weight:500;color:var(--text)}
 .empty{grid-column:1/-1;display:grid;justify-items:center;gap:12px;padding:36px 20px;border:1px dashed var(--edge);text-align:center}
@@ -42,7 +42,9 @@ mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:inherit;padd
 .filters{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px}
 .filters::-webkit-scrollbar{display:none}
 .filters button{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
-.filters-view::before,.filters-view::after{content:"";position:absolute;top:0;bottom:0;width:28px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:3}
+.filters-view::before,.filters-view::after{content:"";position:absolute;top:0;bottom:0;width:28px;pointer-events:none;opacity:0;z-index:3}
+/* The fades are set before first paint (filter-strip.ts); they animate only once the page runs, on scroll. */
+@media (prefers-reduced-motion:no-preference){lesson-collection[data-ready] .filters-view::before,lesson-collection[data-ready] .filters-view::after{transition:opacity .15s}}
 .filters-view::before{left:0;background:linear-gradient(to right,var(--sheet),transparent)}
 .filters-view::after{right:0;background:linear-gradient(to left,var(--sheet),transparent)}
 .filters-wrap[data-more-left] .filters-view::before,.filters-wrap[data-more-right] .filters-view::after{opacity:1}
@@ -99,6 +101,9 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
 .switches .lang-seg a{padding:7px 11px;min-height:32px;font-size:11.5px;letter-spacing:.04em}
 .switches .lang-seg a:not([aria-current]){color:var(--text)}
 .shot picture,.shot img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:contain}
+/* A preview fades in once loaded (LessonCard.astro marks it data-loaded) rather than popping into an empty plate. */
+@media (scripting:enabled){.shot img:not([data-loaded]){opacity:0}}
+@media (scripting:enabled) and (prefers-reduced-motion:no-preference){.shot img{transition:opacity .2s ease-out}}
 
 /* Custom elements that only group behaviour: they take no box of their own. */
 lesson-collection, lesson-preview { display: contents; }

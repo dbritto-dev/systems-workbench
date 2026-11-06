@@ -42,7 +42,7 @@ const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json
     <lesson-collection index={INDEX} locale={locale}>
     <Toolbar locale={locale} lessons={lessons} />
     <main class="grid" id="lessons">
-      {lessons.map((lesson) => <LessonCard lesson={lesson} locale={locale} />)}
+      {lessons.map((lesson, i) => <LessonCard lesson={lesson} locale={locale} eager={i < 2} />)}
       <div class="empty" data-empty hidden><p></p><span class="card-actions"><button type="button" class="btn" data-all>{ui("search.showAll")}</button><button type="button" class="btn" data-clear>{ui("search.clear")}</button></span></div>
     </main>
     </lesson-collection>

@@ -5,14 +5,11 @@
 // The head of every page applies the remembered theme before first paint (layouts/Base.astro). Every switch on the
 // page shows the same choice: a change is announced with a "workbench-theme" event on document.
 // Language: the links keep the reader's search (?q=) and section (#predict) when switching.
+// markTheme() shows the current choice. Switches.astro inlines its source right after the switches, so the right
+// button is pressed on the first paint; the element calls it again on every change.
 const KEY = "workbench-theme";
 const EVENT = "workbench-theme";
 type Choice = "auto" | "light" | "dark";
-
-const current = (): Choice => {
-  const t = document.documentElement.getAttribute("data-theme");
-  return t === "light" || t === "dark" ? t : "auto";
-};
 
 export function setTheme(choice: Choice) {
   const root = document.documentElement;
@@ -22,8 +19,21 @@ export function setTheme(choice: Choice) {
   document.dispatchEvent(new Event(EVENT));
 }
 
-export class SiteSwitches extends HTMLElement {
-  #mark = () => this.querySelectorAll<HTMLButtonElement>("[data-theme-choice]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === current())));
+/** Presses the theme button that matches <html data-theme> (none means Auto). Self-contained: Switches.astro
+ *  inlines its source, so no imports or outer variables. */
+export function markTheme(el: Element) {
+  const t = document.documentElement.getAttribute("data-theme");
+  const now = t === "light" || t === "dark" ? t : "auto";
+  el.querySelectorAll<HTMLButtonElement>("[data-theme-choice]").forEach((b) => {
+    const on = String(b.dataset.themeChoice === now);
+    if (b.getAttribute("aria-pressed") !== on) b.setAttribute("aria-pressed", on);
+  });
+}
+
+// The base class is a stand-in at build time, when Switches.astro imports markTheme in Node.
+const Base = (globalThis.HTMLElement ?? Object) as typeof HTMLElement;
+export class SiteSwitches extends Base {
+  #mark = () => markTheme(this);
 
   connectedCallback() {
     this.addEventListener("click", this.#click);
@@ -43,7 +53,7 @@ export class SiteSwitches extends HTMLElement {
   };
 }
 
-if (!customElements.get("site-switches")) customElements.define("site-switches", SiteSwitches);
+if (globalThis.customElements && !customElements.get("site-switches")) customElements.define("site-switches", SiteSwitches);
 
 declare global {
   interface HTMLElementTagNameMap {

@@ -1,11 +1,14 @@
 ---
 // The power search (text plus filters as tokens: area, title, machine, experiments, questions, lesson number) and the
 // area filters (a strip that scrolls sideways on narrow screens, with ‹ › buttons), kept in step with the Area token.
+// The strip measures itself while the page is parsed (elements/filter-strip.ts), so its buttons and fades are right on
+// the first paint.
 import PowerSearch from "../PowerSearch.astro";
 import { useUi, AREAS, AREA_NAMES } from "../../i18n/ui";
 import { lessonFilters, lessonFilterStrings } from "../../lib/lesson-filters";
 import type { Locale } from "../../i18n";
 import type { Lesson } from "../../lib/lessons";
+import { measureStrip } from "../../elements/filter-strip";
 
 interface Props { locale: Locale; lessons: Lesson[] }
 const { locale, lessons } = Astro.props;
@@ -27,5 +30,6 @@ const areas = AREAS.filter((a) => counts[a] > 0);
     </div>
     <button type="button" class="scroll-btn" data-scroll="1" aria-label={ui("filters.right")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg></button>
   </div>
+  <script is:inline set:html={`(${measureStrip})(document.currentScript.previousElementSibling)`} />
 </div>
 <p class="status" id="search-status" data-status role="status" aria-live="polite"></p>
