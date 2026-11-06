@@ -63,6 +63,29 @@ buttons (`actions`) or a text box (`input`, read with `root.$('[data-input="name
 If two lessons need the same helper and it isn't listed, add it to `src/lib` or `src/runtime` rather than to a lesson.
 If a lesson's `page.ts` and `live.ts` need the same helper, export it from that lesson's `sim.ts`.
 
+## Machine conventions
+
+Rules every machine follows, so the set reads as one:
+
+- **Lit** marks what the lesson wants you to follow right now: the thing in play, or the failure the lesson is
+  about. Each lesson picks one of those roles, and the plate's first key lists every part that can light. Show other
+  states another way: a pose, a sign's text, a raised or lowered arm, an unlit lamp. In particular, don't light
+  actors (a person syncing, a recovery clerk) when lit means "something wrong".
+- **Watch it on the machine** shows the experiment's outcome within about 10 s of the press. Use a faster speed, a
+  warm-up (negative times) or a jump of the model clock to get there. The Watch stages the same settings the
+  verdict uses.
+- **Counters show what the stats show:** the same definition, rounding and unit. Show a fraction with a decimal point
+  inside one housing (see `passwords/figure.ts`, `dot`), never between two housings. A counter's caption names
+  what it counts in the panel's words.
+- **The readout describes the picture now.** Drop a message as soon as the state behind it is gone; say what the
+  current step is from its start. Singular and plural agree ("1 ack", "2 acks").
+- **A label sits directly in front of, or on, the part it names.** On iso faces that stand back from their parts
+  (tubes, bars, sockets), put the label on the top face in front of each part.
+- **When a line or tray can't draw everything,** show the rest as a "+N" tag where it is cut off.
+- **Gates** draw their arm in both states: raised when open, lowered when closed.
+- **Lamps** sit on a housing, a sign or a board, never alone on a post: a ball on a post reads as a person.
+- **The figure's aria label** places parts where they are drawn.
+
 ## Checking a change
 
 `pnpm build && pnpm preview`, then `node tools/site-check.cjs [base-url] <slug>…`: the live code runs, every experiment gives a
