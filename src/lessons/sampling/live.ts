@@ -19,7 +19,10 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
   const say = (v) => root.figure.say(L(v));
   const stat = (key, value) => root.stat(key, value);
   const layers = Object.fromEntries(["rack", "tokens", "belt", "back", "bin", "front", "fly"].map((n) => [n, q('[data-layer="' + n + '"]')]));
-  const lampOff = [0, 1, 2].map((i) => q('[data-lamp="' + i + '"]')), lampOn = [0, 1, 2].map((i) => q('[data-lamp-on="' + i + '"]'));
+  const flagDown = [0, 1, 2].map((i) => q('[data-flag-down="' + i + '"]')), flagUp = [0, 1, 2].map((i) => q('[data-flag-up="' + i + '"]'));
+  const rules = [0, 1].map((c) => q('[data-rules="' + c + '"]'));
+  const ruleText = (name) => qa('[data-rule="' + name + '"]');
+  const moreText = [0, 1].map((c) => q('[data-more="' + c + '"]'));
   const rateText = [0, 1, 2].map((i) => q('[data-rate="' + i + '"]'));
   const weightText = Array.from({ length: G.FOLDERS }, (_, i) => q('[data-weight="' + i + '"]'));
   const signs = { one: q('[data-signs="one"]'), two: q('[data-signs="two"]') }, divider = q("[data-divider]");
@@ -89,6 +92,10 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
     rateText.forEach((el, i) => setText(el, cfg.mode === "tail" ? "100%" : i === 2 && cfg.pay === "all" ? "100%" : pc(keep)));
     const two = cfg.mode === "tail" && cfg.coll !== "one";
     show(signs.one, !two); show(signs.two, two); show(divider, two);
+    // the collector's rules, in front of its rack: only tail sampling has any
+    show(rules[0], cfg.mode === "tail"); show(rules[1], two);
+    ruleText("keep").forEach((el) => setText(el, L("KEEP ", "GUARDA ") + pc(keep)));
+    ruleText("wait").forEach((el) => setText(el, L("WAIT ", "ESPERA ") + cfg.wait + " s"));
   }
 
   // ---------- where things are ----------
@@ -159,7 +166,7 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
           const who = cfg.coll === "one" ? "" : " (" + L("collector ", "colector ") + (p.coll + 1) + ")";
           const of = p.seen + "/" + (p.seen + p.late);
           let text;
-          if (p.why === "error") text = T("trace " + tr.id + " kept" + who + ": payments failed", "traza " + tr.id + " guardada" + who + ": pagos falló");
+          if (p.why === "error") text = T("trace " + tr.id + " kept" + who + ": payments failed", "traza " + tr.id + " guardada" + who + ": falló en pagos");
           else if (p.why === "slow") text = T("trace " + tr.id + " kept" + who + ": it took " + fmt(tr.spans[0].end - tr.t0), "traza " + tr.id + " guardada" + who + ": tardó " + fmt(tr.spans[0].end - tr.t0));
           else if (p.why === "base") text = T("trace " + tr.id + " kept" + who + " by the " + Math.round(lab.cfg.keep * 100) + "% rule", "traza " + tr.id + " guardada" + who + " por la regla del " + Math.round(lab.cfg.keep * 100) + "%");
           else if (p.late && (tr.slow || tr.err)) text = T("trace " + tr.id + " dropped" + who + ": judged on " + of + " spans · the slow or failing ones come later", "traza " + tr.id + " descartada" + who + ": juzgada con " + of + " spans · los lentos o fallidos llegan después");
@@ -177,9 +184,9 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
             : T("request " + tr.id + " will fail at payments · the edge didn't sample it, so payments doesn't record it", "la solicitud " + tr.id + " va a fallar en pagos · la entrada no la muestreó, así que pagos no la registra");
         } else {
           const rec = LETTERS.split("").filter((_, i) => tr.spans[i].recorded).join(" ");
-          text = rec ? T("request " + tr.id + " · recorded by " + rec + (tr.keptN < 3 ? " · a broken trace" : " · whole"), "solicitud " + tr.id + " · la registra " + rec + (tr.keptN < 3 ? " · traza incompleta" : " · completa"))
+          text = rec ? T("request " + tr.id + " · recorded by " + rec + (tr.keptN < 3 ? " · a broken trace" : " · whole"), "solicitud " + tr.id + " · la " + (rec.length > 1 ? "registran " : "registra ") + rec + (tr.keptN < 3 ? " · traza incompleta" : " · completa"))
             : T("request " + tr.id + " · no service recorded it", "solicitud " + tr.id + " · ningún servicio la registró");
-          if (tr.err) text = c.recorded ? T("request " + tr.id + " fails at payments · recorded by " + (rec || "–") + (tr.keptN < 3 ? " · the rest of its trace is missing" : ""), "la solicitud " + tr.id + " falla en pagos · la registra " + (rec || "–") + (tr.keptN < 3 ? " · falta el resto de su traza" : ""))
+          if (tr.err) text = c.recorded ? T("request " + tr.id + " fails at payments · recorded by " + (rec || "–") + (tr.keptN < 3 ? " · the rest of its trace is missing" : ""), "la solicitud " + tr.id + " falla en pagos · la " + (rec.length > 1 ? "registran " : "registra ") + (rec || "–") + (tr.keptN < 3 ? " · falta el resto de su traza" : ""))
             : T("request " + tr.id + " fails at payments · payments didn't record it", "la solicitud " + tr.id + " falla en pagos · pagos no la registró");
         }
         note = { t: clock, text, pri: notable };
@@ -193,7 +200,7 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
     fileTraces();
     for (const r of cards.values()) r.seen = false;
     for (const r of tokens.values()) r.seen = false;
-    const lit = [false, false, false];
+    const lit = [false, false, false];      // which samplers are recording: their flags go up
     for (const tr of lab.traces) {
       if (tr.t0 > clock) break;
       const aEnd = tr.spans[0].end;
@@ -261,7 +268,18 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
       const sorted = [...kids].sort((a, b) => depthOf(pos(a), P) - depthOf(pos(b), P));
       if (sorted.some((el, n) => el !== kids[n])) sorted.forEach((el) => layer.appendChild(el));
     }
-    lit.forEach((on, i) => { show(lampOn[i], on); show(lampOff[i], !on); });
+    lit.forEach((on, i) => { show(flagUp[i], on); show(flagDown[i], !on); });
+    // "+N" at the end of each collector's slots: traces it holds that the rack has no slot for
+    const two = cfg.mode === "tail" && cfg.coll !== "one";
+    const more = [0, 1].map((c) => {
+      if (cfg.mode !== "tail") return 0;
+      let held = 0, shown = 0;
+      for (const tr of lab.traces) { if (tr.t0 > clock) break; for (const p of tr.parts) if ((!two || p.coll === c) && p.first <= clock && clock < p.at) held++; }
+      for (let i = 0; i < G.SLOTS; i++) if (slots[i] && (!two || slots[i].coll === c)) shown++;
+      return Math.max(0, held - shown);
+    });
+    if (!two) { more[1] = more[0]; more[0] = 0; }
+    moreText.forEach((el, c) => setText(el, more[c] ? "+" + more[c] : ""));
     // rack timers
     for (let i = 0; i < G.SLOTS; i++) meters[i].set(slots[i] ? clamp((slots[i].at - clock) / lab.cfg.wait) : 0);
     // counters and readout
@@ -277,9 +295,10 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
     const st = lab.st;
     stat("kept", st.sent ? L(st.kept + " of " + st.sent, st.kept + " de " + st.sent) : "–");
     stat("broken", st.kept ? st.broken + " (" + pc(st.broken / st.kept) + ")" : "–");
-    stat("errors", st.err ? L(st.errKept + " of " + st.err + ", " + st.errWhole + " whole", st.errKept + " de " + st.err + ", " + st.errWhole + " completos") : "–");
-    stat("slow", st.slow ? L(st.slowKept + " of " + st.slow + ", " + st.slowWhole + " whole", st.slowKept + " de " + st.slow + ", " + st.slowWhole + " completas") : "–");
-    stat("held", cfg.mode === "tail" ? L(lab.held() + " traces", lab.held() + " trazas") : "–");
+    stat("errors", st.err ? L(st.errKept + " of " + st.err + ", " + st.errWhole + " whole", st.errKept + " de " + st.err + ", " + st.errWhole + (st.errWhole === 1 ? " completo" : " completos")) : "–");
+    stat("slow", st.slow ? L(st.slowKept + " of " + st.slow + ", " + st.slowWhole + " whole", st.slowKept + " de " + st.slow + ", " + st.slowWhole + (st.slowWhole === 1 ? " completa" : " completas")) : "–");
+    const h = lab.held();
+    stat("held", cfg.mode === "tail" ? L(h + (h === 1 ? " trace" : " traces"), h + (h === 1 ? " traza" : " trazas")) : "–");
     stat("rate", st.cTraces ? pc(st.cErr / st.cTraces) + " → " + pc(st.wErr / st.wSum) : "–");
   }
   function readout() {
@@ -328,7 +347,7 @@ export default function mount({ P, G, CARD_SVG, TOKEN_SVG }, root) {
   let pending = 0;
   root.on("watch", (w) => {
     for (const k of ["mode", "keep", "pay", "wait", "coll"]) set(k, w[k], true);
-    set("speed", w.warm ? "4" : "2", true);
+    set("speed", "3", true);
     restart(w.warm || WARM);
     showStats();
     wake();

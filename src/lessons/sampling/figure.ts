@@ -1,14 +1,15 @@
 // @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
 // A trace archive. At the back left, the service bench: requests from the users walk a track past three services, A
-// (the edge), B (orders) and C (payments); each service has a sampler (a lamp that lights when it records, and a
+// (the edge), B (orders) and C (payments); each service has a sampler (a flag it raises while it records, and a
 // plaque with its rate) and writes one span card per request. The cards ride the belt to the collector at the back
-// right, whose rack holds each trace's cards over a timer (the decision wait) until it keeps or drops them. Kept cards
+// right, whose rack holds each trace's cards over a timer (the decision wait) until it keeps or drops them; plaques in
+// front of the rack give its rules, and a "+N" tag at the end of the rack counts the traces held that it can't show. Kept cards
 // are filed by trace in the archive's folders, each with its weight; dropped ones fall into the discard bin. On the
 // tally desk: errors and slow requests sent and kept, and two dials for the error rate the archive gives, counted and
 // weighted. Every number is a counter on a real object.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, figurine, dial, meter, plaque, sign, lamp, faceText, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, figurine, dial, meter, plaque, sign, pennant, faceText } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -27,7 +28,7 @@ const ST_TOP = BENCH_H + ST_H;                        // 20
 const ST_FRONT = ST_Y + ST_D;                         // -74
 export const TRACK_Y = -69.5;
 export const ENTRY = [-142, TRACK_Y, BENCH_H];
-export const LAMP_AT = SX.map((cx) => [cx - 10, ST_Y + 5, ST_TOP]);
+export const FLAG_AT = SX.map((cx) => [cx - 12, ST_Y + 4, ST_TOP]);
 // where a span card leaves its station
 export const EMIT = SX.map((cx) => [cx + 6, ST_FRONT + 1, BENCH_H + 0.2]);
 
@@ -98,10 +99,13 @@ function station(i) {
   const plan = { x: cx - 17, y: ST_Y, w: 34, d: ST_D, r: 1.4 };
   const out = [S(k.slabOf(plan, BENCH_H, ST_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(plan, 1.8), ST_TOP, P), { tone: "faint" }) })];
   out.push(faceText(P, [cx - 9, ST_Y + 18.5, ST_TOP], "ABC"[i], { face: "top", size: 9, tone: "hi", anchor: "middle" }));
-  // the sampler: its rate on a plaque (the live code writes it) and a lamp that lights while it records
+  // the sampler: its rate on a plaque (the live code writes it) and a flag it raises while it records
   out.push(plaque(P, { x: cx - 1.5, y: ST_Y + 9.5, z: ST_TOP, w: 17, d: 10 }));
   out.push(faceText(P, [cx + 7, ST_Y + 16.6, ST_TOP + 0.8], "10%", { face: "top", size: 4.6, tone: "hi", anchor: "middle", attr: `data-rate="${i}"` }));
-  out.push(`<g data-lamp="${i}">${lamp(P, LAMP_AT[i], { r: 2.4 })}</g><g data-lamp-on="${i}" style="display:none">${litFill(lamp(P, LAMP_AT[i], { r: 2.4, lit: true }))}</g>`);
+  const [fx, fy, fz] = FLAG_AT[i];
+  const pole = L(k.segment([fx, fy, fz], [fx, fy, fz + 13.6], P), { tone: "mid" });
+  out.push(`<g data-flag-down="${i}">${pole}${pennant(P, { x: fx, y: fy, z: fz, height: 5.6, length: 8, drop: 5 })}</g>`);
+  out.push(`<g data-flag-up="${i}" style="display:none">${pennant(P, { x: fx, y: fy, z: fz, height: 13, length: 8, drop: 5 })}</g>`);
   out.push(words(cx - 15, ST_FRONT, BENCH_H + 4.6, NAMES[i], 3.2, { tone: "hi" }));
   return out.join("");
 }
@@ -138,6 +142,16 @@ function collector() {
     out.push(L(k.planOutline({ x, y: -88, w: SLOT_W, d: 18, r: 0.8 }, COLL_H, P), { tone: "lo" }));
     out.push(`<g data-meter-wrap="${i}">${meterPart(x + SLOT_W / 2, i)}</g>`);
   });
+  // the rules, on plaques in front of the rack (tail sampling only): one set per collector
+  // (stacked, and clear of the left end, which the archive's back tier hides)
+  for (const [c, x0] of [[0, 38], [1, 106]]) {
+    const out2 = [plaque(P, { x: x0, y: -69.4, z: COLL_H, w: 30, d: 5.6 }), plaque(P, { x: x0, y: -63, z: COLL_H, w: 30, d: 5.6 })];
+    out2.push(faceText(P, [x0 + 15, -65.1, COLL_H + 0.8], "", { face: "top", size: 3.3, tone: "hi", anchor: "middle", attr: `data-rule="keep"` }));
+    out2.push(faceText(P, [x0 + 15, -58.7, COLL_H + 0.8], "", { face: "top", size: 3.3, tone: "hi", anchor: "middle", attr: `data-rule="wait"` }));
+    out.push(`<g data-rules="${c}" style="display:none">${out2.join("")}</g>`);
+  }
+  // "+N": traces held in memory beyond the rack's slots, at the end of each collector's slots
+  for (const [c, x] of [[0, 78.2], [1, 142.2]]) out.push(faceText(P, [x, COLL_FRONT, 6.2], "", { size: 3.6, tone: "hi", anchor: "middle", attr: `data-more="${c}"` }));
   // the wall between the two collectors (shown with two)
   out.push(`<g data-divider style="display:none">${S(k.slabOf({ x: 77.2, y: -92, w: 1.6, d: 30, r: 0.3 }, COLL_H, 6, P, 2), { tone: "hi", crease: "lo" })}</g>`);
   // IN MEMORY: traces held waiting for a decision, on the collector's right side
@@ -235,8 +249,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A trace archive on a base plate. At the back left, users send requests along a track past three services on a bench: A, the edge, B, orders, and C, payments. Each service has a sampler with a lamp and a plaque showing its rate, and writes one span card per request it records. The cards ride a belt across the middle to the collector at the back right, whose rack holds each trace's cards over a timer until it decides to keep or drop them; a counter on its side shows the traces held in memory. Kept cards are filed by trace in the archive's folders at the front left, three places per folder, with a plaque giving the trace's weight; counters show the traces kept and those kept with spans missing. Dropped cards fall into the discard bin at the right. On the tally desk in front, counters show errors and slow requests sent and kept, and two dials show the error rate the archive gives when you count its traces and when you weight them.",
-      "Un archivo de trazas sobre una placa base. Atrás a la izquierda, los usuarios envían solicitudes por un riel que pasa por tres servicios sobre un banco: A, la entrada, B, pedidos, y C, pagos. Cada servicio tiene un muestreador con una lámpara y una placa con su tasa, y escribe una tarjeta de span por cada solicitud que registra. Las tarjetas viajan por una cinta en el medio hasta el colector, atrás a la derecha, cuyo estante retiene las tarjetas de cada traza sobre un temporizador hasta que decide guardarlas o descartarlas; un contador en su costado muestra las trazas retenidas en memoria. Las tarjetas guardadas se archivan por traza en las carpetas del archivo, adelante a la izquierda, con tres lugares por carpeta y una placa con el peso de la traza; los contadores muestran las trazas guardadas y las que se guardaron con spans faltantes. Las tarjetas descartadas caen al cajón de descarte, a la derecha. En el escritorio de conteo, adelante, los contadores muestran los errores y las solicitudes lentas enviados y guardados, y dos diales muestran la tasa de error que da el archivo si cuentas sus trazas y si las ponderas.",
+      "A trace archive on a base plate. At the back left, users send requests along a track past three services on a bench: A, the edge, B, orders, and C, payments. Each service has a sampler with a flag it raises while it records and a plaque showing its rate, and writes one span card per request it records. The cards ride a belt across the middle to the collector at the back right, whose rack holds each trace's cards over a timer until it decides to keep or drop them; plaques in front of the rack give its keep rate and decision wait, a tag at the end of the rack counts the traces held beyond its slots, and a counter on its side shows all the traces held in memory. Kept cards are filed by trace in the archive's folders at the front left, three places per folder, with a plaque giving the trace's weight; counters show the traces kept and those kept with spans missing. Dropped cards fall into the discard bin at the right. On the tally desk in front, counters show errors and slow requests sent and kept, and two dials show the error rate the archive gives when you count its traces and when you weight them.",
+      "Un archivo de trazas sobre una placa base. Atrás a la izquierda, los usuarios envían solicitudes por un riel que pasa por tres servicios sobre un banco: A, la entrada, B, pedidos, y C, pagos. Cada servicio tiene un muestreador con una bandera que levanta mientras registra y una placa con su tasa, y escribe una tarjeta de span por cada solicitud que registra. Las tarjetas viajan por una cinta en el medio hasta el colector, atrás a la derecha, cuyo estante retiene las tarjetas de cada traza sobre un temporizador hasta que decide guardarlas o descartarlas; unas placas delante del estante dan su tasa de guardado y su espera de decisión, una etiqueta al final del estante cuenta las trazas retenidas que no caben en sus lugares, y un contador en su costado muestra todas las trazas retenidas en memoria. Las tarjetas guardadas se archivan por traza en las carpetas del archivo, adelante a la izquierda, con tres lugares por carpeta y una placa con el peso de la traza; los contadores muestran las trazas guardadas y las que se guardaron con spans faltantes. Las tarjetas descartadas caen al cajón de descarte, a la derecha. En el escritorio de conteo, adelante, los contadores muestran los errores y las solicitudes lentas enviados y guardados, y dos diales muestran la tasa de error que da el archivo si cuentas sus trazas y si las ponderas.",
     ),
     body: [
       plate(),
@@ -250,11 +264,11 @@ export function buildFigure() {
       belt(),
       `<g data-layer="belt"></g>`,
       tier(BACK, BACK_H),
-      Array.from({ length: 6 }, (_, j) => folder(6 + j)).join(""),
+      Array.from({ length: 5 }, (_, j) => folder(5 + j)).join(""),
       `<g data-layer="back"></g>`,
       tier(FRONT, FRONT_H),
       archiveFront(),
-      Array.from({ length: 6 }, (_, j) => folder(j)).join(""),
+      Array.from({ length: 5 }, (_, j) => folder(j)).join(""),
       `<g data-layer="front"></g>`,
       desk(),
       `<g data-layer="bin"></g>`,
