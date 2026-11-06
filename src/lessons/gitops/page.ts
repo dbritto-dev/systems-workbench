@@ -5,7 +5,6 @@ import { defineLesson, withResults } from "../types";
 import { n0, int } from "../../lib/format";
 import { LIT_FILL_CSS } from "../../../workbench/parts.mjs";
 import { buildFigure, walkerSvg, podSvg, P, GEOMETRY, POD } from "./figure";
-import { litFill } from "../../../workbench/parts.mjs";
 import { hotfixRun, pollRun, hpaRun, pruneRun, rollbackRun, HOTFIX, MERGES, SPIKE, PRUNE, ROLLBACK, LIMIT, LOAD, CAP, STARTUP } from "./sim";
 
 // Experiment results, computed at build time from the same model the machine runs (eight seeded runs each).
@@ -213,13 +212,13 @@ export default defineLesson({
     plate: {
       title: t("Blueprint office", "Oficina de planos"),
       keys: [
-        { mark: "lit", label: t("What differs from git right now: a counter's housing, a pod on another version, OUT OF SYNC, the worker's lamp; a card git changed that the reconciler hasn't read; whoever is acting", "Lo que difiere de git en este momento: el marco de un contador, un pod con otra versión, DESINCRONIZADA, la lámpara del worker; una ficha que git cambió y el reconciliador no leyó; quien está actuando") },
+        { mark: "lit", label: t("What differs from git right now: a counter's housing, a pod on another version, OUT OF SYNC, the worker's lamp; a card git changed that the reconciler hasn't read", "Lo que difiere de git en este momento: el marco de un contador, un pod con otra versión, DESINCRONIZADA, la lámpara del worker; una ficha que git cambió y el reconciliador no leyó") },
         { mark: "raised", label: t("Pods on WEB, their version on the front; a low pod is still starting", "Pods sobre WEB, con su versión al frente; un pod bajo todavía está arrancando") },
         { mark: "flat", label: t("The aisle the reconciler walks, between git and the cluster", "El pasillo que recorre el reconciliador, entre git y el clúster") },
       ],
       caption: t(
-        "GIT's wall shows the head revision and one card per resource with the value git wants: web's version and replicas (HPA when git leaves them to it), config's LIMIT, and whether the worker exists. The reconciler's wall shows the revision it has read (HAS REV) and the seconds until it reads git again (NEXT CHECK); when the two revisions differ, git is ahead and the changed cards light. Once it has read a new revision, it walks to every resource that differs and applies git's value (an automated sync). With self-heal on it does the same, within seconds, for any live change, waiting longer each time the same drift comes back. With prune on, a sync also deletes what git no longer has. The HPA sets web's replicas from the load; each ready pod serves " + CAP + " requests a second, and what they can't serve, or what a bad version breaks, fails.",
-        "La pared de GIT muestra la revisión de la cabeza y una ficha por recurso con el valor que quiere git: la versión y las réplicas de web (HPA cuando git las deja a su cargo), el LÍMITE de config y si el worker existe. La pared del reconciliador muestra la revisión que leyó (TIENE REV) y los segundos que faltan para que vuelva a leer git (REVISA EN); cuando las dos revisiones difieren, git va adelante y las fichas cambiadas se encienden. Al leer una revisión nueva, recorre cada recurso que difiere y aplica el valor de git (un sync automático). Con self-heal hace lo mismo, en segundos, ante cualquier cambio en vivo, y espera más cada vez que vuelve la misma deriva. Con prune, un sync también borra lo que git ya no tiene. El HPA fija las réplicas de web según la carga; cada pod listo atiende " + CAP + " solicitudes por segundo, y lo que no alcanzan a atender, o lo que rompe una versión mala, falla.",
+        "GIT's wall shows the head revision and one card per resource with the value git wants: web's version and replicas (HPA when git leaves them to it), config's LIMIT, and whether the worker exists. The reconciler's wall shows the revision it has read (HAS REV) and the seconds until it reads git again (NEXT CHECK); when the two revisions differ, git is ahead and the changed cards light. Once it has read a new revision, it walks to every resource that differs and applies git's value (an automated sync). With self-heal on it does the same, within seconds, for any live change. With prune on, a sync also deletes what git no longer has. The HPA sets web's replicas from the load (WANTED); what the ready pods can't serve, or a bad version breaks, counts under web's FAILED. Whoever acts holds a slip.",
+        "La pared de GIT muestra la revisión de la cabeza y una ficha por recurso con el valor que quiere git: la versión y las réplicas de web (HPA cuando git las deja a su cargo), el LÍMITE de config y si el worker existe. La pared del reconciliador muestra la revisión que leyó (TIENE REV) y los segundos que faltan para que vuelva a leer git (REVISA EN); cuando las dos revisiones difieren, git va adelante y las fichas cambiadas se encienden. Al leer una revisión nueva, recorre cada recurso que difiere y aplica el valor de git (un sync automático). Con self-heal hace lo mismo, en segundos, ante cualquier cambio en vivo. Con prune, un sync también borra lo que git ya no tiene. El HPA fija las réplicas de web según la carga (DESEADOS); lo que los pods listos no alcanzan a atender, o lo que rompe una versión mala, cuenta en FALLIDAS de web. Quien actúa sostiene una papeleta.",
       ),
       stage: { "data-gitops": "" },
       label: t("GitOps reconcile simulation. Space pauses or resumes.", "Simulación de reconciliación GitOps. Espacio pausa o reanuda."),
@@ -242,8 +241,8 @@ export default defineLesson({
       { speed: true, options: [[1, "×1"], [4, "×4"], [15, "×15"], [60, "×60"]], value: 4 },
       { actions: [["release", t("Merge a release", "Fusionar una versión")], ["hotfix", t("Hotfix the cluster", "Hotfix en el clúster")], ["worker", t("Remove the worker in git", "Quitar el worker de git")], ["sync", t("Sync now", "Sincronizar ya")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
-    note: t("The reconciler follows Argo CD's defaults: it reads git every 120 s plus up to 60 s, and repeated self-heals wait 2 s, then three times longer each time, up to 5 minutes. Pods take " + STARTUP + " s to start; the HPA checks every 15 s and here aims for pods 70% busy. Other times are illustrative. Speed ×4 to ×60 makes the timers come round quickly.",
-      "El reconciliador sigue los valores por defecto de Argo CD: lee git cada 120 s más hasta 60 s, y las autorreparaciones repetidas esperan 2 s, luego tres veces más cada vez, hasta 5 minutos. Los pods tardan " + STARTUP + " s en arrancar; el HPA revisa cada 15 s y aquí apunta a pods ocupados al 70%. Los demás tiempos son ilustrativos. Las velocidades ×4 a ×60 hacen que los temporizadores lleguen rápido."),
+    note: t("The reconciler follows Argo CD's defaults: it reads git every 120 s plus up to 60 s, and repeated self-heals wait 2 s, then three times longer each time, up to 5 minutes. Pods take " + STARTUP + " s to start and each ready one serves " + CAP + " requests a second; the HPA checks every 15 s and here aims for pods 70% busy. Other times are illustrative. Speed ×4 to ×60 makes the timers come round quickly.",
+      "El reconciliador sigue los valores por defecto de Argo CD: lee git cada 120 s más hasta 60 s, y las autorreparaciones repetidas esperan 2 s, luego tres veces más cada vez, hasta 5 minutos. Los pods tardan " + STARTUP + " s en arrancar y cada uno listo atiende " + CAP + " solicitudes por segundo; el HPA revisa cada 15 s y aquí apunta a pods ocupados al 70%. Los demás tiempos son ilustrativos. Las velocidades ×4 a ×60 hacen que los temporizadores lleguen rápido."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs: web serves " + LOAD.normal + " requests a second on 3 pods, and the engineer's hotfix raises config's LIMIT from " + LIMIT.git + " to " + LIMIT.hotfix + ".",
     "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija: web atiende " + LOAD.normal + " solicitudes por segundo con 3 pods, y el hotfix sube el LÍMITE de config de " + LIMIT.git + " a " + LIMIT.hotfix + "."), experiments: withResults(EXPERIMENTS, RUNS) },
@@ -259,7 +258,7 @@ ${LIT_FILL_CSS}
     P,
     G: GEOMETRY,
     WALKER: walkerSvg(false),
-    WALKER_LIT: litFill(walkerSvg(true)),
+    WALKER_SYNC: walkerSvg(true),
     POD_READY: podSvg(POD.h),
     POD_START: podSvg(POD.hStart),
   },

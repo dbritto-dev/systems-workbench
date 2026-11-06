@@ -153,12 +153,12 @@ export function makeSim(cfgIn = {}, seed = 1, script = []) {
       if (live.image !== d.image) { live.image = d.image; live.history.push(d.image); }
       if (d.replicas !== null && live.replicas !== d.replicas) { if (d.replicas < live.replicas) st.cuts++; live.replicas = d.replicas; }
       if (was.image !== live.image || was.replicas !== live.replicas) {
-        if (task.why === "heal" && (edited.has("image") || edited.has("replicas"))) st.undone++;
+        if (edited.has("image") || edited.has("replicas")) st.undone++;   // any sync that overwrites a live edit
         log.push({ t, type: "apply", what: "web", from: was, to: { image: live.image, replicas: live.replicas }, why: task.why });
       }
       edited.delete("image"); edited.delete("replicas");
     } else if (x === STOPS.config && live.config !== d.config) {
-      if (edited.has("config")) { if (task.why === "heal") st.undone++; log.push({ t, type: "hotfixGone", from: live.config, to: d.config, why: task.why }); }
+      if (edited.has("config")) { st.undone++; log.push({ t, type: "hotfixGone", from: live.config, to: d.config, why: task.why }); }
       else log.push({ t, type: "apply", what: "config", from: live.config, to: d.config, why: task.why });
       live.config = d.config; edited.delete("config");
     } else if (x === STOPS.worker) {

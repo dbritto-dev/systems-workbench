@@ -8,7 +8,7 @@ import { L, T } from "../../runtime/wb";
 import { show, setText, setLit, playPause } from "../../runtime/dom";
 import { makeSim, CAP } from "./sim";
 
-export default function mount({ P, G, WALKER, WALKER_LIT, POD_READY, POD_START }, root) {
+export default function mount({ P, G, WALKER, WALKER_SYNC, POD_READY, POD_START }, root) {
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const NS = "http://www.w3.org/2000/svg";
@@ -27,7 +27,7 @@ export default function mount({ P, G, WALKER, WALKER_LIT, POD_READY, POD_START }
 
   // ---------- the walker ----------
   const walker = document.createElementNS(NS, "g");
-  walker.innerHTML = `<g data-w="off">${WALKER}</g><g data-w="on" style="display:none">${WALKER_LIT}</g>`;
+  walker.innerHTML = `<g data-w="off">${WALKER}</g><g data-w="on" style="display:none">${WALKER_SYNC}</g>`;
   const wOff = walker.querySelector('[data-w="off"]'), wOn = walker.querySelector('[data-w="on"]');
   walkLayer.appendChild(walker);
 
@@ -178,7 +178,7 @@ export default function mount({ P, G, WALKER, WALKER_LIT, POD_READY, POD_START }
     const orphan = live.worker && !want.worker;
     show(lampEl.on, orphan); show(lampEl.off, !orphan);
 
-    // people
+    // people: whoever acts holds a slip (lit is kept for what differs from git)
     const dev = clock - flash.dev < 1.6, eng = clock - flash.eng < 1.6;
     for (const [key, on] of [["dev", dev], ["eng", eng]]) {
       show(people[key].querySelector('[data-person="on"]'), on);

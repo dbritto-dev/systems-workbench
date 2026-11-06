@@ -5,8 +5,9 @@
 //   Back middle: the RECONCILER's booth. Its wall carries the revision the reconciler has read, the countdown to its
 //               next look at git, its syncs and the live edits it has undone, the OUT OF SYNC sign and the SELF-HEAL
 //               and PRUNE switches. On its desk, the bell a git webhook rings.
-//   Back right: the HPA cabinet: load, the pods it wants, requests a second; failed requests on its side.
-//   Front:      the cluster floor. WEB, a Deployment whose pods stand on its platform; CONFIG, a value the app reads;
+//   Back right: the HPA cabinet: the load on a meter and the pods it wants (WANTED).
+//   Front:      the cluster floor. WEB, a Deployment whose pods stand on its platform, with its failed requests;
+//               CONFIG, a value the app reads;
 //               WORKER, an old job runner; and the on-call engineer's KUBECTL desk.
 // The reconciler walks an aisle between the back row and the floor: to the office to read git, and to the back of
 // each resource it syncs. Everything it passes in front of is either far enough behind it or carries no words, and
@@ -42,7 +43,7 @@ const AISLE = { y0: -60, y1: -40 };
 const FLOOR = { y: -38, d: 58 };
 const FRONT = FLOOR.y + FLOOR.d;
 const WEB = { x: -126, y: FLOOR.y, w: 92, d: FLOOR.d, r: 1.6 };
-export const WEB_H = 10;
+export const WEB_H = 14;     // tall enough for captions over its counters
 const CONF = { x: -26, y: -34, w: 40, d: 54, r: 1.6 };
 const WORK = { x: 22, y: -34, w: 40, d: 54, r: 1.6 };
 const BOX_H = 18;
@@ -115,7 +116,7 @@ function gitDesk() {
   out.push(S(k.cylinder(-80, -71, 1.6, DESK.h, 1.2, P, 12), { tone: "mid" }));
   return out.join("");
 }
-export const developerSvg = (lit) => person(P, DEV_AT, { scale: 0.9, lit });
+export const developerSvg = (acting) => person(P, DEV_AT, { scale: 0.9, holding: acting ? "slip" : null });
 
 // ---------- the reconciler's booth ----------
 function reconWall() {
@@ -162,11 +163,15 @@ function reconDesk() {
 function bell() {
   const [bx, by, bz] = BELL_AT;
   const wire = `<g data-hook-wire style="display:none">${L(k.pathOf([[-74, -71, DESK.h + 0.4], [-66, -71, DESK.h + 6], [bx - 3, by, bz + 2]].map((p) => k.iso(p, P))), { tone: "mid" })}</g>`;
-  // a desk bell: a flat base, a dome and a knob
-  const bellOf = (lit) => S(k.cylinder(bx, by, 3.6, bz, 0.8, P, 24, 0.2), { tone: "mid" })
-    + `<g class="wb-lit-group">${S(k.cylinder(bx, by, 2.6, bz + 0.8, 2.4, P, 24, 1.1), { tone: "hi", crease: "lo", lit })}</g>`
+  // a desk bell: a flat base, a dome and a knob; ringing, short strokes fly off the dome (unlit: lit is for drift)
+  const bellBody = S(k.cylinder(bx, by, 3.6, bz, 0.8, P, 24, 0.2), { tone: "mid" })
+    + S(k.cylinder(bx, by, 2.6, bz + 0.8, 2.4, P, 24, 1.1), { tone: "hi", crease: "lo" })
     + S(k.cylinder(bx, by, 0.7, bz + 3.2, 1.2, P, 12), { tone: "mid", crease: "none" });
-  return wire + `<g data-bell="off">${bellOf(false)}</g><g data-bell="on" style="display:none">${litFill(bellOf(true))}</g>`;
+  const ring = [-1, 0, 1].map((j) => {
+    const a = j * 0.7, c = [bx + Math.sin(a) * 1.5, by, bz + 5.2];
+    return k.segment([c[0] + Math.sin(a) * 2, c[1], c[2] + Math.cos(a) * 1.6], [c[0] + Math.sin(a) * 4, c[1], c[2] + Math.cos(a) * 3.6], P);
+  }).join("");
+  return wire + bellBody + `<g data-bell="on" style="display:none">${L(ring, { tone: "hi" })}</g><g data-bell="off"></g>`;
 }
 
 // ---------- the HPA cabinet ----------
@@ -177,12 +182,9 @@ function hpaBox() {
   out.push(text(x0 + 4, f, HPA_H - 7.4, "HPA", TITLE));
   out.push(meter(P, { x: x0 + 34, y: f, z: 13.6, r: 6.4, zone: 1 / 1.5, name: "load", value: 20 / 30 / 1.5 }));
   out.push(text(x0 + 34, f, 8.6, t("LOAD", "CARGA"), LABEL, { anchor: "middle" }));
-  out.push(counter({ x: x0 + 4, y: f, z: 2.6, count: 2, name: "wants", value: 3 }));
-  out.push(text(after(x0 + 4, 2), f, 4.2, t("WANTS", "PIDE")));
-  // failed requests, on the right side
-  const side = HPA_BOX.x + HPA_BOX.w;
-  out.push(faceText(P, [side, f - 2.4, 14.6], t("FAILED", "FALLIDAS"), { face: "x", size: LABEL, tone: "mid" }));
-  out.push(counter({ x: side, y: f - 2.4, z: 3, count: 4, face: "x", name: "failed" }));
+  // the pods it wants: the same word as lesson 76's HPA (READY / STARTING / WANTED)
+  out.push(counter({ x: x0 + 5.2, y: f, z: 2, count: 2, name: "wants", value: 3 }));
+  out.push(text(x0 + 4, f, 11.6, t("WANTED", "DESEADOS")));
   return out.join("");
 }
 
@@ -199,11 +201,12 @@ function web() {
   out.push(L(k.planOutline(k.insetPlan(WEB, 2.4), WEB_H, P), { tone: "faint" }));
   // the pod sockets
   out.push(L(SLOTS.map(([x, y]) => k.planOutline({ x: x - POD.w / 2 - 0.8, y: y - POD.d / 2 - 0.8, w: POD.w + 1.6, d: POD.d + 1.6, r: 1 }, WEB_H, P)).join(""), { tone: "lo" }));
-  out.push(text(WEB.x + 4, FRONT, 2.6, "WEB", TITLE + 0.6));
-  out.push(litCounter("version", { x: WEB.x + 22, y: FRONT, z: 1.8, count: 1, value: 7 }));
-  out.push(text(after(WEB.x + 22, 1), FRONT, 3.4, t("VERSION", "VERSIÓN")));
-  out.push(litCounter("replicas", { x: WEB.x + 52, y: FRONT, z: 1.8, count: 2, value: 3 }));
-  out.push(text(after(WEB.x + 52, 2), FRONT, 3.4, t("REPLICAS", "RÉPLICAS")));
+  out.push(text(WEB.x + 4, FRONT, 4.4, "WEB", TITLE + 0.6));
+  // each counter with its caption over it; the requests web fails (it can't serve them, or a bad version breaks them)
+  const col = (x, name, count, words, value, lit) => (lit ? litCounter(name, { x: x + 1.2, y: FRONT, z: 1.4, count, value }) : counter({ x: x + 1.2, y: FRONT, z: 1.4, count, name, value })) + text(x, FRONT, 10.9, words);
+  out.push(col(WEB.x + 20, "version", 1, t("VERSION", "VERSIÓN"), 7, true));
+  out.push(col(WEB.x + 37, "replicas", 2, t("REPLICAS", "RÉPLICAS"), 3, true));
+  out.push(col(WEB.x + 58, "failed", 4, t("FAILED", "FALLIDAS"), 0, false));
   out.push(`<g data-layer="pods"></g>`);
   return out.join("");
 }
@@ -242,10 +245,11 @@ function kubectl() {
   out.push(S(k.slabOf({ x: 88, y: -11.4, w: 22, d: 1.2, r: 0.3 }, KUBE_H + 1, 13, P, 2, 0.2), { tone: "hi", crease: "lo" }));
   return out.join("");
 }
-export const engineerSvg = (lit) => person(P, ENG_AT, { scale: 0.9, hat: "brim", lit });
+export const engineerSvg = (acting) => person(P, ENG_AT, { scale: 0.9, hat: "brim", holding: acting ? "slip" : null });
 
 // ---------- moving parts, drawn at the origin and moved with translateAlong ----------
-export const walkerSvg = (lit) => person(P, [0, 0, 0], { scale: 0.9, hat: "cap", holding: "clipboard", lit });
+// The reconciler: a clipboard while it reads and walks; git's blueprint (a slip) while it syncs.
+export const walkerSvg = (syncing) => person(P, [0, 0, 0], { scale: 0.9, hat: "cap", holding: syncing ? "slip" : "clipboard" });
 // A pod: a box with its version on top; a starting pod is a low box.
 export function podSvg(h) {
   const plan = { x: -POD.w / 2, y: -POD.d / 2, w: POD.w, d: POD.d, r: 1 };
@@ -258,14 +262,14 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "GitOps as a machine on a base plate. At the back left, GIT, a blueprint office: its wall shows the head revision and three blueprint cards, WEB, CONFIG and WORKER, with the values git says should run; a developer who merges changes stands behind its desk. At the back middle, the RECONCILER's booth: its wall shows the revision it has read, the seconds to its next look at git, its syncs and the live edits it has undone, an OUT OF SYNC sign and the SELF-HEAL and PRUNE switches; a bell on its desk rings when a git webhook arrives. At the back right, the HPA cabinet shows load, the pods it wants, requests a second and failed requests. In front, the cluster floor: WEB, whose pods stand on its platform with their version on top, with counters for its version and replicas; CONFIG, with its LIMIT; WORKER, an old job runner, with a lamp that lights when git no longer has it; and the on-call engineer's KUBECTL desk. The reconciler walks the aisle between the back row and the floor, with a clipboard: to the office to read git, and to each resource it syncs. Lit: what differs from git right now, and whoever is acting.",
-      "GitOps como una máquina sobre una placa base. Atrás a la izquierda, GIT, una oficina de planos: su pared muestra la revisión de la cabeza (head) y tres fichas de planos, WEB, CONFIG y WORKER, con los valores que git dice que deben correr; detrás de su escritorio está quien desarrolla y fusiona cambios. Atrás al centro, la cabina del RECONCILIADOR: su pared muestra la revisión que leyó, los segundos hasta su próxima revisión de git, sus syncs y las ediciones en vivo que deshizo, un letrero DESINCRONIZADA y los interruptores SELF-HEAL y PRUNE; una campana en su escritorio suena cuando llega un webhook de git. Atrás a la derecha, el gabinete del HPA muestra la carga, los pods que pide, las solicitudes por segundo y las solicitudes fallidas. Adelante, el piso del clúster: WEB, cuyos pods están sobre su plataforma con su versión encima, con contadores de su versión y sus réplicas; CONFIG, con su LÍMITE; WORKER, un ejecutor de tareas viejo, con una lámpara que se enciende cuando git ya no lo tiene; y el escritorio KUBECTL de la ingeniera de guardia. El reconciliador recorre el pasillo entre la fila de atrás y el piso, con una tablilla: hasta la oficina para leer git y hasta cada recurso que sincroniza. Encendido: lo que difiere de git en este momento y quien está actuando.",
+      "GitOps as a machine on a base plate. At the back left, GIT, a blueprint office: its wall shows the head revision and three blueprint cards, WEB, CONFIG and WORKER, with the values git says should run; a developer who merges changes stands behind its desk. At the back middle, the RECONCILER's booth: its wall shows the revision it has read, the seconds to its next look at git, its syncs and the live edits it has undone, an OUT OF SYNC sign and the SELF-HEAL and PRUNE switches; a bell on its desk rings when a git webhook arrives. At the back right, the HPA cabinet shows the load on a meter and the pods it wants. In front, the cluster floor: WEB, whose pods stand on its platform with their version on the front, with counters for its version, its replicas and the requests it failed; CONFIG, with its LIMIT; WORKER, an old job runner, with a lamp that lights when git no longer has it; and the on-call engineer's KUBECTL desk. The reconciler walks the aisle between the back row and the floor: with a clipboard to the office to read git, and with git's blueprint to each resource it syncs; the developer and the engineer hold a slip while they act. Lit: what differs from git right now.",
+      "GitOps como una máquina sobre una placa base. Atrás a la izquierda, GIT, una oficina de planos: su pared muestra la revisión de la cabeza (head) y tres fichas de planos, WEB, CONFIG y WORKER, con los valores que git dice que deben correr; detrás de su escritorio está quien desarrolla y fusiona cambios. Atrás al centro, la cabina del RECONCILIADOR: su pared muestra la revisión que leyó, los segundos hasta su próxima revisión de git, sus syncs y las ediciones en vivo que deshizo, un letrero DESINCRONIZADA y los interruptores SELF-HEAL y PRUNE; una campana en su escritorio suena cuando llega un webhook de git. Atrás a la derecha, el gabinete del HPA muestra la carga en un medidor y los pods que desea. Adelante, el piso del clúster: WEB, cuyos pods están sobre su plataforma con su versión al frente, con contadores de su versión, sus réplicas y las solicitudes que falló; CONFIG, con su LÍMITE; WORKER, un ejecutor de tareas viejo, con una lámpara que se enciende cuando git ya no lo tiene; y el escritorio KUBECTL de la ingeniera de guardia. El reconciliador recorre el pasillo entre la fila de atrás y el piso: con una tablilla hasta la oficina para leer git, y con el plano de git hasta cada recurso que sincroniza; quien desarrolla y la ingeniera sostienen una papeleta mientras actúan. Encendido: lo que difiere de git en este momento.",
     ),
     body: [
       plate(),
       gitWall(),
       reconWall(),
-      `<g data-dev>${`<g data-person="off">${developerSvg(false)}</g><g data-person="on" style="display:none">${litFill(developerSvg(true))}</g>`}</g>`,
+      `<g data-dev>${`<g data-person="off">${developerSvg(false)}</g><g data-person="on" style="display:none">${developerSvg(true)}</g>`}</g>`,
       gitDesk(),
       reconDesk(),
       bell(),
@@ -275,7 +279,7 @@ export function buildFigure() {
       web(),
       config(),
       worker(),
-      `<g data-eng>${`<g data-person="off">${engineerSvg(false)}</g><g data-person="on" style="display:none">${litFill(engineerSvg(true))}</g>`}</g>`,
+      `<g data-eng>${`<g data-person="off">${engineerSvg(false)}</g><g data-person="on" style="display:none">${engineerSvg(true)}</g>`}</g>`,
       kubectl(),
     ],
   });
