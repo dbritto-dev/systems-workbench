@@ -13,7 +13,7 @@ export default function mount({ P, G, MARKS }, root) {
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
   const NS = "http://www.w3.org/2000/svg";
-  const WINDOW = 2.4;                                   // model seconds shown on the tape
+  const WINDOW = 3.6;                                   // model seconds shown on the tape
   const UPS = (G.NOW_X - G.START_X) / WINDOW;           // tape units per model second
   const xAt = (t) => G.NOW_X - (clock - t) * UPS;
   const Z = G.TAPE_H + 0.05;
@@ -23,9 +23,11 @@ export default function mount({ P, G, MARKS }, root) {
   const desks = [0, 1, 2, 3].map((i) => ({ g: q('[data-desk="' + i + '"]'), status: q('[data-status="' + i + '"]'), slip: q('[data-slip="' + i + '"]'), slipText: q('[data-slip-text="' + i + '"]') }));
   const laneLabels = [0, 1, 2, 3].map((i) => q('[data-lane-label="' + i + '"]'));
   const docs = [0, 1, 2, 3].map((i) => ({ g: q('[data-doc="' + i + '"]'), flag: q('[data-flag="' + i + '"]'), state: q('[data-doc-state="' + i + '"]') }));
-  const tags = Object.fromEntries(["acct", "d0", "d1", "d2", "d3"].map((n) => [n, { g: q('[data-tag="' + n + '"]'), text: q('[data-tag-text="' + n + '"]') }]));
+  const locks = Object.fromEntries(["acct", "d0", "d1", "d2", "d3"].map((n) => [n, { open: q('[data-lock="' + n + '"] [data-lock-state="open"]'), closed: q('[data-lock="' + n + '"] [data-lock-state="closed"]'), text: q('[data-lock-text="' + n + '"]') }]));
+  const docLocks = [0, 1, 2, 3].map((i) => q('[data-doc-lock="' + i + '"]'));
+  const vers = Array.from({ length: G.VERSIONS }, (_, j) => ({ g: q('[data-ver="' + j + '"]'), text: q('[data-ver-text="' + j + '"]'), who: q('[data-ver-who="' + j + '"]') }));
   const rule = { on: q('[data-rule="on"]'), off: q('[data-rule="off"]') };
-  const balanceGroup = q("[data-balance]"), badGroup = q("[data-bad]");
+  const badGroup = q("[data-bad]");
   const counters = Object.fromEntries(["balance", "expected", "done", "aborts", "bad"].map((n) => [n, WB.counter(svg, n, P)]));
   const spanLayer = q('[data-layer="spans"]');
   const laneLayers = [0, 1, 2, 3].map((i) => q('[data-layer="lane' + i + '"]'));
@@ -60,12 +62,34 @@ export default function mount({ P, G, MARKS }, root) {
       if (e === 1 && ok === null) ok = x;
     }
     seed = best ?? ok ?? seed;
+    // Start a little before the first clash (a deposit written over, a rollback, a night with nobody on call; else a
+    // lock wait), so the tape already shows what led up to it and the clash comes about LEAD s of model time in.
+    const first = firstClash(settings, seed);
     model = makeSim(settings, seed);
     seed = next(seed);
     clock = 0; logAt = 0; lostAt = -9; lastDone = {}; lastAbort = {}; saidAt = -9; saidRank = 0; held = null;
+    const start = Math.max(0, first - LEAD);
+    if (start > 0) {
+      model.runTo(start); clock = start;
+      for (; logAt < model.log.length && model.log[logAt].t <= start; logAt++) {
+        const e = model.log[logAt];
+        if (e.type === "commit") lastDone[e.i] = e.t;
+        if (e.type === "abort") lastAbort[e.i] = e.t;
+      }
+    }
     dressScene();
     paint();
     showStats();
+  }
+  // LEAD: model seconds from the start to the clash. The clash is the first one at least FILL s in, so the tape (3.6 s
+  // wide) already carries a run of reads and writes when it comes; failing that, the first one at all.
+  const LEAD = 1.6, FILL = 4;
+  function firstClash(settings, s) {
+    const m = makeSim(settings, s);
+    m.runTo(16);
+    const clash = (e) => (e.type === "commit" && e.lost > 0) || e.type === "abort" || (e.type === "nightEnd" && e.on === 0);
+    const late = m.log.find((e) => clash(e) && e.t >= FILL), any = m.log.find(clash), wait = m.log.find((e) => e.type === "wait");
+    return (late ?? any ?? wait)?.t ?? 0;
   }
   function dressScene() {
     const rota = cfg.scenario === "rota";
@@ -75,6 +99,7 @@ export default function mount({ P, G, MARKS }, root) {
     desks.forEach((d, i) => show(d.g, i < cfg.people));
     laneLabels.forEach((g, i) => show(g, i < cfg.people));
     docs.forEach((d, i) => show(d.g, i < cfg.people));
+    docLocks.forEach((g, i) => show(g, i < cfg.people));
     root.controls.showFor(cfg.scenario);
     const lab = rota ? [T("Nights", "Noches"), T("Nobody on call", "Sin nadie de guardia")] : [T("Deposits", "Depósitos"), T("Lost", "Perdidos")];
     setText(statLabels.done, L(lab[0]));
@@ -112,7 +137,11 @@ export default function mount({ P, G, MARKS }, root) {
         case "stay": say(2, W(i, "only " + e.count + " on call · stays", "solo " + e.count + " de guardia · se queda")); break;
         case "commit":
           lastDone[i] = e.t;
-          if (e.lost > 0) { lostAt = e.t; say(4, W(i, "COMMIT · wrote over " + e.lost + " deposit" + (e.lost > 1 ? "s" : "") + " · no error", "COMMIT · sobrescribió " + e.lost + " depósito" + (e.lost > 1 ? "s" : "") + " · sin error")); }
+          if (e.lost > 0) {
+            lostAt = e.t;
+            if (e.lost === 1 && e.over && e.over.length === 1) say(4, W(i, "COMMIT · wrote over " + NAMES[e.over[0]] + "'s deposit · no error", "COMMIT · sobrescribió el depósito de " + NAMES[e.over[0]] + " · sin error"));
+            else say(4, W(i, "COMMIT · wrote over " + e.lost + " deposit" + (e.lost > 1 ? "s" : "") + " · no error", "COMMIT · sobrescribió " + e.lost + " depósito" + (e.lost > 1 ? "s" : "") + " · sin error"));
+          }
           break;
         case "abort":
           lastAbort[i] = e.t;
@@ -169,11 +198,12 @@ export default function mount({ P, G, MARKS }, root) {
         // a tile ends at the moment it happened; a post or a cross stands at that moment
         const tile = m.kind === "read" || m.kind === "write" || m.kind === "lost";
         const x = tile ? xAt(m.t) - G.MARK.w : xAt(m.t);
+        const my = tile ? y : y + G.POST_DY;
         let r = marks.get(key);
         if (x < G.START_X - (tile ? 0 : 2)) { if (r) { r.g.remove(); marks.delete(key); } return; }
         if (!r) { r = { g: markEl(m.kind, m.text) }; marks.set(key, r); (tile ? laneLayers : postLayers)[a.i].appendChild(r.g); }
         keep.add(key);
-        r.g.setAttribute("transform", translateAlong(P, [x, y, Z]));
+        r.g.setAttribute("transform", translateAlong(P, [x, my, Z]));
       });
     }
     for (const [key, r] of marks) if (!keep.has(key)) { r.g.remove(); marks.delete(key); }
@@ -194,7 +224,8 @@ export default function mount({ P, G, MARKS }, root) {
       if (lastAbort[i] !== undefined && clock - lastAbort[i] < 0.25) st = "rollback";
       else if (c.phase === "idle" && lastDone[i] !== undefined && clock - lastDone[i] < 0.25) st = "commit";
       setText(d.status, L(STATUS[st] || STATUS.idle));
-      const slip = c.read !== null && (c.txn || clock - (lastDone[i] ?? -9) < 0.6);
+      // the slip shows what the running transaction read, and for a moment after it commits (not after a rollback)
+      const slip = c.read !== null && (c.txn || ((lastDone[i] ?? -9) > (lastAbort[i] ?? -9) && clock - lastDone[i] < 0.6));
       show(d.slip, !!slip);
       if (slip) setText(d.slipText, String(c.read));
     });
@@ -204,9 +235,7 @@ export default function mount({ P, G, MARKS }, root) {
         const on = model.rows[name].versions[model.rows[name].versions.length - 1].v;
         show(docs[i].flag, on);
         setText(docs[i].state, on ? L("ON CALL", "GUARDIA") : L("OFF", "LIBRE"));
-        const h = model.lockOf(name);
-        show(tags["d" + i].g, h >= 0);
-        if (h >= 0) setText(tags["d" + i].text, NAMES[h]);
+        setLock("d" + i, model.lockOf(name));
       });
       const n = model.night, bad = !!(n && n.end !== undefined && n.on === 0);
       show(rule.on, bad); show(rule.off, !bad);
@@ -214,19 +243,30 @@ export default function mount({ P, G, MARKS }, root) {
       counters.bad.setClamped(model.stats.broken);
       setLitGroup(badGroup, bad);
     } else {
-      const h = model.lockOf("acct");
-      show(tags.acct.g, h >= 0);
-      if (h >= 0) setText(tags.acct.text, NAMES[h]);
+      setLock("acct", model.lockOf("acct"));
+      // the last committed versions, oldest at the left, and under each the desks whose transaction read it
+      const vs = model.rows.acct.versions, n = vs.length;
+      vers.forEach((x, j) => {
+        const v = vs[n - G.VERSIONS + j];
+        show(x.g, !!v);
+        if (!v) return;
+        setText(x.text, String(v.v));
+        const who = model.clerks.filter((c) => c.txn && c.txn.ctx.readVer === v).map((c) => NAMES[c.i]);
+        setText(x.who, who.join(who.length > 2 ? "" : " "));
+      });
       counters.balance.setClamped(model.balance());
       counters.expected.setClamped(100 + 10 * model.stats.made);
       counters.done.setClamped(model.stats.made);
       counters.bad.setClamped(model.stats.lost);
-      const flash = clock - lostAt < 0.5;
-      setLitGroup(balanceGroup, flash);
-      setLitGroup(badGroup, flash);
+      setLitGroup(badGroup, clock - lostAt < 0.5);
     }
     counters.aborts.setClamped(model.stats.aborts);
     paintTape();
+  }
+  function setLock(name, holder) {
+    const l = locks[name];
+    show(l.closed, holder >= 0); show(l.open, holder < 0);
+    if (holder >= 0) setText(l.text, NAMES[holder]);
   }
   // a counter housing that lights (the wb-lit-group CSS turns its wheels to the page colour)
   function setLitGroup(g, on) {
@@ -267,6 +307,7 @@ export default function mount({ P, G, MARKS }, root) {
   // ---------- "Watch it on the machine": an experiment's settings ----------
   root.on("watch", (w) => {
     for (const key of ["scenario", "level", "write", "check", "people"]) set(key, w[key], true);
+    set("speed", 0.25, true);
     restart();
     if (loop.paused) loop.setPaused(false);
   });

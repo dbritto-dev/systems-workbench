@@ -134,8 +134,9 @@ export function makeSim(cfgIn = {}, seed = 1) {
           c.phase = "select";
           if (!acquire(t, txn, row)) return;
           if (changed(txn, row)) return abort(t, txn, "update");
-          x.read = latest(row).v;
-        } else x.read = see(txn, row);
+          x.readVer = latest(row);
+        } else x.readVer = cfg.level === "rc" ? latest(row) : visible(row, txn.snap);
+        x.read = x.readVer.v;
         txn.reads.add("acct");
         c.read = x.read; c.phase = "select";
         mark(txn, t, "read", String(x.read));
@@ -226,10 +227,14 @@ export function makeSim(cfgIn = {}, seed = 1) {
     const c = clerks[txn.i];
     if (cfg.level === "ser" && dangerous(t, txn)) return abort(t, txn, "ssi");
     txn.state = "done"; txn.commitT = t;
-    let lost = 0;
+    let lost = 0, victims = [];
     for (const [name, v] of txn.writes) {
       const row = rows[name], prev = latest(row);
-      if (!rota) lost = (prev.v + DEPOSIT - v) / DEPOSIT;
+      if (!rota) {
+        lost = (prev.v + DEPOSIT - v) / DEPOSIT;
+        // for the figure: the deposits written over are the newest ones committed after this transaction's read
+        if (lost > 0 && txn.ctx.readVer) victims = row.versions.filter((x) => x.by !== null && x.t > txn.ctx.readVer.t && !x.over).slice(-lost);
+      }
       row.versions.push({ v, t, by: txn.id });
       if (row.versions.length > 64) row.versions.splice(1, row.versions.length - 48);
     }
@@ -237,9 +242,15 @@ export function makeSim(cfgIn = {}, seed = 1) {
     stats.commits++;
     txn.a.t1 = t; txn.a.end = "commit";
     if (lost > 0) { stats.lost += lost; txn.a.lost = lost; }
-    if (lost > 0) for (const m of txn.a.marks) if (m.kind === "write") m.kind = "lost";
+    // the lit tile is the deposit that was written over, on its own clerk's lane
+    const over = [];
+    for (const x of victims) {
+      x.over = true;
+      const a = attempts.find((y) => y.id === x.by);
+      if (a) { over.push(a.i); for (const m of a.marks) if (m.kind === "write") m.kind = "lost"; }
+    }
     mark(txn, t, "commit", "");
-    log.push({ t, i: txn.i, type: "commit", lost, off: !!txn.ctx.off, stay: !!txn.ctx.stay });
+    log.push({ t, i: txn.i, type: "commit", lost, over, off: !!txn.ctx.off, stay: !!txn.ctx.stay });
     c.phase = "idle"; c.txn = null; c.tries = 0;
     stats.reqs++; stats.reqTime += t - c.reqStart;
     if (rota) { if (txn.ctx.stay) stats.stays++; c.nightDone = true; nightCheck(t); }
