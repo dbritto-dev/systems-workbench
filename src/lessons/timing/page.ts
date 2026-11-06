@@ -15,7 +15,7 @@ const top = (...xs) => Math.max(...xs) * 1.08 || 1;
 const ONE_IN = int(1 / CHANCE);
 // A constant-time result as a count of runs, so one lucky run reads as luck, not as a leak.
 const ofRuns = (rate) => int(rate * RUN_COUNT) + " of " + RUN_COUNT + " runs";
-const deRondas = (rate) => int(rate * RUN_COUNT) + " de " + RUN_COUNT + " rondas abiertas";
+const deEjecuciones = (rate) => int(rate * RUN_COUNT) + " de " + RUN_COUNT + " ejecuciones abiertas";
 const slash = (rate) => int(rate * RUN_COUNT) + "/" + RUN_COUNT;
 const S0 = DEFAULTS.samples;
 const rowOf = (noise, samples) => R.noise.find((g) => g.noise === noise).rows.find((r) => r.samples === samples).rate;
@@ -26,7 +26,7 @@ const RUNS = {
     const lg = (x) => Math.log10(x) / m;
     return {
       verdict: t("4 dials: brute force needs " + int(four.brute) + " tries on average, the listener took " + int(four.listen) + " readings and opened " + pct(four.rate) + " of runs. 8 dials: " + int(eight.brute) + " tries against " + int(eight.listen) + " readings, " + pct(eight.rate) + " opened.",
-        "4 diales: la fuerza bruta necesita " + int(four.brute) + " intentos en promedio; quien escucha tomó " + int(four.listen) + " lecturas y abrió el " + pct(four.rate) + " de las rondas. 8 diales: " + int(eight.brute) + " intentos contra " + int(eight.listen) + " lecturas, " + pct(eight.rate) + " abiertas."),
+        "4 diales: la fuerza bruta necesita " + int(four.brute) + " intentos en promedio; quien escucha tomó " + int(four.listen) + " lecturas y abrió el " + pct(four.rate) + " de las ejecuciones. 8 diales: " + int(eight.brute) + " intentos contra " + int(eight.listen) + " lecturas, " + pct(eight.rate) + " abiertas."),
       groups: [
         { title: t("4 dials (bars on a log scale)", "4 diales (barras en escala logarítmica)"), bars: [[t("Brute force, tries", "Fuerza bruta, intentos"), lg(four.brute), int(four.brute)], [t("Listener, readings", "Quien escucha, lecturas"), lg(four.listen), int(four.listen)]] },
         { title: t("8 dials (bars on a log scale)", "8 diales (barras en escala logarítmica)"), bars: [[t("Brute force, tries", "Fuerza bruta, intentos"), lg(eight.brute), int(eight.brute)], [t("Listener, readings", "Quien escucha, lecturas"), lg(eight.listen), int(eight.listen), true]] },
@@ -35,7 +35,7 @@ const RUNS = {
   },
   noise: () => ({
     verdict: t("Runs opened, by readings per digit: " + R.noise.map((g) => "noise " + g.noise + ": " + g.rows.map((r) => int(r.samples) + " → " + pct(r.rate)).join(", ")).join("; ") + ".",
-      "Rondas abiertas, por lecturas por dígito: " + R.noise.map((g) => "ruido " + g.noise + ": " + g.rows.map((r) => int(r.samples) + " → " + pct(r.rate)).join(", ")).join("; ") + "."),
+      "Ejecuciones abiertas, por lecturas por dígito: " + R.noise.map((g) => "ruido " + g.noise + ": " + g.rows.map((r) => int(r.samples) + " → " + pct(r.rate)).join(", ")).join("; ") + "."),
     groups: R.noise.map((g) => ({
       title: t("Noise " + g.noise + " (one dial = " + STEP + ")", "Ruido " + g.noise + " (un dial = " + STEP + ")"),
       bars: g.rows.map((r) => [t(int(r.samples) + " readings per digit", int(r.samples) + " lecturas por dígito"), r.rate, pct(r.rate), g.noise === 8 && r.samples === 1280]),
@@ -45,7 +45,7 @@ const RUNS = {
     const { early, cons, samples } = R.cons;
     return {
       verdict: t("With " + int(samples) + " readings per digit: early exit opened " + pct(early) + " of runs, constant time " + ofRuns(cons) + ". Blind luck opens 1 run in " + ONE_IN + ".",
-        "Con " + int(samples) + " lecturas por dígito: la salida temprana abrió el " + pct(early) + " de las rondas; con tiempo constante, " + deRondas(cons) + ". La suerte a ciegas abre 1 ronda de cada " + ONE_IN + "."),
+        "Con " + int(samples) + " lecturas por dígito: la salida temprana abrió el " + pct(early) + " de las ejecuciones; con tiempo constante, " + deEjecuciones(cons) + ". La suerte a ciegas abre 1 ejecución de cada " + ONE_IN + "."),
       bars: [[t("Early exit", "Salida temprana"), early, pct(early)], [t("Constant time", "Tiempo constante"), cons, slash(cons), true]],
     };
   },
@@ -53,7 +53,7 @@ const RUNS = {
     const { none, delayFew, delayMany, cons } = R.delay;
     return {
       verdict: t("Early exit with no delay, " + int(S0) + " readings per digit: " + pct(none) + " opened. With the 0–" + DELAY + " delay: " + pct(delayFew) + " at " + int(S0) + ", " + pct(delayMany) + " at " + int(MANY) + ". Constant time, no delay, " + int(MANY) + " readings: " + ofRuns(cons) + ", the luck of blind picks (1 in " + ONE_IN + ").",
-        "Salida temprana sin espera, " + int(S0) + " lecturas por dígito: " + pct(none) + " abiertas. Con la espera de 0–" + DELAY + ": " + pct(delayFew) + " con " + int(S0) + " y " + pct(delayMany) + " con " + int(MANY) + ". Tiempo constante, sin espera, " + int(MANY) + " lecturas: " + deRondas(cons) + ", la suerte de elegir a ciegas (1 de cada " + ONE_IN + ")."),
+        "Salida temprana sin espera, " + int(S0) + " lecturas por dígito: " + pct(none) + " abiertas. Con la espera de 0–" + DELAY + ": " + pct(delayFew) + " con " + int(S0) + " y " + pct(delayMany) + " con " + int(MANY) + ". Tiempo constante, sin espera, " + int(MANY) + " lecturas: " + deEjecuciones(cons) + ", la suerte de elegir a ciegas (1 de cada " + ONE_IN + ")."),
       bars: [[t("No delay, " + int(S0), "Sin espera, " + int(S0)), none, pct(none)], [t("Delay, " + int(S0), "Espera, " + int(S0)), delayFew, pct(delayFew)], [t("Delay, " + int(MANY), "Espera, " + int(MANY)), delayMany, pct(delayMany), true], [t("Constant time, " + int(MANY), "Tiempo constante, " + int(MANY)), cons, slash(cons)]],
     };
   },
@@ -61,7 +61,7 @@ const RUNS = {
     const { raw, fixed, chance, samples } = R.length;
     return {
       verdict: t("With " + samples + " readings per length, the listener found the secret's length in " + pct(raw) + " of runs comparing raw inputs, and in " + pct(fixed) + " comparing fixed-length digests, about the " + pct(chance) + " of a blind pick among " + LENGTHS.length + " lengths.",
-        "Con " + samples + " lecturas por longitud, quien escucha encontró la longitud del secreto en el " + pct(raw) + " de las rondas comparando las entradas tal cual, y en el " + pct(fixed) + " comparando resúmenes de longitud fija, cerca del " + pct(chance) + " de elegir a ciegas entre " + LENGTHS.length + " longitudes."),
+        "Con " + samples + " lecturas por longitud, quien escucha encontró la longitud del secreto en el " + pct(raw) + " de las ejecuciones comparando las entradas tal cual, y en el " + pct(fixed) + " comparando resúmenes de longitud fija, cerca del " + pct(chance) + " de elegir a ciegas entre " + LENGTHS.length + " longitudes."),
       bars: [[t("Raw inputs", "Entradas tal cual"), raw, pct(raw), true], [t("Fixed-length digests", "Resúmenes de longitud fija"), fixed, pct(fixed)], [t("Blind pick", "Elegir a ciegas"), chance, pct(chance)]],
     };
   },
@@ -86,7 +86,7 @@ const EXPERIMENTS = [
       "An early-exit comparison stops at the first wrong dial, so a guess whose first dials are right takes one step longer. That answers one dial at a time: the listener times each of ten digits, keeps the slowest, and moves on. Its work adds up per dial, " + int(B.four.listen) + " readings at 4 dials and " + int(B.eight.listen) + " at 8, while brute force multiplies by ten per dial: " + int(B.four.brute) + " tries on average at 4, " + int(B.eight.brute) + " at 8. At 4 dials, guessing blind is actually cheaper; at 8, listening is thousands of times cheaper. The leak turns about 10ⁿ work into about n × 10 × samples, so it matters more as secrets get longer, not less. (The last dial leaves no trace, since right or wrong the checker looks at all of them, so it is tried by hand: ten tries.)",
       "Una comparación con salida temprana se detiene en el primer dial equivocado, así que un intento cuyos primeros diales están bien tarda un paso más. Eso responde un dial a la vez: quien escucha mide cada uno de los diez dígitos, se queda con el más lento y sigue. Su trabajo se suma por dial, " + int(B.four.listen) + " lecturas con 4 diales y " + int(B.eight.listen) + " con 8, mientras la fuerza bruta se multiplica por diez por dial: " + int(B.four.brute) + " intentos en promedio con 4, " + int(B.eight.brute) + " con 8. Con 4 diales, adivinar a ciegas en realidad sale más barato; con 8, escuchar es miles de veces más barato. La fuga convierte un trabajo de unos 10ⁿ en unos n × 10 × muestras, así que importa más cuanto más largo es el secreto, no menos. (El último dial no deja rastro, porque bien o mal el verificador los revisa todos, así que se prueba a mano: diez intentos.)",
     ),
-    watch: { compare: "early", noise: 4, samples: 320, delay: 0, probe: "dials", input: "raw" },
+    watch: { compare: "early", noise: 4, samples: 320, delay: 0, probe: "dials", input: "raw", speed: 64, warm: 2600 },
   },
   {
     id: "noise",
@@ -104,7 +104,7 @@ const EXPERIMENTS = [
       "The average of n readings has a spread of noise ÷ √n, so to see the same one-unit difference with twice the noise you need four times the readings: noise 2 with 80 readings opened " + pct(rowOf(2, 80)) + ", noise 4 with 320 " + pct(rowOf(4, 320)) + ", noise 8 with 1,280 " + pct(rowOf(8, 1280)) + ". Even noise eight times the signal gives way. That is what people get wrong about network jitter: it doesn't hide a small difference, it only raises the number of samples, and samples are cheap to someone who can send requests. It is the same averaging lesson 44, Percentiles, uses on latency, turned around.",
       "El promedio de n lecturas tiene una dispersión de ruido ÷ √n, así que para ver la misma diferencia de una unidad con el doble de ruido hacen falta cuatro veces más lecturas: ruido 2 con 80 lecturas abrió el " + pct(rowOf(2, 80)) + ", ruido 4 con 320 el " + pct(rowOf(4, 320)) + " y ruido 8 con 1,280 el " + pct(rowOf(8, 1280)) + ". Incluso un ruido ocho veces mayor que la señal termina cediendo. En eso se equivoca la gente con la variación aleatoria (jitter) de la red: no esconde una diferencia pequeña, solo sube la cantidad de muestras, y las muestras son baratas para quien puede enviar solicitudes. Es el mismo promedio que usa la lección 44, Percentiles, con la latencia, visto al revés.",
     ),
-    watch: { compare: "early", noise: 8, samples: 320, delay: 0, probe: "dials", input: "raw" },
+    watch: { compare: "early", noise: 8, samples: 1280, delay: 0, probe: "dials", input: "raw", speed: 64, warm: 9600 },
   },
   {
     id: "cons",
@@ -120,9 +120,9 @@ const EXPERIMENTS = [
     answer: 2,
     why: t(
       "Now every guess costs the same: the time no longer depends on how many dials match. Averaging can only find a difference that exists, so the bars settle level and each pick is a blind guess: " + ofRuns(C.cons) + " opened, against " + pct(C.early) + " with early exit (blind luck is 1 run in " + ONE_IN + " here). In code, compare secrets with the library's constant-time function: crypto.timingSafeEqual in Node.js, hmac.compare_digest in Python, subtle.ConstantTimeCompare in Go. They look at every byte and combine the differences without branching on them. A plain == on strings or byte arrays usually returns at the first difference, and a hand-written loop can be turned back into an early exit by the compiler, so use the library.",
-      "Ahora cada intento cuesta lo mismo: el tiempo ya no depende de cuántos diales coinciden. Promediar solo encuentra una diferencia que existe, así que las barras quedan parejas y cada elección es a ciegas: " + deRondas(C.cons) + ", contra el " + pct(C.early) + " con salida temprana (la suerte a ciegas abre 1 ronda de cada " + ONE_IN + " aquí). En el código, compara secretos con la función de tiempo constante de la biblioteca: crypto.timingSafeEqual en Node.js, hmac.compare_digest en Python, subtle.ConstantTimeCompare en Go. Revisan cada byte y combinan las diferencias sin ramificar según ellas. Un == común sobre cadenas o arreglos de bytes suele volver en la primera diferencia, y un bucle escrito a mano puede volver a convertirse en salida temprana por obra del compilador, así que usa la biblioteca.",
+      "Ahora cada intento cuesta lo mismo: el tiempo ya no depende de cuántos diales coinciden. Promediar solo encuentra una diferencia que existe, así que las barras quedan parejas y cada elección es a ciegas: " + deEjecuciones(C.cons) + ", contra el " + pct(C.early) + " con salida temprana (la suerte a ciegas abre 1 ejecución de cada " + ONE_IN + " aquí). En el código, compara secretos con la función de tiempo constante de la biblioteca: crypto.timingSafeEqual en Node.js, hmac.compare_digest en Python, subtle.ConstantTimeCompare en Go. Revisan cada byte y combinan las diferencias sin ramificar según ellas. Un == común sobre cadenas o arreglos de bytes suele volver en la primera diferencia, y un bucle escrito a mano puede volver a convertirse en salida temprana por obra del compilador, así que usa la biblioteca.",
     ),
-    watch: { compare: "const", noise: 4, samples: 320, delay: 0, probe: "dials", input: "raw" },
+    watch: { compare: "const", noise: 4, samples: 320, delay: 0, probe: "dials", input: "raw", speed: 64, warm: 2600 },
   },
   {
     id: "delay",
@@ -138,9 +138,9 @@ const EXPERIMENTS = [
     answer: 1,
     why: t(
       "A random delay is just more noise: every guess gets the same delay on average, so the difference between a right and a wrong digit survives in the means. It only raises the readings needed: " + pct(D.none) + " opened with no delay, " + pct(D.delayFew) + " with it at " + int(S0) + " readings, " + pct(D.delayMany) + " at " + int(MANY) + ". Meanwhile every honest request got slower. The fix is to remove the difference, not to blur it: with constant time, " + ofRuns(D.cons) + " opened at " + int(MANY) + " readings, the luck of blind picks. Limiting how many checks one client can make (lesson 05, Rate limiting) is a good second layer, because it caps the samples anyone gets.",
-      "Una espera al azar es solo más ruido: cada intento recibe la misma espera en promedio, así que la diferencia entre un dígito correcto y uno equivocado sobrevive en los promedios. Solo sube las lecturas necesarias: se abrió el " + pct(D.none) + " sin espera, el " + pct(D.delayFew) + " con ella y " + int(S0) + " lecturas, y el " + pct(D.delayMany) + " con " + int(MANY) + ". Mientras tanto, cada solicitud legítima se volvió más lenta. La solución es quitar la diferencia, no difuminarla: con tiempo constante, " + deRondas(D.cons) + " con " + int(MANY) + " lecturas, la suerte de elegir a ciegas. Limitar cuántas comprobaciones puede hacer un cliente (lección 05, Limitación de tasa) es una buena segunda capa, porque pone un tope a las muestras que alguien consigue.",
+      "Una espera al azar es solo más ruido: cada intento recibe la misma espera en promedio, así que la diferencia entre un dígito correcto y uno equivocado sobrevive en los promedios. Solo sube las lecturas necesarias: se abrió el " + pct(D.none) + " sin espera, el " + pct(D.delayFew) + " con ella y " + int(S0) + " lecturas, y el " + pct(D.delayMany) + " con " + int(MANY) + ". Mientras tanto, cada solicitud legítima se volvió más lenta. La solución es quitar la diferencia, no difuminarla: con tiempo constante, " + deEjecuciones(D.cons) + " con " + int(MANY) + " lecturas, la suerte de elegir a ciegas. Limitar cuántas comprobaciones puede hacer un cliente (lección 05, Limitación de tasa) es una buena segunda capa, porque pone un tope a las muestras que alguien consigue.",
     ),
-    watch: { compare: "early", noise: 4, samples: 2560, delay: 40, probe: "dials", input: "raw", speed: 64 },
+    watch: { compare: "early", noise: 4, samples: 2560, delay: 40, probe: "dials", input: "raw", speed: 64, warm: 21000 },
   },
   {
     id: "length",
@@ -156,7 +156,7 @@ const EXPERIMENTS = [
     answer: 1,
     why: t(
       "Constant-time functions are constant time only for inputs of the same length. A guess of the wrong length is turned away before any dial is compared, so it comes back sooner, and the right length stands out: found in " + pct(N.raw) + " of runs. The library functions handle this differently: Node.js's timingSafeEqual throws when the lengths differ, Go's ConstantTimeCompare returns 0 at once, and Python's documentation says compare_digest may reveal the lengths, though not the contents. Comparing an HMAC of each side (or a hash, for a token you store) makes both inputs the same fixed length, and the digest's bytes no longer follow the guess's: " + pct(N.fixed) + ", about the " + pct(N.chance) + " of a blind pick.",
-      "Las funciones de tiempo constante lo son solo para entradas de la misma longitud. Un intento de longitud equivocada se rechaza antes de comparar ningún dial, así que vuelve antes, y la longitud correcta resalta: se encontró en el " + pct(N.raw) + " de las rondas. Las funciones de biblioteca lo manejan distinto: timingSafeEqual de Node.js lanza un error si las longitudes difieren, ConstantTimeCompare de Go devuelve 0 de inmediato, y la documentación de Python dice que compare_digest puede revelar las longitudes, aunque no el contenido. Comparar un HMAC de cada lado (o un hash, para un token que guardas) hace que las dos entradas tengan la misma longitud fija, y los bytes del resumen ya no siguen a los del intento: " + pct(N.fixed) + ", cerca del " + pct(N.chance) + " de elegir a ciegas.",
+      "Las funciones de tiempo constante lo son solo para entradas de la misma longitud. Un intento de longitud equivocada se rechaza antes de comparar ningún dial, así que vuelve antes, y la longitud correcta resalta: se encontró en el " + pct(N.raw) + " de las ejecuciones. Las funciones de biblioteca lo manejan distinto: timingSafeEqual de Node.js lanza un error si las longitudes difieren, ConstantTimeCompare de Go devuelve 0 de inmediato, y la documentación de Python dice que compare_digest puede revelar las longitudes, aunque no el contenido. Comparar un HMAC de cada lado (o un hash, para un token que guardas) hace que las dos entradas tengan la misma longitud fija, y los bytes del resumen ya no siguen a los del intento: " + pct(N.fixed) + ", cerca del " + pct(N.chance) + " de elegir a ciegas.",
     ),
     watch: { compare: "const", noise: 4, samples: 20, delay: 0, probe: "length", input: "raw" },
   },
@@ -194,13 +194,13 @@ export default defineLesson({
     plate: {
       title: t("Combination checker", "Verificador de combinaciones"),
       keys: [
-        { mark: "lit", label: t("The comparison in use; the dials the latest check looked at; the column being timed; the open lamp", "La comparación en uso; los diales que revisó la última comprobación; la columna que se está midiendo; la lámpara de abierta") },
+        { mark: "lit", label: t("The check in play: the dials the latest check looked at, the column being timed, and the lamp when the lock opens", "La comprobación en juego: los diales que revisó la última comprobación, la columna que se está midiendo y la lámpara cuando la cerradura abre") },
         { mark: "raised", label: t("Bars: the average reading per digit so far; cards: the dials the listener has settled on", "Barras: la lectura promedio de cada dígito hasta ahora; tarjetas: los diales que ya fijó quien escucha") },
         { mark: "flat", label: t("The checker, the stopwatch and the tally board", "El verificador, el cronómetro y el tablero de conteo") },
       ],
       caption: t(
-        "A check costs about " + BASE + " units plus " + STEP + " for each dial it looks at; every reading adds noise. The units are illustrative and round: one dial stands for the few nanoseconds one more byte of comparison takes, the noise for jitter many times larger. Early exit looks at dials until the first wrong one; constant time always looks at all four. For each dial, the listener times every digit (the rest of the guess is padding), keeps the slowest average and moves on; the last dial leaves no timing trace, so it is tried by hand until the checker opens. Bars rise one step for one unit above a wrong guess's cost. In the length probe, the bars are guess lengths 2 to 7 instead. Counters: the guess, runs and how many opened (OPENED), the last reading and how many were taken (READINGS), the dial being learned and the samples of the current digit, and the tries brute force needs on average.",
-        "Una comprobación cuesta unas " + BASE + " unidades más " + STEP + " por cada dial que revisa; cada lectura suma ruido. Las unidades son ilustrativas y redondas: un dial representa los pocos nanosegundos que tarda comparar un byte más, y el ruido una variación muchas veces mayor. La salida temprana revisa diales hasta el primero equivocado; el tiempo constante siempre revisa los cuatro. Para cada dial, quien escucha mide todos los dígitos (el resto del intento es relleno), se queda con el promedio más lento y sigue; el último dial no deja rastro de tiempo, así que se prueba a mano hasta que el verificador abre. Las barras suben un escalón por cada unidad sobre el costo de un intento equivocado. En la prueba de longitud, las barras son longitudes de intento de 2 a 7. Contadores: el intento, las rondas y cuántas abrieron (ABIERTAS), la última lectura y cuántas se tomaron (LECTURAS), el dial que se está aprendiendo y las muestras del dígito actual, y los intentos que la fuerza bruta necesita en promedio.",
+        "A check costs about " + BASE + " units plus " + STEP + " for each dial it looks at, and every reading adds noise; one dial stands for the few nanoseconds one more byte takes. Early exit looks at dials until the first wrong one; constant time always looks at all four. For each dial the listener times every digit, keeps the slowest average and lays its card on the rail; the last dial leaves no timing trace, so it is tried by hand. A bar rises one step for each unit above a wrong guess's cost; in the length probe the bars are guess lengths 2 to 7. Counters: RUNS and how many OPENED (FOUND the length), the last READING and READINGS taken, the DIAL being learned with the readings of the column being timed, and the tries brute force needs on average.",
+        "Una comprobación cuesta unas " + BASE + " unidades más " + STEP + " por cada dial que revisa, y cada lectura suma ruido; un dial representa los pocos nanosegundos que tarda un byte más. La salida temprana revisa diales hasta el primero equivocado; el tiempo constante siempre revisa los cuatro. Para cada dial, quien escucha mide todos los dígitos, se queda con el promedio más lento y pone su tarjeta en el riel; el último dial no deja rastro de tiempo, así que se prueba a mano. Una barra sube un escalón por cada unidad sobre el costo de un intento equivocado; en la prueba de longitud las barras son longitudes de intento de 2 a 7. Contadores: EJECUCIONES y cuántas quedaron ABIERTAS (HALLADAS, la longitud), la última LECTURA y las LECTURAS tomadas, el DIAL que se aprende con las lecturas de la columna que se mide, y los intentos promedio de la fuerza bruta.",
       ),
       stage: { "data-timing": "" },
       label: t("Timing attack simulation. Space pauses or resumes.", "Simulación de un ataque de tiempo. Espacio pausa o reanuda."),
@@ -223,8 +223,8 @@ export default defineLesson({
       { speed: true, options: [[1, "1×"], [4, "4×"], [16, "16×"], [64, "64×"]], value: 16 },
       { actions: [["secret", t("New secret", "Nuevo secreto"), { primary: true }], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
-    note: t("Changing a setting starts a new run with a new secret. At 1× the stopwatch takes 30 readings a second. A run ends when the lock opens or the last dial runs out of digits, and the next one starts on its own.",
-      "Cambiar un ajuste empieza una ronda nueva con un secreto nuevo. A 1× el cronómetro toma 30 lecturas por segundo. Una ronda termina cuando la cerradura abre o el último dial se queda sin dígitos, y la siguiente empieza sola."),
+    note: t("Changing a setting starts a new run with a new secret. At 1× the stopwatch takes 30 readings a second. A run ends when the lock opens or the last dial runs out of digits, and the next one starts on its own. Watch it in the figure takes the first readings of dial 1 at once and speeds up.",
+      "Cambiar un ajuste empieza una ejecución nueva con un secreto nuevo. A 1× el cronómetro toma 30 lecturas por segundo. Una ejecución termina cuando la cerradura abre o el último dial se queda sin dígitos, y la siguiente empieza sola. Míralo en la figura toma de una vez las primeras lecturas del dial 1 y acelera."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same checker as the machine, averaged over 200 seeded runs, each with its own secret.",
     "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo verificador que la máquina, promediados sobre 200 ejecuciones con semilla fija, cada una con su propio secreto."), experiments: withResults(EXPERIMENTS, RUNS) },

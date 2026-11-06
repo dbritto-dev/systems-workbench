@@ -22,11 +22,16 @@ export default function mount({ P, G, LENGTHS, DIALS, BASE, STEP }, root) {
   const bars = G.BAR_X.map((_, i) => q(`[data-bar="${i}"]`));
   const labels = G.BAR_X.map((_, i) => q(`[data-col="${i}"]`));
   const caps = { dials: q('[data-cap="dials"]'), length: q('[data-cap="length"]') };
+  const openCaps = { dials: q('[data-opencap="dials"]'), length: q('[data-opencap="length"]') };
+  const sampleCaps = { dials: q('[data-samplecap="dials"]'), length: q('[data-samplecap="length"]') };
+  const dialBox = q("[data-dialbox]");
+  const openLabel = root.$('wb-stat[key="opened"] span');
   const cards = G.CARD_X.map((_, i) => q(`[data-card="${i}"]`));
   const cardText = G.CARD_X.map((_, i) => q(`[data-card-text="${i}"]`));
   const RATE = 30;                                   // readings per second at 1×
 
   const cfg = { compare: "early", noise: 4, samples: 320, delay: 0, probe: "dials", input: "raw", speed: 16 };
+  // opened: runs that opened the lock (or, in the length probe, found the secret's length)
   let model, seed = 3, runs = 0, opened = 0, budget = 0, hold = 0, after = null, lastSay = 0;
   const shownH = [];
 
@@ -37,9 +42,13 @@ export default function mount({ P, G, LENGTHS, DIALS, BASE, STEP }, root) {
     budget = 0; hold = 0; after = null;
     const length = cfg.probe === "length";
     show(caps.dials, !length); show(caps.length, length);
+    show(openCaps.dials, !length); show(openCaps.length, length);
+    show(sampleCaps.dials, !length); show(sampleCaps.length, length);
+    show(dialBox, !length);
+    if (openLabel) openLabel.textContent = L(length ? T("Lengths found", "Longitudes halladas") : T("Opened", "Abiertas"));
     labels.forEach((el, i) => { const on = !length || i < LENGTHS.length; show(el, on); show(bars[i], on); setText(el, length ? (i < LENGTHS.length ? LENGTHS[i] : "") : i); });
     cards.forEach((c) => show(c, false));
-    setLit(modes.early, cfg.compare === "early"); setLit(modes.const, cfg.compare === "const");
+    show(modes.early, cfg.compare === "early"); show(modes.const, cfg.compare === "const");
     setLit(openLamp, false);
     root.controls.showFor(cfg.probe);
     shownH.length = 0;
@@ -118,8 +127,16 @@ export default function mount({ P, G, LENGTHS, DIALS, BASE, STEP }, root) {
     } else if (st.dial >= DIALS - 1) {
       say(T("dial " + DIALS + " leaves no timing trace · trying its digits by hand", "el dial " + DIALS + " no deja rastro de tiempo · probando sus dígitos a mano"));
     } else {
-      say(T("dial " + (st.dial + 1) + " · timing digit " + st.col + " · " + st.sample + " of " + cfg.samples + " readings", "dial " + (st.dial + 1) + " · midiendo el dígito " + st.col + " · " + st.sample + " de " + cfg.samples + " lecturas"));
+      const head = T("dial " + (st.dial + 1) + " · timing digit " + st.col + " · " + int(st.sample) + " of " + int(cfg.samples), "dial " + (st.dial + 1) + " · midiendo el dígito " + st.col + " · " + int(st.sample) + " de " + int(cfg.samples));
+      say(st.dial > 0 ? T(head.en + " · " + learned().en, head.es + " · " + learned().es) : T(head.en + " readings", head.es + " lecturas"));
     }
+  }
+  // what the rail shows so far, and whether it is right (the narration knows the secret; the listener doesn't)
+  function learned() {
+    const st = model.st, digits = st.known.join("");
+    const wrong = st.known.findIndex((d, i) => d !== model.secret[i]);
+    return wrong < 0 ? T("learned " + digits + ", right so far", "aprendió " + digits + ", bien hasta ahora")
+      : T("learned " + digits + ", dial " + (wrong + 1) + " wrong", "aprendió " + digits + ", el dial " + (wrong + 1) + " está mal");
   }
   function onEvent(ev) {
     const st = model.st;
@@ -151,7 +168,7 @@ export default function mount({ P, G, LENGTHS, DIALS, BASE, STEP }, root) {
       return true;
     }
     if (ev.type === "lengthPick") {
-      runs++; if (ev.right) opened++;
+      runs++; if (ev.right) opened++;          // shown as FOUND in the length probe
       say(ev.right ? T("longest average: length " + ev.pick + " · the secret's length, found", "promedio más largo: longitud " + ev.pick + " · la del secreto, encontrada")
         : T("bars level · picked length " + ev.pick + " · a blind guess", "barras parejas · eligió la longitud " + ev.pick + " · a ciegas"));
       hold = 2.6; after = { col: LENGTHS.indexOf(ev.pick), end: true };
@@ -208,10 +225,13 @@ export default function mount({ P, G, LENGTHS, DIALS, BASE, STEP }, root) {
   root.on("action", (name) => actions[name]?.());
 
   // ---------- "Watch it on the machine": an experiment's settings ----------
+  // warm: readings taken at once before the machine starts, so the first pick comes within seconds
   root.on("watch", (w) => {
     for (const key of ["compare", "noise", "samples", "delay", "probe", "input"]) set(key, w[key], true);
     set("speed", w.speed ?? 16, true);
     restart(false);
+    for (let i = 0; i < (w.warm || 0); i++) if (onEvent(model.next())) break;
+    paint(); showStats();
     wake();
   });
 

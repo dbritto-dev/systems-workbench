@@ -1,14 +1,16 @@
 // @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
 // A combination checker and a stopwatch booth: the lesson's model of a timing leak and its fix.
 //   Back left: the CHECKER, a cabinet with the guess on four digit wheels. Its comparison either stops at the first
-//         wrong dial (EARLY EXIT) or always looks at all four (CONSTANT TIME); the lit plate is the one in use, and a
-//         lamp over each wheel lights for every dial the latest check looked at. Counters: RUNS and OPENED.
-//   Centre: the STOPWATCH on a pedestal: its needle sweeps for each reading; READING shows the last one (one decimal)
-//         and READINGS how many have been taken.
-//   Back right: the TALLY board: one bar per digit (or per guessed length), the mean reading so far; the column being
-//         timed is lit. DIAL on its front face, SAMPLES on its right face.
-//   Front: the brute-force desk (how many tries guessing blind would take on average) and the LEARNED rail, with a
-//         card for each dial the listener has settled on.
+//         wrong dial (EARLY EXIT) or always looks at all four (CONSTANT TIME): the plate on top names the one in use,
+//         and a lamp over each wheel lights for every dial the latest check looked at. Counters: RUNS and OPENED
+//         (FOUND in the length probe).
+//   Centre: the STOPWATCH on a pedestal, the listener standing beside it: its needle sweeps for each reading;
+//         READING shows the last one (one decimal) and READINGS how many have been taken.
+//   Back right: the TALLY board: one bar per digit (or per guessed length), the mean reading so far, its digit on the
+//         top in front of it; the column being timed is lit. DIAL on its front face, the readings of the column being
+//         timed on its right face.
+//   Front: the brute-force desk (how many tries guessing blind would take on average, with a pile of guess slips)
+//         and the LEARNED rail, with a card for each dial the listener has settled on.
 // Nothing moves across a counter or a caption: the bars rise behind the tally board's front face, the needle turns on
 // top of the stopwatch, lamps and cards stay in place. Built with the Anatomy kit (MIT) and the shared parts.
 import * as k from "../../../workbench/kit.mjs";
@@ -39,7 +41,7 @@ const WHEEL = { x0: -114, w: 8, h: 11, gap: 2, z: 5 };
 export const WHEEL_CX = Array.from({ length: DIALS }, (_, i) => WHEEL.x0 + i * (WHEEL.w + WHEEL.gap) + WHEEL.w / 2);
 const PANEL = { x: CK.x + 3, y: CK.y + 1, w: CK.w - 6, d: 3, r: 0.4 };
 const PANEL_H = 13;
-const MODE = { early: { x: PANEL.x + 2, w: 44 }, const: { x: PANEL.x + 48, w: 42 } };
+const MODE = { x: PANEL.x + 17, w: PANEL.w - 34 };
 
 // ---------- the stopwatch ----------
 const PED = { x: -20, y: -32, w: 54, d: 50, r: 2 };
@@ -86,21 +88,19 @@ function checker() {
   // runs and opened, on the front to the right of the guess
   const cx = -64;
   out.push(counter({ x: cx, y: CK_FRONT, z: 16, count: 2, name: "runs" }));
-  out.push(text(cx + 2 * CW + 2.4, CK_FRONT, 17.6, t("RUNS", "RONDAS")));
+  out.push(text(cx + 2 * CW + 2.4, CK_FRONT, 17.6, t("RUNS", "EJECUCIONES")));
   out.push(counter({ x: cx, y: CK_FRONT, z: 5, count: 2, name: "opened" }));
-  out.push(text(cx + 2 * CW + 2.4, CK_FRONT, 6.6, t("OPENED", "ABIERTAS")));
+  out.push(`<g data-opencap="dials">${text(cx + 2 * CW + 2.4, CK_FRONT, 6.6, t("OPENED", "ABIERTAS"))}</g>`);
+  out.push(`<g data-opencap="length" style="display:none">${text(cx + 2 * CW + 2.4, CK_FRONT, 6.6, t("FOUND", "HALLADAS"))}</g>`);
   // a lamp over each wheel, lit for every dial the latest check looked at
   out.push(plaque(P, { x: WHEEL_CX[0] - 6, y: CK_FRONT - 26, z: CK_H, w: WHEEL_CX[DIALS - 1] - WHEEL_CX[0] + 12, d: 8, text: t("LOOKED AT", "REVISADOS"), size: LABEL }));
   WHEEL_CX.forEach((x, i) => out.push(`<g data-look="${i}">${lamp(P, [x, CK_FRONT - 6, CK_H], { r: 2.4 })}</g>`));
-  // the mode plates on a panel at the back of the top
+  // the plate on a panel at the back of the top: the comparison in use, by name
   out.push(S(k.slabOf(PANEL, CK_H, PANEL_H, P, 2, 0.3), { tone: "mid", crease: "lo" }));
   const face = PANEL.y + PANEL.d;
-  const plateOf = (name, words) => {
-    const m = MODE[name], plan = { x: m.x, y: face, w: m.w, d: 1.2, r: 0.3 };
-    return `<g class="wb-lit-group" data-mode="${name}">${S(k.slabOf(plan, CK_H + 2.5, 8, P, 2, 0.2), { tone: "hi", crease: "lo" })}`
-      + faceText(P, [m.x + m.w / 2, face + 1.2, CK_H + 5.2], words, { size: LABEL, tone: "hi", anchor: "middle" }) + `</g>`;
-  };
-  out.push(plateOf("early", t("EARLY EXIT", "SALIDA TEMPRANA")), plateOf("const", t("CONSTANT TIME", "TIEMPO CONSTANTE")));
+  out.push(S(k.slabOf({ x: MODE.x, y: face, w: MODE.w, d: 1.2, r: 0.3 }, CK_H + 2.5, 8, P, 2, 0.2), { tone: "hi", crease: "lo" }));
+  const modeText = (name, words, on) => `<g data-mode="${name}"${on ? "" : ' style="display:none"'}>${faceText(P, [MODE.x + MODE.w / 2, face + 1.2, CK_H + 5.2], words, { size: LABEL, tone: "hi", anchor: "middle" })}</g>`;
+  out.push(modeText("early", t("EARLY EXIT", "SALIDA TEMPRANA"), true), modeText("const", t("CONSTANT TIME", "TIEMPO CONSTANTE"), false));
   // the open lamp on the right of the top
   out.push(`<g data-open>${lamp(P, [CK.x + CK.w - 9, CK_FRONT - 9, CK_H], { r: 3 })}</g>`);
   return out.join("");
@@ -110,16 +110,19 @@ function stopwatch() {
   const out = [S(k.slabOf(PED, 0, PED_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(PED, 2.4), PED_H, P), { tone: "faint" }));
   out.push(dial(P, { x: WATCH.x, y: WATCH.y, z: PED_H, r: WATCH.r, h: 5, ticks: 50, every: 5, name: "watch", value: 0 }));
-  // the last reading: three wheels, a decimal point, one wheel
-  const x0 = PED.x + 4;
-  out.push(counter({ x: x0, y: PED_FRONT, z: 3.4, count: 3, name: "readI" }));
-  out.push(k.dotsSvg([k.iso([x0 + 3 * CW + 0.6, PED_FRONT + 0.2, 3.8], P)], { size: 1.1, tone: "hi" }));
-  out.push(counter({ x: x0 + 3 * CW + 2.2, y: PED_FRONT, z: 3.4, count: 1, name: "readF" }));
-  out.push(text(x0 + 4 * CW + 5, PED_FRONT, 5, t("READING", "LECTURA")));
+  // the last reading: three wheels, a decimal point and one wheel, in one housing
+  const x0 = PED.x + 4, z0 = 3.4, span3 = 3 * 5 + 2 * 0.6, tenthX = x0 + span3 + 2;
+  out.push(S(k.slabOf({ x: x0 - 1.2, y: PED_FRONT - 1.4, w: tenthX + 5 - x0 + 2.4, d: 1.4, r: 0.5 }, z0 - 1.2, 6.6 + 2.4, P, 2), { tone: "hi", crease: "lo" }));
+  out.push(counter({ x: x0, y: PED_FRONT, z: z0, count: 3, housing: false, name: "readI" }));
+  out.push(k.dotsSvg([k.iso([x0 + span3 + 1, PED_FRONT + 0.1, z0 + 0.6], P)], { size: 1.1, tone: "hi" }));
+  out.push(counter({ x: tenthX, y: PED_FRONT, z: z0, count: 1, housing: false, name: "readF" }));
+  out.push(text(tenthX + 5 + 3.4, PED_FRONT, 5, t("READING", "LECTURA")));
   // how many readings so far, on the right face
   const side = PED.x + PED.w;
   out.push(counter({ x: side, y: PED_FRONT - 4, z: 2, count: 5, face: "x", name: "readings" }));
   out.push(faceText(P, [side, PED_FRONT - 4, 12.4], t("READINGS", "LECTURAS"), { face: "x", size: LABEL, tone: "hi" }));
+  // the listener, with a clipboard, beside the stopwatch it reads
+  out.push(person(P, [PED.x + PED.w - 7, PED.y + 9, PED_H], { scale: 0.62, holding: "clipboard" }));
   return out.join("");
 }
 
@@ -133,17 +136,19 @@ function tally() {
   // the bars, far ones first
   const order = BAR_X.map((_, i) => i).sort((a, b) => k.depthOf([BAR_X[a], BAR.y, 0], P) - k.depthOf([BAR_X[b], BAR.y, 0], P));
   out.push(`<g data-bars>${order.map((i) => `<g class="wb-lit-group" data-bar="${i}">${S(barPaths(P, BAR_X[i], 4, k.slabOf), { tone: "hi", crease: "lo" })}</g>`).join("")}</g>`);
-  // column labels under each bar, and the caption, on the front face
-  BAR_X.forEach((x, i) => out.push(faceText(P, [x, TB_FRONT, 12.4], String(i), { size: 4, tone: "hi", anchor: "middle", attr: `data-col="${i}"` })));
+  // each column's label on the top, just in front of its bar; the caption on the front face
+  BAR_X.forEach((x, i) => out.push(faceText(P, [x, BAR.y + BAR.d / 2 + 6, TB_H], String(i), { face: "top", size: 4, tone: "hi", anchor: "middle", attr: `data-col="${i}"` })));
   out.push(`<g data-cap="dials">${text(TB.x + 4, TB_FRONT, 2.8, t("AVERAGE BY DIGIT", "PROMEDIO POR DÍGITO"))}</g>`);
   out.push(`<g data-cap="length" style="display:none">${text(TB.x + 4, TB_FRONT, 2.8, t("AVERAGE BY LENGTH", "PROMEDIO POR LONGITUD"))}</g>`);
   // dial and samples on the right face
   const side = TB.x + TB.w;
   const dx = TB.x + TB.w - 26;
-  out.push(counter({ x: dx, y: TB_FRONT, z: 1.8, count: 1, name: "dial" }));
-  out.push(text(dx + CW + 2.4, TB_FRONT, 3.4, t("DIAL", "DIAL")));
+  out.push(`<g data-dialbox>${counter({ x: dx, y: TB_FRONT, z: 1.8, count: 1, name: "dial" })}${text(dx + CW + 2.4, TB_FRONT, 3.4, t("DIAL", "DIAL"))}</g>`);
+  // the readings taken so far of the column being timed, out of the panel's "readings per digit"
   out.push(counter({ x: side, y: TB_FRONT - 4, z: 2, count: 4, face: "x", name: "samples" }));
-  out.push(faceText(P, [side, TB_FRONT - 4, 12.6], t("SAMPLES", "MUESTRAS"), { face: "x", size: LABEL, tone: "hi" }));
+  const sideCap = (z, words) => faceText(P, [side, TB_FRONT - 4, z], words, { face: "x", size: LABEL, tone: "hi" });
+  out.push(sideCap(16.2, t("READINGS", "LECTURAS")));
+  out.push(`<g data-samplecap="dials">${sideCap(12.4, t("THIS DIGIT", "ESTE DÍGITO"))}</g><g data-samplecap="length" style="display:none">${sideCap(12.4, t("THIS LENGTH", "ESTA LONGITUD"))}</g>`);
   return out.join("");
 }
 
@@ -152,8 +157,16 @@ function desk() {
   out.push(L(k.planOutline(k.insetPlan(DESK, 2.4), DESK_H, P), { tone: "faint" }));
   out.push(counter({ x: DESK.x + 5, y: DESK_FRONT, z: 1.8, count: 5, name: "brute", value: BRUTE / 2 }));
   out.push(text(DESK.x + 5 + 5 * CW + 2.4, DESK_FRONT, 3.4, t("BRUTE FORCE, AVERAGE", "FUERZA BRUTA, PROMEDIO")));
-  // the listener stands at the left end of the desk, clear of the checker's wheels
-  out.push(person(P, [DESK.x + 10, DESK.y + 12, DESK_H], { scale: 0.62, holding: "clipboard" }));
+  // the pile of guess slips that guessing blind works through: low stacks at the front right of the desk, clear of
+  // the checker's wheels behind it
+  const slip = { w: 10, d: 8 };
+  const stacks = [[DESK.x + 50, 7], [DESK.x + 62, 9], [DESK.x + 74, 6], [DESK.x + 86, 8]];
+  for (const [x, h] of stacks) {
+    const plan = { x, y: DESK.y + 26, w: slip.w, d: slip.d, r: 0.5 };
+    const lines = [];
+    for (let z = DESK_H + 1.2; z < DESK_H + h - 0.4; z += 1.2) lines.push(k.faceRectY(P, plan.x + 0.4, plan.x + plan.w - 0.4, plan.y + plan.d, z, z + 0.01));
+    out.push(S(k.slabOf(plan, DESK_H, h, P, 2, 0.3), { tone: "hi", crease: "lo", inner: L(lines.join(""), { tone: "faint" }) }));
+  }
   return out.join("");
 }
 
@@ -182,8 +195,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A combination checker and a stopwatch booth on a base plate. At the back left, the checker: a cabinet with the current guess on four digit wheels, a lamp over each wheel that lights for every dial the latest check looked at, and two plates, EARLY EXIT and CONSTANT TIME, of which the lit one is the comparison in use; counters show the runs and how many opened the lock. In the centre, a stopwatch on a pedestal times every check; counters show the last reading, with one decimal, and how many readings have been taken. At the back right, a tally board has one bar per digit, the average reading for that digit so far; the column being timed is lit, and counters show the dial being learned and the samples taken. At the front, a desk shows how many tries guessing blind would take on average, with the listener standing at it, and a rail holds a card for each dial the listener has settled on.",
-      "Un verificador de combinaciones y una cabina con cronómetro sobre una placa base. Atrás a la izquierda, el verificador: un gabinete con el intento actual en cuatro ruedas de dígitos, una lámpara sobre cada rueda que se enciende por cada dial que revisó la última comprobación, y dos placas, SALIDA TEMPRANA y TIEMPO CONSTANTE, de las que la encendida es la comparación en uso; unos contadores muestran las rondas y cuántas abrieron la cerradura. En el centro, un cronómetro sobre un pedestal mide cada comprobación; unos contadores muestran la última lectura, con un decimal, y cuántas lecturas se tomaron. Atrás a la derecha, un tablero de conteo tiene una barra por dígito, la lectura promedio de ese dígito hasta ahora; la columna que se está midiendo está encendida, y unos contadores muestran el dial que se está aprendiendo y las muestras tomadas. Adelante, un escritorio muestra cuántos intentos haría falta en promedio adivinando a ciegas, con quien escucha parado ahí, y un riel tiene una tarjeta por cada dial que ya fijó.",
+      "A combination checker and a stopwatch booth on a base plate. At the back left, the checker: a cabinet with the current guess on four digit wheels, a lamp over each wheel that lights for every dial the latest check looked at, and a plate on top naming the comparison in use, EARLY EXIT or CONSTANT TIME; counters on its front show the runs and how many opened the lock. In the centre, a stopwatch on a pedestal times every check, with the listener standing beside it holding a clipboard; counters show the last reading, with one decimal, and how many readings have been taken. At the back right, a tally board has one bar per digit, the average reading for that digit so far, with the digit on the top in front of its bar; the column being timed is lit, and counters show the dial being learned and the readings taken of the column being timed. At the front left, a desk with piles of guess slips shows how many tries guessing blind would take on average; at the front right, a rail holds a card for each dial the listener has settled on.",
+      "Un verificador de combinaciones y una cabina con cronómetro sobre una placa base. Atrás a la izquierda, el verificador: un gabinete con el intento actual en cuatro ruedas de dígitos, una lámpara sobre cada rueda que se enciende por cada dial que revisó la última comprobación, y una placa arriba con el nombre de la comparación en uso, SALIDA TEMPRANA o TIEMPO CONSTANTE; contadores en su frente muestran las ejecuciones y cuántas abrieron la cerradura. En el centro, un cronómetro sobre un pedestal mide cada comprobación, con quien escucha parado al lado con una tablilla; unos contadores muestran la última lectura, con un decimal, y cuántas lecturas se tomaron. Atrás a la derecha, un tablero de conteo tiene una barra por dígito, la lectura promedio de ese dígito hasta ahora, con el dígito arriba delante de su barra; la columna que se está midiendo está encendida, y unos contadores muestran el dial que se está aprendiendo y las lecturas tomadas de la columna que se mide. Adelante a la izquierda, un escritorio con pilas de papeletas de intentos muestra cuántos intentos haría falta en promedio adivinando a ciegas; adelante a la derecha, un riel tiene una tarjeta por cada dial que quien escucha ya fijó.",
     ),
     body: [plate(), cable(), checker(), tally(), stopwatch(), desk(), rail()],
   });
