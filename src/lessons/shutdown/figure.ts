@@ -1,13 +1,13 @@
 // @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
 // A shop at closing time: one pod of a service, shut down the way Kubernetes does it.
-//   at the back, the control plane's office keeps the endpoint list (a plaque per pod), the shop is pod B with its
-//   clerks and a counter where every request in progress has a ticket, and the other pods A and C share one block;
+//   at the back, the control plane's office keeps the endpoint list (a plaque per pod), the shop is pod B with a
+//   counter where every request in progress has a ticket, and the other pods A and C share one block;
 //   at the front left the doorman (the routers) sends each new customer to a pod on his own list, a copy of the
 //   office's that a capsule updates along a tube; at the front, the shutdown clock: a 60 s rail from the delete, with
-//   SIGTERM and SIGKILL pins, and the counters.
+//   SIGTERM and SIGKILL signs, and the counters.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, person, figurine, sign, plaque, card, lamp, faceText, variants, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, person, figurine, sign, plaque, card, faceText, variants, litFill } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -27,7 +27,6 @@ const WALL = { x: -62, y: -61, w: 105, d: 2.6, r: 0.4 };
 const WALL_H = 22;
 const COUNTER = { x: -56, y: -52, w: 93, d: 6, r: 0.8 };
 const COUNTER_H = 8;
-const CLERKS = [-44, -18, 6];
 const OTH = { x: 52, y: -61, w: 60, d: 43, r: 1.5 };
 const OTH_H = 22;
 export const OTH_DOORS = [71, 97];                      // pods A and C
@@ -42,7 +41,7 @@ export const DOOR_X = -57;                              // the shop's door, at t
 // ---------- front row ----------
 const PODIUM = { x: -112, y: 12, w: 41, d: 22, r: 1.5 };
 const PODIUM_H = 9;
-const DESK = { x: -64, y: 12, w: 176, d: 22, r: 1.5 };
+const DESK = { x: -64, y: 18, w: 176, d: 16, r: 1.5 };      // well in front of the street, so customers walk clear of it
 const DESK_H = 12;
 export const DOORMAN = [-75, -2];
 export const TUBE = { x: -106, y0: OFFICE.y + OFFICE.d, y1: PODIUM.y, z: 2.2 };
@@ -50,7 +49,7 @@ export const PEGS = [-104, -92, -80];                   // the doorman's list: A
 export const PLAQUES = [-101, -90.5, -80];              // the office's list: A, B, C
 
 // the shutdown clock's rail: seconds since the delete along x
-export const RAIL = { x0: -56, per: 2.7, secs: 60, y: 13.6, d: 5.6, z: DESK_H };
+export const RAIL = { x0: -46, per: 2.5, secs: 60, y: 19.6, d: 5.6, z: DESK_H };   // 0 s clear of the doorman
 export const railX = (s) => RAIL.x0 + RAIL.per * s;
 
 // walkers' paths (x, y, z)
@@ -100,12 +99,12 @@ function tube() {
   const bands = [];
   for (let y = TUBE.y0 + 5; y < TUBE.y1 - 2; y += 6) bands.push(k.lineOnTop([TUBE.x - 2, y], [TUBE.x + 2, y], TUBE.z, P));
   out.push(L(bands.join(""), { tone: "faint" }));
-  out.push(`<g data-capsule style="display:none">${litFill(S(k.slabOf({ x: -1.6, y: -3, w: 3.2, d: 6, r: 1.4 }, 0, 2.4, P, 4, 0.3), { tone: "hi", crease: "lo", lit: true }))}</g>`);
+  out.push(`<g class="sd-capsule" data-capsule style="display:none">${S(k.slabOf({ x: -1.6, y: -3, w: 3.2, d: 6, r: 1.4 }, 0, 2.4, P, 4, 0.3), { tone: "lo", crease: "lo" })}</g>`);
   return out.join("");
 }
 
 // Pod B: a floor with the door at the front left and a step up to it; a back wall with the pod's name and its sign;
-// three clerks behind a counter.
+// the counter where each request in progress has a ticket.
 function shopBack() {
   const out = [S(k.slabOf(SHOP, 0, FLOOR, P, 3, 0.5), { tone: "mid" })];
   const f = SHOP.y + SHOP.d;
@@ -121,10 +120,10 @@ function shopBack() {
   out.push(S(k.slabOf(WALL, FLOOR, WALL_H, P, 2, 0.3), { tone: "hi", crease: "lo" }));
   const wf = WALL.y + WALL.d;
   out.push(word(WALL.x + 4, wf, FLOOR + 16, "POD B", { size: 4.8, tone: "hi" }));
-  // clerks
-  for (const x of CLERKS) out.push(person(P, [x, -55, FLOOR], { scale: 0.62 }));
   out.push(S(k.slabOf(COUNTER, FLOOR, COUNTER_H, P, 3, 0.4), { tone: "hi", crease: "lo" }));
   out.push(L(k.planOutline(k.insetPlan(COUNTER, 1.2), FLOOR + COUNTER_H, P), { tone: "faint" }));
+  // requests in progress beyond the shop's places: "+N" on the floor past the counter's end
+  out.push(faceText(P, [COUNTER.x + COUNTER.w + 1.6, COUNTER.y + COUNTER.d, FLOOR], "", { face: "top", size: 3.6, tone: "hi", attr: "data-more" }));
   return out.join("");
 }
 
@@ -137,11 +136,7 @@ export const SIGN_STATES = {
 };
 function shopSign() {
   const at = { x: 13, y: WALL.y + WALL.d, z: FLOOR + 14, w: 28, h: 7.4, posts: false, size: 3.4 };
-  return Object.entries(SIGN_STATES).map(([key, text]) => {
-    const lit = key === "closing";
-    const s = sign(P, { ...at, text, lit });
-    return `<g ${lit ? 'class="wb-lit-group" ' : ""}data-sign="${key}"${key === "open" ? "" : ' style="display:none"'}>${lit ? litFill(s) : s}</g>`;
-  }).join("");
+  return Object.entries(SIGN_STATES).map(([key, text]) => `<g data-sign="${key}"${key === "open" ? "" : ' style="display:none"'}>${sign(P, { ...at, text })}</g>`).join("");
 }
 
 // Pods A and C: one block with two storefronts.
@@ -189,40 +184,54 @@ function desk() {
   // counters on the front, each with its caption above the housing
   const f = DESK.y + DESK.d;
   const slots = [
-    ["took", 2, t("SHUTDOWN S", "APAGADO S")],
+    ["took", 0, t("SHUTDOWN S", "APAGADO S")],
     ["inflight", 2, t("IN PROGRESS", "EN CURSO")],
     ["served", 3, t("SERVED", "ATENDIDAS")],
     ["refused", 3, t("REFUSED", "RECHAZADAS")],
     ["cut", 3, t("CUT", "CORTADAS")],
   ];
+  const WH = { w: 4.2, h: 4.8, gap: 0.8 };
   slots.forEach(([name, count, label], i) => {
     const x = DESK.x + 4 + 35 * i;
-    out.push(digitCounter(P, { x: x + 1.4, y: f, z: 1.2, count, w: 4.2, h: 4.8, gap: 0.8, pad: 0.9, name }));
+    if (count) out.push(digitCounter(P, { x: x + 1.4, y: f, z: 1.2, count, ...WH, pad: 0.9, name }));
+    else {
+      // seconds since the delete, to a tenth: two wheels, a decimal point and one wheel, in one housing
+      const x0 = x + 1.4, xf = x0 + 2 * WH.w + WH.gap + 1.6;
+      out.push(S(k.slabOf({ x: x0 - 0.9, y: f - 1.4, w: xf + WH.w + 0.9 - (x0 - 0.9), d: 1.4, r: 0.5 }, 1.2 - 0.9, WH.h + 1.8, P, 2), { tone: "hi", crease: "lo" }));
+      out.push(digitCounter(P, { x: x0, y: f, z: 1.2, count: 2, ...WH, housing: false, name: name + "I" }));
+      out.push(D([k.iso([x0 + 2 * WH.w + WH.gap + 0.8, f + 0.1, 1.8], P)], { size: 1, tone: "hi" }));
+      out.push(digitCounter(P, { x: xf, y: f, z: 1.2, count: 1, ...WH, housing: false, name: name + "F" }));
+    }
     out.push(word(x, f, 9.3, label));
   });
   return out.join("");
 }
 
-// The pins on the rail: SIGTERM and SIGKILL (moved to their seconds by the live code), the moment the doorman heard
-// (a capsule) and the moment the pod was gone (a flag), and the slider for now.
+// The marks on the rail: SIGTERM and SIGKILL signs (moved to their seconds by the live code: a post at the second,
+// the board to its right for SIGTERM and to its left for SIGKILL), the moment the doorman heard (a capsule) and the
+// moment the pod was gone (a flag), and the slider for now.
 function railMarks() {
   const z = DESK_H + 0.6, y = RAIL.y + RAIL.d / 2;
-  const pin = (name, label, anchor) => `<g data-pin="${name}">${S(k.cylinder(0, y, 0.7, z, 5, P, 10), { tone: "mid", crease: "none" })}${S(k.cylinder(0, y, 1.3, z + 5, 1.2, P, 12), { tone: "hi", crease: "lo" })}${faceText(P, [anchor === "end" ? -1 : 1, RAIL.y + RAIL.d + 9.4, DESK_H], label, { face: "top", size: CAP, tone: "hi", anchor })}</g>`;
-  const out = [pin("term", "SIGTERM", "start"), pin("kill", "SIGKILL", "end")];
+  const pin = (name, label, side, secs) => {
+    const w = 15, h = 5.4, post = 2.6, x0 = side > 0 ? 0 : -w;
+    const board = { x: x0, y: y - 0.5, w, d: 1, r: 0.2 };
+    return `<g data-pin="${name}" transform="${k.translateAlong(P, [railX(secs), 0, 0])}">`
+      + S(k.slabOf({ x: -0.5, y: y - 0.5, w: 1, d: 1, r: 0.2 }, z, post + 0.2, P, 2), { tone: "mid", crease: "none" })
+      + S(k.slabOf(board, z + post, h, P, 2, 0.2), { tone: "mid", crease: "lo" })
+      + faceText(P, [x0 + w / 2 + side * 0.4, y + 0.5, z + post + 1.5], label, { size: CAP, tone: "hi", anchor: "middle" })
+      + `</g>`;
+  };
+  const out = [];
+  out.push(`<g data-mark="now" transform="${k.translateAlong(P, [railX(0), 0, 0])}">${S(k.slabOf({ x: -1.6, y: RAIL.y - 0.6, w: 3.2, d: RAIL.d + 1.2, r: 0.4 }, z, 1.6, P, 2, 0.2), { tone: "lo", crease: "none" })}${S(k.slabOf({ x: -0.4, y: RAIL.y + RAIL.d / 2 - 0.4, w: 0.8, d: 0.8, r: 0.2 }, z + 1.6, 4.4, P, 2), { tone: "lo", crease: "none" })}</g>`);
+  out.push(pin("term", "SIGTERM", 1, 0), pin("kill", "SIGKILL", -1, 30));
   out.push(`<g data-mark="knew" style="display:none">${S(k.slabOf({ x: -1.4, y: y - 2.6, w: 2.8, d: 5.2, r: 1.2 }, z, 1.6, P, 4, 0.3), { tone: "hi", crease: "lo" })}</g>`);
-  out.push(`<g class="wb-lit-group" data-mark="gone" style="display:none">${litFill(S(k.slabOf({ x: -0.6, y: y - 0.6, w: 1.2, d: 1.2, r: 0.3 }, z, 4.4, P, 2), { tone: "hi", crease: "none", lit: true }))}<path class="wb-pennant" data-lit d="${k.pathOf([k.iso([0, y, z + 4.4], P), k.iso([3.6, y, z + 3.3], P), k.iso([0, y, z + 2.2], P)], true)}"/></g>`);
-  out.push(`<g data-mark="now">${S(k.slabOf({ x: -1.6, y: RAIL.y - 0.6, w: 3.2, d: RAIL.d + 1.2, r: 0.4 }, z, 1.6, P, 2, 0.2), { tone: "lo", crease: "none" })}${S(k.slabOf({ x: -0.4, y: RAIL.y + RAIL.d / 2 - 0.4, w: 0.8, d: 0.8, r: 0.2 }, z + 1.6, 4.4, P, 2), { tone: "lo", crease: "none" })}</g>`);
+  out.push(`<g data-mark="gone" style="display:none">${S(k.slabOf({ x: -0.6, y: y - 0.6, w: 1.2, d: 1.2, r: 0.3 }, z, 4.4, P, 2), { tone: "mid", crease: "none" })}<path class="wb-pennant" d="${k.pathOf([k.iso([0, y, z + 4.4], P), k.iso([3.6, y, z + 3.3], P), k.iso([0, y, z + 2.2], P)], true)}"/></g>`);
   return out.join("");
 }
 
-// The street in front of pods A and C: two lamp posts and a bench.
+// The street in front of pods A and C: a bench.
 function street() {
   const out = [];
-  for (const [x, y] of [[57, 3], [109, 3]]) {
-    out.push(S(k.cylinder(x, y, 2.2, 0, 1, P, 18), { tone: "lo", crease: "none" }));
-    out.push(S(k.cylinder(x, y, 0.7, 1, 13, P, 10), { tone: "mid", crease: "none" }));
-    out.push(lamp(P, [x, y, 14], { r: 2.2 }));
-  }
   const bench = { x: 72, y: 1.5, w: 26, d: 5, r: 0.6 };
   for (const x of [bench.x + 2, bench.x + bench.w - 4]) out.push(S(k.slabOf({ x, y: bench.y + 0.5, w: 2, d: 4, r: 0.3 }, 0, 2.6, P, 2), { tone: "lo", crease: "none" }));
   out.push(S(k.slabOf(bench, 2.6, 1.2, P, 2, 0.2), { tone: "hi", crease: "lo" }));
@@ -234,10 +243,11 @@ function doorman() {
   return person(P, [DOORMAN[0], DOORMAN[1], 0], { scale: 0.85, hat: "cap", holding: "clipboard" });
 }
 
-// A customer, drawn at the origin and moved with translateAlong. Darker when it is a keep-alive client.
+// A customer, drawn at the origin and moved with translateAlong. A keep-alive client wears a hat.
 export function walkerSvg() {
-  const fig = (tone) => litFill(figurine(P, [0, 0, 0], { scale: 0.72, tone }));
-  return `<g data-tone="new">${fig("hi")}</g><g data-tone="keep" style="display:none">${fig("lo")}</g>`;
+  const s = 0.72, fig = litFill(figurine(P, [0, 0, 0], { scale: s }));
+  const hat = S(k.cylinder(0, 0, 3.4 * s, 12.6 * s, 0.6 * s, P, 20), { tone: "mid", crease: "none" }) + S(k.cylinder(0, 0, 2 * s, 13.2 * s, 1.8 * s, P, 16, 0.3 * s), { tone: "mid", crease: "lo" });
+  return `<g data-tone="new">${fig}</g><g data-tone="keep" style="display:none">${fig}${hat}</g>`;
 }
 // A request's ticket on the counter: short, or a taller one for an export.
 export function ticketSvg() {
@@ -250,8 +260,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A shop at closing time, on a base plate. At the back, the control plane's office has a plaque on its roof for each ready pod, A, B and C. Next to it, pod B is a shop with a door at the front left, three clerks behind a counter, a ticket on the counter for every request in progress and a sign on the back wall that reads OPEN, CLOSING, CLOSED or STARTING. Pods A and C share one block at the back right. At the front left a doorman stands at a podium with his own list of pods, a standing card for each; a capsule carries each change from the office to his list along a tube, so his list lags. He sends each new customer to one of the pods on his list. At the front, the shutdown clock: a rail of 60 seconds from the moment the pod is deleted, with pins for SIGTERM and SIGKILL, a capsule mark for when the doorman heard and a flag for when the pod was gone, and counters for the seconds since the delete, requests in progress, served, refused and cut.",
-      "Una tienda a la hora de cierre, sobre una placa base. Atrás, la oficina del plano de control tiene en el techo una placa por cada pod listo, A, B y C. Al lado, el pod B es una tienda con la puerta adelante a la izquierda, tres empleados detrás de un mostrador, un ticket en el mostrador por cada solicitud en curso y un letrero en la pared del fondo que dice ABIERTO, CERRANDO, CERRADO o ARRANCANDO. Los pods A y C comparten un bloque atrás a la derecha. Adelante a la izquierda, un portero está en un atril con su propia lista de pods, una tarjeta de pie por cada uno; una cápsula lleva cada cambio de la oficina a su lista por un tubo, así que su lista va con retraso. Él manda cada cliente nuevo a uno de los pods de su lista. Al frente, el reloj del apagado: un riel de 60 segundos desde que se borra el pod, con clavijas para SIGTERM y SIGKILL, una marca de cápsula para cuando el portero se enteró y una bandera para cuando el pod terminó, y contadores de los segundos desde el borrado, las solicitudes en curso, atendidas, rechazadas y cortadas.",
+      "A shop at closing time, on a base plate. At the back, the control plane's office has a plaque on its roof for each ready pod, A, B and C. Next to it, pod B is a shop with a door at the front left, a counter with a ticket for every request in progress and a sign on the back wall that reads OPEN, CLOSING, CLOSED or STARTING. Pods A and C share one block at the back right. At the front left a doorman stands at a podium with his own list of pods, a standing card for each; a capsule carries each change from the office to his list along a tube, so his list lags. He sends each new customer to one of the pods on his list; keep-alive clients wear a hat. At the front, the shutdown clock: a rail of 60 seconds from the moment the pod is deleted, with signs for SIGTERM and SIGKILL, a capsule mark for when the doorman heard and a flag for when the pod was gone, and counters for the seconds since the delete, requests in progress, served, refused and cut.",
+      "Una tienda a la hora de cierre, sobre una placa base. Atrás, la oficina del plano de control tiene en el techo una placa por cada pod listo, A, B y C. Al lado, el pod B es una tienda con la puerta adelante a la izquierda, un mostrador con un ticket por cada solicitud en curso y un letrero en la pared del fondo que dice ABIERTO, CERRANDO, CERRADO o ARRANCANDO. Los pods A y C comparten un bloque atrás a la derecha. Adelante a la izquierda, un portero está en un atril con su propia lista de pods, una tarjeta de pie por cada uno; una cápsula lleva cada cambio de la oficina a su lista por un tubo, así que su lista va con retraso. Él manda cada cliente nuevo a uno de los pods de su lista; los clientes keep-alive llevan sombrero. Al frente, el reloj del apagado: un riel de 60 segundos desde que se borra el pod, con letreros para SIGTERM y SIGKILL, una marca de cápsula para cuando el portero se enteró y una bandera para cuando el pod terminó, y contadores de los segundos desde el borrado, las solicitudes en curso, atendidas, rechazadas y cortadas.",
     ),
     body: [
       plate(),

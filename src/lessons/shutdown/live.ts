@@ -6,7 +6,7 @@
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { show, setLit, playPause } from "../../runtime/dom";
+import { show, setLit, setText, playPause } from "../../runtime/dom";
 import { makeSim } from "./sim";
 
 export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
@@ -14,7 +14,8 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
   const q = (s) => svg.querySelector(s);
   const NS = "http://www.w3.org/2000/svg";
   const layers = { shop: q('[data-layer="shop"]'), street: q('[data-layer="street"]'), tickets: q('[data-layer="tickets"]') };
-  const counters = Object.fromEntries(["took", "inflight", "served", "refused", "cut"].map((n) => [n, WB.counter(svg, n, P)]));
+  const counters = Object.fromEntries(["tookI", "tookF", "inflight", "served", "refused", "cut"].map((n) => [n, WB.counter(svg, n, P)]));
+  const moreEl = q("[data-more]");
   const pins = { term: q('[data-pin="term"]'), kill: q('[data-pin="kill"]') };
   const marks = { knew: q('[data-mark="knew"]'), gone: q('[data-mark="gone"]'), now: q('[data-mark="now"]') };
   const capsule = q("[data-capsule]"), plaqueB = q('[data-plaque="B"]'), shutter = q("[data-shutter]");
@@ -81,14 +82,16 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
   let model, clock, logAt, note, seed = 5;
   const byW = new Map(), byReq = new Map(), byClient = new Map();
 
-  function restart(firstIn = 2.5) {
+  // firstIn: seconds from now to the first delete; negative when the delete happened that long before the first frame
+  // (a Watch that would otherwise wait half a minute for SIGKILL). useSeed: a fixed seed for a Watch.
+  function restart(firstIn = 2.5, useSeed = null) {
     for (const w of [...walkers]) drop(w);
     for (const id of [...tickets.keys()]) unticket(id, false);
     for (const k of fading) { k.g.remove(); tpool.push(k); }
     fading.clear(); byW.clear(); byReq.clear(); byClient.clear();
-    const warm = cfg.work === "exports" ? 40 : 8;
-    model = makeSim({ onTerm: cfg.onTerm, preStop: Number(cfg.preStop), grace: Number(cfg.grace), work: cfg.work, conns: cfg.conns, router: cfg.router, auto: true, firstAt: warm + firstIn }, seed);
-    seed = (seed * 7 + 3) % 9973 + 1;
+    const warm = (cfg.work === "exports" ? 40 : 8) + Math.max(0, -firstIn);
+    model = makeSim({ onTerm: cfg.onTerm, preStop: Number(cfg.preStop), grace: Number(cfg.grace), work: cfg.work, conns: cfg.conns, router: cfg.router, auto: true, firstAt: warm + firstIn }, useSeed ?? seed);
+    if (useSeed == null) seed = (seed * 7 + 3) % 9973 + 1;
     clock = warm; note = null;
     model.runTo(clock);
     logAt = model.log.length;
@@ -104,8 +107,10 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
 
   // ---------- the model's log: walk customers and narrate ----------
   const keep = () => model.cfg.conns === "keep";
-  function tell(at, en, es, hold = 2.6) { note = { t: at, until: at + hold, text: T(en, es) }; }
-  const s1 = (x) => x.toFixed(1) + " s";
+  // A note for the readout: held `hold` seconds of page time, and dropped sooner once `still()` is false (the state it
+  // describes is gone). en/es may be functions, for a number that changes while the note shows.
+  function tell(at, en, es, hold = 2.6, still = null) { note = { t: at, until: at + hold * Math.max(1, cfg.speed), en, es, still }; }
+  const s1 = (x) => (Math.floor(x * 10 + 1e-6) / 10).toFixed(1) + " s";   // to a tenth, rounded down, as on the wheels
   function scan() {
     for (; logAt < model.log.length; logAt++) {
       const e = model.log[logAt];
@@ -118,7 +123,7 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
           timed(w, c != null && byClient.has(c) ? [STEP_FRONT] : [QUEUE, STEP_FRONT], e.w.at - e.t);
           byW.set(e.w.id, w);
           if (!model.routed) break;
-          if (!model.listed && sd) tell(e.t, "the doorman still sends a customer to B", "el portero todavía manda un cliente a B", 1.6);
+          if (!model.listed && sd) tell(e.t, "the doorman still sends a customer to B", "el portero todavía manda un cliente a B", 1.6, () => model.routed);
           break;
         }
         case "elsewhere": {
@@ -135,7 +140,7 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
           light(w, true); w.unlitAt = clock + 1.4;
           if (e.w.client != null) { go(w, [QUEUE], 30); byClient.set(e.w.client, w); }
           else { go(w, [TURNED], 26); w.onArrive = () => fade(w, 0.8); }
-          tell(e.t, "B is not listening · refused (" + (sd ? sd.refused : 0) + " this shutdown)", "B no escucha · rechazado (" + (sd ? sd.refused : 0) + " en este apagado)", 1.8);
+          tell(e.t, "B is not listening · refused (" + (sd ? sd.refused : 0) + " this shutdown)", "B no escucha · rechazado (" + (sd ? sd.refused : 0) + " en este apagado)", 1.8, () => !model.listening);
           break;
         }
         case "start": {
@@ -172,23 +177,34 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
           if (e.why === "closed") tell(e.t, "B closes a keep-alive connection · the client will reconnect through the doorman", "B cierra una conexión keep-alive · el cliente volverá a conectarse por el portero", 2.2);
           break;
         }
-        case "delete":
-          tell(e.t, model.cfg.preStop ? "pod B deleted · preStop sleep " + model.cfg.preStop + " s before SIGTERM · the doorman hasn't heard" : "pod B deleted · SIGTERM at once · the doorman hasn't heard", model.cfg.preStop ? "pod B borrado · pausa preStop de " + model.cfg.preStop + " s antes de SIGTERM · el portero no se enteró" : "pod B borrado · SIGTERM de inmediato · el portero no se enteró", 2.6);
+        case "delete": {
+          const at0 = sd;
+          tell(e.t, model.cfg.preStop ? "pod B deleted · preStop sleep " + model.cfg.preStop + " s before SIGTERM · the doorman hasn't heard" : "pod B deleted · SIGTERM at once · the doorman hasn't heard", model.cfg.preStop ? "pod B borrado · pausa preStop de " + model.cfg.preStop + " s antes de SIGTERM · el portero no se enteró" : "pod B borrado · SIGTERM de inmediato · el portero no se enteró", 2.6, () => model.routed && model.sd === at0 && (model.phase === "prestop" || !model.cfg.preStop));
           break;
+        }
         case "sigterm":
-          if (model.cfg.preStop) tell(e.t, "SIGTERM · " + (model.cfg.onTerm === "exit" ? "the app exits at once" : "B stops accepting, finishes " + model.inflight.length + " in progress"), "SIGTERM · " + (model.cfg.onTerm === "exit" ? "la app sale de inmediato" : "B deja de aceptar y termina " + model.inflight.length + " en curso"), 2.4);
+          if (model.cfg.preStop) {
+            if (model.cfg.onTerm === "exit") tell(e.t, "SIGTERM · the app exits at once", "SIGTERM · la app sale de inmediato", 2.4);
+            else tell(e.t, () => "SIGTERM · B stops accepting, finishing " + model.inflight.length + " in progress", () => "SIGTERM · B deja de aceptar y termina " + model.inflight.length + " en curso", 2.4, () => model.phase === "draining");
+          }
           break;
         case "news":
           if (e.kind === "remove") tell(e.t, "the capsule arrives · the doorman crosses B off, " + s1(e.t - sd.t0) + " after the delete", "llega la cápsula · el portero tacha a B, " + s1(e.t - sd.t0) + " después del borrado", 2.4);
-          else tell(e.t, "the new pod B is back on the doorman's list", "el pod B nuevo vuelve a la lista del portero", 2);
+          else tell(e.t, "the new pod B is back on the doorman's list", "el pod B nuevo vuelve a la lista del portero", 2, () => model.routed);
           break;
         case "sigkill":
           tell(e.t, "SIGKILL at " + model.cfg.grace + " s · " + sd.killed + (sd.killed === 1 ? " request" : " requests") + " cut", "SIGKILL a los " + model.cfg.grace + " s · " + sd.killed + (sd.killed === 1 ? " solicitud cortada" : " solicitudes cortadas"), 3);
           break;
         case "gone":
-          if (e.why !== "kill") tell(e.t, "pod B gone, " + s1(e.t - sd.t0) + " after the delete" + (sd.cut ? " · " + sd.cut + " cut" : ""), "pod B terminado, " + s1(e.t - sd.t0) + " después del borrado" + (sd.cut ? " · " + sd.cut + " cortadas" : ""), 2.6);
+          if (e.why !== "kill") tell(e.t, "pod B gone, " + s1(e.t - sd.t0) + " after the delete" + (sd.cut ? " · " + sd.cut + " cut" : ""), "pod B terminado, " + s1(e.t - sd.t0) + " después del borrado" + (sd.cut ? " · " + sd.cut + " cortadas" : ""), 2.6, () => model.phase === "gone");
           break;
-        case "starting": tell(e.t, "a new pod B starting", "arranca un pod B nuevo", 2); break;
+        case "starting": {
+          // after SIGKILL, keep what it cut in the readout while the new pod starts
+          const k = sd && sd.how === "kill" ? sd.killed : -1;
+          if (k >= 0) tell(e.t, "SIGKILL at " + model.cfg.grace + " s cut " + k + (k === 1 ? " request" : " requests") + " · a new pod B starting", "SIGKILL a los " + model.cfg.grace + " s cortó " + k + (k === 1 ? " solicitud" : " solicitudes") + " · arranca un pod B nuevo", 3, () => model.phase === "starting");
+          else tell(e.t, "a new pod B starting", "arranca un pod B nuevo", 2, () => model.phase === "starting");
+          break;
+        }
       }
     }
   }
@@ -247,18 +263,22 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
     if (sd && sd.gone != null) slide(marks.gone, sd.gone - sd.t0);
 
     const st = model.st;
-    counters.took.setClamped(Math.floor(since));
+    const tenths = Math.min(999, Math.floor(since * 10 + 1e-6));
+    counters.tookI.set(Math.floor(tenths / 10)); counters.tookF.set(tenths % 10);
+    const more = model.inflight.filter((r) => r.spot < 0).length;
+    setText(moreEl, more ? "+" + more : "");
     counters.inflight.setClamped(model.inflight.length);
     counters.served.setClamped(st.served); counters.refused.setClamped(st.refused); counters.cut.setClamped(st.cut);
     stat("inflight", model.inflight.length);
     stat("served", st.served);
     stat("refused", st.refused);
     stat("cut", st.cut);
-    stat("since", sd ? since.toFixed(1) + " s" + (sd.gone != null ? L(" (gone)", " (terminado)") : "") : "—");
+    stat("since", sd ? (tenths / 10).toFixed(1) + " s" + (sd.gone != null ? L(" (gone)", " (terminado)") : "") : "—");
     const PH = { open: T("Open", "Abierto"), prestop: T("preStop sleep", "Pausa preStop"), draining: T("Draining", "Vaciando"), gone: T("Gone", "Terminado"), starting: T("Starting", "Arrancando") };
     stat("phase", L(PH[ph]) + (ph !== "starting" && ph !== "gone" && !model.listed ? L(", deleted", ", borrado") : ""));
 
-    if (note && clock < note.until) root.figure.say(L(note.text));
+    if (note && (clock >= note.until || (note.still && !note.still()))) note = null;
+    if (note) { const f = (v) => (typeof v === "function" ? v() : v); root.figure.say(L(f(note.en), f(note.es))); }
     else root.figure.say(L(status(ph, sd, "en"), status(ph, sd, "es")));
   }
   function status(ph, sd, lang) {
@@ -294,7 +314,7 @@ export default function mount({ P, G, WALKER_SVG, TICKET_SVG }, root) {
   root.on("watch", (w) => {
     for (const key of ["onTerm", "preStop", "grace", "work", "conns", "router"]) set(key, String(w[key]), true);
     set("speed", String(w.speed || 1));
-    restart(2);
+    restart(w.firstIn ?? 2, w.seed ?? null);
     wake();
   });
 
