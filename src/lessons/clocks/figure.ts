@@ -38,8 +38,9 @@ const LANE = { y: DESK_FRONT + 1, d: 0 };
 LANE.d = HOME_Y + 4 - LANE.y;
 
 // The DROPPED tray, at the front between the offices: two bins, OLDER on the left, SAME COPY on the right.
-export const TRAY = { x: -20, y: 42, w: 40, d: 18, r: 1.4 };
-const TRAY_H = 8;
+// Low and clear of the offices' front faces, so it hides none of their counters.
+export const TRAY = { x: -22, y: 42, w: 46, d: 20, r: 1.4 };
+const TRAY_H = 7;
 export const TRAY_SPOTS = [0, 1].map((b) => [TRAY.x + TRAY.w * (b ? 0.75 : 0.25), TRAY.y + TRAY.d / 2, TRAY_H]);
 
 // The offices.
@@ -133,10 +134,12 @@ function tray() {
   // the divider between the two bins
   const xm = TRAY.x + TRAY.w / 2;
   out.push(L(k.lineOnTop([xm, TRAY.y + 2], [xm, TRAY.y + TRAY.d - 2], TRAY_H, P), { tone: "lo" }));
-  const front = TRAY.y + TRAY.d;
-  out.push(text(xm, front, 4.6, t("DROPPED", "DESCARTE"), 2.6, { anchor: "middle" }));
-  out.push(text(TRAY_SPOTS[0][0], front, 1.4, t("OLDER", "ANTE VIEJA"), 2.4, { anchor: "middle" }));
-  out.push(text(TRAY_SPOTS[1][0], front, 1.4, t("SAME COPY", "MISMA COPIA"), 2.4, { anchor: "middle" }));
+  // each bin's name on its own half of the front, split by a rule; DROPPED on the right side
+  const front = TRAY.y + TRAY.d, side = TRAY.x + TRAY.w;
+  out.push(L(k.segment([xm, front, 0.8], [xm, front, TRAY_H - 0.8], P), { tone: "lo" }));
+  out.push(text(TRAY_SPOTS[0][0], front, 2.2, t("OLDER", "ANTERIOR"), 2.8, { anchor: "middle" }));
+  out.push(text(TRAY_SPOTS[1][0], front, 2.2, t("SAME COPY", "MISMA COPIA"), 2.8, { anchor: "middle" }));
+  out.push(faceText(P, [side, front - 3, 2.2], t("DROPPED", "DESCARTE"), { face: "x", size: 2.8, tone: "mid" }));
   return out.join("");
 }
 
@@ -185,8 +188,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "Two offices and a records desk on a base plate. At the front, offices A and B each have a wall clock, a display with the reading in milliseconds and a dial beside it, and counters for the edits the office made and the ones that were lost. At the back, the records desk has a board showing the record it holds: the stamp of the edit it kept, and with vector clocks a second card for a sibling, lit. A counter on the desk shows the lines on the record and one on its side the siblings kept. A lane runs from each office to the desk; on it the office's courier carries a GET, a copy, an edit with its stamp, or an OK. Edits the desk drops fall, lit, into the DROPPED tray at the front, between the offices: into its OLDER bin when the edit lost to one its writer had already read, into SAME COPY when two edits were made from one copy; the last three stay in each bin. In the back corner, a tower shows the true time.",
-      "Dos oficinas y una mesa de registros sobre una placa base. Adelante, las oficinas A y B tienen cada una un reloj de pared, una pantalla con la lectura en milisegundos y un dial al lado, y contadores de las ediciones que hizo la oficina y de las que se perdieron. Al fondo, la mesa de registros tiene un tablero con el registro que guarda: el sello de la edición que conservó y, con relojes vectoriales, una segunda tarjeta encendida para una versión hermana. Un contador en la mesa muestra las líneas del registro y otro a un costado las hermanas guardadas. De cada oficina sale un carril hasta la mesa; por él, el mensajero de la oficina lleva un GET, una copia, una edición con su sello o un OK. Las ediciones que la mesa descarta caen, encendidas, en la bandeja DESCARTE al frente, entre las oficinas: en su compartimento ANTE VIEJA cuando la edición perdió ante una que su autor ya había leído, en MISMA COPIA cuando dos ediciones se hicieron desde una misma copia; las tres últimas quedan en cada compartimento. En la esquina del fondo, una torre muestra la hora real.",
+      "Two offices and a records desk on a base plate. At the front, offices A and B each have a wall clock, a display with the reading in milliseconds and a dial beside it, and counters for the edits the office made and the ones that were lost. At the back, the records desk has a board showing the record it holds: the stamp of the edit it kept, and with vector clocks a second card for a sibling, lit. A counter on the desk shows the lines on the record and one on its side the siblings kept. A lane runs from each office to the desk; on it the office's courier carries a GET, a copy, an edit with its stamp, or an OK. Edits the desk drops fall, lit, into the DROPPED tray (named on its right side) at the front, between the offices: into its OLDER bin when the edit lost to one its writer had already read, into SAME COPY when two edits were made from one copy; the last three stay in each bin. In the back corner, a tower shows the true time.",
+      "Dos oficinas y una mesa de registros sobre una placa base. Adelante, las oficinas A y B tienen cada una un reloj de pared, una pantalla con la lectura en milisegundos y un dial al lado, y contadores de las ediciones que hizo la oficina y de las que se perdieron. Al fondo, la mesa de registros tiene un tablero con el registro que guarda: el sello de la edición que conservó y, con relojes vectoriales, una segunda tarjeta encendida para una versión hermana. Un contador en la mesa muestra las líneas del registro y otro a un costado las hermanas guardadas. De cada oficina sale un carril hasta la mesa; por él, el mensajero de la oficina lleva un GET, una copia, una edición con su sello o un OK. Las ediciones que la mesa descarta caen, encendidas, en la bandeja DESCARTE (el nombre en su costado derecho) al frente, entre las oficinas: en su compartimento ANTERIOR cuando la edición perdió ante una que su autor ya había leído, en MISMA COPIA cuando dos ediciones se hicieron desde una misma copia; las tres últimas quedan en cada compartimento. En la esquina del fondo, una torre muestra la hora real.",
     ),
     body: [
       plate(),

@@ -201,7 +201,7 @@ export default defineLesson({
     plate: {
       title: t("Records desk", "Mesa de registros"),
       keys: [
-        { mark: "lit", label: t("An edit the desk drops, into OLDER (it had read the edit that beat it) or SAME COPY; a sibling kept beside the record", "Una edición que la mesa descarta, en ANTE VIEJA (había leído la edición que le ganó) o en MISMA COPIA; una hermana guardada junto al registro") },
+        { mark: "lit", label: t("An edit the desk drops, into OLDER (it had read the edit that beat it) or SAME COPY; a sibling kept beside the record", "Una edición que la mesa descarta, en ANTERIOR (había leído la edición que le ganó) o en MISMA COPIA; una hermana guardada junto al registro") },
         { mark: "raised", label: t("Couriers: a GET, a copy, a stamped edit or an OK", "Mensajeros: un GET, una copia, una edición sellada o un OK") },
         { mark: "flat", label: t("The lanes between each office and the desk", "Los carriles entre cada oficina y la mesa") },
       ],
