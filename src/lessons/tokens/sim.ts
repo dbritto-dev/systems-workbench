@@ -201,16 +201,19 @@ export function makeFestival(cfgIn = {}, seed = 1) {
 
   // ---------- revocation ----------
   function revoke(t) {
+    // one revocation per round: a button press and the scheduled one can't both happen
+    if (st.revokeT >= 0) return;
     st.revokeT = t;
+    let denied = false;
     if (cfg.revoke === "logout") {
       if (user.pass) user.pass.fam.revoked = true;
-      if (cfg.check === "deny" && user.band && user.band.exp > t) { deny.set(user.band.id, user.band.exp); st.denyMax = Math.max(st.denyMax, deny.size); }
+      if (cfg.check === "deny" && user.band && user.band.exp > t) { deny.set(user.band.id, user.band.exp); st.denyMax = Math.max(st.denyMax, deny.size); denied = true; }
     } else if (cfg.revoke === "reset") {
       for (const f of families) f.revoked = true;
     }
     if (cfg.check === "version") userVer++;
     user.active = false;
-    log.push({ t, type: "revoke", how: cfg.revoke, band: user.band, ver: userVer, denied: cfg.check === "deny" && cfg.revoke === "logout" });
+    log.push({ t, type: "revoke", how: cfg.revoke, band: user.band, ver: userVer, denied });
   }
 
   function step(e) {

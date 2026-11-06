@@ -1,12 +1,15 @@
 // @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
 // A festival gate that checks wristbands by their stamp.
 //   the box office (the auth server, left) signs wristbands and hands out refresh passes; it counts refreshes and logins;
-//   the gate (an API, centre) has a lane for the user and one for the thief, a scanner lamp per lane and an arm that
-//   lifts for a wristband it accepts; the clock on its beam is what it compares expiries with;
+//   the gate (an API, centre) has two lanes that it checks the same way (the user walks the left one and the thief
+//   the right one only so they don't collide), a scanner per lane whose pad lights when it turns a wristband away,
+//   and an arm per lane, raised for a wristband it accepts and lowered otherwise; the clock on its beam is what it
+//   compares expiries with;
 //   the gate log (front right) counts what matters: the thief's entries after the revocation, how long after it the
 //   stolen wristband last worked (the window), and the lookups the gate made;
 //   the deny list (back left) and the user record with its token version (back right) are the state the gate can
-//   consult, each wired to a scanner; the stage and the crowd are where the gate lets people into.
+//   consult: both scanners feed one reader box behind the gate, wired to both, and each store's lamp lights when its
+//   answer turns a wristband away; the stage and the crowd are where the gate lets people into.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate, digitCounter, person, figurine, lamp, plaque, pennant, sign, faceText, litFill } from "../../../workbench/parts.mjs";
@@ -133,13 +136,24 @@ function record() {
 }
 
 // ---------- the wires from the scanners to the state they can look up ----------
-export const WIRES = {
-  deny: [[PILLARS[0], GATE_Y - 3], [DENY.x + DENY.w + 3, GATE_Y - 3], [DENY.x + DENY.w + 3, DENY.y + DENY.d / 2], [DENY.x + DENY.w, DENY.y + DENY.d / 2]],
-  ver: [[PILLARS[2], GATE_Y - 3], [RECORD.x - 3, GATE_Y - 3], [RECORD.x - 3, RECORD.y + RECORD.d / 2], [RECORD.x, RECORD.y + RECORD.d / 2]],
+// Both scanners feed one reader box behind the middle pillar, and the reader is wired to both the deny list and the
+// user record: the two lanes are the same gate, checked the same way.
+export const JUNCTION = [PILLARS[1], GATE_Y - 7];
+const scanToJunction = (who) => [[SCAN[who][0], SCAN[who][1] - 2.4], [SCAN[who][0], JUNCTION[1]], JUNCTION];
+const TO = {
+  deny: [JUNCTION, [DENY.x + DENY.w + 3, JUNCTION[1]], [DENY.x + DENY.w + 3, DENY.y + DENY.d / 2], [DENY.x + DENY.w, DENY.y + DENY.d / 2]],
+  ver: [JUNCTION, [RECORD.x - 3, JUNCTION[1]], [RECORD.x - 3, RECORD.y + RECORD.d / 2], [RECORD.x, RECORD.y + RECORD.d / 2]],
 };
+// A lookup's route, for the pulse the live code moves along it: scanner, reader, store.
+export const WIRES = Object.fromEntries(Object.entries(TO).map(([store, path]) => [store, Object.fromEntries(Object.keys(SCAN).map((who) => [who, [...scanToJunction(who), ...path.slice(1)]]))]));
+const WIRE_Z = 0.9;
 function wires() {
-  const line = (pts) => L(k.onTop(pts, 0.2, P), { tone: "lo", dashed: true });
-  return `<g data-wire="deny">${line(WIRES.deny)}</g><g data-wire="ver">${line(WIRES.ver)}</g><g data-pulse-layer></g>`;
+  const line = (pts) => L(k.onTop(pts, WIRE_Z, P), { tone: "lo", dashed: true });
+  const box = { x: JUNCTION[0] - 3, y: JUNCTION[1] - 2.5, w: 6, d: 5, r: 0.6 };
+  return `<g data-wire="deny">${line(TO.deny)}</g><g data-wire="ver">${line(TO.ver)}</g>`
+    + Object.keys(SCAN).map((who) => line(scanToJunction(who))).join("")
+    + S(k.slabOf(box, 0, 3.4, P, 2, 0.3), { tone: "mid", crease: "lo" })
+    + `<g data-pulse-layer></g>`;
 }
 
 // ---------- the box office ----------
@@ -162,7 +176,7 @@ function office() {
   out.push(text(OFFICE.x + 4, front, 12.8, t("REFRESHES", "RENOVACIONES")));
   out.push(counter(OFFICE.x + 30, front, 3.4, 2, "logins"));
   out.push(text(OFFICE.x + 29, front, 12.8, t("LOGINS", "LOGINS")));
-  // the revocation lamp on the roof: lit while the box office revokes a pass family
+  // the revocation lamp on the roof: lit while the box office revokes a pass family or refuses a pass
   const lp = [OFFICE.x + OFFICE.w - 6, OFFICE.y + 6, OFFICE_H];
   out.push(`<g data-lamp-office="off">${lamp(P, lp, { r: 2.4 })}</g><g data-lamp-office="on" style="display:none">${litFill(lamp(P, lp, { r: 2.4, lit: true }))}</g>`);
   return out.join("");
@@ -208,7 +222,7 @@ function gate() {
   out.push(digitCounter(P, { x: colonX + 1.4, y: face, z, count: 2, ...COUNTER, pad: 0.8, name: "mm", value: 0 }));
   return out.join("");
 }
-// The scanner posts in front of the gate, one per lane, each with a lamp: lit while it lets someone in.
+// The scanner posts in front of the gate, one per lane, each with a pad on top: lit while it turns a wristband away.
 function scanners() {
   const out = [];
   for (const [who, [x, y]] of Object.entries(SCAN)) {
@@ -224,7 +238,7 @@ function scanners() {
 function gateLog() {
   const out = [S(k.slabOf(LOG, 0, LOG_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(LOG, 2.4), LOG_H, P), { tone: "faint" }));
-  out.push(plaque(P, { x: LOG.x + 6, y: LOG.y + 5, z: LOG_H, w: 34, d: 9, text: t("GATE LOG", "REGISTRO"), size: 3.4 }));
+  out.push(plaque(P, { x: LOG.x + 6, y: LOG.y + 5, z: LOG_H, w: 34, d: 9, text: t("GATE LOG", "BITÁCORA"), size: 3.4 }));
   const front = LOG.y + LOG.d, z = 2.6, cz1 = 11.6, cz2 = 15.4;
   const LC = { w: 4, gap: 0.5 }, lspan = (n) => n * LC.w + (n - 1) * LC.gap;
   const counter = (x, y, zz, count, name) => digitCounter(P, { x, y, z: zz, count, ...COUNTER, ...LC, name });
@@ -232,12 +246,12 @@ function gateLog() {
   const x1 = LOG.x + 4;
   out.push(counter(x1, front, z, 3, "after"));
   out.push(text(x1 - 1, front, cz2, t("THIEF IN", "ENTRA LADRÓN")), text(x1 - 1, front, cz1, t("AFTER REVOKE", "TRAS REVOCAR")));
-  // the window: minutes after the revocation the stolen band last worked, with tenths
-  const x2 = LOG.x + 30;
-  out.push(counter(x2, front, z, 3, "win"));
-  const dot = x2 + lspan(3) + 2.2;
-  out.push(D([at([dot, front + 1.5, z + 0.8])], { size: 1.7, tone: "hi" }));
-  out.push(counter(dot + 2.2, front, z, 1, "winT"));
+  // the window: minutes after the revocation the stolen band last worked, with tenths, the point inside one housing
+  const x2 = LOG.x + 30, dotX = x2 + lspan(3) + 1, tenthX = x2 + lspan(3) + 2;
+  out.push(S(k.slabOf({ x: x2 - COUNTER.pad, y: front - 1.4, w: tenthX + LC.w - x2 + 2 * COUNTER.pad, d: 1.4, r: 0.5 }, z - COUNTER.pad, COUNTER.h + 2 * COUNTER.pad, P, 2), { tone: "hi", crease: "lo" }));
+  out.push(digitCounter(P, { x: x2, y: front, z, count: 3, ...COUNTER, ...LC, housing: false, name: "win" }));
+  out.push(D([at([dotX, front + 0.1, z + 0.6])], { size: 1.1, tone: "hi" }));
+  out.push(digitCounter(P, { x: tenthX, y: front, z, count: 1, ...COUNTER, ...LC, housing: false, name: "winT" }));
   out.push(text(x2 - 1, front, cz2, t("WINDOW", "VENTANA")), text(x2 - 1, front, cz1, t("MIN", "MIN")));
   // lookups the gate made
   const x3 = LOG.x + 56;
@@ -270,8 +284,8 @@ export function flyCardSvg() {
 }
 
 const FIGURE_LABEL = t(
-  "A festival gate on a base plate. On the left, a box office with a window on its right-hand side signs wristbands and hands out refresh passes; counters on its front show refreshes and logins, and a lamp on its roof lights when it revokes passes. In the middle, a gate frame with two lanes, the user's on the left and a thief's on the right; a scanner post with a lamp stands in front of each lane, and an arm across each lane lifts for a wristband the gate accepts. A clock on the gate's beam is what it compares expiries with. The user and the thief carry their wristband cards, showing an id and an expiry, with a refresh pass card under it; the thief's copies are lit. Behind the gate a crowd stands in front of a stage. At the back left, a deny-list board with hooks for revoked wristband ids; at the back right, the user record with a token-version counter; dashed wires run from the scanners to both. At the front right, the gate log counts the thief's entries after the revocation, the window in minutes, and the lookups the gate made.",
-  "La entrada de un festival sobre una placa base. A la izquierda, una taquilla con una ventanilla en su lado derecho firma pulseras y entrega pases de renovación; contadores en su frente muestran renovaciones y logins, y una lámpara en su techo se enciende cuando revoca pases. En el medio, el marco de la entrada con dos carriles, el del usuario a la izquierda y el de un ladrón a la derecha; delante de cada carril hay un poste lector con una lámpara, y una barrera en cada carril se levanta cuando la entrada acepta una pulsera. Un reloj en la viga de la entrada es contra lo que compara los vencimientos. El usuario y el ladrón llevan su tarjeta de pulsera, con un id y un vencimiento, y debajo la tarjeta del pase de renovación; las copias del ladrón están encendidas. Detrás de la entrada, un público frente a un escenario. Atrás a la izquierda, un tablero de lista de bloqueo con ganchos para los ids de pulseras revocadas; atrás a la derecha, el registro del usuario con un contador de versión del token; cables punteados van de los lectores a ambos. Adelante a la derecha, el registro de la entrada cuenta las entradas del ladrón tras la revocación, la ventana en minutos y las consultas que hizo la entrada.",
+  "A festival gate on a base plate. At the front left, a box office with a window on its right-hand side signs wristbands and hands out refresh passes; counters on its front show refreshes and logins, and a lamp on its roof lights when it revokes or refuses a pass. In the middle, a gate frame with two lanes that it checks the same way, the user walking the left one and a thief the right one; a scanner post stands in front of each lane, its pad lit when it turns a wristband away, and each lane's arm is raised for a wristband the gate accepts and lowered otherwise. A clock on the gate's beam is what it compares expiries with. The user and the thief hold their wristband card, showing an id and an expiry, and their refresh pass card; the thief's copies are lit. Behind the gate a crowd stands in front of a stage. At the back left, a deny-list board with hooks for revoked wristband ids; at the back right, the user record with a token-version counter; both scanners feed one reader box behind the gate, with dashed wires to both, and each has a lamp that lights when its answer turns a wristband away. At the front right, the gate log counts the thief's entries after the revocation, the window in minutes, and the lookups the gate made.",
+  "La entrada de un festival sobre una placa base. Adelante a la izquierda, una taquilla con una ventanilla en su lado derecho firma pulseras y entrega pases de renovación; contadores en su frente muestran renovaciones y logins, y una lámpara en su techo se enciende cuando revoca o rechaza un pase. En el medio, el marco de la entrada con dos carriles que revisa igual, el del usuario a la izquierda y el de un ladrón a la derecha; delante de cada carril hay un poste lector cuya tapa se enciende cuando rechaza una pulsera, y la barrera de cada carril se levanta para una pulsera que la entrada acepta y queda baja si no. Un reloj en la viga de la entrada es contra lo que compara los vencimientos. El usuario y el ladrón llevan su tarjeta de pulsera, con un id y un vencimiento, y la tarjeta de su pase de renovación; las copias del ladrón están encendidas. Detrás de la entrada, un público frente a un escenario. Atrás a la izquierda, un tablero de lista de bloqueo con ganchos para los ids de pulseras revocadas; atrás a la derecha, el registro del usuario con un contador de versión del token; los dos lectores van a una caja detrás de la entrada, con cables punteados a ambos, y cada uno tiene una lámpara que se enciende cuando su respuesta rechaza una pulsera. Adelante a la derecha, la bitácora de la entrada cuenta las entradas del ladrón tras la revocación, la ventana en minutos y las consultas que hizo la entrada.",
 );
 
 export function buildFigure() {
@@ -285,8 +299,8 @@ export function buildFigure() {
       crowd(),
       denyBoard(),
       record(),
-      wires(),
       gateBack(),
+      wires(),
       office(),
       `<g data-layer="back"></g>`,
       gate(),

@@ -62,22 +62,32 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
   let model, clock, logAt, seed = 3, endAt, said = -9, deny = new Map(), pulses = [];
   const round = rngMixed(91);
 
-  function restart() {
+  // over: a Watch's staging (seed, theft and revocation times, and a warm-up the clock jumps to)
+  function restart(over = {}) {
     for (const c of [...denyCards.children]) c.remove();
     for (const p of pulses) p.g.remove();
+    for (const k of [...pulseMap.keys()]) pulseMap.delete(k);
     pulses = []; deny = new Map();
-    const theftAt = 6 + 10 * round(), revokeAfter = 5 + 6 * round();
+    const theftAt = over.theftAt ?? 6 + 10 * round(), revokeAfter = over.revokeAfter ?? 5 + 6 * round();
+    if (over.seed) seed = over.seed;
     model = makeFestival({ ttl: cfg.ttl, refresh: cfg.refresh, check: cfg.check, steal: cfg.steal, revoke: cfg.revoke, theftAt, revokeAfter }, seed);
     seed = (seed * 31 + 7) % 9973 + 1;
-    clock = 0; logAt = 0; endAt = Infinity;
-    paint();
-    showStats();
+    clock = 0; logAt = 0; endAt = Infinity; keyAt = -1e9;
     const b = model.user.band;
     say(T("new round · the user logs in · wristband #" + b.id + " until " + hhmm(b.exp), "ronda nueva · el usuario inicia sesión · pulsera #" + b.id + " hasta las " + hhmm(b.exp)));
+    if (over.warm) { clock = over.warm; model.runTo(clock); }
+    paint();
+    showStats();
   }
 
   // ---------- narration ----------
-  const say = (v, rank = 1) => { root.figure.say(L(v)); said = clock; };
+  // routine news (the user's refreshes and logins, the user walking in) waits until an event that matters has been
+  // up for eight seconds, so a Watch's outcome stays on the readout
+  let keyAt = -1e9;
+  const say = (v) => { root.figure.say(L(v)); said = clock; keyAt = clock; };
+  const sayRoutine = (v) => { if (clock - keyAt < 8 * cfg.speed) return; root.figure.say(L(v)); said = clock; };
+  // the window as the stat and the counter show it: minutes, rounded to a tenth
+  const tenths = (x) => Math.round(x * 10) / 10;
   const whyText = { expired: T("expired", "vencida"), denied: T("on the deny list", "en la lista de bloqueo"), version: T("old token version", "versión vieja del token") };
   function narrate() {
     for (; logAt < model.log.length; logAt++) {
@@ -85,8 +95,8 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
       if (e.t > clock) break;
       const id = e.band ? "#" + e.band.id : "";
       switch (e.type) {
-        case "login": if (e.t > 0) say(e.forced ? T("pass refused · the user has to log in again · " + id, "pase rechazado · el usuario vuelve a iniciar sesión · " + id) : T("wristband ran out, no pass · log in again · " + id, "la pulsera venció, sin pase · nuevo inicio de sesión · " + id)); break;
-        case "refresh": say(e.who === "thief" ? T("the thief refreshes with the copied pass · new wristband " + id, "el ladrón renueva con el pase copiado · pulsera nueva " + id) : T("wristband ran out · refreshed at the box office · " + id, "la pulsera venció · renovada en la taquilla · " + id)); break;
+        case "login": if (e.t > 0) (e.forced ? say : sayRoutine)(e.forced ? T("pass refused · the user has to log in again · " + id, "pase rechazado · el usuario vuelve a iniciar sesión · " + id) : T("wristband ran out, no pass · log in again · " + id, "la pulsera venció, sin pase · nuevo inicio de sesión · " + id)); break;
+        case "refresh": (e.who === "thief" ? say : sayRoutine)(e.who === "thief" ? T("the thief refreshes with the copied pass · new wristband " + id, "el ladrón renueva con el pase copiado · pulsera nueva " + id) : T("wristband ran out · refreshed at the box office · " + id, "la pulsera venció · renovada en la taquilla · " + id)); break;
         case "reuse": {
           const next = model.log[logAt + 1];
           const relog = next && next.type === "login" && next.t === e.t;
@@ -100,15 +110,20 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
         case "theft": say(e.pass ? T("the thief copies wristband " + id + " and the refresh pass", "el ladrón copia la pulsera " + id + " y el pase de renovación") : T("the thief copies wristband " + id + ", valid until " + hhmm(e.band.exp), "el ladrón copia la pulsera " + id + ", válida hasta las " + hhmm(e.band.exp))); break;
         case "revoke": {
           const what = e.how === "reset" ? T("password changed · every pass revoked", "contraseña cambiada · todos los pases revocados") : T("the user logs out · their pass revoked", "el usuario cierra sesión · su pase revocado");
-          const extra = e.denied ? T(" · " + id + " on the deny list", " · " + id + " en la lista de bloqueo") : model.cfg.check === "version" ? T(" · version now " + e.ver, " · versión ahora " + e.ver) : T(" · the gate keeps no list", " · la entrada no guarda ninguna lista");
-          say(T(what.en + extra.en, what.es + extra.es));
+          const extra = e.denied ? T(" · " + id + " on the deny list", " · " + id + " en la lista de bloqueo")
+            : model.cfg.check === "version" ? T(" · version now " + e.ver, " · versión ahora " + e.ver)
+            : model.cfg.check === "deny" ? T(" · nothing goes on the deny list", " · nada entra en la lista de bloqueo")
+            : T(" · the gate keeps no list", " · la entrada no guarda ninguna lista");
+          // a copy that has already run out has nothing left to revoke: say so
+          const gone = model.st.lockedT >= 0 && model.st.lockedT <= e.t ? T(" · the copy had already expired", " · la copia ya había vencido") : T("", "");
+          say(T(what.en + extra.en + gone.en, what.es + extra.es + gone.es));
           if (e.denied) addDeny(e.band);
           break;
         }
         case "gate":
-          if (e.who === "user" && e.ok && clock - said > 3 && model.st.theftT < 0) say(T("the user walks in · " + id + " is good until " + hhmm(e.band.exp), "el usuario entra · " + id + " vale hasta las " + hhmm(e.band.exp)));
+          if (e.who === "user" && e.ok && clock - said > 3 && model.st.theftT < 0) sayRoutine(T("the user walks in · " + id + " is good until " + hhmm(e.band.exp), "el usuario entra · " + id + " vale hasta las " + hhmm(e.band.exp)));
           if (e.who === "thief") {
-            if (e.ok && e.after) say(T("the copy still opens the gate · " + Math.round(e.t - model.st.revokeT) + " min after the revocation", "la copia todavía abre la entrada · " + Math.round(e.t - model.st.revokeT) + " min después de revocar"));
+            if (e.ok && e.after) { const w = tenths(e.t - model.st.revokeT).toFixed(1); say(T("the copy still opens the gate · " + w + " min after the revocation", "la copia todavía abre la entrada · " + w + " min después de revocar")); }
             else if (e.ok && clock - said > 2) say(T("the thief walks in with " + id, "el ladrón entra con " + id));
             else if (!e.ok) say(T("the thief is turned away · " + L(whyText[e.why]), "al ladrón lo rechazan · " + L(whyText[e.why])));
           }
@@ -193,36 +208,40 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
     const stolen = st.theftT >= 0 && clock >= st.theftT + 0.3;
     dress(W.thief, stolen ? model.thief.band : null, stolen ? model.thief.pass : null, ver);
 
-    // gate: scanner lamps and arms, by the trips going through right now
+    // gate: a scanner lights while it turns a wristband away; an arm is raised while it lets one through
+    const turnedAway = (tr) => tr.why === "expired" || tr.why === "denied" || tr.why === "version";
+    const refusing = (tr) => !tr.ok && !tr.none && turnedAway(tr) && clock >= tr.gate - 0.05 && clock < tr.gate + 0.45;
     for (const who of ["user", "thief"]) {
       let lit = false, open = false;
       for (let i = model.trips.length - 1; i >= 0 && i > model.trips.length - 6; i--) {
         const tr = model.trips[i];
-        if (tr.who !== who || !tr.ok) continue;
-        if (clock >= tr.gate - 0.05 && clock < tr.gate + 0.25) lit = true;
-        if (clock >= tr.gate - 0.05 && clock < tr.inside + 0.05) open = true;
+        if (tr.who !== who) continue;
+        if (refusing(tr)) lit = true;
+        if (tr.ok && clock >= tr.gate - 0.05 && clock < tr.inside + 0.05) open = true;
       }
       lampSet(scan[who], lit);
       show(arms[who].closed, !open); show(arms[who].open, open);
     }
     // the copy flying from the user's scanner to the thief
     paintTheft();
-    // lookups: a dot along the wire to the deny list or the user record, and that lamp
-    let lookLit = false;
+    // lookups: a dot from the scanner through the reader to the deny list or the user record; that store's lamp
+    // lights when its answer turns the wristband away
+    let storeNo = false;
     if (model.cfg.check !== "stamp") {
-      const wire = G.WIRES[model.cfg.check === "deny" ? "deny" : "ver"];
+      const store = model.cfg.check === "deny" ? "deny" : "ver";
       for (let i = model.trips.length - 1; i >= 0 && i > model.trips.length - 6; i--) {
         const tr = model.trips[i];
         if (!tr.why || tr.why === "gone" || tr.why === "refused" || tr.none || tr.why === "expired") continue;
         const k = (clock - (tr.gate - 0.3)) / 0.3;
-        if (k >= 0 && k <= 1) { pulse(i, wire, k); if (k > 0.85) lookLit = true; }
+        if (k >= 0 && k <= 1) pulse(i, G.WIRES[store][tr.who], k);
+        if ((tr.why === "denied" || tr.why === "version") && refusing(tr)) storeNo = true;
       }
     }
     sweepPulses();
-    lampSet(lamps.deny, model.cfg.check === "deny" && lookLit);
-    lampSet(lamps.ver, model.cfg.check === "version" && lookLit);
-    // the box office lamp: lit for a moment when it revokes (logout, reset, reuse)
-    const revokes = model.log.filter((e) => (e.type === "revoke" || e.type === "reuse") && e.t <= clock && clock - e.t < 0.8).length;
+    lampSet(lamps.deny, model.cfg.check === "deny" && storeNo);
+    lampSet(lamps.ver, model.cfg.check === "version" && storeNo);
+    // the box office lamp: lit for a moment when it revokes passes (logout, reset, reuse) or refuses one
+    const revokes = model.log.filter((e) => (e.type === "revoke" || e.type === "reuse" || e.type === "refused") && e.t <= clock && clock - e.t < 0.8).length;
     lampSet(lamps.office, revokes > 0);
     paintDeny();
 
@@ -230,8 +249,8 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
     C.refreshes.setClamped(st.refreshes);
     C.logins.setClamped(st.logins);
     C.after.setClamped(st.thiefAfter);
-    const win = st.lastAfter >= 0 ? st.lastAfter - st.revokeT : 0;
-    C.win.setClamped(Math.floor(win)); C.winT.set(Math.floor(win * 10) % 10);
+    const win10 = Math.round((st.lastAfter >= 0 ? st.lastAfter - st.revokeT : 0) * 10);
+    C.win.setClamped(Math.floor(win10 / 10)); C.winT.set(win10 % 10);
     C.lookups.setClamped(st.lookups);
     C.ver.setClamped(model.userVer);
     const m = Math.floor(540 + clock);
@@ -253,7 +272,7 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
     if (!p) { const g = document.createElementNS(NS, "circle"); g.setAttribute("r", "1.6"); g.setAttribute("class", "tok-pulse"); pulseLayer.appendChild(g); p = { g, seen: 0 }; pulseMap.set(key, p); pulses.push(p); }
     p.seen = clock;
     const [x, y] = pointAlong(wire, polylineLength(wire) * k);
-    const [sx, sy] = iso([x, y, 0.4], P);
+    const [sx, sy] = iso([x, y, 1.1], P);
     p.g.setAttribute("cx", sx.toFixed(1)); p.g.setAttribute("cy", sy.toFixed(1));
   }
   function sweepPulses() {
@@ -263,7 +282,7 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
   function showStats() {
     const st = model.st;
     stat("after", st.thiefAfter);
-    stat("window", (st.lastAfter >= 0 ? st.lastAfter - st.revokeT : 0).toFixed(1) + " min");
+    stat("window", tenths(st.lastAfter >= 0 ? st.lastAfter - st.revokeT : 0).toFixed(1) + " min");
     stat("lookups", st.lookups);
     stat("refreshes", st.refreshes);
     stat("logins", st.logins);
@@ -278,8 +297,11 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
     clock += dt * cfg.speed;
     model.runTo(clock);
     const st = model.st;
-    if (endAt === Infinity && (model.done || (st.theftT >= 0 && !model.thief.active && st.lockedT >= 0 && st.revokeT < 0 && cfg.revoke === "none") || (st.theftT >= 0 && clock > st.theftT + CAP_AFTER_THEFT))) {
-      endAt = clock + 6;
+    // with nobody noticing, a lockout by reuse detection also logs the user out: wait for their new login first
+    const userRefusedNext = model.user.pass && model.user.pass.fam.revoked && model.user.active;
+    const quietEnd = st.theftT >= 0 && !model.thief.active && st.lockedT >= 0 && st.revokeT < 0 && (!userRefusedNext || clock > st.lockedT + 30);
+    if (endAt === Infinity && (model.done || quietEnd || (st.theftT >= 0 && clock > st.theftT + CAP_AFTER_THEFT))) {
+      endAt = clock + 8 * cfg.speed;          // eight seconds on the outcome, at any speed
       if (model.thief.active) say(T("the copy still works · new round in a moment", "la copia todavía sirve · ronda nueva en un momento"));
     }
     if (clock > endAt) restart();
@@ -304,9 +326,12 @@ export default function mount({ P, G, USER_SVG, THIEF_SVG, DENY_CARD_SVG, FLY_SV
   };
   root.on("action", (name) => actions[name]?.());
 
+  // Watch: the experiment's settings, staged so the outcome shows within seconds: a fixed seed, the theft at the first
+  // scan after 3 minutes and the revocation 3 minutes after it, the clock started at 2.5 minutes, 3 min/s.
   root.on("watch", (w) => {
     for (const key of ["ttl", "refresh", "check", "steal", "revoke"]) set(key, w[key], true);
-    restart();
+    set("speed", 3, true);
+    restart({ seed: 3, theftAt: 3, revokeAfter: 3, warm: 2.5 });
     wake();
   });
 
