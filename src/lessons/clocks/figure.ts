@@ -4,7 +4,9 @@
 // records desk: a board shows the record it holds (the stamp, and with vector clocks a second card for a sibling),
 // a counter of the lines on the record and one of siblings kept. Between each office and the desk runs a lane where
 // the office's courier carries a GET, a copy, a stamped edit or an OK. Edits the desk drops fall into the DROPPED
-// tray. In the back corner, the true time, which nobody in the system can read.
+// tray between the offices, into one of two bins, where the last three stay: OLDER (it lost to an edit its writer
+// had already read) or SAME COPY (two edits made from one copy of the record). In the back corner, the true time,
+// which nobody in the system can read.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, labelPlate, digitCounter, figurine, faceText, dial, card, variants } from "../../../workbench/parts.mjs";
@@ -27,17 +29,18 @@ const BOARD_FACE = BOARD.y + BOARD.d;
 export const CARDS = [{ x: -44, w: 41 }, { x: 3, w: 41 }];
 const CARD_Z = DESK_H + 5, CARD_H = 12;
 
-// The lanes, one per office, from behind the office to the desk's window.
-export const LANE_X = [-44, 30];                 // each on the inner side of its office, clear of the clock display
+// The lanes, one per office, from behind the office to the desk's window: each on the inner side of its office, far
+// enough back that the office and its clock display don't hide a courier waiting there.
+export const LANE_X = [-30, 14];
 export const DESK_Y = DESK_FRONT + 5;             // where a courier stands at the desk
-export const HOME_Y = -17;                         // where a courier waits at its office
+export const HOME_Y = -27;                         // where a courier waits at its office
 const LANE = { y: DESK_FRONT + 1, d: 0 };
 LANE.d = HOME_Y + 4 - LANE.y;
 
-// The DROPPED tray, between the lanes.
-export const TRAY = { x: -17, y: -58, w: 34, d: 18, r: 1.4 };
-const TRAY_H = 7;
-export const TRAY_SPOT = [TRAY.x + TRAY.w / 2, TRAY.y + TRAY.d / 2, TRAY_H];
+// The DROPPED tray, at the front between the offices: two bins, OLDER on the left, SAME COPY on the right.
+export const TRAY = { x: -20, y: 42, w: 40, d: 18, r: 1.4 };
+const TRAY_H = 8;
+export const TRAY_SPOTS = [0, 1].map((b) => [TRAY.x + TRAY.w * (b ? 0.75 : 0.25), TRAY.y + TRAY.d / 2, TRAY_H]);
 
 // The offices.
 export const OFFICE = [{ x: -90, y: -2, w: 66, d: 40, r: 2 }, { x: 24, y: -2, w: 66, d: 40, r: 2 }];
@@ -83,9 +86,9 @@ function desk() {
   out.push(L(k.planOutline(k.insetPlan(DESK, 2.4), DESK_H, P), { tone: "faint" }));
   // a window ledge in front of each lane
   for (const x of LANE_X) out.push(S(k.slabOf({ x: x - 9, y: DESK_FRONT, w: 18, d: 2.6, r: 0.5 }, 7, 1.4, P, 2), { tone: "hi", crease: "lo" }));
-  // the lines on the record, front centre
-  out.push(digitCounter(P, { x: -14, y: DESK_FRONT, z: 3.4, count: 3, w: 4, h: 5.2, gap: 0.5, pad: 1, name: "lines" }));
-  out.push(text(1.6, DESK_FRONT, 4.6, t("LINES", "LÍNEAS"), 2.8));
+  // the lines on the record, on the front right of B's window
+  out.push(digitCounter(P, { x: 30, y: DESK_FRONT, z: 3.4, count: 3, w: 4, h: 5.2, gap: 0.5, pad: 1, name: "lines" }));
+  out.push(text(45.6, DESK_FRONT, 4.6, t("LINES", "LÍNEAS"), 2.8));
   // siblings kept, on the right face
   const side = DESK.x + DESK.w;
   out.push(digitCounter(P, { x: side, y: DESK_FRONT - 4, z: 3.4, count: 3, face: "x", w: 4, h: 5.2, gap: 0.5, pad: 1, name: "siblings" }));
@@ -127,7 +130,13 @@ function lanes() {
 
 function tray() {
   const out = [S(k.slabOf(TRAY, 0, TRAY_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TRAY, 2), TRAY_H, P), { tone: "lo" }) })];
-  out.push(text(TRAY.x + TRAY.w / 2, TRAY.y + TRAY.d, 2.2, t("DROPPED", "DESCARTE"), 2.8, { anchor: "middle" }));
+  // the divider between the two bins
+  const xm = TRAY.x + TRAY.w / 2;
+  out.push(L(k.lineOnTop([xm, TRAY.y + 2], [xm, TRAY.y + TRAY.d - 2], TRAY_H, P), { tone: "lo" }));
+  const front = TRAY.y + TRAY.d;
+  out.push(text(xm, front, 4.6, t("DROPPED", "DESCARTE"), 2.6, { anchor: "middle" }));
+  out.push(text(TRAY_SPOTS[0][0], front, 1.4, t("OLDER", "ANTE VIEJA"), 2.4, { anchor: "middle" }));
+  out.push(text(TRAY_SPOTS[1][0], front, 1.4, t("SAME COPY", "MISMA COPIA"), 2.4, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -176,8 +185,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "Two offices and a records desk on a base plate. At the front, offices A and B each have a wall clock, a display with the reading in milliseconds and a dial beside it, and counters for the edits the office made and the ones that were lost. At the back, the records desk has a board showing the record it holds: the stamp of the edit it kept, and with vector clocks a second card for a sibling, lit. A counter on the desk shows the lines on the record and one on its side the siblings kept. A lane runs from each office to the desk; on it the office's courier carries a GET, a copy, an edit with its stamp, or an OK. Edits the desk drops fall into the DROPPED tray between the lanes, lit. In the back corner, a tower shows the true time.",
-      "Dos oficinas y una mesa de registros sobre una placa base. Adelante, las oficinas A y B tienen cada una un reloj de pared, una pantalla con la lectura en milisegundos y un dial al lado, y contadores de las ediciones que hizo la oficina y de las que se perdieron. Al fondo, la mesa de registros tiene un tablero con el registro que guarda: el sello de la edición que conservó y, con relojes vectoriales, una segunda tarjeta encendida para una versión hermana. Un contador en la mesa muestra las líneas del registro y otro a un costado las hermanas guardadas. De cada oficina sale un carril hasta la mesa; por él, el mensajero de la oficina lleva un GET, una copia, una edición con su sello o un OK. Las ediciones que la mesa descarta caen en la bandeja DESCARTE, entre los carriles, encendidas. En la esquina del fondo, una torre muestra la hora real.",
+      "Two offices and a records desk on a base plate. At the front, offices A and B each have a wall clock, a display with the reading in milliseconds and a dial beside it, and counters for the edits the office made and the ones that were lost. At the back, the records desk has a board showing the record it holds: the stamp of the edit it kept, and with vector clocks a second card for a sibling, lit. A counter on the desk shows the lines on the record and one on its side the siblings kept. A lane runs from each office to the desk; on it the office's courier carries a GET, a copy, an edit with its stamp, or an OK. Edits the desk drops fall, lit, into the DROPPED tray at the front, between the offices: into its OLDER bin when the edit lost to one its writer had already read, into SAME COPY when two edits were made from one copy; the last three stay in each bin. In the back corner, a tower shows the true time.",
+      "Dos oficinas y una mesa de registros sobre una placa base. Adelante, las oficinas A y B tienen cada una un reloj de pared, una pantalla con la lectura en milisegundos y un dial al lado, y contadores de las ediciones que hizo la oficina y de las que se perdieron. Al fondo, la mesa de registros tiene un tablero con el registro que guarda: el sello de la edición que conservó y, con relojes vectoriales, una segunda tarjeta encendida para una versión hermana. Un contador en la mesa muestra las líneas del registro y otro a un costado las hermanas guardadas. De cada oficina sale un carril hasta la mesa; por él, el mensajero de la oficina lleva un GET, una copia, una edición con su sello o un OK. Las ediciones que la mesa descarta caen, encendidas, en la bandeja DESCARTE al frente, entre las oficinas: en su compartimento ANTE VIEJA cuando la edición perdió ante una que su autor ya había leído, en MISMA COPIA cuando dos ediciones se hicieron desde una misma copia; las tres últimas quedan en cada compartimento. En la esquina del fondo, una torre muestra la hora real.",
     ),
     body: [
       plate(),
@@ -185,13 +194,13 @@ export function buildFigure() {
       desk(),
       board(),
       lanes(),
-      tray(),
-      `<g data-layer="drop"></g>`,
       `<g data-layer="walk"></g>`,
       office(0),
       office(1),
+      tray(),
+      `<g data-layer="drop"></g>`,
     ],
   });
 }
 
-export const GEOMETRY = { LANE_X, DESK_Y, HOME_Y, TRAY_SPOT, CARDS, BOARD_FACE, CARD_Z, CARD_H };
+export const GEOMETRY = { LANE_X, DESK_Y, HOME_Y, TRAY_SPOTS, CARDS, BOARD_FACE, CARD_Z, CARD_H };

@@ -93,7 +93,7 @@ const EXPERIMENTS = [
       "An edit is stamped by its writer's clock as it leaves. When B reads A's edit and sends its own a few milliseconds later, but B's clock reads a few milliseconds behind A's, B's stamp comes out lower: the desk keeps A's older record and drops B's, though B had built on it. That happened to " + per100(N.ntp.older) + " edits in 100, against " + per100(N.exact.older) + " with exact clocks, and each got an OK. What counts is skew against the gap between dependent edits, and on this machine an edit follows the one it read by a few milliseconds. ±" + NTP_ERR + " ms is a good sync over the internet, where NTP typically holds tens of milliseconds; on a LAN it is often under one, but there edits also follow each other faster, and none of it is guaranteed. Even exact clocks lost " + per100(N.exact.lost) + " in 100: two edits made from the same copy at once, the lost update of lesson 17, Race conditions. Skew adds edits that weren't concurrent at all.",
       "Una edición se sella con el reloj de quien la escribe cuando sale. Cuando B lee la edición de A y envía la suya unos milisegundos después, pero el reloj de B marca unos milisegundos menos que el de A, el sello de B sale más bajo: la mesa se queda con el registro más viejo de A y descarta el de B, aunque B lo había usado como base. Le pasó a " + per100(N.ntp.older) + " ediciones de cada 100, contra " + per100(N.exact.older) + " con relojes exactos, y cada una recibió un OK. Lo que cuenta es el desfase de reloj (clock skew) frente al tiempo entre ediciones que dependen una de otra, y en esta máquina una edición sigue a la que leyó por unos pocos milisegundos. ±" + NTP_ERR + " ms es una buena sincronización por internet, donde NTP suele mantener decenas de milisegundos; en una LAN a menudo queda por debajo de uno, pero ahí las ediciones también se siguen más rápido, y nada de eso está garantizado. Incluso los relojes exactos perdieron " + per100(N.exact.lost) + " de cada 100: dos ediciones hechas a la vez desde la misma copia, la actualización perdida de la lección 17, Condiciones de carrera. El desfase agrega ediciones que ni siquiera eran concurrentes.",
     ),
-    watch: { rule: "lww", clocks: "ntp" },
+    watch: { rule: "lww", clocks: "ntp", until: "older" },
   },
   {
     id: "behind",
@@ -201,7 +201,7 @@ export default defineLesson({
     plate: {
       title: t("Records desk", "Mesa de registros"),
       keys: [
-        { mark: "lit", label: t("An edit the desk drops; a sibling kept beside the record", "Una edición que la mesa descarta; una hermana guardada junto al registro") },
+        { mark: "lit", label: t("An edit the desk drops, into OLDER (it had read the edit that beat it) or SAME COPY; a sibling kept beside the record", "Una edición que la mesa descarta, en ANTE VIEJA (había leído la edición que le ganó) o en MISMA COPIA; una hermana guardada junto al registro") },
         { mark: "raised", label: t("Couriers: a GET, a copy, a stamped edit or an OK", "Mensajeros: un GET, una copia, una edición sellada o un OK") },
         { mark: "flat", label: t("The lanes between each office and the desk", "Los carriles entre cada oficina y la mesa") },
       ],

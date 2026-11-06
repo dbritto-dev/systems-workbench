@@ -1,7 +1,8 @@
 // @ts-nocheck: live code in the style of the other lessons; shared helpers come from src/runtime and src/lib.
 // The records desk in the browser: runs the model in slow motion, walks each office's courier to the desk and back,
-// turns the clocks, shows the record's stamp (and a sibling), drops lost edits into the tray, and answers the
-// controls. mount() gets the build-time data from page.ts (projection, geometry, the courier drawing) and root, the
+// turns the clocks, shows the record's stamp (and a sibling), drops lost edits into the tray's bins, and answers the
+// controls. "Watch it on the machine" jumps the run to a few seconds before the moment the experiment is about,
+// found by running the same seed ahead. mount() gets the build-time data from page.ts (projection, geometry, the courier drawing) and root, the
 // <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
@@ -37,24 +38,36 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
     setText(c.text, label);
     show(c.slip, label !== "");
   }
-  // lit slips falling into the tray (page time, so they fall at the same pace at every speed)
-  const drops = [];
+  // lit slips falling into the tray's bins (page time, so they fall at the same pace at every speed); the last three
+  // in each bin stay there, newest in front
+  const drops = [], resting = [[], []], KEEP = 3;
   let pageT = 0;
-  function drop(from) {
+  const restAt = (bin, k) => [G.TRAY_SPOTS[bin][0], G.TRAY_SPOTS[bin][1] - 4 + 4 * k, G.TRAY_SPOTS[bin][2] - 3];
+  function drop(from, bin) {
     const g = document.createElementNS(NS, "g");
     g.innerHTML = SLIP_SVG;
     setLit(g, true);
     dropLayer.appendChild(g);
-    drops.push({ g, from, born: pageT });
+    drops.push({ g, from, bin, born: pageT });
+  }
+  function land(d) {
+    const pile = resting[d.bin];
+    pile.push(d);
+    if (pile.length > KEEP) pile.shift().g.remove();
+    pile.forEach((x, k) => { x.g.setAttribute("transform", translateAlong(P, restAt(d.bin, k))); dropLayer.appendChild(x.g); });
+    // flying slips stay in front of the resting ones
+    for (const f of drops) dropLayer.appendChild(f.g);
   }
 
   // ---------- settings and the run ----------
   const cfg = { rule: "lww", clocks: "ntp", speed: 0.004 };
-  let model, clock, logAt, seed = 5, handled, saidAt = -9, saidRank = 0, held = null;
+  let model, clock, logAt, seed = 5, runSeed = 5, handled, saidAt = -9, saidRank = 0, held = null;
+  const simCfg = () => ({ rule: cfg.rule, clocks: cfg.clocks, stepAt: STEP_AT });
 
-  function restart() {
-    for (const d of drops.splice(0)) d.g.remove();
-    model = makeSim({ rule: cfg.rule, clocks: cfg.clocks, stepAt: STEP_AT }, seed);
+  function restart(useSeed = seed) {
+    for (const d of [...drops.splice(0), ...resting[0].splice(0), ...resting[1].splice(0)]) d.g.remove();
+    runSeed = useSeed;
+    model = makeSim(simCfg(), useSeed);
     seed = (seed * 7 + 3) % 9973 + 1;
     clock = 0; logAt = 0; handled = new Set(); saidAt = -9; saidRank = 0; held = null;
     WB.pose(svg, "rule", cfg.rule);
@@ -63,27 +76,32 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
   }
 
   // ---------- narration: the model's log ----------
+  // a message stays up at least 1.4 s of page time (3 s for a lost edit) unless a more important one comes; a less
+  // important one waits
+  const holdFor = (rank) => (rank >= 3 ? 3 : 1.4);
   function say(rank, text) {
-    // a message stays up at least 1.4 s of page time unless a more important one comes; a less important one waits
     const wall = performance.now() / 1000;
-    if (rank < saidRank && wall - saidAt < 1.4) { held = { rank, text }; return; }
+    if (rank < saidRank && wall - saidAt < holdFor(saidRank)) { held = { rank, text }; return; }
     held = null;
     saidRank = rank; saidAt = wall;
     root.figure.say(L(text));
   }
   function sayHeld() {
-    if (held && performance.now() / 1000 - saidAt >= 1.4) { const h = held; held = null; saidRank = -1; say(h.rank, h.text); }
+    if (held && performance.now() / 1000 - saidAt >= holdFor(saidRank)) { const h = held; held = null; saidRank = -1; say(h.rank, h.text); }
   }
   const who = (i) => OFFICES[i];
+  // what a stamp is called under each rule, as the board says it: a wall-clock stamp, a Lamport count, a vector
+  const STAMP = { lww: T("stamp", "sello"), lamport: T("count", "contador"), vector: T("vector", "vector") };
   function narrate() {
     for (; logAt < model.log.length; logAt++) {
       const e = model.log[logAt];
       if (e.t > clock) break;
-      const w = e.w, s = e.s, a = w ? who(w.office) : "";
+      const w = e.w, s = e.s, a = w ? who(w.office) : "", st = STAMP[cfg.rule];
       switch (e.type) {
-        case "send": say(0, T(a + " sends its edit · stamp " + w.label, a + " envía su edición · sello " + w.label)); break;
+        case "send": say(0, T(a + " sends its edit · " + st.en + " " + w.label, a + " envía su edición · " + st.es + " " + w.label)); break;
         case "won":
           if (cfg.rule === "vector") say(1, T(a + "'s " + w.label + " has seen the record · replaces it", w.label + " de " + a + " ya vio el registro · lo reemplaza"));
+          else if (cfg.rule === "lamport") say(1, T(a + "'s count " + w.label + " is the highest · kept", "el contador " + w.label + " de " + a + " es el más alto · queda"));
           else say(1, T(a + "'s " + w.label + " is the highest stamp · kept", w.label + " de " + a + " es el sello más alto · queda"));
           break;
         case "older":
@@ -151,16 +169,17 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
       const w = ws[j];
       if (handled.has(w.id) || w.arrive > clock) continue;
       handled.add(w.id);
-      if (w.fate === "older" || w.fate === "conc") drop([G.LANE_X[w.office], G.DESK_Y, 8]);
-      else if (w.fate === "over") drop([G.CARDS[0].x + G.CARDS[0].w / 2, G.BOARD_FACE + 2, G.CARD_Z + 2]);
+      // bin 0, OLDER: lost to an edit its writer had read; bin 1, SAME COPY: lost to (or overwritten by) an edit made
+      // from the same copy
+      if (w.fate === "older" || w.fate === "conc") drop([G.LANE_X[w.office], G.DESK_Y, 8], w.fate === "older" ? 0 : 1);
+      else if (w.fate === "over") drop([G.CARDS[0].x + G.CARDS[0].w / 2, G.BOARD_FACE + 2, G.CARD_Z + 2], 1);
     }
-    for (let i = drops.length - 1; i >= 0; i--) {
-      const d = drops[i], u = (pageT - d.born) / 0.7;
-      if (u >= 1.5) { d.g.remove(); drops.splice(i, 1); continue; }
-      const k = clamp(u), [x0, y0, z0] = d.from, [x1, y1, z1] = G.TRAY_SPOT;
-      const p = [lerp(x0, x1, k), lerp(y0, y1, k), lerp(z0, z1, k) + 10 * Math.sin(Math.PI * k)];
+    for (let i = 0; i < drops.length; i++) {
+      const d = drops[i], u = (pageT - d.born) / 0.9;
+      if (u >= 1) { drops.splice(i--, 1); land(d); continue; }
+      const [x0, y0, z0] = d.from, [x1, y1, z1] = restAt(d.bin, Math.min(KEEP - 1, resting[d.bin].length));
+      const p = [lerp(x0, x1, u), lerp(y0, y1, u), lerp(z0, z1, u) + 24 * Math.sin(Math.PI * u)];
       d.g.setAttribute("transform", translateAlong(P, p));
-      d.g.style.opacity = u > 1 ? String(clamp((1.5 - u) / 0.5)) : "";
     }
     counters.lines.setClamped(model.lines().length);
     counters.siblings.setClamped(model.st.siblings);
@@ -218,9 +237,58 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
   };
   root.on("action", (name) => actions[name]?.());
 
-  // ---------- "Watch it on the machine": an experiment's settings ----------
+  // ---------- "Watch it on the machine": an experiment's settings, and the moment it's about ----------
+  // The first edit the desk drops though its writer had read the edit that beat it, found by running the run ahead
+  // without drawing it. Each run draws its own clock offsets, and with two offsets that happen to agree it may not
+  // come for a long while, so the next few runs' offsets are tried too.
+  const MOMENTS = { older: (e) => e.type === "older" };
+  function firstMoment(pred, s, cap) {
+    const m = makeSim(simCfg(), s);
+    for (let T = 10, j = 0; T <= cap; T += 10) {
+      m.runTo(T);
+      for (; j < m.log.length; j++) if (pred(m.log[j])) return m.log[j].t;
+    }
+    return null;
+  }
+  // How many seconds of page time the machine takes to play the run s from T0 to T1, idle stretches sped up as the
+  // loop does.
+  function pageSecs(s, T0, T1) {
+    const m = makeSim(simCfg(), s);
+    m.runTo(T0);
+    const dt = 1 / 60, step = dt * 1000 * cfg.speed;
+    let c = T0, n = 0;
+    while (c < T1 && n < 900) {
+      const busy = m.offices.some((o) => o.phase !== "idle");
+      c = busy ? c + step : Math.max(c + step, Math.min(c + step * IDLE_BOOST, ...m.offices.map((o) => o.nextAt)));
+      m.runTo(c);
+      n++;
+    }
+    return n * dt;
+  }
+  // Run the model to T without narrating or dropping what happened before it.
+  function jumpTo(T) {
+    if (T <= clock) return;
+    model.runTo(T);
+    clock = T;
+    for (; logAt < model.log.length && model.log[logAt].t <= T; logAt++);
+    for (const w of model.writes) if (w.arrive <= T) handled.add(w.id);
+    paint();
+    showStats();
+  }
   root.on("watch", (w) => {
     for (const key of ["rule", "clocks"]) set(key, w[key], true);
+    if (w.until && MOMENTS[w.until]) {
+      for (let k = 0, s = seed; k < 30; k++, s = (s * 7 + 3) % 9973 + 1) {
+        const t = firstMoment(MOMENTS[w.until], s, 1500);
+        if (t === null) continue;
+        restart(s);
+        // land about 4.5 s of page time before it: the edit's GET, its copy and its trip back
+        let lead = 4;
+        while (lead < 80 && t - lead > 0 && pageSecs(s, t - lead, t) < 4.5) lead += 2;
+        jumpTo(Math.max(0, t - lead));
+        return wake();
+      }
+    }
     restart();
     wake();
   });
