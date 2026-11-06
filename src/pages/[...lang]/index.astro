@@ -1,8 +1,9 @@
 ---
 // The collection: every lesson as a card, with search and area filters.
-// The first paint waits until the first two cards are parsed (<link rel="expect" blocking="render">), so a slow parse
-// never paints the header alone and then the toolbar and cards: what is above the fold appears at once, settled.
+// The first paint waits until the first two cards are parsed (Base's paintAfter), so a slow parse never paints the
+// header alone and then the toolbar and cards: what is above the fold appears at once, settled.
 import Base from "../../layouts/Base.astro";
+import { markNewTabLinks } from "../../lib/links";
 import Switches from "../../components/Switches.astro";
 import Toolbar from "../../components/collection/Toolbar.astro";
 import LessonCard from "../../components/collection/LessonCard.astro";
@@ -21,13 +22,12 @@ const experiments = lessons.reduce((s, l) => s + l.page.predict.experiments.leng
 const questions = lessons.reduce((s, l) => s + l.page.explain.questions.length, 0);
 const REPO = "https://github.com/dbritto-dev/systems-workbench";
 // The card whose end the first paint waits for (LessonCard.astro's id): the second, the last one above the fold.
-const firstRow = `#lesson-${two(lessons[Math.min(1, lessons.length - 1)].n)}`;
+const firstRow = `lesson-${two(lessons[Math.min(1, lessons.length - 1)].n)}`;
 const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json`;
 ---
-<Base locale={locale} title={ui("site.name")} description={ui("site.description")} path="">
+<Base locale={locale} title={ui("site.name")} description={ui("site.description")} path="" paintAfter={firstRow}>
   <Fragment slot="head">
     <meta name="claude:viewport-fit-sides" content="cover" />
-    <link rel="expect" href={firstRow} blocking="render" />
   </Fragment>
   <div class="wrap">
     <header class="masthead">
@@ -52,7 +52,7 @@ const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json
     </main>
     </lesson-collection>
     <footer>
-      <Fragment set:html={ui("footer.collection")} /> · <a href={`${import.meta.env.BASE_URL}workbench/parts-gallery/`}>{ui("footer.gallery")}</a> · <a href={REPO}>{ui("footer.source")}</a>
+      <Fragment set:html={markNewTabLinks(ui("footer.collection"), ui("chrome.newTab"))} /> · <a href={`${import.meta.env.BASE_URL}workbench/parts-gallery/`}>{ui("footer.gallery")}</a> · <a href={REPO}>{ui("footer.source")}</a>
     </footer>
   </div>
   <PreviewDialog locale={locale} index={INDEX} />
