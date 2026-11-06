@@ -87,7 +87,7 @@ export default function mount({ P, G, TAG_SVG }, root) {
   // ---------- settings and the run ----------
   const cfg = { search: "hang", pool: "split", full: "reject", timeout: 0, rush: 1, speed: 1 };
   let model, clock, resAt, logAt, note, rushUntil, seed = 7;
-  const WARM = 20;   // each run starts 20 s in, so the first frame shows the hold already working
+  const WARM = 45;   // each run starts 45 s in, past a hung call's 30 s, so the first frame and the 30 s counters show the hold settled
 
   function restart(warm = WARM) {
     for (const id of [...tags.keys()]) drop(id);
@@ -108,22 +108,23 @@ export default function mount({ P, G, TAG_SVG }, root) {
     // the readout follows the state (status below); the model's log is only trimmed here
     if (model.log.length > 2000) { model.log.splice(0, model.log.length); logAt = 0; }
   }
-  // What the hold is doing, as [key, text]: a key holds the readout for a moment so it doesn't flicker.
+  // What the hold is doing now, as [key, text].
   function status(busy, ok) {
     const qd = model.queues.reduce((a, l) => a + l.length, 0), door = model.door.length;
     if (qd) {
       const k = model.queues.reduce((m, l, i) => (l.length > model.queues[m].length ? i : m), 0), n = model.queues[k].length;
-      return ["queue" + k, T(n + " " + name(k) + " requests queue for a place, each holding a worker · " + busy + " of " + WORKERS + " busy", n + " solicitudes de " + name(k) + " en fila por un lugar, cada una con su worker · " + busy + " de " + WORKERS + " ocupados")];
+      return ["queue" + k, n === 1
+        ? T("1 " + name(k) + " request queues for a place, holding a worker · " + busy + " of " + WORKERS + " busy", "1 solicitud de " + name(k) + " en fila por un lugar, con su trabajador · " + busy + " de " + WORKERS + " ocupados")
+        : T(n + " " + name(k) + " requests queue for a place, each holding a worker · " + busy + " of " + WORKERS + " busy", n + " solicitudes de " + name(k) + " en fila por un lugar, cada una con su trabajador · " + busy + " de " + WORKERS + " ocupados")];
     }
     if (busy >= WORKERS && door) {
       const top = model.inFlight.indexOf(Math.max(...model.inFlight));
-      return ["all", T("all " + WORKERS + " workers busy, " + model.inFlight[top] + " of them on " + name(top) + " calls · " + door + " waiting at the door", "los " + WORKERS + " workers ocupados, " + model.inFlight[top] + " en llamadas de " + name(top) + " · " + door + " esperando en la puerta")];
+      return ["all", T("all " + WORKERS + " workers busy, " + model.inFlight[top] + " of them on " + name(top) + " calls · " + door + " waiting at the door", "los " + WORKERS + " trabajadores ocupados, " + model.inFlight[top] + " en llamadas de " + name(top) + " · " + door + " esperando en la puerta")];
     }
     const full = [0, 1, 2].filter((k) => model.inFlight[k] >= model.cap);
     if (full.length) return ["full" + full[0], T(name(full[0]) + "'s compartment is full (" + model.cap + " calls) · new " + name(full[0]) + " requests turned away at once", "compartimento de " + name(full[0]) + " lleno (" + model.cap + " llamadas) · sus solicitudes nuevas se rechazan al instante")];
-    return ["calm", T(busy + " of " + WORKERS + " workers busy · in time: " + ok.map((v, k) => name(k) + " " + v).join(", "), busy + " de " + WORKERS + " workers ocupados · a tiempo: " + ok.map((v, k) => name(k) + " " + v).join(", "))];
+    return ["calm", T(busy + " of " + WORKERS + " workers busy · in time: " + ok.map((v, k) => name(k) + " " + v).join(", "), busy + " de " + WORKERS + " trabajadores ocupados · a tiempo: " + ok.map((v, k) => name(k) + " " + v).join(", "))];
   }
-  let shownKey = null, shownAt = -9;
 
   // ---------- painting ----------
   function paint(dt, snap) {
@@ -203,12 +204,9 @@ export default function mount({ P, G, TAG_SVG }, root) {
     stat("busy", busy + " / " + WORKERS);
     stat("turned", recent.filter((e) => e.outcome === "turned" || e.outcome === "door" || e.outcome === "gaveup").length);
     stat("door", model.door.length);
-    if (note && clock - note.t < 2) { say(note.text); shownKey = null; }
-    else {
-      const [key, text] = status(busy, ok.map((v) => v + "%"));
-      const hold = shownKey && key !== shownKey && clock - shownAt < 1.5 * Math.max(1, cfg.speed);
-      if (!hold) { if (key !== shownKey) { shownKey = key; shownAt = clock; } say(text); }
-    }
+    // a note (settings applied, the rush) for two seconds, then the state of the hold as it is now
+    if (note && clock - note.t < 2 * Math.max(1, cfg.speed)) say(note.text);
+    else say(status(busy, ok.map((v) => v + "%"))[1]);
   }
 
   // ---------- the loop ----------
