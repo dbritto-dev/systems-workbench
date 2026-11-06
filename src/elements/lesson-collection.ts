@@ -7,11 +7,18 @@
 // so a search can be shared. The search engine and the index load only when someone searches, arrives with a
 // search in the URL, or opens a preview. A render only touches what changed. A card's Preview button sends a
 // "lesson-preview" event, which <lesson-preview> opens on.
+//
+// The area chips are a segmented control (one Tab stop; ← → / Home / End select; runtime/roving.ts). When the count of
+// lessons shown changes after something the reader did, it is announced politely (runtime/announce.ts), with the
+// status and empty-state text; a newer count withdraws one not yet read. Nothing is announced on arrival. Actions
+// that hide the control they were pressed on hand focus on (Show all areas → the All chip; Clear → the search box).
 import type { Scope, SearchRun } from "../lib/search";
 import type { SearchDoc } from "../lib/search-index";
 import type { ChangeDetail, Filter, PowerSearch } from "./power-search";
 import { loadIndex, picker, PREVIEW_EVENT, type Locale, type PreviewDetail } from "./lesson-index";
 import { measureStrip } from "./filter-strip";
+import { roving } from "../runtime/roving";
+import { announcer } from "../runtime/announce";
 
 export class LessonCollection extends HTMLElement {
   connectedCallback() {
@@ -53,16 +60,19 @@ function init(root: HTMLElement) {
   let typed = "";
   let search: Awaited<ReturnType<typeof startSearch>> | null = null;
   let starting: Promise<unknown> | null = null;
+  // Set by the reader's first change: from then on a render announces its count (an arrival's render doesn't).
+  let changed = false;
   const ensureSearch = () => (starting ??= startSearch().then((s) => { search = s; s.render(); }));
-  const update = () => { syncChips(); writeUrl(); if (search) search.render(); else void ensureSearch(); };
+  const update = () => { changed = true; syncChips(); writeUrl(); if (search) search.render(); else void ensureSearch(); };
 
   // ---- area chips: a shortcut for one "Area is …" token ----
   const areaTokens = () => filters.filter((f) => f.field === "area");
   const syncChips = () => {
     const a = areaTokens();
     const one = a.length === 1 && a[0].operator === "is" && a[0].value.type === "enum_list" && a[0].value.value.length === 1 ? a[0].value.value[0] : null;
-    const pressed = a.length === 0 ? "all" : one;
-    chips.forEach((b) => { const on = String(b.dataset.filter === pressed); if (b.getAttribute("aria-pressed") !== on) b.setAttribute("aria-pressed", on); });
+    const checked = a.length === 0 ? "all" : one;
+    chips.forEach((b) => { const on = String(b.dataset.filter === checked); if (b.getAttribute("aria-checked") !== on) b.setAttribute("aria-checked", on); });
+    nav.sync();
   };
   const setArea = (area: string) => {
     filters = filters.filter((f) => f.field !== "area");
@@ -70,13 +80,26 @@ function init(root: HTMLElement) {
     ps.filters = filters;
     update();
   };
-  chips.forEach((b) => b.addEventListener("click", () => { setArea(b.dataset.filter!); b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" }); }));
+  // A segmented control: one Tab stop (the checked chip, else the first), ← → / Home / End move and select.
+  const group = root.querySelector<HTMLElement>(".filters")!;
+  const nav = roving(group, {
+    items: "[data-filter]",
+    current: () => group.querySelector<HTMLElement>('[aria-checked="true"]'),
+    select: (b) => b.click(),
+  });
+  chips.forEach((b) => b.addEventListener("click", () => {
+    if (b.getAttribute("aria-checked") !== "true") setArea(b.dataset.filter!);
+    b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" });
+  }));
 
   // The strip was measured before first paint (Toolbar.astro); measure again when it can change.
   const strip = root.querySelector<HTMLElement>(".filters")!, wrap = root.querySelector<HTMLElement>(".filters-wrap")!;
   const arrows = wrap.querySelectorAll<HTMLButtonElement>("[data-scroll]");
   const edges = () => measureStrip(wrap);
-  arrows.forEach((b) => b.addEventListener("click", () => strip.scrollBy({ left: Number(b.dataset.scroll) * Math.max(120, strip.clientWidth * 0.75), behavior: reduce() ? "auto" : "smooth" })));
+  arrows.forEach((b) => b.addEventListener("click", () => {
+    if (b.getAttribute("aria-disabled") === "true") return;   // nothing more that way
+    strip.scrollBy({ left: Number(b.dataset.scroll) * Math.max(120, strip.clientWidth * 0.75), behavior: reduce() ? "auto" : "smooth" });
+  }));
   strip.addEventListener("scroll", edges, { passive: true });
   addEventListener("resize", edges);
   strip.addEventListener("wheel", (e) => {
@@ -91,7 +114,7 @@ function init(root: HTMLElement) {
 
   // ---- previews: <lesson-preview> opens on this event; hovering a Preview button starts fetching the index ----
   root.querySelectorAll<HTMLElement>("[data-preview]").forEach((b) => {
-    b.addEventListener("click", () => b.dispatchEvent(new CustomEvent<PreviewDetail>(PREVIEW_EVENT, { bubbles: true, detail: { card: b.closest<HTMLElement>(".card")! } })));
+    b.addEventListener("click", () => b.dispatchEvent(new CustomEvent<PreviewDetail>(PREVIEW_EVENT, { bubbles: true, detail: { card: b.closest<HTMLElement>(".card")!, opener: b } })));
     b.addEventListener("pointerenter", () => void index(), { once: true });
   });
 
@@ -100,7 +123,7 @@ function init(root: HTMLElement) {
   ps.addEventListener("ps-change", (e) => { filters = (e as CustomEvent<ChangeDetail>).detail.filters; update(); });
   // The text being typed previews a search only while it reads as free text, not while a filter is being typed.
   ps.addEventListener("ps-input", (e) => { const d = (e as CustomEvent<{ text: string; free: boolean }>).detail; typed = d.free ? d.text.trim() : ""; update(); });
-  ps.addEventListener("ps-submit", () => grid.querySelector<HTMLElement>(":scope > .card:not([hidden]) .btn.primary")?.focus());
+  ps.addEventListener("ps-submit", () => grid.querySelector<HTMLElement>(":scope > .card:not([hidden]) .card-link")?.focus());
   document.addEventListener("keydown", (e) => {
     const el = document.activeElement as HTMLElement | null;
     const typing = !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
@@ -125,7 +148,7 @@ function init(root: HTMLElement) {
     const fromUrl = p.getAll("f").map(decode).filter((f): f is Filter => f !== null);
     const q = p.get("q")?.trim() ?? "";
     if (fromUrl.length) { ps.filters = fromUrl; filters = ps.filters; }
-    if (q) { ps.input.value = q; typed = q; }
+    if (q) { ps.text = q; typed = q; }
     if (filters.length || typed) { syncChips(); void ensureSearch(); }
   } catch {}
 
@@ -138,7 +161,9 @@ function init(root: HTMLElement) {
     const empty = root.querySelector<HTMLElement>("[data-empty]")!;
     const cards = [...grid.querySelectorAll<HTMLElement>(".card")];
     const shown = new Map<HTMLElement, string>();
-    cards.forEach((c) => c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => shown.set(e, e.textContent ?? "")));
+    const marks = (c: HTMLElement) => c.querySelectorAll<HTMLElement>(".card-link, .card-body > p");
+    cards.forEach((c) => marks(c).forEach((e) => shown.set(e, e.textContent ?? "")));
+    const say = announcer({ replace: true });
 
     // What each element last showed, so a render leaves unchanged cards alone.
     const marked = new Map<HTMLElement, string>();
@@ -252,7 +277,7 @@ function init(root: HTMLElement) {
         // Highlight in the title and blurb only what a whole-lesson or title search found.
         const showTerms = h && runs.some((r) => r.scope === "all" || r.scope === "title") ? h.terms : undefined;
         const k = keyOf(showTerms);
-        c.querySelectorAll<HTMLElement>("h2, .card-body > p").forEach((e) => { if (marked.get(e) !== k) { marked.set(e, k); mark(e, shown.get(e)!, showTerms); } });
+        marks(c).forEach((e) => { if (marked.get(e) !== k) { marked.set(e, k); mark(e, shown.get(e)!, showTerms); } });
         hitLine(c, h);
       }
       chips.forEach((b) => { const n = per[b.dataset.filter!] ?? 0; setText(b.querySelector("b")!, String(n)); if (b.hasAttribute("data-zero") !== (n === 0)) b.toggleAttribute("data-zero", n === 0); });
@@ -268,24 +293,35 @@ function init(root: HTMLElement) {
       setText(status, msg);
       const nothing = active && visible === 0;
       if (empty.hidden !== !nothing) empty.hidden = !nothing;
+      let hint = "";
       if (nothing) {
         const elsewhere = per.all > 0 && areaTokens().length > 0;
-        setText(empty.querySelector("p")!, elsewhere
+        hint = elsewhere
           ? T("None in these areas. The other matches are in other areas.", "Ninguna en estas áreas. Las demás coincidencias están en otras áreas.")
-          : T("Try another word, in English or Spanish, or remove a filter.", "Prueba otra palabra, en inglés o en español, o quita un filtro."));
+          : T("Try another word, in English or Spanish, or remove a filter.", "Prueba otra palabra, en inglés o en español, o quita un filtro.");
+        setText(empty.querySelector("p")!, hint);
         empty.querySelector<HTMLElement>("[data-all]")!.hidden = !elsewhere;
       }
+      // The count, said once per change the reader made (never for an arrival's search), with what the status line
+      // and the empty state now say; a newer count takes back one not yet read.
+      if (changed) say([`${plural(visible)}.`, msg, hint].filter(Boolean).join(" "));
     };
 
+    // Both actions hide the empty state, and the button with it: focus moves on instead of dropping to the page.
     empty.querySelector("[data-clear]")!.addEventListener("click", () => {
       filters = [];
       ps.filters = [];
-      ps.input.value = "";
+      ps.text = "";
       typed = "";
       update();
       ps.focusInput();
     });
-    empty.querySelector("[data-all]")!.addEventListener("click", () => setArea("all"));
+    empty.querySelector("[data-all]")!.addEventListener("click", () => {
+      setArea("all");
+      const all = group.querySelector<HTMLElement>('[data-filter="all"]')!;
+      nav.focus(all);
+      all.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
     return { render };
   }
 }

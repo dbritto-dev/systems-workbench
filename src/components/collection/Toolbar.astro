@@ -1,14 +1,18 @@
 ---
 // The power search (text plus filters as tokens: area, title, machine, experiments, questions, lesson number) and the
 // area filters (a strip that scrolls sideways on narrow screens, with ‹ › buttons), kept in step with the Area token.
-// The strip measures itself while the page is parsed (elements/filter-strip.ts), so its buttons and fades are right on
-// the first paint.
+//
+// The area chips are a single choice, "All" or one area, so they are a segmented control (Astryx's SegmentedControl):
+// a radiogroup with one Tab stop, ← → / Home / End moving and selecting (runtime/roving.ts, wired by
+// <lesson-collection>). When the search holds several areas (or "Area is not …"), no chip is checked. The strip marks
+// the chip the URL asks for and measures itself while the page is parsed (elements/filter-strip.ts), so the checked
+// chip, the ‹ › buttons and the fades are right on the first paint. Without JavaScript every chip is its own Tab stop.
 import PowerSearch from "../PowerSearch.astro";
 import { useUi, AREAS, AREA_NAMES } from "../../i18n/ui";
 import { lessonFilters, lessonFilterStrings } from "../../lib/lesson-filters";
 import type { Locale } from "../../i18n";
 import type { Lesson } from "../../lib/lessons";
-import { measureStrip } from "../../elements/filter-strip";
+import { markArea, measureStrip } from "../../elements/filter-strip";
 
 interface Props { locale: Locale; lessons: Lesson[] }
 const { locale, lessons } = Astro.props;
@@ -18,18 +22,18 @@ const areas = AREAS.filter((a) => counts[a] > 0);
 ---
 <div class="tools" role="search">
   <div class="search">
-    <PowerSearch config={lessonFilters(locale, areas, lessons.length)} strings={lessonFilterStrings(locale)} label={ui("search.label")} placeholder={ui("search.placeholder")} shortcut="/" />
+    <PowerSearch config={lessonFilters(locale, areas, lessons.length)} strings={lessonFilterStrings(locale)} label={ui("search.label")} placeholder={ui("search.placeholder")} shortcut="/" shortcutLabel={ui("search.shortcut")} keyshortcuts="/ Control+K Meta+K" id="lesson-search" />
   </div>
   <div class="filters-wrap">
     <button type="button" class="scroll-btn" data-scroll="-1" aria-label={ui("filters.left")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg></button>
     <div class="filters-view">
-      <div class="filters" id="area-filters" role="group" aria-label={ui("filters.label")}>
-        <button type="button" data-filter="all" aria-pressed="true">{ui("filters.all")} <b>{lessons.length}</b></button>
-        {areas.map((a) => <button type="button" data-filter={a} aria-pressed="false">{AREA_NAMES[a][locale]} <b>{counts[a]}</b></button>)}
+      <div class="filters" id="area-filters" role="radiogroup" aria-label={ui("filters.label")}>
+        <button type="button" role="radio" data-filter="all" aria-checked="true">{ui("filters.all")} <b>{lessons.length}</b></button>
+        {areas.map((a) => <button type="button" role="radio" data-filter={a} aria-checked="false">{AREA_NAMES[a][locale]} <b>{counts[a]}</b></button>)}
       </div>
     </div>
     <button type="button" class="scroll-btn" data-scroll="1" aria-label={ui("filters.right")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg></button>
   </div>
-  <script is:inline set:html={`(${measureStrip})(document.currentScript.previousElementSibling)`} />
+  <script is:inline set:html={`(function(w){(${markArea})(w);(${measureStrip})(w)})(document.currentScript.previousElementSibling)`} />
 </div>
-<p class="status" id="search-status" data-status role="status" aria-live="polite"></p>
+<p class="status" id="search-status" data-status></p>

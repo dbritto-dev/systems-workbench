@@ -1,5 +1,7 @@
 /* The collection page: an instrument catalogue. A header plate, search and area filters, then a two-column grid
-   of lesson plates whose previews are screenshots of each running machine. Colour tokens come from tokens.css. */
+   of lesson plates whose previews are screenshots of each running machine. Colour tokens come from tokens.css.
+   Interaction follows the UX foundation (ux.css): one focus ring, hover only on a hovering pointer, a press overlay
+   on what a press would activate, aria-disabled dimmed by ux.css. */
 :root{
   --sheet:var(--anatomy-page);--plate:var(--anatomy-card);--ink:var(--anatomy-strong);--text:var(--anatomy-text);--muted:var(--anatomy-muted);--rule:var(--anatomy-faint);--edge:var(--anatomy-lo);
   --display:var(--font-heading);
@@ -13,9 +15,17 @@ body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body
 .seg{display:flex}
 .seg button,.btn,.filters button{appearance:none;font:500 11.5px/1.2 var(--mono);letter-spacing:.04em;color:var(--text);background:transparent;border:1px solid var(--edge);padding:7px 11px;min-height:32px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .seg button+button,.filters button+button{margin-left:-1px}
-.seg button[aria-pressed="true"],.filters button[aria-pressed="true"],.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--plate);position:relative;z-index:1}
-.seg button:hover,.btn:hover,.filters button:hover{border-color:var(--anatomy-hi);color:var(--ink);position:relative;z-index:2}
-.seg button[aria-pressed="true"]:hover,.filters button[aria-pressed="true"]:hover,.btn.primary:hover{color:var(--plate)}
+.seg button[aria-pressed="true"],.filters button[aria-checked="true"],.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--plate);position:relative;z-index:1}
+.seg button:hover{border-color:var(--anatomy-hi);color:var(--ink);position:relative;z-index:2}
+.seg button[aria-pressed="true"]:hover{color:var(--plate)}
+@media (hover:hover){
+  .btn:where(:not([aria-disabled="true"])):hover,.filters button:hover{border-color:var(--anatomy-hi);color:var(--ink);position:relative;z-index:2}
+  .filters button[aria-checked="true"]:hover,.btn.primary:hover{color:var(--plate)}
+}
+/* A press paints at once on what it would activate; a checked chip keeps its fill. */
+.btn:where(:not([aria-disabled="true"],.primary)):active,.filters button:not([aria-checked="true"]):active{background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.btn.primary:where(:not([aria-disabled="true"])):active{background:color-mix(in srgb,var(--ink) 86%,var(--plate))}
+@media (forced-colors:active){.filters button[aria-checked="true"]{forced-color-adjust:none;background:Highlight;border-color:Highlight;color:HighlightText}}
 .head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 40px;align-items:end;margin:40px 0 28px;padding-bottom:28px;border-bottom:1px solid var(--rule)}
 h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
 .intro{max-width:60ch;margin:16px 0 0;font-size:16px}
@@ -38,12 +48,15 @@ mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:var(--ink);p
 .filters-wrap[data-fits]{grid-template-columns:minmax(0,1fr)}
 .filters-wrap[data-fits] .scroll-btn{display:none}
 .filters-view{position:relative;min-width:0}
-.filters{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px}
+.filters{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px;scroll-padding-inline:28px}
 .filters::-webkit-scrollbar{display:none}
-/* Room above and below the chips for the focus ring (ux.css), which the scroller would clip, without moving them
-   (the margin takes back all but the strip's 1px padding). */
-.filters{padding-block:calc(var(--ux-focus-offset) + var(--ux-focus-width));margin-block:calc(1px - var(--ux-focus-offset) - var(--ux-focus-width))}
 .filters button{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
+/* The focus ring (ux.css) goes inside each chip: the strip scrolls, so it would clip a ring drawn outside the first
+   and last chip, and the chips touch, so a neighbour, ink-filled when checked, would cover that side of it. On the
+   checked chip the ring is the plate's colour, so it shows against the ink. */
+.filters button{--ux-focus-offset:calc(-2 * var(--ux-focus-width))}
+.filters button[aria-checked="true"]{--ux-focus-color:var(--plate)}
+@media (forced-colors:active){.filters button[aria-checked="true"]{--ux-focus-color:HighlightText}}
 .filters-view::before,.filters-view::after{content:"";position:absolute;top:0;bottom:0;width:28px;pointer-events:none;opacity:0;z-index:3}
 /* The fades are set before first paint (filter-strip.ts); they animate only once the page runs, on scroll. */
 @media (prefers-reduced-motion:no-preference){lesson-collection[data-ready] .filters-view::before,lesson-collection[data-ready] .filters-view::after{transition:opacity .15s}}
@@ -52,13 +65,25 @@ mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:var(--ink);p
 .filters-wrap[data-more-left] .filters-view::before,.filters-wrap[data-more-right] .filters-view::after{opacity:1}
 .scroll-btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;width:34px;min-height:34px;padding:0;border:1px solid var(--edge);background:var(--plate);color:var(--ink);cursor:pointer}
 .scroll-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.scroll-btn:hover:not(:disabled){border-color:var(--anatomy-hi)}
-.scroll-btn:disabled{opacity:.35;cursor:default}
+@media (hover:hover){.scroll-btn:where(:not([aria-disabled="true"])):hover{border-color:var(--anatomy-hi)}}
+.scroll-btn:where(:not([aria-disabled="true"])):active{background:color-mix(in srgb,var(--ink) 10%,var(--plate))}
 .filters button b{font-weight:500;opacity:.6}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-.card{display:flex;flex-direction:column;background:var(--plate);border:1px solid var(--rule);min-width:0}
+.card{position:relative;display:flex;flex-direction:column;background:var(--plate);border:1px solid var(--rule);min-width:0}
 .card[hidden]{display:none}
-.shot{position:relative;display:block;width:100%;padding:0;border:0;border-bottom:1px solid var(--rule);background:var(--plate);cursor:zoom-in}
+/* A clickable card: the title's link stretches over the whole card (::after), so a press anywhere follows it, with
+   no script. Preview and Open sit above it. While the link has keyboard focus the card draws the ring (ux.css's
+   tokens and modality gate) and the link draws none. A press paints only where it would follow the link. */
+.card h2 .card-link{color:inherit;text-decoration:none}
+.card-link::after{content:"";position:absolute;inset:0}
+.card-link:active::after{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.card-link:focus-visible{outline-style:none}
+.card:has(.card-link:focus-visible){outline-width:var(--ux-focus-width);outline-style:var(--ux-focus-style);outline-color:var(--ux-focus-color);outline-offset:var(--ux-focus-offset)}
+:root[data-ux-modality="pointer"] .card:has(.card-link:focus-visible){outline-style:none}
+.card-actions .btn{position:relative;z-index:1}
+/* Preview needs the script; without it the card's link and Open still work. */
+@media (scripting:none){.card [data-preview]{display:none}}
+.shot{position:relative;display:block;width:100%;padding:0;border:0;border-bottom:1px solid var(--rule);background:var(--plate)}
 .shot img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:contain;max-width:100%}
 .plate-corner{position:absolute;top:12px;font:500 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .plate-corner.tl{left:14px;color:var(--text)}
@@ -90,7 +115,6 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
 .dlg-text li b{display:block;font-weight:600;color:var(--ink);font-size:14px}
 .dlg-text li em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
 .dlg-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:auto}
-.close{position:absolute;top:8px;right:8px}
 @media (max-width:760px){
   .head{grid-template-columns:1fr}
   .grid{grid-template-columns:1fr}
@@ -99,7 +123,8 @@ dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);ba
   .dlg{grid-template-columns:1fr}
   .dlg-shot{border-right:0;border-bottom:1px solid var(--rule)}
 }
-@media (prefers-reduced-motion:no-preference){.card{transition:border-color .2s}.card:hover{border-color:var(--edge)}}
+@media (hover:hover){.card:hover{border-color:var(--edge)}}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color var(--ux-duration-fast) var(--ux-ease-standard)}}
 .switches .lang-seg a{padding:7px 11px;min-height:32px;font-size:11.5px;letter-spacing:.04em}
 .switches .lang-seg a:not([aria-current]){color:var(--text)}
 .shot picture,.shot img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:contain}
