@@ -163,7 +163,8 @@ export function makeSim(cfgIn = {}, seed = 1) {
         schedule(w, t + u);
         log.push({ t, type: "write", w, token: w.token, checked: cfg.check });
         if (w.freezeNext) {
-          // a staged pause, right after the check: it lasts until the lease has run out, and a little more
+          // a staged pause as the write starts (right after the check, when the check is on): it lasts until the
+          // lease has run out, and a little more
           const extra = w.freezeNext.extra; w.freezeNext = null;
           const left = holds(w) ? lock.lease.expires - t : 0;
           pause(t, w, Math.max(0.5, left + extra), true);
@@ -280,8 +281,9 @@ export function makeSim(cfgIn = {}, seed = 1) {
   return {
     cfg, lock, vault, st, workers, log, msgs, runTo,
     get now() { return now; },
-    /** Pause the holder (or the next worker to get the key) right after its next check, until its lease has run out
-     *  and a little longer: the staged version of the pause the lesson is about. */
+    /** Pause the holder (or the next worker to get the key) as its next write starts, right after its check when the
+     *  check is on, until its lease has run out and a little longer: the staged version of the pause the lesson is
+     *  about. */
     freezeAtWrite(extra = 1) {
       const w = lock.lease ? lock.lease.w : lock.queue[0] || workers[0];
       if (w && !w.down) w.freezeNext = { extra };

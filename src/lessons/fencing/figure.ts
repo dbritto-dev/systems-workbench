@@ -6,39 +6,39 @@
 // has seen; slips it refuses drop into the REJECTED tray. Every number is a counter on a real object.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, person, keyPart, dial, card, lamp, faceText, variants, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, labelPlate, digitCounter, person, keyPart, dial, card, lamp, faceText, variants, litFill } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
 export const HEIGHT = 470;
 
-const PLATE = { x: -132, y: -102, w: 258, d: 142, r: 8 };
+const PLATE = { x: -132, y: -90, w: 242, d: 130, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 
 // The key office (the lock service), back left.
-const KO = { x: -124, y: -96, w: 74, d: 40, r: 2 };
+const KO = { x: -124, y: -84, w: 74, d: 40, r: 2 };
 const KO_H = 20;
 const KO_FRONT = KO.y + KO.d;
 const KO_SIDE = KO.x + KO.w;
-const DIAL = { x: -102, y: -76, r: 11.5, h: 4 };
-const HOOK = [-70, -76];
+const DIAL = { x: -102, y: -64, r: 11.5, h: 4 };
+const HOOK = [-70, -64];
 export const HOOK_KEY = [HOOK[0] + 6.6, HOOK[1], KO_H + 10];
 export const KEY_OUT = [-80, KO_FRONT + 2, KO_H + 2];          // where a key leaves the office
 
 // The vault (the storage), back right.
-const VAULT = { x: 20, y: -96, w: 98, d: 46, r: 2 };
+const VAULT = { x: 4, y: -84, w: 98, d: 46, r: 2 };
 const VAULT_H = 32;
 const VAULT_FRONT = VAULT.y + VAULT.d;
-const SLOT = { x: 68, w: 28, z: 21.6, h: 4 };
+const SLOT = { x: VAULT.x + 48, w: 28, z: 21.6, h: 4 };
 export const SLOT_AT = [SLOT.x + SLOT.w / 2, VAULT_FRONT + 1.6, SLOT.z + 1.2];
-const FENCE = { x: 26, y: -90, w: 50, d: 13, r: 1 };
+const FENCE = { x: VAULT.x + 6, y: VAULT.y + 6, w: 50, d: 13, r: 1 };
 const FENCE_H = 9;
 const FENCE_FRONT = FENCE.y + FENCE.d;
-const LAMP_AT = [104, -82, VAULT_H];
+const LAMP_AT = [VAULT.x + 84, VAULT.y + 14, VAULT_H];
 
 // The REJECTED tray, in front of the vault.
-const TRAY = { x: 68, y: 2, w: 48, d: 18, r: 1.4 };
+const TRAY = { x: 58, y: 2, w: 44, d: 18, r: 1.4 };
 const TRAY_H = 8;
 export const TRAY_SPOT = [TRAY.x + TRAY.w / 2, TRAY.y + TRAY.d / 2, TRAY_H - 1];
 
@@ -65,7 +65,8 @@ const counter = (o) => digitCounter(P, { w: 5, h: 6.6, gap: 0.6, pad: 1.2, ...o 
 const LABEL = 3;
 
 function plate() {
-  return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H });
+  return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
+    + labelPlate(P, { x: 74, y: 26, w: 24, d: 10, r: 1.4 }, [[78, 29.6, 15], [78, 33.2, 9]]);
 }
 
 // ---------- the key office ----------
@@ -79,7 +80,8 @@ function keyOffice() {
   out.push(counter({ x: KO_SIDE, y: KO_FRONT - 2.8, z: 4, count: 2, face: "x", name: "two" }));
   out.push(faceText(P, [KO_SIDE, KO_FRONT - 16.6, 5.8], t("TWO HOLDERS", "DOS DUEÑOS"), { face: "x", size: LABEL, tone: "mid" }));
   // the lease timer: the needle shows what's left of the current lease
-  out.push(dial(P, { x: DIAL.x, y: DIAL.y, z: KO_H, r: DIAL.r, h: DIAL.h, ticks: 27, every: 3, from: Math.PI * 0.1, span: Math.PI * 1.8, name: "ttl", value: 0, label: "TTL" }));
+  out.push(dial(P, { x: DIAL.x, y: DIAL.y, z: KO_H, r: DIAL.r, h: DIAL.h, ticks: 27, every: 3, from: Math.PI * 0.1, span: Math.PI * 1.8, name: "ttl", value: 0 }));
+  out.push(faceText(P, [DIAL.x, DIAL.y + DIAL.r * 0.62, KO_H + DIAL.h + 0.1], "TTL", { face: "top", size: 3.4, tone: "hi", anchor: "middle" }));
   // the hook the free key hangs on
   const [hx, hy] = HOOK;
   out.push(S(k.cylinder(hx, hy, 3, KO_H, 1.4, P, 20, 0.3), { tone: "mid" }));
@@ -113,8 +115,7 @@ function fencePanel() {
   const out = [`<g data-fence style="display:none">`];
   out.push(S(k.slabOf(FENCE, VAULT_H, FENCE_H, P, 3, 0.4), { tone: "mid" }));
   out.push(counter({ x: FENCE.x + 3.4, y: FENCE_FRONT, z: VAULT_H + 1.4, count: 3, w: 4.6, h: 5.8, pad: 1, name: "seen" }));
-  out.push(text(FENCE.x + 21.6, FENCE_FRONT, VAULT_H + 3, t("HIGHEST", "MÁXIMO"), LABEL));
-  out.push(faceText(P, [FENCE.x + FENCE.w / 2, FENCE.y + FENCE.d / 2 + 1.2, VAULT_H + FENCE_H], "TOKEN", { face: "top", size: 3.4, tone: "mid", anchor: "middle" }));
+  out.push(text(FENCE.x + 20.6, FENCE_FRONT, VAULT_H + 3, t("HIGHEST TOKEN", "TOKEN MÁXIMO"), LABEL));
   out.push(`</g>`);
   return out.join("");
 }
@@ -138,7 +139,7 @@ function desk(i) {
   const sp = { x: cx - 10, y: DESK_FRONT, w: 34, d: 1, r: 0.3 };
   out.push(`<g class="wb-lit-group" data-status-plate="${i}">`
     + S(k.slabOf(sp, 2.2, 7.2, P, 2, 0.2), { tone: "hi", crease: "lo" })
-    + faceText(P, [sp.x + sp.w / 2, sp.y + sp.d, 4], t("IDLE", "LIBRE").en, { size: 3.6, tone: "hi", anchor: "middle", attr: `data-status="${i}"` })
+    + faceText(P, [sp.x + sp.w / 2, sp.y + sp.d, 4], t("IDLE", "LIBRE"), { size: 3.6, tone: "hi", anchor: "middle", attr: `data-status="${i}"` })
     + `</g>`);
   return out.join("");
 }
@@ -168,8 +169,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A key office, a vault and three desks on a base plate. At the back left, the key office, the lock service, hands out one key at a time. A dial on its top shows how much of the current lease is left, a hook holds the key while nobody has it, and counters show the last token handed out and how many times the key went to a new holder while the old one, paused, still thought it had it. At the back right, the vault, the storage, keeps the record: counters show its version and the writes that overwrote an update they never saw, and a lamp flashes when that happens. When fencing is on, a panel on its top shows the highest token it has seen. Beside it, a tray collects the slips it refuses. At the front, workers A, B and C sit at their desks; a plate on each desk says what the worker is doing, and the worker lights up while it's paused. A key with a numbered tag sits on the desk of each worker that believes it holds the lease; the tag lights when that lease has run out. Slips with the key's number fly from the holder's desk to the vault's slot: a read, then a write.",
-      "Una oficina de llaves, una bóveda y tres escritorios sobre una placa base. Al fondo a la izquierda, la oficina de llaves, el servicio de bloqueo, entrega una llave a la vez. Un dial arriba muestra cuánto le queda al arrendamiento actual, un gancho sostiene la llave mientras nadie la tiene, y unos contadores muestran el último token entregado y cuántas veces la llave pasó a un dueño nuevo mientras el anterior, en pausa, seguía creyendo que la tenía. Al fondo a la derecha, la bóveda, el almacenamiento, guarda el registro: unos contadores muestran su versión y las escrituras que sobrescribieron una actualización que nunca vieron, y una lámpara se enciende cuando eso pasa. Con el cerco activado, un panel arriba muestra el token más alto que vio. Al lado, una bandeja recoge los papeles que rechaza. Adelante, los trabajadores A, B y C están en sus escritorios; una placa en cada escritorio dice qué hace el trabajador, y el trabajador se enciende mientras está en pausa. Una llave con una etiqueta numerada está sobre el escritorio de cada trabajador que cree tener el arrendamiento; la etiqueta se enciende cuando ese arrendamiento ya venció. Papeles con el número de la llave vuelan del escritorio del dueño a la ranura de la bóveda: una lectura y después una escritura.",
+      "A key office, a vault and three desks on a base plate. At the back left, the key office, the lock service, hands out one key at a time. A dial on its top shows how much of the current lease is left, a hook holds the key while nobody has it, and counters show the last token handed out and how many times the key went to a new holder while the old one, paused, still thought it had it. At the back right, the vault, the storage, keeps the record: counters show its version and the writes that overwrote an update they never saw, and a lamp flashes when that happens. When fencing is on, a panel on its top shows the highest token it has seen. In front of it, a tray collects the slips it refuses. At the front, workers A, B and C sit at their desks; a plate on each desk says what the worker is doing, and the worker and its plate light up while it's paused. A key with a numbered tag sits on the desk of each worker that believes it holds the lease, and on a crashed holder's desk until its lease runs out; the tag lights when that lease has run out. Slips with the key's number fly from the holder's desk to the vault's slot: a read, then a write.",
+      "Una oficina de llaves, una bóveda y tres escritorios sobre una placa base. Al fondo a la izquierda, la oficina de llaves, el servicio de bloqueo, entrega una llave a la vez. Un dial arriba muestra cuánto le queda al arrendamiento actual, un gancho sostiene la llave mientras nadie la tiene, y unos contadores muestran el último token entregado y cuántas veces la llave pasó a un dueño nuevo mientras el anterior, en pausa, seguía creyendo que la tenía. Al fondo a la derecha, la bóveda, el almacenamiento, guarda el registro: unos contadores muestran su versión y las escrituras que sobrescribieron una actualización que nunca vieron, y una lámpara se enciende cuando eso pasa. Con el cerco activado, un panel arriba muestra el token más alto que vio. Delante, una bandeja recoge los papeles que rechaza. Adelante, los trabajadores A, B y C están en sus escritorios; una placa en cada escritorio dice qué hace el trabajador, y el trabajador y su placa se encienden mientras está en pausa. Una llave con una etiqueta numerada está sobre el escritorio de cada trabajador que cree tener el arrendamiento, y sobre el de un dueño caído hasta que vence su arrendamiento; la etiqueta se enciende cuando ese arrendamiento ya venció. Papeles con el número de la llave vuelan del escritorio del dueño a la ranura de la bóveda: una lectura y después una escritura.",
     ),
     body: [
       plate(),

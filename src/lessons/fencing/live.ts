@@ -1,7 +1,8 @@
 // @ts-nocheck: live code in the style of the other lessons; shared helpers come from src/runtime and src/lib.
 // The key office in the browser: runs the model, flies keys from the office to the desks and slips from the desks to
 // the vault, turns the lease dial, lights a paused worker and a key or slip whose lease has run out, and answers the
-// controls. mount() gets the build-time data from page.ts (projection, geometry, drawings) and root, the <wb-lesson>.
+// controls. "Watch it on the machine" stages the experiment's moment (a frozen or crashed holder) and jumps over the
+// wait for its lease to run out, found by running the same seed ahead. mount() gets the build-time data from page.ts (projection, geometry, drawings) and root, the <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
@@ -44,30 +45,34 @@ export default function mount({ P, G, KEY_SVG, SLIP_SVG, STATUS }, root) {
 
   // ---------- settings and the run ----------
   const cfg = { pauses: "long", ttl: "10", check: "off", fence: "off", crashes: "off", speed: 1 };
-  let model, clock, logAt, from, seed = 5, flashAt = -9, stage2 = null;
+  let model, clock, logAt, from, seed = 5, runSeed = 5, flashAt = -9, stage2 = null;
+  const simCfg = () => ({ pauses: cfg.pauses, ttl: Number(cfg.ttl), check: cfg.check === "on", fence: cfg.fence, crashes: cfg.crashes === "on" });
 
   function restart() {
     for (const r of recs.values()) { r.el.g.remove(); pools[r.el.kind].push(r.el); }
     recs.clear();
-    model = makeSim({ pauses: cfg.pauses, ttl: Number(cfg.ttl), check: cfg.check === "on", fence: cfg.fence, crashes: cfg.crashes === "on" }, seed);
+    runSeed = seed;
+    model = makeSim(simCfg(), seed);
     seed = (seed * 7 + 3) % 9973 + 1;
-    clock = 0; logAt = 0; from = 0; flashAt = -9; held = null; saidAt = -9; saidRank = 0; stage2 = null;
+    clock = 0; logAt = 0; from = 0; flashAt = -9; held = null; saidAt = -9; saidRank = 0; stage2 = null; crashedAt = {};
     show(fencePanel, cfg.fence !== "off");
     paint();
     showStats();
   }
 
   // ---------- narration: the model's log ----------
-  let held = null, saidAt = -9, saidRank = 0;
+  let held = null, saidAt = -9, saidRank = 0, crashedAt = {};
+  // a message stays up at least 1.4 s of page time (3 s for an overwrite or a refusal) unless a more important one
+  // comes; a less important one waits
+  const holdFor = (rank) => (rank >= 4 ? 3 : 1.4);
   function say(rank, text) {
-    // a message stays up at least 1.4 s of page time unless a more important one comes; a less important one waits
     const wall = performance.now() / 1000;
-    if (rank < saidRank && wall - saidAt < 1.4) { held = { rank, text }; return; }
+    if (rank < saidRank && wall - saidAt < holdFor(saidRank)) { held = { rank, text }; return; }
     held = null; saidRank = rank; saidAt = wall;
     root.figure.say(L(text));
   }
   function sayHeld() {
-    if (held && performance.now() / 1000 - saidAt >= 1.4) { const h = held; held = null; saidRank = -1; say(h.rank, h.text); }
+    if (held && performance.now() / 1000 - saidAt >= holdFor(saidRank)) { const h = held; held = null; saidRank = -1; say(h.rank, h.text); }
   }
   function narrate() {
     for (; logAt < model.log.length; logAt++) {
@@ -78,7 +83,7 @@ export default function mount({ P, G, KEY_SVG, SLIP_SVG, STATUS }, root) {
         case "grant": say(1, T("key " + k + " to " + w, "llave " + k + " para " + w)); break;
         case "two": say(4, T("lease #" + e.old.token + " ran out · key " + k + " to " + w + " · " + NAME[e.old.i] + " still paused", "venció el #" + e.old.token + " · llave " + k + " para " + w + " · " + NAME[e.old.i] + " sigue en pausa")); break;
         case "pause":
-          if (e.staged) say(3, T(w + " frozen right after its check · lease #" + e.w.token + " running out", w + " congelado justo después de verificar · el #" + e.w.token + " se agota"));
+          if (e.staged) say(3, frozenText(e.w));
           else if (e.holding && e.d > 2) say(3, T(w + " paused (a long GC) · lease #" + e.w.token + " running out", w + " en pausa (un GC largo) · el #" + e.w.token + " se agota"));
           break;
         case "wake":
@@ -88,12 +93,26 @@ export default function mount({ P, G, KEY_SVG, SLIP_SVG, STATUS }, root) {
         case "over": flashAt = e.t; say(5, T(w + " wrote " + k + " from v" + e.read + ", vault at v" + e.version + " · an update lost", w + " escribió " + k + " desde v" + e.read + ", la bóveda va en v" + e.version + " · se perdió una actualización")); break;
         case "refused": case "readRefused": say(5, T("vault refuses " + k + " from " + w + " · it has seen #" + e.seen, "la bóveda rechaza el " + k + " de " + w + " · ya vio el #" + e.seen)); break;
         case "stopped": say(4, T(w + " checks: lease " + k + " ran out · job dropped", w + " verifica: venció el " + k + " · deja la tarea")); break;
-        case "crash": say(4, T(w + " crashed holding " + k + " · the key waits for the lease to run out", w + " se cayó con el " + k + " · la llave espera a que venza")); break;
-        case "expire": if (e.crashed) say(3, T("lease " + k + " ran out · " + w + " never handed it in", "venció el " + k + " · " + w + " nunca la devolvió")); break;
+        case "crash": crashedAt[e.token] = e.t; say(4, T(w + " crashed holding " + k + " · the key waits for the lease to run out", w + " se cayó con el " + k + " · la llave espera a que venza")); break;
+        case "expire":
+          if (e.crashed) {
+            const idle = crashedAt[e.token] !== undefined ? Math.round(e.t - crashedAt[e.token]) : null;
+            if (idle !== null) say(4, T("lease " + k + " ran out · " + w + " never handed it in · the key sat unused " + idle + " s", "venció el " + k + " · " + w + " nunca la devolvió · la llave quedó sin uso " + idle + " s"));
+            else say(4, T("lease " + k + " ran out · " + w + " never handed it in", "venció el " + k + " · " + w + " nunca la devolvió"));
+          }
+          break;
         case "up": say(1, T(w + " is back", w + " volvió")); break;
       }
     }
     if (logAt > 3000) { model.log.splice(0, logAt); logAt = 0; }
+  }
+
+  // the staged pause comes right after the lease check, or, with the check off, as the write starts
+  function frozenText(wk) {
+    const w = NAME[wk.i], k = "#" + wk.token;
+    return cfg.check === "on"
+      ? T(w + " frozen right after its check · lease " + k + " running out", w + " congelado justo después de verificar · el " + k + " se agota")
+      : T(w + " frozen as it starts its write · lease " + k + " running out", w + " congelado al empezar su escritura · el " + k + " se agota");
   }
 
   // ---------- where a message is ----------
@@ -172,12 +191,15 @@ export default function mount({ P, G, KEY_SVG, SLIP_SVG, STATUS }, root) {
       if (s.pose !== pose) { s.pose = pose; WB.pose(svg, "worker-" + i, pose); }
       const st = w.down ? "down" : isPaused ? "paused" : STATUS_OF[w.phase] || "idle";
       if (s.st !== st) { s.st = st; setText(d.status, L(STATUS[st])); setLit(d.plate, st === "paused"); }
-      const hasKey = !!w.heldToken && w.phase !== "key" && !w.down;
+      // a crashed holder's key stays on its desk until its lease runs out
+      const crashedKey = w.down && !!lease && lease.w === w && lease.crashAt !== null;
+      const hasKey = crashedKey || (!!w.heldToken && w.phase !== "key" && !w.down);
       if (s.key !== hasKey) { s.key = hasKey; show(d.key, hasKey); }
       if (hasKey) {
-        const label = "#" + w.heldToken % 1000;
+        const token = crashedKey ? lease.token : w.heldToken;
+        const label = "#" + token % 1000;
         if (s.label !== label) { s.label = label; setText(d.tagText, label); }
-        const stale = !lease || lease.token !== w.heldToken;
+        const stale = !lease || lease.token !== token;
         if (s.stale !== stale) { s.stale = stale; setLit(d.tag, stale); }
       }
     });
@@ -227,12 +249,15 @@ export default function mount({ P, G, KEY_SVG, SLIP_SVG, STATUS }, root) {
   const wake = () => { if (loop.paused) loop.setPaused(false); };
   function freeze(extra) {
     const w = model.freezeAtWrite(extra);
-    if (w) say(6, T(NAME[w.i] + " will freeze right after its next check", NAME[w.i] + " se congelará justo después de su próxima verificación"));
+    if (!w) return;
+    if (cfg.check === "on") say(6, T(NAME[w.i] + " will freeze right after its next check", NAME[w.i] + " se congelará justo después de su próxima verificación"));
+    else say(6, T(NAME[w.i] + " will freeze as it starts its next write", NAME[w.i] + " se congelará al empezar su próxima escritura"));
   }
   function crashNow() {
     const w = model.crashHolder();
     if (!w) say(6, T("nobody holds the key right now · try again", "nadie tiene la llave ahora · prueba de nuevo"));
     paint(); showStats();
+    return w;
   }
   const actions = {
     freeze: () => { freeze(3); wake(); },
@@ -242,11 +267,52 @@ export default function mount({ P, G, KEY_SVG, SLIP_SVG, STATUS }, root) {
   root.on("action", (name) => actions[name]?.());
 
   // ---------- "Watch it on the machine": an experiment's settings, and the moment it's about ----------
+  // Run the model to T without narrating what happened before it.
+  function jumpTo(T) {
+    if (T <= clock) return;
+    model.runTo(T);
+    clock = T;
+    for (; logAt < model.log.length && model.log[logAt].t <= T; logAt++);
+    paint();
+    showStats();
+  }
+  // When the lease of the worker frozen at t = 0 runs out and the key moves on, found by running the same seed, with
+  // the same freeze, ahead without drawing it.
+  function handover(extra) {
+    const m = makeSim(simCfg(), runSeed);
+    const w = m.freezeAtWrite(extra);
+    for (let T = 1; T <= 120; T += 1) {
+      m.runTo(T);
+      const e = m.log.find((x) => x.type === "two" && x.old === w);
+      if (e) return e.t;
+    }
+    return null;
+  }
   root.on("watch", (w) => {
     for (const key of ["pauses", "ttl", "check", "fence", "crashes"]) set(key, w[key], true);
     restart();
-    if (w.stage === "freeze") freeze(w.extra ?? 3);
-    if (w.stage === "crash") stage2 = { at: 1.2, run: crashNow };
+    if (w.stage === "freeze") {
+      const t = handover(w.extra ?? 3);
+      freeze(w.extra ?? 3);
+      // skip to a little before the frozen holder's lease runs out, so it wakes about 4 s after the press
+      if (t !== null) {
+        jumpTo(Math.max(0, t + (w.extra ?? 3) - 4));
+        const x = model.log.find((e) => e.type === "pause" && e.staged);
+        if (x) say(3, frozenText(x.w));
+      }
+    }
+    if (w.stage === "crash") stage2 = {
+      at: 1.2, run: () => {
+        const x = crashNow();
+        // the crash, then 2 s before the crashed holder's lease runs out
+        if (x) stage2 = { at: clock + 1.6, run: () => {
+          const l = model.lock.lease;
+          if (!l || l.crashAt === null) return;
+          jumpTo(l.expires - 2);
+          say(4, T(NAME[l.w.i] + " crashed holding #" + l.token + " · " + Math.round(l.expires - 2 - l.crashAt) + " s later the key still waits for the lease", NAME[l.w.i] + " se cayó con el #" + l.token + " · " + Math.round(l.expires - 2 - l.crashAt) + " s después la llave sigue esperando a que venza"));
+        } };
+      },
+    };
     wake();
   });
 
