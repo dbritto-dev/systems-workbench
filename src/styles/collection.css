@@ -16,7 +16,6 @@ body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body
 .seg button[aria-pressed="true"],.filters button[aria-pressed="true"],.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--plate);position:relative;z-index:1}
 .seg button:hover,.btn:hover,.filters button:hover{border-color:var(--anatomy-hi);color:var(--ink);position:relative;z-index:2}
 .seg button[aria-pressed="true"]:hover,.filters button[aria-pressed="true"]:hover,.btn.primary:hover{color:var(--plate)}
-button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 40px;align-items:end;margin:40px 0 28px;padding-bottom:28px;border-bottom:1px solid var(--rule)}
 h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
 .intro{max-width:60ch;margin:16px 0 0;font-size:16px}
@@ -41,6 +40,9 @@ mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:var(--ink);p
 .filters-view{position:relative;min-width:0}
 .filters{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px}
 .filters::-webkit-scrollbar{display:none}
+/* Room above and below the chips for the focus ring (ux.css), which the scroller would clip, without moving them
+   (the margin takes back all but the strip's 1px padding). */
+.filters{padding-block:calc(var(--ux-focus-offset) + var(--ux-focus-width));margin-block:calc(1px - var(--ux-focus-offset) - var(--ux-focus-width))}
 .filters button{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
 .filters-view::before,.filters-view::after{content:"";position:absolute;top:0;bottom:0;width:28px;pointer-events:none;opacity:0;z-index:3}
 /* The fades are set before first paint (filter-strip.ts); they animate only once the page runs, on scroll. */

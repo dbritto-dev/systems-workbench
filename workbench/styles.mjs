@@ -36,8 +36,6 @@ section{margin-top:72px}
 .section-head{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:baseline;margin-bottom:18px}
 .section-head .eyebrow{grid-row:span 2;padding-top:5px}
 .section-head p{grid-column:2;margin:0;max-width:60ch}
-.iso-stage{outline:none}
-.iso-stage:focus-visible{box-shadow:0 0 0 1px var(--anatomy-hi)}
 .panel{margin-top:14px;border:1px solid var(--anatomy-faint);background:var(--anatomy-card)}
 .stats{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--anatomy-faint)}
 .stat{padding:10px 12px;border-right:1px solid var(--anatomy-faint)}

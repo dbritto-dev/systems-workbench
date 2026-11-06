@@ -40,8 +40,3 @@
   position: relative;
   z-index: 1;
 }
-.lang-seg a:focus-visible,
-.theme-seg button:focus-visible {
-  outline: 2px solid var(--ink, var(--anatomy-strong));
-  outline-offset: 2px;
-}

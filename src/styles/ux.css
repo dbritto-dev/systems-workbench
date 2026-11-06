@@ -1,0 +1,157 @@
+/* The UX foundation: tokens and global rules for interaction, not colour (layouts/Base.astro imports this once, on
+   every page). Values follow Astryx's tokens and rules (src/lessons/README.md, "UX foundation"); colours stay ours.
+   Components use the --ux-* tokens instead of writing their own numbers. */
+
+/* ---------- tokens ---------- */
+:root {
+  /* Focus ring: 2px solid, 3px outside the element, in our ink. Read by the :focus-visible rule below; a component
+     changes one part (--ux-focus-offset to fit a tight spot, the colour for the error variant), never the shorthand. */
+  --ux-focus-width: 2px;
+  --ux-focus-style: solid;
+  --ux-focus-offset: 3px;
+
+  /* Durations, three bands. Fast: hover, press, colour. Medium: entrances, exits, a progress fill, a spinner's delay
+     (medium-min). Slow: continuous movement. */
+  --ux-duration-fast-min: 130ms;
+  --ux-duration-fast: 175ms;
+  --ux-duration-fast-max: 230ms;
+  --ux-duration-medium-min: 310ms;
+  --ux-duration-medium: 410ms;
+  --ux-duration-medium-max: 550ms;
+  --ux-duration-slow-min: 730ms;
+  --ux-duration-slow: 975ms;
+  --ux-duration-slow-max: 1300ms;
+  --ux-duration-exit: var(--ux-duration-fast);
+  /* Easings: decelerate into arrivals and state changes, accelerate out of exits. No bounce. */
+  --ux-ease-standard: cubic-bezier(0.24, 1, 0.4, 1);
+  --ux-ease-entrance: var(--ux-ease-standard);
+  --ux-ease-move: var(--ux-ease-standard);
+  --ux-ease-exit: cubic-bezier(0.3, 0, 0.6, 0.6);
+  /* Under reduced motion with a coarse pointer, a component may cross-fade opacity (only) this fast; see below. */
+  --ux-rm-fade-duration: 200ms;
+  --ux-rm-fade-ease: cubic-bezier(0.42, 0, 0.58, 1);
+
+  /* Target sizes. Every target is at least --ux-target-min (WCAG 2.5.8); controls are sm, md or lg tall. On a coarse
+     pointer .ux-hit grows the tappable area toward --ux-target-touch without growing what is drawn. */
+  --ux-target-min: 24px;
+  --ux-target-touch: 44px;
+  --ux-size-sm: 28px;
+  --ux-size-md: 32px;
+  --ux-size-lg: 36px;
+
+  /* Disabled: half opacity, everywhere. */
+  --ux-disabled-opacity: 0.5;
+}
+/* The ring's colours come from the palette, which lessons set on body.iso and the collection on :root; declaring them
+   on both makes them resolve against the palette in use. */
+:where(:root, .iso) {
+  --ux-focus-color: var(--anatomy-strong);
+  --ux-focus-color-error: var(--anatomy-red);
+}
+
+/* ---------- focus ring ---------- */
+/* One ring for every focusable thing, on :focus-visible only, written as longhands so a variant can change a part
+   without wiping the rest. Zero specificity: a component that paints the ring elsewhere (a wrapper around a hidden
+   input) turns it off on the child with outline-style: none and draws it with the same tokens. */
+:where(:focus-visible) {
+  outline-width: var(--ux-focus-width);
+  outline-style: var(--ux-focus-style);
+  outline-color: var(--ux-focus-color);
+  outline-offset: var(--ux-focus-offset);
+}
+/* The error variant: a destructive action, or a field with an error, rings in the error colour. */
+:where([data-ux-ring="error"], [aria-invalid="true"]) {
+  --ux-focus-color: var(--ux-focus-color-error);
+}
+/* The modality gate (runtime/modality.ts): after a pointer press, a programmatic focus shows no ring, except on a
+   text field, where the ring shows where typing goes. A keydown switches back before focus moves. */
+:root[data-ux-modality="pointer"] :focus-visible:not(textarea, [contenteditable]:not([contenteditable="false"]), input:not([type="button" i], [type="submit" i], [type="reset" i], [type="checkbox" i], [type="radio" i], [type="range" i], [type="color" i], [type="file" i], [type="image" i])) {
+  outline-style: none !important;
+}
+
+/* ---------- disabled ---------- */
+/* Disabled is aria-disabled="true" on a control that stays focusable (never the native disabled attribute, which
+   drops it from the Tab order and swallows the events a reason tooltip needs). It paints at half opacity, keeps its
+   focus ring, and gets no hover or press: write hover and press rules for enabled controls only,
+   :where(:not([aria-disabled="true"])):hover. A disabled group dims once, not again for each member. */
+[aria-disabled="true"] {
+  opacity: var(--ux-disabled-opacity);
+  cursor: default;
+}
+:where([aria-disabled="true"]) [aria-disabled="true"] {
+  opacity: 1;
+}
+
+/* ---------- touch hit area ---------- */
+/* .ux-hit: on a coarse pointer, an invisible layer (::after) grows the target toward 44 × 44 px on each side; the
+   drawn box never grows. It must not take a neighbour's taps, and CSS can't see neighbours, so each side grows at
+   most --ux-hit-gap-block / --ux-hit-gap-inline: half the gap to the nearest target on that axis, which the component
+   knows from its own layout (0 by default: no growth). The element becomes position: relative; its ::after is used. */
+@media (pointer: coarse) {
+  .ux-hit {
+    position: relative;
+  }
+  .ux-hit::after {
+    content: "";
+    position: absolute;
+    inset-block: max(calc(-1 * var(--ux-hit-gap-block, 0px)), min(0px, calc((100% - var(--ux-target-touch)) / 2)));
+    inset-inline: max(calc(-1 * var(--ux-hit-gap-inline, 0px)), min(0px, calc((100% - var(--ux-target-touch)) / 2)));
+  }
+}
+
+/* ---------- reduced motion ---------- */
+/* Under prefers-reduced-motion: reduce, every CSS transition and animation finishes at once: no travel, scaling or
+   resizing, and value changes (a bar's fill) and colours apply immediately. Events still fire (0.01ms, not 0). A
+   component that wants Astryx's coarse-pointer cross-fade opts back in with opacity only, at most
+   --ux-rm-fade-duration, under (prefers-reduced-motion: reduce) and (pointer: coarse), marked !important. Live code
+   checks `still` from src/runtime/wb. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- the arrow-key hint (runtime/roving.ts) ---------- */
+/* "← → to navigate", in the top layer below the focused item; aria-hidden, never takes the pointer. Our look: a
+   plate with a hairline edge, square corners, small mono text. */
+.ux-hint {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--anatomy-lo);
+  background: var(--anatomy-card);
+  color: var(--anatomy-muted);
+  font: 500 11px/1.4 var(--mono, var(--anatomy-mono));
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms, display 150ms allow-discrete, overlay 150ms allow-discrete;
+}
+.ux-hint:popover-open {
+  opacity: 1;
+}
+@starting-style {
+  .ux-hint:popover-open {
+    opacity: 0;
+  }
+}
+.ux-hint kbd {
+  display: inline-block;
+  min-width: 18px;
+  margin-inline-end: 4px;
+  padding: 0 3px;
+  border: 1px solid var(--anatomy-lo);
+  color: var(--anatomy-strong);
+  font: inherit;
+  text-align: center;
+}

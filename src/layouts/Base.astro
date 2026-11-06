@@ -1,10 +1,14 @@
 ---
 // Every page: document head (title, description, language alternates), the theme set before first paint,
-// and old ?lang= links sent to the right language's URL.
+// old ?lang= links sent to the right language's URL, and the UX foundation: styles/ux.css (focus ring, motion,
+// disabled, target sizes) and the input modality on <html data-ux-modality>, heard from the first key or tap
+// (runtime/modality.ts, inlined in the head).
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { Font } from "astro:assets";
 import { LOCALES, type Locale } from "../i18n";
 import "../styles/fonts.css";
+import "../styles/ux.css";
+import { trackModality } from "../runtime/modality";
 
 interface Props {
   locale: Locale;
@@ -18,7 +22,7 @@ const { locale, title, description, path, bodyClass } = Astro.props;
 const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
 ---
 <!doctype html>
-<html lang={locale} data-lang={locale}>
+<html lang={locale} data-lang={locale} data-ux-modality="keyboard">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -43,6 +47,7 @@ const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
         } catch (e) {}
       })();
     </script>
+    <script is:inline set:html={`(${trackModality})(document.documentElement)`} />
     <slot name="head" />
   </head>
   <body class={bodyClass}>
