@@ -126,15 +126,18 @@ src/
                             wb-experiment; site-switches, power-search (a structured filter bar), lesson-collection,
                             lesson-preview
   runtime/                  shared browser code for live code: wb.ts (loop, counters, dials, meters, L/T),
-                            dom.ts (show, setText, setD, setLit, playPause)
+                            dom.ts (show, setText, setD, setLit, playPause); and for components (the UX foundation,
+                            src/lessons/README.md): modality.ts (keyboard or pointer), announce.ts (live regions),
+                            roving.ts (one Tab stop, arrow keys, the arrow-key hint)
   i18n/                     locales, interface strings (ui.ts), localize() for figures drawn in both languages
-  layouts/                  Base (head, language alternates, theme) and Lesson (header, machine, experiments, questions)
+  layouts/                  Base (head, language alternates, theme, UX foundation) and Lesson (header, machine, experiments, questions)
   components/               Switches, PowerSearch, lesson/ (FigurePlate, Panel, Experiments, Questions),
                             collection/ (cards, toolbar, preview dialog)
   pages/[...lang]/          the collection and the lesson pages, once per language
   pages/workbench/          the parts gallery
   pages/search-index.json.ts  every lesson's text in both languages, for search
-  styles/                   collection, lesson additions, switches
+  styles/                   ux (focus ring, motion, targets, disabled: the --ux-* tokens), collection, lesson
+                            additions, switches
 workbench/                  the drawing layer the figures build on: the Anatomy kit (vendored), shared parts,
                             digits, the lesson stylesheet (served as virtual:workbench.css)
 ```
