@@ -22,19 +22,20 @@ export default function mount({ P, G, BALL, REPLY, BALLOT, WRITE }, root) {
     const el = q(`[data-tile="${i}-${s}"]`);
     return { el, texts: [...el.querySelectorAll("[data-tile-text]")], state: "", label: "" };
   }));
+  const more = LETTERS.map((_, i) => ({ el: q(`[data-more="${i}"]`), text: null }));
   const fences = { cut: [...svg.querySelectorAll('[data-fence="cut"]')], solo: [...svg.querySelectorAll('[data-fence="solo"]')] };
   const board = { acked: WB.counter(svg, "acked", P), failed: WB.counter(svg, "failed", P), lost: WB.counter(svg, "lost", P) };
 
   // ---------- settings and the run ----------
   const cfg = { rule: "majority", timeouts: "random", n: 5, prevote: "off", net: "whole", speed: 0.05 };
-  let sim, clock, logAt, from, seed = 5, script = [], saidAt = -9, saidRank = 0, held = null, quietAt = 0;
+  let sim, clock, logAt, from, seed = 5, script = [], saidAt = -9, saidRank = 0, held = null, quietAt = 0, idleShown = false, lastFail = -9;
 
   function restart() {
     for (const x of active.values()) release(x);
     active.clear();
     sim = makeSim({ rule: cfg.rule, timeouts: cfg.timeouts, n: Number(cfg.n), prevote: cfg.prevote === "on" }, seed);
     seed = (seed * 7 + 3) % 9973 + 1;
-    clock = 0; logAt = 0; from = 0; script = []; held = null; saidRank = 0; quietAt = 0;
+    clock = 0; logAt = 0; from = 0; script = []; held = null; saidRank = 0; quietAt = 0; lastFail = -9;
     if (cfg.net !== "whole") sim.setNet(cfg.net, 0);
     paint();
     showStats();
@@ -42,29 +43,36 @@ export default function mount({ P, G, BALL, REPLY, BALLOT, WRITE }, root) {
 
   // ---------- narration ----------
   const letter = (i) => LETTERS[i];
+  // "1 write", "2 writes" in each language
+  const writesT = (n, en, es) => T(n + (n === 1 ? " write " : " writes ") + en, n + (n === 1 ? " escritura " : " escrituras ") + es);
   const sideOf = (net, i) => (net === "cut" ? (i >= 2 ? 1 : 0) : net === "solo" ? (i === 4 ? 1 : 0) : 0);
   const cutText = () => sim.ids.filter((i) => i < 2).map(letter).join(" ") + " | " + sim.ids.filter((i) => i >= 2).map(letter).join(" ");
   function say(rank, text) {
     const wall = performance.now() / 1000;
     if (rank < saidRank && wall - saidAt < 1.4) { if (!held || rank >= held.rank) held = { rank, text, at: wall }; return; }
-    held = null; saidRank = rank; saidAt = wall; quietAt = wall;
+    held = null; saidRank = rank; saidAt = wall; quietAt = wall; idleShown = false;
     root.figure.say(L(text));
+  }
+  // the standing line when nothing is happening: who leads, and what has been acknowledged so far
+  function idleText() {
+    const top = sim.topLeader();
+    const k = sim.leaders();
+    if (k.length > 1 && cfg.rule === "takeover") return T(k.map(letter).join(" and ") + " both lead and acknowledge writes · split brain", k.map(letter).join(" y ") + " lideran y confirman escrituras · cerebro dividido");
+    if (k.length > 1) { const old = k.filter((i) => i !== top).map(letter).join(" "), n = sim.nodes[top].term; return T(old + " still thinks it leads · only " + letter(top) + " (term " + n + ") can commit", old + " todavía cree liderar · solo " + letter(top) + " (mandato " + n + ") puede confirmar"); }
+    if (top >= 0) { const n = sim.stats.acked, w = writesT(n, "acknowledged", n === 1 ? "confirmada" : "confirmadas"); return T(letter(top) + " leads term " + sim.nodes[top].term + " · " + w.en, letter(top) + " lidera el mandato " + sim.nodes[top].term + " · " + w.es); }
+    return T("no leader · writes are refused", "sin líder · se rechazan las escrituras");
   }
   function sayHeld() {
     const wall = performance.now() / 1000;
     if (held && wall - held.at > 2.5) held = null;
     if (held && wall - saidAt >= 1.4) { const h = held; held = null; saidRank = -1; say(h.rank, h.text); return; }
-    if (wall - quietAt > 3) {
-      const top = sim.topLeader();
-      const k = sim.leaders();
-      if (k.length > 1 && cfg.rule === "takeover") say(0, T(k.map(letter).join(" and ") + " both lead and acknowledge writes · split brain", k.map(letter).join(" y ") + " lideran y confirman escrituras · cerebro dividido"));
-      else if (k.length > 1) { const old = k.filter((i) => i !== top).map(letter).join(" "), n = sim.nodes[top].term; say(0, T(old + " still thinks it leads · only " + letter(top) + " (term " + n + ") can commit", old + " todavía cree liderar · solo " + letter(top) + " (mandato " + n + ") puede confirmar")); }
-      else if (top >= 0) say(0, T(letter(top) + " leads term " + sim.nodes[top].term + " · " + sim.stats.acked + " writes acknowledged", letter(top) + " lidera el mandato " + sim.nodes[top].term + " · " + sim.stats.acked + " escrituras confirmadas"));
-      else say(0, T("no leader · writes are refused", "sin líder · se rechazan las escrituras"));
+    // once quiet, the standing line; while it shows, it follows the counts as they change
+    if (idleShown || wall - quietAt > 3 + 0.5 * saidRank) {
+      const text = L(idleText());
+      if (!idleShown || text !== idleShown) { held = null; saidRank = 0; saidAt = wall; idleShown = text; root.figure.say(text); }
     }
   }
   const reach = (i) => sim.ids.filter((j) => !sim.nodes[j].down && sideOf(sim.net, j) === sideOf(sim.net, i)).length;
-  let lastFail = -9;
   function narrate() {
     for (; logAt < sim.log.length; logAt++) {
       const e = sim.log[logAt];
@@ -84,8 +92,8 @@ export default function mount({ P, G, BALL, REPLY, BALLOT, WRITE }, root) {
           else say(4, T(X + " sees term " + e.term + " · steps down", X + " ve el mandato " + e.term + " · deja de liderar"));
           break;
         case "truncate":
-          if (e.lost) say(6, T(X + " overwritten · " + e.lost + " acknowledged writes lost", X + " sobrescrita · " + e.lost + " escrituras confirmadas perdidas"));
-          else say(3, T(X + " drops " + e.dropped + " uncommitted entries", X + " descarta " + e.dropped + " entradas sin confirmar"));
+          if (e.lost) { const w = writesT(e.lost, e.lost === 1 ? "acknowledged and lost" : "acknowledged and lost", e.lost === 1 ? "confirmada perdida" : "confirmadas perdidas"); say(6, T(X + " overwritten · " + w.en, X + " sobrescrita · " + w.es)); }
+          else say(3, T(X + " drops " + e.dropped + (e.dropped === 1 ? " uncommitted entry" : " uncommitted entries"), X + " descarta " + e.dropped + (e.dropped === 1 ? " entrada sin confirmar" : " entradas sin confirmar")));
           break;
         case "behind": say(3, T(X + " refuses " + letter(e.c) + ": its log is behind", X + " rechaza a " + letter(e.c) + ": su registro está atrasado")); break;
         case "net":
@@ -93,7 +101,7 @@ export default function mount({ P, G, BALL, REPLY, BALLOT, WRITE }, root) {
           else if (e.mode === "solo") say(5, T("fence up · E alone", "cerca arriba · E aislada"));
           else say(5, T("fence down · the network is whole", "cerca abajo · la red está completa"));
           break;
-        case "crash": say(5, e.wasLeader ? T(X + " crashes · it led term " + e.term, X + " se apaga · lideraba el mandato " + e.term) : T(X + " crashes", X + " se apaga")); break;
+        case "crash": say(5, e.wasLeader ? T(X + " crashes · it led term " + e.term, X + " se cae · lideraba el mandato " + e.term) : T(X + " crashes", X + " se cae")); break;
         case "restart": say(5, T(X + " is back · term " + e.term, X + " vuelve · mandato " + e.term)); break;
         case "fail": {
           if (e.t - lastFail < 0.15) break;
@@ -187,6 +195,8 @@ export default function mount({ P, G, BALL, REPLY, BALLOT, WRITE }, root) {
         const label = idx < 0 ? "" : String(x.log[idx].term % 100);
         if (tile.label !== label) { tile.label = label; tile.texts.forEach((t) => setText(t, label)); }
       });
+      const older = len > G.TILES ? "+" + (len - G.TILES) : "";
+      if (more[i].text !== older) { more[i].text = older; setText(more[i].el, older); }
     }
     fences.cut.forEach((f) => show(f, sim.net === "cut"));
     fences.solo.forEach((f) => show(f, sim.net === "solo"));
@@ -231,34 +241,60 @@ export default function mount({ P, G, BALL, REPLY, BALLOT, WRITE }, root) {
   const wake = () => { if (loop.paused) loop.setPaused(false); };
   const crashLeader = () => {
     const i = sim.topLeader();
-    if (i < 0) { say(9, T("no leader to crash", "no hay líder para apagar")); return; }
+    if (i < 0) { say(9, T("no leader to crash", "no hay líder para tumbar")); return; }
     sim.crash(i, clock);
   };
   const crashFollower = () => {
     const f = sim.ids.filter((i) => !sim.nodes[i].down && sim.nodes[i].state !== "leader").reverse();
-    if (!f.length) { say(9, T("no follower left to crash", "no queda seguidora para apagar")); return; }
+    if (!f.length) { say(9, T("no follower left to crash", "no queda seguidora para tumbar")); return; }
     sim.crash(f[0], clock);
   };
   const actions = {
     crash: () => { crashLeader(); wake(); },
     crashFollower: () => { crashFollower(); wake(); },
-    restart: () => { const d = sim.ids.filter((i) => sim.nodes[i].down); if (!d.length) say(9, T("every tower is already up", "todas las torres ya están encendidas")); d.forEach((i) => sim.restart(i, clock)); wake(); },
+    restart: () => { const d = sim.ids.filter((i) => sim.nodes[i].down); if (!d.length) say(9, T("every tower is already up", "todas las torres ya están en pie")); d.forEach((i) => sim.restart(i, clock)); wake(); },
     reset: () => { restart(); say(9, T("started over", "empezó de nuevo")); },
   };
   root.on("action", (name) => actions[name]?.());
 
   // ---------- "Watch it on the machine": an experiment's settings and its script ----------
+  // Each Watch plays at 1/10 so the outcome shows within seconds. The cut and E's return heal CUT.len (SOLO.len) of model
+  // time after the fence goes up, so those two jump the model clock to shortly before the heal: the fence has then been
+  // up for a while, and the heal, and what it overwrites or upsets, comes about 3 s after the press.
+  const UP = 0.05;
+  function jump(to, line) {
+    sim.runTo(to);
+    clock = to;
+    while (logAt < sim.log.length && sim.log[logAt].t <= to) logAt++;
+    if (sim.log.length > 4000) { sim.log.splice(0, logAt); logAt = 0; }
+    held = null; saidRank = -1;
+    say(5, line());
+  }
   const SCRIPTS = {
-    cut: () => [{ t: 0.4, fn: () => setNet("cut") }, { t: 0.4 + CUT.len, fn: () => setNet("whole") }],
-    solo: () => [{ t: 0.4, fn: () => setNet("solo") }, { t: 0.4 + SOLO.len, fn: () => setNet("whole") }],
-    crash: () => [{ t: 0.4, fn: crashLeader }],
-    crash2: () => [{ t: 0.4, fn: crashFollower }, { t: 0.4, fn: crashFollower }],
+    cut: () => [{ t: UP, fn: () => setNet("cut") }, { t: UP + CUT.len, fn: () => setNet("whole") }],
+    takeover: () => {
+      sim.setNet("cut", UP); cfg.net = "cut"; root.press("net", "cut");
+      const up = (CUT.len - 0.3).toFixed(1);
+      jump(UP + CUT.len - 0.3, () => { const k = sim.leaders().map(letter); return k.length > 1 ? T("fence up " + up + " s · " + k.join(" and ") + " both lead", "cerca arriba hace " + up + " s · " + k.join(" y ") + " lideran") : T("fence up " + up + " s · " + idleText().en, "cerca arriba hace " + up + " s · " + idleText().es); });
+      return [{ t: UP + CUT.len, fn: () => setNet("whole") }];
+    },
+    solo: () => {
+      sim.setNet("solo", UP); cfg.net = "solo"; root.press("net", "solo");
+      const e = () => sim.nodes[4].term, rest = () => Math.max(...[0, 1, 2, 3].map((i) => sim.nodes[i].term));
+      jump(UP + SOLO.len - 0.3, () => T("E alone for " + (SOLO.len - 0.3).toFixed(1) + " s · E at term " + e() + ", the others at " + rest(), "E aislada hace " + (SOLO.len - 0.3).toFixed(1) + " s · E en el mandato " + e() + ", las demás en el " + rest()));
+      return [{ t: UP + SOLO.len, fn: () => setNet("whole") }];
+    },
+    crash: () => [{ t: UP, fn: crashLeader }],
+    crash2: () => [{ t: UP, fn: crashFollower }, { t: UP, fn: crashFollower }],
   };
   root.on("watch", (w) => {
     for (const key of ["rule", "timeouts", "n", "prevote"]) set(key, w[key], true);
+    set("speed", 0.1);
     cfg.net = "whole"; root.press("net", "whole");
     restart();
-    script = SCRIPTS[w.script] ? SCRIPTS[w.script]() : [];
+    // the cut's script with the takeover rule is the jump into the cut
+    const name = w.script === "cut" && w.rule === "takeover" ? "takeover" : w.script;
+    script = SCRIPTS[name] ? SCRIPTS[name]() : [];
     wake();
   });
 

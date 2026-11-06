@@ -80,9 +80,9 @@ const RUNS = {
     const row = (key, n, after) => [t(n + " towers", n + " torres"), s[n][key].acked, pct(s[n][key].acked), after];
     return {
       verdict: t("One follower down: " + pct(s[3].one.acked) + ", " + pct(s[4].one.acked) + " and " + pct(s[5].one.acked) + " of writes acknowledged with 3, 4 and 5 towers. Two down: " + pct(s[3].two.acked) + ", " + pct(s[4].two.acked) + " and " + pct(s[5].two.acked) + ". Network cut at the fence: " + pct(s[3].cut.acked) + ", " + pct(s[4].cut.acked) + " and " + pct(s[5].cut.acked) + ".",
-        "Una seguidora apagada: se confirmó el " + pct(s[3].one.acked) + ", " + pct(s[4].one.acked) + " y " + pct(s[5].one.acked) + " de las escrituras con 3, 4 y 5 torres. Dos apagadas: " + pct(s[3].two.acked) + ", " + pct(s[4].two.acked) + " y " + pct(s[5].two.acked) + ". Red cortada en la cerca: " + pct(s[3].cut.acked) + ", " + pct(s[4].cut.acked) + " y " + pct(s[5].cut.acked) + "."),
+        "Una seguidora caída: se confirmó el " + pct(s[3].one.acked) + ", " + pct(s[4].one.acked) + " y " + pct(s[5].one.acked) + " de las escrituras con 3, 4 y 5 torres. Dos caídas: " + pct(s[3].two.acked) + ", " + pct(s[4].two.acked) + " y " + pct(s[5].two.acked) + ". Red cortada en la cerca: " + pct(s[3].cut.acked) + ", " + pct(s[4].cut.acked) + " y " + pct(s[5].cut.acked) + "."),
       groups: [
-        { title: t("Writes acked, two followers down", "Escrituras confirmadas, dos seguidoras apagadas"), bars: [row("two", 3), row("two", 4, true), row("two", 5)] },
+        { title: t("Writes acked, two followers down", "Escrituras confirmadas, dos seguidoras caídas"), bars: [row("two", 3), row("two", 4, true), row("two", 5)] },
         { title: t("Writes acked, network cut at the fence", "Escrituras confirmadas, red cortada en la cerca"), bars: [row("cut", 3), row("cut", 4, true), row("cut", 5)] },
       ],
     };
@@ -161,8 +161,8 @@ const EXPERIMENTS = [
     id: "size",
     title: t("Add a fourth tower", "Agregar una cuarta torre"),
     change: t("Majority vote · 3 towers (A, C, E), 4 (A, B, D, E) or 5 · then crash one follower, or two, or cut the network at the fence between B and C",
-      "Voto por mayoría · 3 torres (A, C, E), 4 (A, B, D, E) o 5 · después se apaga una seguidora, o dos, o se corta la red en la cerca entre B y C"),
-    question: t("How many crashed towers can four towers survive and still acknowledge writes?", "¿Cuántas torres apagadas aguantan cuatro torres sin dejar de confirmar escrituras?"),
+      "Voto por mayoría · 3 torres (A, C, E), 4 (A, B, D, E) o 5 · después se tumba una seguidora, o dos, o se corta la red en la cerca entre B y C"),
+    question: t("How many crashed towers can four towers survive and still acknowledge writes?", "¿Cuántas torres caídas aguantan cuatro torres sin dejar de confirmar escrituras?"),
     options: [
       t("Two: half of the towers is still enough", "Dos: la mitad de las torres todavía alcanza"),
       t("One, the same as three towers", "Una, lo mismo que tres torres"),
@@ -171,7 +171,7 @@ const EXPERIMENTS = [
     answer: 1,
     why: t(
       "A majority of 4 is 3. With two down, the two left can't commit anything: " + pct(Z[4].two.acked) + " of writes acknowledged, the same as three towers with two down (" + pct(Z[3].two.acked) + "), while five survive two (" + pct(Z[5].two.acked) + "). A cluster of 2f + 1 tolerates f failures; the fourth tower is one more machine that can fail and one more vote to wait for, not one more failure it survives. An even count also splits evenly: cut A B | D E and neither side has 3 of 4, so nothing commits (" + pct(Z[4].cut.acked) + "), while three towers cut A | C E keep going on the C E side (" + pct(Z[3].cut.acked) + ", the writes that reached C or E). That is why etcd, Consul and ZooKeeper are run with 3 or 5 voting members.",
-      "La mayoría de 4 es 3. Con dos apagadas, las dos que quedan no pueden confirmar nada: se confirmó el " + pct(Z[4].two.acked) + " de las escrituras, lo mismo que tres torres con dos apagadas (" + pct(Z[3].two.acked) + "), mientras que cinco aguantan dos (" + pct(Z[5].two.acked) + "). Un clúster de 2f + 1 tolera f fallas; la cuarta torre es una máquina más que puede fallar y un voto más que esperar, no una falla más que aguanta. Un número par además se divide parejo: con el corte A B | D E ningún lado tiene 3 de 4, así que nada se confirma (" + pct(Z[4].cut.acked) + "), mientras que tres torres cortadas A | C E siguen funcionando del lado C E (" + pct(Z[3].cut.acked) + ", las escrituras que llegaron a C o a E). Por eso etcd, Consul y ZooKeeper se corren con 3 o 5 miembros con voto.",
+      "La mayoría de 4 es 3. Con dos caídas, las dos que quedan no pueden confirmar nada: se confirmó el " + pct(Z[4].two.acked) + " de las escrituras, lo mismo que tres torres con dos caídas (" + pct(Z[3].two.acked) + "), mientras que cinco aguantan dos (" + pct(Z[5].two.acked) + "). Un clúster de 2f + 1 tolera f fallas; la cuarta torre es una máquina más que puede fallar y un voto más que esperar, no una falla más que aguanta. Un número par además se divide parejo: con el corte A B | D E ningún lado tiene 3 de 4, así que nada se confirma (" + pct(Z[4].cut.acked) + "), mientras que tres torres cortadas A | C E siguen funcionando del lado C E (" + pct(Z[3].cut.acked) + ", las escrituras que llegaron a C o a E). Por eso etcd, Consul y ZooKeeper se corren con 3 o 5 miembros con voto.",
     ),
     watch: { rule: "majority", timeouts: "random", n: 4, prevote: "off", script: "crash2" },
   },
@@ -223,12 +223,12 @@ export default defineLesson({
     "La elección de líder permite que un clúster se ponga de acuerdo en un nodo que reciba las escrituras, y que lo reemplace cuando falla. Notar que la líder ya no está es lo fácil; lo difícil es asegurar que dos nodos no puedan actuar como líder a la vez cuando la red se parte. Esta lección convierte la elección de Raft en cinco torres de señales que votan por mayoría: mírala, predice qué la rompe y después explícala."),
   machine: {
     intro: t("A leads term 1 and sends heartbeats to the other towers. Each follower's dial is its election timer: a heartbeat sends the needle back to zero, and if the needle comes all the way round, the tower becomes a candidate for the next term and asks for votes. A majority of votes makes it the leader. Clients send writes to any tower they can reach; a write is acknowledged once a majority holds it. Cut the network, crash towers, change the rule or the timeouts.",
-      "A lidera el mandato 1 y les manda latidos (heartbeats) a las demás torres. El dial de cada seguidora es su temporizador de elección: un latido devuelve la aguja a cero, y si la aguja da toda la vuelta, la torre se vuelve candidata para el mandato siguiente y pide votos. Una mayoría de votos la convierte en líder. Los clientes mandan escrituras a cualquier torre que alcancen; una escritura se confirma cuando la tiene una mayoría. Corta la red, apaga torres, cambia la regla o los tiempos límite."),
+      "A lidera el mandato 1 y les manda latidos (heartbeats) a las demás torres. El dial de cada seguidora es su temporizador de elección: un latido devuelve la aguja a cero, y si la aguja da toda la vuelta, la torre se vuelve candidata para el mandato siguiente y pide votos. Una mayoría de votos la convierte en líder. Los clientes mandan escrituras a cualquier torre que alcancen; una escritura se confirma cuando la tiene una mayoría. Corta la red, tumba torres, cambia la regla o los tiempos límite."),
     plate: {
       title: t("Signal towers", "Torres de señales"),
       keys: [
         { mark: "lit", label: t("The leader's pennant; a granted vote", "El banderín de la líder; un voto concedido") },
-        { mark: "raised", label: t("Log tiles: the term that wrote each entry, solid once committed", "Fichas del registro: el mandato que escribió cada entrada, sólida cuando se confirmó") },
+        { mark: "raised", label: t("Log tiles: the term that wrote each entry, solid once committed; +N, the older entries", "Fichas del registro: el mandato que escribió cada entrada, sólida cuando se confirmó; +N, las entradas anteriores") },
         { mark: "flat", label: t("Fence: messages can't cross it", "Cerca: los mensajes no la cruzan") },
       ],
       caption: t(
@@ -254,10 +254,10 @@ export default defineLesson({
       { seg: "n", label: t("Towers", "Torres"), options: [[3, "3"], [4, "4"], [5, "5"]], value: 5 },
       { seg: "prevote", label: t("Pre-Vote", "Prevoto"), options: [["off", t("Off", "Apagado")], ["on", t("On", "Encendido")]], value: "off" },
       { speed: true, options: [[0.02, "1/50"], [0.05, "1/20"], [0.1, "1/10"]], value: 0.05 },
-      { actions: [["crash", t("Crash the leader", "Apagar a la líder"), { primary: true }], ["crashFollower", t("Crash a follower", "Apagar una seguidora")], ["restart", t("Restart towers", "Encender las torres")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
+      { actions: [["crash", t("Crash the leader", "Tumbar a la líder"), { primary: true }], ["crashFollower", t("Crash a follower", "Tumbar una seguidora")], ["restart", t("Restart towers", "Levantar las torres")], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
     note: t("The network changes at once; changing the rule, the timeout, the towers or Pre-Vote starts the run again. With 3 towers the cluster is A, C and E; with 4, A, B, D and E. A crashed tower keeps its term and its log, as Raft keeps them on disk.",
-      "La red cambia al instante; cambiar la regla, el tiempo límite, las torres o el prevoto reinicia la ejecución. Con 3 torres el clúster es A, C y E; con 4, A, B, D y E. Una torre apagada conserva su mandato y su registro, como Raft los guarda en disco."),
+      "La red cambia al instante; cambiar la regla, el tiempo límite, las torres o el prevoto reinicia la ejecución. Con 3 torres el clúster es A, C y E; con 4, A, B, D y E. Una torre caída conserva su mandato y su registro, como Raft los guarda en disco."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over eight seeded runs.",
     "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre ocho ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
