@@ -4,12 +4,13 @@
 //   shows how many of its records are not committed yet;
 //   at the front end of each lane a sign shows the worker that owns it, and a gate drops across the lane while nobody
 //   reads it (a rebalance, a dead owner);
-//   six desks in front: a worker takes a record from one of its lanes, works it on the desk and piles the slip; the
+//   six desks in their own row in front, set half a lane over so no desk lines up with a lane (a worker reads whichever
+//   lanes it owns): a worker takes a record from one of its lanes, works it on the desk and piles the slip; the
 //   pile is the batch not committed yet, and it clears at the next poll (the commit). A meter on each desk shows the
 //   time since its last poll against the poll limit;
 //   the coordinator's booth at the right hands the lanes out: its lamp lights during a rebalance, its dial runs a
-//   silent member's session down, and counters show rebalances, records done and done twice;
-//   workers outside the group wait on the bench at the left.
+//   silent member's session down, and counters show rebalances, records committed and done twice;
+//   workers outside the group wait on the bench at the front right.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { sphereOf } from "../../../workbench/kit.mjs";
@@ -43,10 +44,12 @@ const SIGN = { w: 11, h: 8 };
 export const GATE_Y = -23;
 const GATE_H = 15;
 
-// The desks, one in front of each lane; the worker stands behind it, to the right of the lane's end.
+// The desks, in a row of their own: each sits half a lane to the right of a lane's end, between two lanes, so no desk
+// belongs to a lane. The worker stands behind it, on its right.
 const DESK = { y: 8, d: 15, w: 22 };
 const DESK_H = 11;
-export const DESK_SPOT = (i) => [LANE_X[i] - 4, DESK.y + 7.5, DESK_H + 0.2];
+export const DESK_X = LANE_X.map((x) => x + 13);
+export const DESK_SPOT = (i) => [DESK_X[i] - 4, DESK.y + 7.5, DESK_H + 0.2];
 export const SLIP = { dx: 5.5, dy: 7.5, w: 6, d: 7.6, h: 0.75, n: 10 };
 const WORKER_Y = 1.5;
 
@@ -130,23 +133,38 @@ function stop(i) {
   return out.join("");
 }
 
+// ---------- drawings used many times: drawn once at the origin in <defs>, placed with <use> ----------
+// The projection is linear, so a drawing made at the origin and moved by translateAlong is the drawing made in place;
+// this keeps six workers, eleven small figures, six slumped workers and sixty slips from being written out one by one.
+const ID = "wbcg-";
+function defs() {
+  const slip = { x: -SLIP.w / 2, y: -SLIP.d / 2, w: SLIP.w, d: SLIP.d, r: 0.3 };
+  const fallenBody = S(k.slabOf({ x: -8.5, y: -2.8, w: 11, d: 5.6, r: 2.6 }, DESK_H, 3.6, P, 4, 1), { tone: "hi", crease: "lo" })
+    + S(sphereOf([5.6, 0, DESK_H + 2.5], 2.5, P), { tone: "hi", crease: "lo" });
+  return `<defs>`
+    + `<g id="${ID}person">${person(P, [0, 0, 0], { scale: 0.62 })}</g>`
+    + `<g id="${ID}figure">${figurine(P, [0, 0, 0], { scale: 0.62 })}</g>`
+    + `<g id="${ID}fallen">${fallenBody}</g>`
+    + `<g id="${ID}slip">${S(k.slabOf(slip, 0, SLIP.h, P, 1, 0.1), { tone: "hi", crease: "none" })}</g>`
+    + `</defs>`;
+}
+const use = (name, at) => `<use href="#${ID}${name}" transform="${k.translateAlong(P, at)}"/>`;
+
 // ---------- the workers ----------
-// Standing behind the desk (up), lying on the floor in front of it (crashed), or away (not drawn).
+// Standing behind the desk (up); out of the group but still finishing its batch, the small figure of the bench (out);
+// slumped over the desk (crashed); or away (not drawn).
 function worker(i) {
-  const x = LANE_X[i] + 7.5;
-  const up = person(P, [x, WORKER_Y, 0], { scale: 0.62 });
-  const out = litFill(person(P, [x, WORKER_Y, 0], { scale: 0.62, lit: true }));
+  const x = DESK_X[i] + 6.5;
+  const up = use("person", [x, WORKER_Y, 0]);
+  const out = use("figure", [x, WORKER_Y, 0]);
   return `<g data-worker="${i}"><g data-pose="up">${up}</g><g data-pose="out" style="display:none">${out}</g></g>`;
 }
 // A crashed worker slumps over the desk (the desk top is clear: its record and slips are lost with it).
 function fallen(i) {
-  const cx = LANE_X[i], y = DESK.y + 6;
-  const body = litFill(S(k.slabOf({ x: cx - 8.5, y: y - 2.8, w: 11, d: 5.6, r: 2.6 }, DESK_H, 3.6, P, 4, 1), { tone: "hi", crease: "lo", lit: true }));
-  const head = litFill(S(sphereOf([cx + 5.6, y, DESK_H + 2.5], 2.5, P), { tone: "hi", crease: "lo", lit: true }));
-  return `<g data-fallen="${i}" style="display:none">${body}${head}</g>`;
+  return `<g data-fallen="${i}" style="display:none">${use("fallen", [DESK_X[i], DESK.y + 6, 0])}</g>`;
 }
 function desk(i) {
-  const cx = LANE_X[i];
+  const cx = DESK_X[i];
   const plan = { x: cx - DESK.w / 2, y: DESK.y, w: DESK.w, d: DESK.d, r: 1.4 };
   const out = [`<g data-desk="${i}">`];
   out.push(S(k.slabOf(plan, 0, DESK_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(plan, 1.6), DESK_H, P), { tone: "faint" }) }));
@@ -162,12 +180,9 @@ function desk(i) {
 }
 // The slips of the batch worked but not committed, stacked on the tray (the live code shows the first n).
 function slips(i) {
-  const cx = LANE_X[i] + SLIP.dx, cy = DESK.y + SLIP.dy;
+  const cx = DESK_X[i] + SLIP.dx, cy = DESK.y + SLIP.dy;
   const out = [];
-  for (let n = 0; n < SLIP.n; n++) {
-    const plan = { x: cx - SLIP.w / 2, y: cy - SLIP.d / 2, w: SLIP.w, d: SLIP.d, r: 0.3 };
-    out.push(`<g data-slip="${n}" style="display:none">${S(k.slabOf(plan, DESK_H + 0.6 + n * SLIP.h, SLIP.h, P, 1, 0.1), { tone: "hi", crease: "none" })}</g>`);
-  }
+  for (let n = 0; n < SLIP.n; n++) out.push(`<g data-slip="${n}" style="display:none">${use("slip", [cx, cy, DESK_H + 0.6 + n * SLIP.h])}</g>`);
   return `<g data-slips="${i}">${out.join("")}</g>`;
 }
 
@@ -196,11 +211,15 @@ function counted(x, y, z, count, name, lines) {
   const words = lines.length === 1 ? [[lines[0], z + 1.3]] : [[lines[0], z + 3.4], [lines[1], z - 0.4]];
   return digitCounter(P, { x, y, z, count, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name }) + words.map(([w, zz]) => text(right, y, zz, w)).join("");
 }
+// Records committed on the cabinet's front; records done twice on its right face (it reads toward the back).
 function cabinet() {
   const out = [S(k.slabOf(CAB, 0, CAB_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(CAB, 2), CAB_H, P), { tone: "faint" }) })];
-  const front = CAB.y + CAB.d;
-  out.push(counted(CAB.x + 3.4, front, 3.2, 4, "done", [t("DONE", "HECHOS")]));
-  out.push(counted(CAB.x + 41, front, 3.2, 3, "twice", [t("DONE", "DOS"), t("TWICE", "VECES")]));
+  const front = CAB.y + CAB.d, side = CAB.x + CAB.w;
+  out.push(counted(CAB.x + 3.4, front, 3.2, 4, "done", [t("COMMITTED", "CONFIRMADOS")]));
+  out.push(digitCounter(P, { x: side, y: front - 3, z: 3.2, count: 3, face: "x", w: 4.2, h: 5.6, gap: 0.6, pad: 1.1, name: "twice" }));
+  const right = front - 3 - (3 * 4.2 + 2 * 0.6 + 1.1 + 2.4);
+  out.push(faceText(P, [side, right, 6.6], t("DONE", "DOS"), { face: "x", size: CAP, tone: "mid" }));
+  out.push(faceText(P, [side, right, 2.8], t("TWICE", "VECES"), { face: "x", size: CAP, tone: "mid" }));
   return out.join("");
 }
 
@@ -211,7 +230,7 @@ function bench() {
   return out.join("");
 }
 function benchFolk() {
-  return BENCH_SPOTS.map((p, n) => `<g data-spare="${n}" style="display:none">${figurine(P, p, { scale: 0.62 })}</g>`).join("");
+  return BENCH_SPOTS.map((p, n) => `<g data-spare="${n}" style="display:none">${use("figure", p)}</g>`).join("");
 }
 
 // A record: a box with its offset on top, drawn at the origin and moved with translateAlong.
@@ -227,10 +246,11 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A sorting hall on a base plate. At the back, a long block labelled topic drops numbered records onto six roller lanes, its partitions; a lag counter above each lane's chute shows how many of that lane's records are not committed yet. At the front end of each lane, a sign shows the number of the worker that owns it, and a gate arm drops across the lane while nobody reads it. In front stand six numbered desks with a worker behind each; a worker takes a record from one of its lanes, works it on the desk and piles the slip on a tray; the pile clears when the batch is committed. A meter on each desk shows the time since the worker's last poll against the poll limit. At the right, the coordinator's booth has a lamp that lights during a rebalance, a session dial and a counter of rebalances, and a cabinet in front counts records done and done twice. At the left, a bench holds the workers outside the group.",
-      "Una sala de clasificación sobre una placa base. Atrás, un bloque largo con la palabra topic deja registros numerados sobre seis carriles de rodillos, sus particiones; un contador de lag sobre la boca de cada carril muestra cuántos registros de ese carril aún no están confirmados. En el extremo delantero de cada carril, un letrero muestra el número del trabajador dueño, y una barrera baja sobre el carril mientras nadie lo lee. Adelante hay seis escritorios numerados con un trabajador detrás de cada uno; un trabajador toma un registro de uno de sus carriles, lo procesa en el escritorio y apila el comprobante en una bandeja; la pila se vacía cuando se confirma el lote. Un medidor en cada escritorio muestra el tiempo desde el último poll del trabajador contra el límite de poll. A la derecha, la caseta del coordinador tiene una lámpara que se enciende durante un rebalanceo, un dial de sesión y un contador de rebalanceos, y un gabinete delante cuenta los registros hechos y hechos dos veces. A la izquierda, una banca reúne a los trabajadores fuera del grupo.",
+      "A sorting hall on a base plate. At the back, a long block labelled topic drops numbered records onto six roller lanes, its partitions; a lag counter above each lane's chute shows how many of that lane's records are not committed yet. At the front end of each lane, a sign shows the number of the worker that owns it, and a gate arm drops across the lane while nobody reads it. In front, in a row of their own set half a lane over from the lanes, stand six numbered desks with a worker behind each; a worker takes a record from one of its lanes, works it on the desk and piles the slip on a tray; the pile clears when the batch is committed. A meter on each desk shows the time since the worker's last poll against the poll limit. At the right, the coordinator's booth has a lamp that lights during a rebalance, a session dial and a counter of rebalances, and a cabinet in front counts records committed on its front and records done twice on its right side. At the front right, a bench holds the workers outside the group.",
+      "Una sala de clasificación sobre una placa base. Atrás, un bloque largo con la palabra topic deja registros numerados sobre seis carriles de rodillos, sus particiones; un contador de lag sobre la boca de cada carril muestra cuántos registros de ese carril aún no están confirmados. En el extremo delantero de cada carril, un letrero muestra el número del trabajador dueño, y una barrera baja sobre el carril mientras nadie lo lee. Adelante, en una fila propia corrida medio carril respecto de los carriles, hay seis escritorios numerados con un trabajador detrás de cada uno; un trabajador toma un registro de uno de sus carriles, lo procesa en el escritorio y apila el comprobante en una bandeja; la pila se vacía cuando se confirma el lote. Un medidor en cada escritorio muestra el tiempo desde el último poll del trabajador contra el límite de poll. A la derecha, la caseta del coordinador tiene una lámpara que se enciende durante un rebalanceo, un dial de sesión y un contador de rebalanceos, y un gabinete delante cuenta los registros confirmados en su frente y los hechos dos veces en su lado derecho. Adelante a la derecha, una banca reúne a los trabajadores fuera del grupo.",
     ),
     body: [
+      defs(),
       plate(),
       topic(),
       booth(),

@@ -100,7 +100,12 @@ export default function mount({ P, G, RECORD_SVG }, root) {
     const co = model.co, eager = model.cfg.protocol === "eager";
     if (co.state === "joining") {
       const waiting = model.slots.filter((s) => s.inGroup && !s.joined).length;
-      if (eager) return T("rebalance · every lane stops · waiting for " + waiting + " worker" + (waiting === 1 ? "" : "s") + " to finish a batch", "rebalanceo · todos los carriles paran · esperando a que " + waiting + " trabajador" + (waiting === 1 ? "" : "es") + " termine" + (waiting === 1 ? "" : "n") + " su lote");
+      // eager: each lane stops when its owner joins the round, so say how many have stopped so far
+      if (eager) {
+        const stopped = model.lanes.filter((l) => l.stopped).length;
+        const lanes = stopped === LANES ? T("all " + LANES + " lanes stopped", "los " + LANES + " carriles detenidos") : T(stopped + " of " + LANES + " lanes stopped so far", stopped + " de " + LANES + " carriles detenidos por ahora");
+        return T("eager rebalance · " + lanes.en + " · waiting for " + waiting + " worker" + (waiting === 1 ? "" : "s") + " to finish a batch", "rebalanceo eager · " + lanes.es + " · esperando a que " + waiting + " trabajador" + (waiting === 1 ? "" : "es") + " termine" + (waiting === 1 ? "" : "n") + " su lote");
+      }
       return T("cooperative rebalance, round " + co.round + " · lanes keep running · waiting for " + waiting + " to poll", "rebalanceo cooperativo, ronda " + co.round + " · los carriles siguen · esperando el poll de " + waiting);
     }
     if (co.state === "syncing") return T("everyone has joined · the coordinator hands out the lanes", "todos entraron · el coordinador reparte los carriles");
@@ -126,7 +131,7 @@ export default function mount({ P, G, RECORD_SVG }, root) {
     model.slots.forEach((s, i) => {
       if (s.state === "up" && s.cur) {
         const [li, off] = s.cur;
-        want("D" + i + ":" + li + ":" + off, off, G.DESK_SPOT[i], deskL, true, snap ? null : [G.LANE_X[li], G.SLOT_Y[0], H]);
+        want("D" + i + ":" + li + ":" + off, off, G.DESK_SPOT[i], deskL, false, snap ? null : [G.LANE_X[li], G.SLOT_Y[0], H]);
       }
       const p = people[i];
       show(p.up, s.state === "up" && s.inGroup); show(p.out, s.state === "up" && !s.inGroup); show(p.fallen, s.state === "crashed");
@@ -134,7 +139,8 @@ export default function mount({ P, G, RECORD_SVG }, root) {
       slips[i].forEach((el, k) => show(el, k < n));
       polls[i].set(s.state === "up" && s.batch.length ? (clock - s.lastPoll) / model.cfg.pollLimit : 0);
     });
-    const away = model.slots.filter((s) => s.state === "off" || s.state === "down").length;
+    // the bench holds workers away and out of the group: a static member restarting keeps its place in the group
+    const away = model.slots.filter((s) => (s.state === "off" || s.state === "down") && !s.inGroup).length;
     spares.forEach((el, n) => show(el, n < away));
     const co = model.co;
     show(lampOn, co.state !== "stable"); show(lampOff, co.state === "stable");
@@ -215,7 +221,7 @@ export default function mount({ P, G, RECORD_SVG }, root) {
     set("speed", String(w.speed || 1));
     restart();
     if (w.then === "add") model.at(clock + 4, () => model.addWorker());
-    if (w.then === "rolling") model.at(clock + 3, () => model.rolling(20));
+    if (w.then === "rolling") model.at(clock + 1, () => model.rolling(20));
     if (w.then === "crash") model.at(clock + 4, () => model.crash(1));
     wake();
   });

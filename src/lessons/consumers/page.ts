@@ -142,7 +142,8 @@ const EXPERIMENTS = [
       "A dynamic member leaves the group when it shuts down and joins as a new member when it comes back, so each restart costs two rebalances, " + n0(Dp.dynamic.rebalances) + " in all, and with eager rebalancing each one stops all six lanes for a moment. With a static id the coordinator keeps the member's place until its session timeout runs out: it comes back to the same lanes and nothing rebalances. The price is that its own lanes go unread for the whole restart, up to " + s1(Dp.static.longest) + " here against " + s1(Dp.dynamic.longest) + " at a time with rebalances, and a worker that never comes back holds its lanes until the timeout. Static membership pays off when moving lanes is expensive: big groups, eager assignors, workers that rebuild local state or warm a cache for every lane they get (Kafka Streams state stores, for example).",
       "Un miembro dinámico sale del grupo cuando se apaga y entra como miembro nuevo cuando vuelve, así que cada reinicio cuesta dos rebalanceos, " + n0(Dp.dynamic.rebalances) + " en total, y con el rebalanceo eager cada uno detiene los seis carriles un momento. Con un id estático, el coordinador le guarda el lugar al miembro hasta que vence su tiempo límite de sesión: vuelve a los mismos carriles y nada se rebalancea. El precio es que sus propios carriles quedan sin leer durante todo el reinicio, hasta " + s1(Dp.static.longest) + " aquí contra " + s1(Dp.dynamic.longest) + " seguidos con rebalanceos, y un trabajador que nunca vuelve retiene sus carriles hasta que vence el tiempo. La membresía estática vale la pena cuando mover carriles es caro: grupos grandes, asignadores eager, trabajadores que reconstruyen estado local o calientan una caché por cada carril que reciben (los state stores de Kafka Streams, por ejemplo).",
     ),
-    watch: { workers: 4, rate: 6, protocol: "eager", members: "static", session: 45, pollLimit: 10, slow: 1, speed: 3, then: "rolling" },
+    // at ×1 the first restart (from 1 s in, 8 s down) is under way at 7 s: its lanes stop, nothing rebalances
+    watch: { workers: 4, rate: 6, protocol: "eager", members: "static", session: 45, pollLimit: 10, slow: 1, speed: 1, then: "rolling" },
   },
   {
     id: "crash",
@@ -196,8 +197,8 @@ export default defineLesson({
     plate: {
       title: t("Sorting hall", "Sala de clasificación"),
       keys: [
-        { mark: "lit", label: t("A record being worked; a lane's gate while nobody reads it; the coordinator's lamp during a rebalance; a crashed worker, or one dropped from the group", "Un registro en proceso; la barrera de un carril mientras nadie lo lee; la lámpara del coordinador durante un rebalanceo; un trabajador caído o expulsado del grupo") },
-        { mark: "raised", label: t("Records: offset on top; slips on a desk: the batch worked but not committed", "Registros: offset arriba; comprobantes en un escritorio: el lote procesado pero sin confirmar") },
+        { mark: "lit", label: t("A stop: a lane's gate while nobody reads it; the coordinator's lamp during a rebalance", "Una detención: la barrera de un carril mientras nadie lo lee; la lámpara del coordinador durante un rebalanceo") },
+        { mark: "raised", label: t("Records: offset on top; slips on a desk: the batch worked but not committed; a small figure at a desk: a worker dropped from the group, finishing its batch", "Registros: offset arriba; comprobantes en un escritorio: el lote procesado pero sin confirmar; una figura pequeña en un escritorio: un trabajador expulsado del grupo que termina su lote") },
         { mark: "flat", label: t("Six lanes (partitions): the topic at the back, the owner's sign at the front end", "Seis carriles (particiones): el topic atrás, el letrero del dueño en el extremo delantero") },
       ],
       caption: t(
