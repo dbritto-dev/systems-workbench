@@ -286,6 +286,7 @@ export function makeSim(cfgIn = {}, seed = 1) {
         send(p.i, m.from, "reply", b.id, "abort");
       }
     } else if (m.kind === "reply") {
+      if (b.state === "prepared" && m.value === "unknown") note({ t: now, type: "unsure", i: p.i, j: m.from, id: b.id });
       if (b.state !== "prepared" || m.value === "unknown") return;
       finish(p, b, m.value, "peer:" + m.from);
       send(p.i, COORD, "ack", b.id);
@@ -323,6 +324,7 @@ export function makeSim(cfgIn = {}, seed = 1) {
         const { p, b } = e.x;
         if (b.state !== "forcing") break;
         b.state = "prepared"; b.votedAt = now;
+        note({ t: now, type: "prepared", i: p.i, id: b.id });
         send(p.i, COORD, "vote", b.id, "yes");
         at(now + doubtAfter, "doubt", e.x);
         break;

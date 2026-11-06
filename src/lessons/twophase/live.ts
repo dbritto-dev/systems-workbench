@@ -20,6 +20,8 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
   const owners = [0, 1, 2].map((i) => q(`[data-owner="${i}"]`));
   const states = [0, 1, 2].map((i) => q(`[data-state="${i}"]`));
   const votes = [0, 1, 2].map((i) => q(`[data-vote="${i}"]`));
+  const plogs = [0, 1, 2].map((i) => q(`[data-plog="${i}"]`));
+  const more = [0, 1, 2].map((i) => q(`[data-more="${i}"]`));
   const recId = q("[data-record-id]"), recText = q("[data-record]");
   const bookLog = q('[data-book="log"]'), bookMem = q('[data-book="memory"]');
   const clerk = q("[data-clerk]"), down = q("[data-down]");
@@ -57,32 +59,41 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
   // ---------- settings and the run ----------
   const cfg = { point: "voted", b: "normal", net: "near", log: "log", doubt: "wait", speed: 0.02 };
   // the first run's seed: one where a transaction holds the rows a few seconds in, so the still frame shows the locks
-  let model, clock, logAt, from, seed = 10, lastEnd, focus, shownVotes, pendingArm = null;
+  let model, clock, logAt, from, seed = 10, lastEnd, focus, shownVotes, pendingArm = null, lastPrep;
 
-  function restart() {
+  function restart(fixedSeed) {
     for (const e of envs.values()) { e.g.remove(); envFree.push(e); }
     envs.clear();
     for (const c of custs.values()) { c.g.remove(); custFree.push(c); }
     custs.clear();
-    model = makeSim({ b: cfg.b, net: cfg.net, log: cfg.log, doubt: cfg.doubt, trace: true }, seed);
-    seed = (seed * 7 + 3) % 9973 + 1;
-    clock = 0; logAt = 0; from = 0; lastEnd = [null, null, null]; focus = null; shownVotes = ["", "", ""]; pendingArm = null;
+    model = makeSim(simCfg(), fixedSeed ?? seed);
+    if (fixedSeed === undefined) seed = (seed * 7 + 3) % 9973 + 1;
+    clock = 0; logAt = 0; from = 0; lastEnd = [null, null, null]; focus = null; shownVotes = ["", "", ""]; pendingArm = null; lastPrep = ["", "", ""];
+    cur = null; held = null;
     show(bookLog, cfg.log === "log"); show(bookMem, cfg.log !== "log");
     paint();
     showStats();
   }
 
+  const simCfg = () => ({ b: cfg.b, net: cfg.net, log: cfg.log, doubt: cfg.doubt, trace: true });
+
   // ---------- narration ----------
-  let held = null, saidAt = -9, saidRank = 0;
+  // The readout says each step as it starts. A more important message stays up for at least HOLD s of page time; a
+  // less important one that comes meanwhile waits, and is dropped if something newer comes or it waits longer than
+  // STALE s, so the readout never runs behind the picture by more than about a second.
+  const HOLD = 0.9, STALE = 1.1;
+  let cur = null, held = null;
   function say(rank, text) {
-    // a message stays up at least 1.4 s of page time unless a more important one comes; a less important one waits
     const wall = performance.now() / 1000;
-    if (rank < saidRank && wall - saidAt < 1.4) { if (!held || rank >= held.rank) held = { rank, text }; return; }
-    held = null; saidRank = rank; saidAt = wall;
+    if (cur && rank < cur.rank && wall - cur.at < HOLD) { held = { rank, text, at: wall }; return; }
+    held = null; cur = { rank, at: wall };
     root.figure.say(L(text));
   }
   function sayHeld() {
-    if (held && performance.now() / 1000 - saidAt >= 1.4) { const h = held; held = null; saidRank = -1; say(h.rank, h.text); }
+    if (!held) return;
+    const wall = performance.now() / 1000;
+    if (wall - held.at > STALE) { held = null; return; }
+    if (wall - cur.at >= HOLD) { const h = held; held = null; cur = null; say(h.rank, h.text); }
   }
   const ms = (x) => (x < 1 ? Math.round(1000 * x) + " ms" : x.toFixed(2) + " s");
   const list = (xs, en) => (xs.length === 1 ? xs[0] : xs.slice(0, -1).join(", ") + (en ? " and " : " y ") + xs[xs.length - 1]);
@@ -112,6 +123,8 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
           else say(6, T("coordinator back · no decision logged · questions get ABORT", "coordinador de vuelta · sin decisión en el log · las consultas reciben ABORTAR"));
           break;
         case "doubt": say(5, T(who + " voted yes · no answer · in doubt, row locked", who + " votó sí · sin respuesta · en duda, fila bloqueada")); break;
+        case "prepared": lastPrep[e.i] = "#" + e.id; break;
+        case "unsure": say(5, T(who + " asks " + NAMES[e.j] + " · " + NAMES[e.j] + " voted yes too, not sure · row stays locked", who + " pregunta a " + NAMES[e.j] + " · " + NAMES[e.j] + " también votó sí, no sabe · la fila sigue bloqueada")); break;
         case "split": {
           const c = e.outcome.map((o, i) => (o === "commit" ? NAMES[i] : null)).filter(Boolean), a = e.outcome.map((o, i) => (o === "abort" ? NAMES[i] : null)).filter(Boolean);
           say(8, T(id + " SPLIT · committed at " + list(c, true) + ", rolled back at " + list(a, true), id + " DIVIDIDA · confirmada en " + list(c, false) + ", revertida en " + list(a, false)));
@@ -211,14 +224,19 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
       else s = STATE.free;
       setText(states[i], L(s));
       counters["wait" + i].setClamped(p.waiting);
+      setText(plogs[i], lastPrep[i] ? lastPrep[i] + " " + L(WORD.yes) : "");
+      const line = (p.holder && p.holder.kind === "local" ? 1 : 0) + p.waiting;
+      setText(more[i], line > G.CUST.max ? "+" + (line - G.CUST.max) : "");
     });
     // the desk
     const co = model.coord;
     show(clerk, co.up); show(down, !co.up);
     const c = focus !== null ? co.txns.get(focus) : null;
+    // the votes for the transaction being decided; blank once it is over, "?" while a crashed coordinator has
+    // forgotten it (a memory-only coordinator forgets everything, plaques included)
     if (c) shownVotes = c.votes.map((v) => (v === null ? "…" : L(WORD[v])));
-    else if (!co.up && cfg.log !== "log") shownVotes = ["", "", ""];
-    else if (!co.up && focus !== null && !co.txns.has(focus)) shownVotes = ["?", "?", "?"];
+    else if (!co.up && cfg.log === "log" && focus !== null) shownVotes = ["?", "?", "?"];
+    else shownVotes = ["", "", ""];
     votes.forEach((el, i) => setText(el, shownVotes[i]));
     setText(recId, co.record ? "#" + co.record.id : "");
     setText(recText, co.record ? L(WORD[co.record.decision]) : "");
@@ -244,9 +262,15 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
     stat("committed", st.committed);
     stat("aborted", st.aborted);
     stat("split", st.split);
+    // commits and arrivals over the same window, the last 2 s of model time (from 1 s in, the time so far)
     const span = Math.min(2, clock);
-    if (span < 0.5) stat("rate", "–");
-    else { let k = 0; for (let j = st.ends.length - 1; j >= 0 && st.ends[j] > clock - span; j--) k++; stat("rate", (k / span).toFixed(1) + "/s"); }
+    if (span < 1) stat("rate", "–");
+    else {
+      let k = 0, a = 0;
+      for (let j = st.ends.length - 1; j >= 0 && st.ends[j] > clock - span; j--) k++;
+      for (let j = model.all.length - 1; j >= 0 && model.all[j].born > clock - span; j--) a++;
+      stat("rate", (k / span).toFixed(1) + " / " + (a / span).toFixed(1));
+    }
     const h = st.holds[0].slice(-10).map(([, x]) => x);
     stat("hold", h.length ? Math.round(1000 * mean(h)) + " ms" : "–");
     stat("waiting", model.parts.reduce((a, p) => a + p.waiting, 0));
@@ -274,12 +298,16 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
   }
   root.on("change", (name, value) => set(name, value));
   const wake = () => { if (loop.paused) loop.setPaused(false); };
-  const POINT = { before: T("before PREPARE", "antes de PREPARAR"), voted: T("while the votes come in", "mientras llegan los votos"), midsend: T("after COMMIT reaches A", "tras CONFIRMAR a A") };
+  const ARMED = {
+    before: T("crash armed · the next transaction, once all three are done, before PREPARE", "caída preparada · la siguiente transacción, con los tres listos, antes de PREPARAR"),
+    voted: T("crash armed · the next transaction, as its first vote comes in", "caída preparada · la siguiente transacción, al llegar su primer voto"),
+    midsend: T("crash armed · the next transaction, once COMMIT reaches A", "caída preparada · la siguiente transacción, cuando CONFIRMAR llega a A"),
+  };
   const actions = {
     crash: () => {
       if (!model.coord.up) { say(9, T("the coordinator is already down", "el coordinador ya está caído")); return; }
       model.arm(cfg.point);
-      say(9, T("crash armed · " + POINT[cfg.point].en + " of the next transaction", "caída preparada · " + POINT[cfg.point].es + " de la siguiente transacción"));
+      say(9, ARMED[cfg.point]);
       wake();
     },
     reset: () => { restart(); say(9, T("started over", "empezó de nuevo")); },
@@ -287,11 +315,49 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
   root.on("action", (name) => actions[name]?.());
 
   // ---------- "Watch it on the machine": an experiment's settings ----------
+  // w.speed: the speed it plays at. w.arm: arm the crash at that model time (0: the first transaction). w.warm: run the
+  // model this far at once, so the counters and the line at the rows have built up. w.toBack: with a crash, run on to
+  // this long before the coordinator is back. w.allYes: use a run whose crashed transaction got three yes votes (the
+  // common case, the one asking the others can't settle).
+  function crashedRun(w, s) {
+    const m = makeSim(simCfg(), s);
+    m.arm(w.crash);
+    for (let t = 0; t <= 1 && !m.st.crashRecs.length; t += 0.002) m.runTo(t);
+    const rec = m.st.crashRecs[0];
+    if (!rec) return null;
+    m.runTo(rec.t + 0.1);
+    return { rec, yes: m.all[rec.id - 1].outcome.every((o) => o === null) };
+  }
   root.on("watch", (w) => {
     for (const key of ["b", "net", "log", "doubt"]) set(key, w[key], true);
     set("point", w.crash, true);
-    restart();
-    if (w.arm !== undefined) pendingArm = { at: w.arm, point: w.crash };
+    if (w.speed) set("speed", w.speed, true);
+    let s;
+    if (w.allYes) for (let k = 0, x = seed; k < 40; k++, x = (x * 7 + 3) % 9973 + 1) { const r = crashedRun(w, x); if (r && r.yes) { s = x; break; } }
+    restart(s);
+    if (w.arm !== undefined) { if (w.arm <= 0) model.arm(w.crash); else pendingArm = { at: w.arm, point: w.crash }; }
+    let to = w.warm || 0;
+    if (w.toBack !== undefined) {
+      for (let t = 0; t <= 1 && !model.st.crashRecs.length; t += 0.002) model.runTo(t);
+      const rec = model.st.crashRecs[0];
+      if (rec) to = Math.max(to, rec.upAt - w.toBack);
+    }
+    if (to > 0) {
+      model.runTo(to);
+      clock = to;
+      // narrate only what is still going on: the crash, if the coordinator is still down
+      for (; logAt < model.log.length && model.log[logAt].t <= to; logAt++) {
+        const e = model.log[logAt];
+        if (e.type === "prepared") lastPrep[e.i] = "#" + e.id;
+        if (e.type === "prepare") focus = e.id;
+        if (e.type === "commit" || e.type === "abort") lastEnd[e.i] = { outcome: e.type, at: e.t };
+      }
+      while (from < model.msgs.length && model.msgs[from].arrive + 0.15 * cfg.speed < clock) from++;
+      cur = null; held = null;
+      if (!model.coord.up) say(6, T("coordinator down · back in " + ms(model.coord.upAt - clock), "coordinador caído · vuelve en " + ms(model.coord.upAt - clock)));
+      else { const n = model.inFlight(); say(1, T("after " + to.toFixed(1) + " s: " + n + (n === 1 ? " transaction" : " transactions") + " in flight", "tras " + to.toFixed(1) + " s: " + n + (n === 1 ? " transacción" : " transacciones") + " en curso")); }
+      paint(); showStats();
+    }
     wake();
   });
 

@@ -1,11 +1,13 @@
 // @ts-nocheck: figure code in the style of the other lessons; drawing shorthands come from src/lib/draw.
 // A coordinator's desk and three participant counters, A, B and C. At the back, each counter keeps one hot row on its
-// top with a padlock (lit while a transaction holds the row), its state on the front face, and a line of local
-// customers waiting for the row. A message lane runs from each counter to the desk: envelopes go out on the left
-// half (WORK, PREPARE, COMMIT/ABORT, answers) and come back on the right half (DONE, votes, ACK, questions). Behind the
-// counters, a peer line carries the participants' questions to each other. On the desk: the coordinator's log with its
-// last decision, a vote plaque at the end of each lane, the clerk (gone while the coordinator is down, with a DOWN
-// sign in its place) and counters of committed, aborted and split transactions.
+// top with a padlock (closed and lit while a transaction holds the row), its own log tab with the last prepare record
+// it forced, its state on the front face, and a line of local customers waiting for the row ("+N" past five). A
+// message lane runs from each counter to the desk: envelopes go out on the left half (WORK, PREPARE, COMMIT/ABORT,
+// answers) and come back on the right half (DONE, votes, ACK, questions), far enough apart that two envelopes passing
+// don't cover each other. Behind the counters, a peer line carries the participants' questions to each other. On the
+// desk: the coordinator's log with its last decision, a vote plaque at the end of each lane, the clerk (gone while the
+// coordinator is down, with a DOWN sign in its place) and counters of committed, aborted, split and in-flight
+// transactions.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, labelPlate, digitCounter, person, figurine, plaque, sign, card, faceText, litFill } from "../../../workbench/parts.mjs";
@@ -24,18 +26,20 @@ const CW = 42, CD = 22, CH = 16;
 const C_BACK = -96;
 export const C_FRONT = C_BACK + CD;              // -74
 // Lanes: out (coordinator → counter) and back (counter → coordinator), on the left half in front of each counter.
-export const LANE = { out: -12, back: -5 };       // x offsets from the counter's centre
-const LANE_W = 16;
+export const LANE = { out: -13, back: 5 };        // x offsets from the counter's centre: an envelope's width apart
+const LANE_W = LANE.back - LANE.out + 8;
 export const DESK = { x: -88, y: -4, w: 166, d: 24, r: 2 };
 const DESK_H = 11;
 export const LANE_Y = [C_FRONT + 3, DESK.y - 3];  // where envelopes start and stop
 // Customers: a line in front of the right half of each counter.
-export const CUST = { dx: 11, y0: C_FRONT + 6, step: 7, max: 5, scale: 0.75 };
+export const CUST = { dx: 18, y0: C_FRONT + 6, step: 7, max: 5, scale: 0.75 };
 // The peer line behind the counters.
 export const RAIL = { y: C_BACK - 6, z: 22, x0: CX[0] - 18, x1: CX[2] + 18 };
 // The row and its padlock on each counter's top.
 const ROW = { dx: -16, y: C_BACK + 4, w: 24, d: 11 };
 export const LOCK = { dx: 13, y: C_BACK + 12 };
+// The participant's own log: a tab on the counter's top, in front of the row, with the last prepare record it forced.
+const PLOG = { dx: -19, y: C_FRONT - 5.4, w: 26, d: 4.4 };
 const CLERK = [33, -13, 0];
 
 export const ENV = { w: 17, h: 7 };             // an envelope
@@ -75,6 +79,11 @@ function counter(i) {
   out.push(L([0, 1, 2].map((j) => k.lineOnTop([row.x + 3, row.y + 2.6 + j * 2.6], [row.x + row.w - 3, row.y + 2.6 + j * 2.6], CH + 1.4, P)).join(""), { tone: "faint" }));
   out.push(text(row.x + 2, row.y + row.d, CH + 0.3, t("ROW", "FILA"), 1.1, { tone: "lo" }));
   out.push(faceText(P, [row.x + row.w / 2, row.y + row.d * 0.62, CH + 1.4], "", { face: "top", size: 4, tone: "hi", anchor: "middle", attr: `data-owner="${i}"` }));
+  // its own log: the last prepare record it forced before voting yes
+  const pl = { x: cx + PLOG.dx, y: PLOG.y, w: PLOG.w, d: PLOG.d, r: 0.6 };
+  out.push(S(k.slabOf(pl, CH, 0.8, P, 3, 0.2), { tone: "hi", crease: "lo" }));
+  out.push(faceText(P, [pl.x + 1.6, pl.y + pl.d - 1.2, CH + 0.8], "LOG", { face: "top", size: 2.2, tone: "mid" }));
+  out.push(faceText(P, [pl.x + 8.6, pl.y + pl.d - 1.1, CH + 0.8], "", { face: "top", size: 2.6, tone: "hi", attr: `data-plog="${i}"` }));
   // front face: the letter and the state
   out.push(text(cx - CW / 2 + 2.4, C_FRONT, 5.6, "ABC"[i], 8, { tone: "hi" }));
   out.push(faceText(P, [cx - 11, C_FRONT, 10.4], "", { size: 3.4, tone: "hi", attr: `data-state="${i}"` }));
@@ -119,11 +128,12 @@ function lane(i) {
   out.push(L(dash.join(""), { tone: "mid" }), L(chev.join(""), { tone: "mid" }));
   return out.join("");
 }
-// the floor marks where customers stand
+// the floor marks where customers stand, and the "+N" tag past the last one
 function queueMarks(i) {
   const x = CX[i] + CUST.dx, pts = [];
   for (let j = 0; j < CUST.max; j++) pts.push(k.ring(x, CUST.y0 + j * CUST.step, 2.2, 0, P, 14));
-  return L(pts.join(""), { tone: "faint" });
+  return L(pts.join(""), { tone: "faint" })
+    + faceText(P, [x, CUST.y0 + CUST.max * CUST.step + 0.6, 0], "", { face: "top", size: 3, tone: "mid", anchor: "middle", attr: `data-more="${i}"` });
 }
 
 // ---------- the coordinator's desk ----------
@@ -163,7 +173,7 @@ function clerk() {
   return `<g data-clerk>${person(P, CLERK, { scale: 0.9, hat: "cap" })}</g>`;
 }
 function downSign() {
-  return `<g class="wb-lit-group" data-down style="display:none">${litFill(sign(P, { x: CLERK[0] - 13, y: CLERK[1] + 2, z: 12, w: 26, h: 8, text: t("DOWN", "CAÍDO"), lit: true }))}</g>`;
+  return `<g data-down style="display:none">${sign(P, { x: CLERK[0] - 13, y: CLERK[1] + 2, z: 12, w: 26, h: 8, text: t("DOWN", "CAÍDO") })}</g>`;
 }
 
 // ---------- moving parts, drawn at the origin and moved with translateAlong ----------
@@ -182,8 +192,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A coordinator's desk at the front and three participant counters, A, B and C, at the back, on a base plate. Each counter keeps one row on its top with a padlock that closes and lights while a transaction holds the row; its front face shows the letter and its state (working, prepared, in doubt), and a line of small customers in front of it waits for the row, with a counter of how many are waiting on its side. A lane runs from each counter to the desk: envelopes go out to the counter on the left half (work, prepare, commit or abort) and come back on the right half (done, the vote, ack). Behind the counters, a peer line carries questions between participants. On the desk: the coordinator's log with the last decision it recorded, a plaque at the end of each lane with that participant's vote, the clerk, replaced by a lit DOWN sign while the coordinator is down, and counters of committed, aborted and split transactions, and on its side the transactions in flight.",
-      "Un escritorio del coordinador adelante y tres mostradores participantes, A, B y C, al fondo, sobre una placa base. Cada mostrador guarda una fila sobre su tapa con un candado que se cierra y se enciende mientras una transacción tiene la fila; su cara frontal muestra la letra y su estado (trabajando, preparada, en duda), y una fila de clientes pequeños frente a él espera la fila, con un contador al costado de cuántos esperan. Un carril va de cada mostrador al escritorio: los sobres van al mostrador por la mitad izquierda (tarea, preparar, confirmar o abortar) y vuelven por la mitad derecha (hecho, el voto, ack). Detrás de los mostradores, una línea entre pares lleva preguntas entre participantes. Sobre el escritorio: el log del coordinador con la última decisión que registró, una placa al final de cada carril con el voto de ese participante, el empleado, reemplazado por un cartel encendido CAÍDO mientras el coordinador está caído, y contadores de transacciones confirmadas, abortadas y divididas, y en su costado las transacciones en curso.",
+      "A coordinator's desk at the front and three participant counters, A, B and C, at the back, on a base plate. Each counter keeps one row on its top with a padlock that closes and lights while a transaction holds the row, and in front of the row a small log tab with the last prepare record the participant forced before voting yes; its front face shows the letter and its state (working, prepared, in doubt), and a line of small customers to the right of the lane waits for the row, with a +N tag when more wait than the line shows, and a counter of how many are waiting on the counter's right side. A lane runs from each counter to the desk: envelopes go out to the counter on the left half (work, prepare, commit or abort) and come back on the right half (done, the vote, ack), side by side so they never cover each other. Behind the counters, a peer line carries questions between participants. On the desk: the coordinator's log with the last decision it recorded, a plaque at the end of each lane with that participant's vote, the clerk, replaced by a DOWN sign while the coordinator is down, and along its front, counters of committed, aborted, split and in-flight transactions.",
+      "Un escritorio del coordinador adelante y tres mostradores participantes, A, B y C, al fondo, sobre una placa base. Cada mostrador guarda una fila sobre su tapa con un candado que se cierra y se enciende mientras una transacción tiene la fila, y delante de la fila una pequeña pestaña de log con el último registro de preparación que el participante forzó antes de votar sí; su cara frontal muestra la letra y su estado (trabajando, preparada, en duda), y una fila de clientes pequeños a la derecha del carril espera la fila, con una etiqueta +N cuando esperan más de los que caben, y un contador de cuántos esperan en el costado derecho del mostrador. Un carril va de cada mostrador al escritorio: los sobres van al mostrador por la mitad izquierda (tarea, preparar, confirmar o abortar) y vuelven por la mitad derecha (hecho, el voto, ack), uno al lado del otro para que nunca se tapen. Detrás de los mostradores, una línea entre pares lleva preguntas entre participantes. Sobre el escritorio: el log del coordinador con la última decisión que registró, una placa al final de cada carril con el voto de ese participante, el empleado, reemplazado por un cartel CAÍDO mientras el coordinador está caído, y a lo largo de su frente, contadores de transacciones confirmadas, abortadas, divididas y en curso.",
     ),
     body: [
       plate(),
