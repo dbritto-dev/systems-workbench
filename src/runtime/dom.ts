@@ -22,17 +22,21 @@ export function setD(el: Element, d: string) {
 export const setLit = (g: Element, on: boolean) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", on));
 
 /**
- * Play/Pause for a lesson: the Pause button's label and the readout follow the loop, and the "pause" action (the
- * Pause button, or Space on the figure) toggles it. Pass onPause to WB.loop(), then call bind(loop).
+ * Play/Pause for a lesson: the Pause button is a toggle (aria-pressed: pressed while paused; its label stays
+ * "Pause"), the readout says "paused", and the "pause" action (the Pause button, or Space on the figure) toggles the
+ * loop. Pass onPause to WB.loop(), then call bind(loop), which also shows the loop's state now (a loop starts paused
+ * under reduced motion).
  */
 export function playPause(root: { button(name: string): HTMLButtonElement | null; figure: { say(text: string): void }; on(type: "action", fn: (name: string, detail: { event: CustomEvent }) => void): unknown }) {
   const btn = root.button("pause");
+  const show = (on: boolean) => { if (btn && btn.getAttribute("aria-pressed") !== String(on)) btn.setAttribute("aria-pressed", String(on)); };
   return {
     onPause(on: boolean) {
-      if (btn) btn.textContent = on ? L("Play", "Reanudar") : L("Pause", "Pausa");
+      show(on);
       if (on) root.figure.say(L("paused", "en pausa"));
     },
     bind(loop: Loop) {
+      show(loop.paused);
       root.on("action", (name, { event }) => { if (name !== "pause") return; event.preventDefault(); loop.toggle(); });
     },
   };

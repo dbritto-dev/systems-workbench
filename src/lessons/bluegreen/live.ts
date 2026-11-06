@@ -178,12 +178,13 @@ export default function mount({ P, G, TITLES }, root) {
     tell(T(en, es));
     updateFlipButton();
   }
-  const flipBtn = root.button("flip"), redeployBtn = root.button("redeploy");
+  const flipBtn = root.button("flip");
   function updateFlipButton() {
     const other = w.live === "blue" ? "green" : "blue";
     flipBtn.textContent = w.sides[other].down ? (other === "blue" ? L("Rebuild blue", "Reconstruir azul") : L("Rebuild green", "Reconstruir verde")) : w.live === "blue" ? L("Flip to green", "Cambiar a verde") : L("Flip to blue", "Cambiar a azul");
-    flipBtn.disabled = w.sides[other].rebuildAt !== null;
-    redeployBtn.disabled = w.live === "green";
+    // Disabled the focusable way, with the reason as a tooltip.
+    root.disable("flip", w.sides[other].rebuildAt !== null, other === "blue" ? L("Blue is still rebuilding", "Azul todavía se está reconstruyendo") : L("Green is still rebuilding", "Verde todavía se está reconstruyendo"));
+    root.disable("redeploy", w.live === "green", L("Green is taking the traffic: redeploy it while blue is live", "Verde está recibiendo el tráfico: redesplégalo mientras azul esté activo"));
   }
   const redeployed = () => w.o.warm ? T("green redeployed · cache warmed", "verde redesplegado · caché precalentada") : T("green redeployed · cache empty", "verde redesplegado · caché vacía");
 

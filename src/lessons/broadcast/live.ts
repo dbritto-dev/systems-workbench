@@ -191,5 +191,4 @@ export default function mount({ ROUTES, GAUGE }, root) {
   });
 
   restart();
-  if (clock.paused) root.button("pause").textContent = L("Play", "Reanudar");
 }
