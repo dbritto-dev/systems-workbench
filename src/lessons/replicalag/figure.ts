@@ -3,9 +3,10 @@
 // on the front, the users who write to it standing by. Two conveyors carry a slip for each entry, in order, to the
 // copy desks, followers A and B; at each desk the slips wait in line on a tray and are copied one at a time into
 // the desk's own ledger, and the counters on the desk's front say how far it has got (AT) and how old the oldest
-// entry it hasn't copied yet is (LAG). The slip of your own latest save is lit. In front, you, and the board that
-// shows what you wrote and what your last read saw. The leader's sign or a desk's name plate lights where your
-// last read was served.
+// entry it hasn't copied yet is (LAG); a "+N" tag counts the slips the tray has no room to show. Your own latest
+// save is lit: its slip, and the lamp on each desk that has copied it. In front, you, and the board that shows what
+// you wrote, what your last read saw and where it was served, over the share of read-backs that missed the user's
+// save (MISSING) and of second reads that went back (WENT BACK), for every user.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, labelPlate, digitCounter, lamp, person, figurine, plaque, faceText, litFill } from "../../../workbench/parts.mjs";
@@ -75,17 +76,16 @@ function leader() {
   out.push(ledger(LEAD.x + 7, LEAD.y + 40, 26, 22, LEAD_H, 7));
   // the sign at the back of its top
   const sign = { x: LEAD.x + 4, y: LEAD.y + 6, w: 32, d: 3, r: 0.5 };
-  // (lit when your last read was served here)
-  out.push(`<g class="wb-lit-group" data-node="L">` + S(k.slabOf(sign, LEAD_H, 13, P, 3, 0.3), { tone: "mid", crease: "lo" })
-    + text(sign.x + sign.w / 2, sign.y + sign.d, LEAD_H + 4.2, t("LEADER", "LÍDER"), 4.6, { anchor: "middle" }) + `</g>`);
+  out.push(S(k.slabOf(sign, LEAD_H, 13, P, 3, 0.3), { tone: "mid", crease: "lo" })
+    + text(sign.x + sign.w / 2, sign.y + sign.d, LEAD_H + 4.2, t("LEADER", "LÍDER"), 4.6, { anchor: "middle" }));
   // its LSN on the front face
   out.push(text(LEAD.x + 6, LEAD_FRONT, 5.4, "LSN", 3.2));
   out.push(digitCounter(P, { x: LEAD.x + 15, y: LEAD_FRONT, z: 3.6, count: 4, w: 4.4, h: 6, gap: 0.5, pad: 1, name: "lsn" }));
   return out.join("");
 }
-// The users who write to the leader: a small crowd by its front.
+// The users who write to the leader: a small crowd in front of it, clear of its LSN counter.
 function crowd() {
-  return [[-82, -16], [-72, -22], [-64, -14], [-86, -6]].map(([x, y]) => figurine(P, [x, y, 0], { scale: 0.8 })).join("");
+  return [[-84, 4], [-73, -1], [-64, 7], [-80, 15]].map(([x, y]) => figurine(P, [x, y, 0], { scale: 0.8 })).join("");
 }
 
 // ---------- the conveyors ----------
@@ -115,23 +115,25 @@ function desk(i) {
   out.push(S(k.slabOf({ x: d.x + 1.5, y: y - 4.5, w: 30, d: 9, r: 0.6 }, DESK_H, 0.6, P, 2, 0.2), { tone: "lo", crease: "none" }));
   // the copy of the ledger
   out.push(ledger(d.x + BOOK.dx, y - BOOK.d / 2, BOOK.w, BOOK.d, DESK_H, 5));
-  // its name plate, lying at the front: lit when your last read was served here (an upright sign would hide B)
-  out.push(`<g class="wb-lit-group" data-node="${i}">` + plaque(P, { x: d.x + 32, y: d.y + 21.4, z: DESK_H, w: 24, d: 6.2, text: t("FOLLOWER " + name, "RÉPLICA " + name), size: 2.7 }) + `</g>`);
+  // its name, on the right face (an upright sign on the top would hide B)
+  out.push(faceText(P, [d.x + d.w, d.y + d.d - 2.4, 4.6], t("FOLLOWER " + name, "RÉPLICA " + name), { face: "x", size: 3.6, tone: "hi" }));
+  // the slips the tray has no room to show, at the end of the line where they come in
+  out.push(faceText(P, [d.x + 2, y + 9.6, DESK_H], "", { face: "top", size: 4.4, tone: "hi", attr: `data-more="${i}"` }));
   return out.join("");
 }
 // The desk's front face: how far it has got (AT, an LSN) on top, how far behind (ms) below.
 function counters(i) {
   const d = DESKS[i], front = d.y + d.d;
-  return text(d.x + 4, front, 10, t("AT", "EN"), 2.8)
-    + digitCounter(P, { x: d.x + 12, y: front, z: 8.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "at" + i })
-    + digitCounter(P, { x: d.x + 12, y: front, z: 1.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "lag" + i })
-    + text(d.x + 31.6, front, 2.9, "ms", 2.6)
-    + text(d.x + 37, front, 2.9, t("LAG", "RETRASO"), 2.8);
+  return text(d.x + 3, front, 10, t("AT", "VA EN"), 2.8)
+    + digitCounter(P, { x: d.x + 14, y: front, z: 8.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "at" + i })
+    + digitCounter(P, { x: d.x + 14, y: front, z: 1.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "lag" + i })
+    + text(d.x + 33.6, front, 2.9, "ms", 2.6)
+    + text(d.x + 39, front, 2.9, t("LAG", "RETRASO"), 2.8);
 }
 // The lamp that lights once the desk has applied your latest save.
 function yours(i) {
   const d = DESKS[i];
-  const p = [d.x + 5, d.y + d.d - 4.4, DESK_H];
+  const p = [d.x + 53, d.y + d.d - 5, DESK_H];
   return `<g data-lamp="yours${i}"><g data-off-lamp>${lamp(P, p, { r: 2.2 })}</g><g data-on-lamp style="display:none">${litFill(lamp(P, p, { r: 2.2, lit: true }))}</g></g>`;
 }
 
@@ -140,27 +142,23 @@ function board() {
   const out = [S(k.slabOf(BOARD, 0, BOARD_H, P, 3, 0.5), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(BOARD, 1.8), BOARD_H, P), { tone: "faint" }));
   const front = BOARD.y + BOARD.d;
-  // everyone's totals on the front face
-  out.push(digitCounter(P, { x: BOARD.x + 4, y: front, z: 2.2, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "missing" }));
-  out.push(text(BOARD.x + 19.4, front, 3.2, t("MISSING", "FALTA"), 2.8));
-  out.push(digitCounter(P, { x: BOARD.x + 40, y: front, z: 2.2, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "wentBack" }));
-  out.push(text(BOARD.x + 55.6, front, 3.2, t("WENT BACK", "RETROCEDIÓ"), 2.8));
-  // the screen on top: what you wrote, what your last read saw
+  // everyone's shares on the front face, as the panel shows them
+  const share = (x, name, words) => digitCounter(P, { x, y: front, z: 2.2, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name })
+    + text(x + 14.4, front, 3.2, "%", 2.8) + text(x + 18.4, front, 3.2, words, 2.8);
+  out.push(share(BOARD.x + 4, "missing", t("MISSING", "FALTA")));
+  out.push(share(BOARD.x + 38, "wentBack", t("WENT BACK", "RETROCEDIÓ")));
+  // the screen on top: what you wrote, what your last read saw, and where it was served
   out.push(S(k.slabOf({ x: SCREEN.x + SCREEN.w / 2 - 6, y: SCREEN.y - 3, w: 12, d: 7, r: 1 }, BOARD_H, 1.4, P, 3, 0.3), { tone: "lo" }));
   out.push(S(k.slabOf(SCREEN, BOARD_H + 1.4, SCREEN_H, P, 3, 0.4), { tone: "mid", crease: "lo" }));
   const z0 = BOARD_H + 1.4, top = z0 + SCREEN_H, face = SCREEN.y + SCREEN.d;
   out.push(L(k.faceRectY(P, SCREEN.x + 2, SCREEN.x + SCREEN.w - 2, face, z0 + 2, top - 2), { tone: "faint" }));
-  out.push(text(SCREEN.x + 4, face, top - 7, t("YOU WROTE", "ESCRIBISTE"), 2.8));
-  out.push(digitCounter(P, { x: SCREEN.x + 6, y: face, z: z0 + 4.4, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "wrote" }));
-  out.push(text(SCREEN.x + 40, face, top - 7, t("YOUR READ SAW", "TU LECTURA VIO"), 2.8));
-  out.push(digitCounter(P, { x: SCREEN.x + 42, y: face, z: z0 + 4.4, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "saw" }));
+  out.push(text(SCREEN.x + 4, face, top - 6.6, t("YOU WROTE", "ESCRIBISTE"), 2.8));
+  out.push(digitCounter(P, { x: SCREEN.x + 6, y: face, z: z0 + 7.6, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "wrote" }));
+  out.push(text(SCREEN.x + 40, face, top - 6.6, t("YOUR READ SAW", "TU LECTURA VIO"), 2.8));
+  out.push(digitCounter(P, { x: SCREEN.x + 42, y: face, z: z0 + 7.6, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "saw" }));
+  // one line under them, set live: where your last read went, and whether it had your save
+  out.push(faceText(P, [SCREEN.x + SCREEN.w / 2, face, z0 + 2.8], "", { size: 2.6, tone: "hi", anchor: "middle", attr: "data-verdict" }));
   return out.join("");
-}
-// On the board's top, in front of the screen, over each total: lit when your last read missed your save, or went back.
-function boardLamps() {
-  const y = BOARD.y + BOARD.d - 4.4;
-  const lampAt = (x, name) => `<g data-lamp="${name}"><g data-off-lamp>${lamp(P, [x, y, BOARD_H], { r: 2.2 })}</g><g data-on-lamp style="display:none">${litFill(lamp(P, [x, y, BOARD_H], { r: 2.2, lit: true }))}</g></g>`;
-  return lampAt(BOARD.x + 10, "missing") + lampAt(BOARD.x + 46, "back");
 }
 function you() {
   return person(P, YOU, { scale: 1.1 }) + plaque(P, { x: YOU[0] - 7, y: YOU[1] + 8, w: 14, d: 7, text: t("YOU", "TÚ"), size: 3.4 });
@@ -179,8 +177,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A main ledger and two copy desks on a base plate. On the left, the leader: a long block with an open ledger on top, a LEADER sign, and its LSN counter on the front, the number of the last write it took; a few users stand by it. Two conveyors run from the leader to two copy desks on the right, follower A in front and follower B at the back, carrying a slip for every write, in order. On each desk the slips wait on a tray and are copied one at a time into the desk's own ledger, and the desk's front shows how far it has got (AT, an LSN) and how many milliseconds old the oldest write it hasn't copied is (LAG). The slip for your own latest save is lit, and a lamp on each desk lights once that desk has copied it. In front stand you and your board: what you wrote and what your last read saw, a MISSING lamp when that read didn't have your save and a WENT BACK lamp when it showed less than a read before it, each over a counter that adds them up for every user. The LEADER sign or a desk's name plate lights where your last read was served.",
-      "Un libro mayor y dos mesas de copia sobre una placa base. A la izquierda, el líder: un bloque largo con un libro abierto encima, un letrero LÍDER y su contador LSN al frente, el número de la última escritura que recibió; unos usuarios esperan a su lado. Dos cintas transportadoras van del líder a dos mesas de copia a la derecha, la réplica A adelante y la réplica B al fondo, y llevan un papel por cada escritura, en orden. En cada mesa los papeles esperan en una bandeja y se copian uno a la vez en el libro propio de la mesa, y el frente de la mesa muestra hasta dónde llegó (EN, un LSN) y cuántos milisegundos tiene la escritura más vieja que todavía no copió (RETRASO). El papel de tu último guardado está encendido, y una lámpara en cada mesa se enciende cuando esa mesa ya lo copió. Adelante estás tú con tu tablero: lo que escribiste y lo que vio tu última lectura, una lámpara FALTA cuando esa lectura no tenía tu guardado y una lámpara RETROCEDIÓ cuando mostró menos que una lectura anterior, cada una sobre un contador que suma esos casos para todos los usuarios. El letrero LÍDER o la placa con el nombre de una mesa se enciende donde se atendió tu última lectura.",
+      "A main ledger and two copy desks on a base plate. On the left, the leader: a long block with an open ledger on top, a LEADER sign, and its LSN counter on the front, the number of the last write it took; a few users stand in front of it. Two conveyors run from the leader to two copy desks on the right, follower A in front and follower B at the back, each named on its right side, carrying a slip for every write, in order. On each desk the slips wait on a tray and are copied one at a time into the desk's own ledger; a +N tag at the end of the line counts the slips the tray has no room to show. The desk's front shows how far it has got (AT, an LSN) and how many milliseconds old the oldest write it hasn't copied is (LAG). The slip for your own latest save is lit, and a lamp on each desk lights once that desk has copied it. In front stand you and your board: its screen shows what you wrote, what your last read saw, and a line saying where that read was served and whether it had your save; its front shows, for every user since the run started, the share of read-backs that missed the user's save (MISSING) and of second reads that went back (WENT BACK).",
+      "Un libro mayor y dos mesas de copia sobre una placa base. A la izquierda, el líder: un bloque largo con un libro abierto encima, un letrero LÍDER y su contador LSN al frente, el número de la última escritura que recibió; unos usuarios esperan delante. Dos cintas transportadoras van del líder a dos mesas de copia a la derecha, la réplica A adelante y la réplica B al fondo, cada una con su nombre en el costado derecho, y llevan un papel por cada escritura, en orden. En cada mesa los papeles esperan en una bandeja y se copian uno a la vez en el libro propio de la mesa; una marca +N al final de la fila cuenta los papeles que no caben en la bandeja. El frente de la mesa muestra hasta dónde llegó (VA EN, un LSN) y cuántos milisegundos tiene la escritura más vieja que todavía no copió (RETRASO). El papel de tu último guardado está encendido, y una lámpara en cada mesa se enciende cuando esa mesa ya lo copió. Adelante estás tú con tu tablero: su pantalla muestra lo que escribiste, lo que vio tu última lectura y una línea que dice dónde se atendió esa lectura y si tenía tu guardado; su frente muestra, para todos los usuarios desde que empezó la ejecución, la parte de las lecturas tras guardar sin lo guardado (FALTA) y de las segundas lecturas que retrocedieron (RETROCEDIÓ).",
     ),
     body: [
       plate(),
@@ -188,7 +186,7 @@ export function buildFigure() {
       belt(1), desk(1), counters(1), yours(1), `<g data-layer="slips1"></g>`,
       crowd(),
       belt(0), desk(0), counters(0), yours(0), `<g data-layer="slips0"></g>`,
-      board(), boardLamps(),
+      board(),
       you(),
     ],
   });
