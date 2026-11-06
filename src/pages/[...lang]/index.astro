@@ -1,5 +1,7 @@
 ---
 // The collection: every lesson as a card, with search and area filters.
+// The first paint waits until the first two cards are parsed (<link rel="expect" blocking="render">), so a slow parse
+// never paints the header alone and then the toolbar and cards: what is above the fold appears at once, settled.
 import Base from "../../layouts/Base.astro";
 import Switches from "../../components/Switches.astro";
 import Toolbar from "../../components/collection/Toolbar.astro";
@@ -7,7 +9,7 @@ import LessonCard from "../../components/collection/LessonCard.astro";
 import PreviewDialog from "../../components/collection/PreviewDialog.astro";
 import { langParams, type Locale } from "../../i18n";
 import { useUi } from "../../i18n/ui";
-import { allLessons } from "../../lib/lessons";
+import { allLessons, two } from "../../lib/lessons";
 import "virtual:tokens.css";
 import "../../styles/collection.css";
 
@@ -18,11 +20,14 @@ const lessons = await allLessons();
 const experiments = lessons.reduce((s, l) => s + l.page.predict.experiments.length, 0);
 const questions = lessons.reduce((s, l) => s + l.page.explain.questions.length, 0);
 const REPO = "https://github.com/dbritto-dev/systems-workbench";
+// The card whose end the first paint waits for (LessonCard.astro's id): the second, the last one above the fold.
+const firstRow = `#lesson-${two(lessons[Math.min(1, lessons.length - 1)].n)}`;
 const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json`;
 ---
 <Base locale={locale} title={ui("site.name")} description={ui("site.description")} path="">
   <Fragment slot="head">
     <meta name="claude:viewport-fit-sides" content="cover" />
+    <link rel="expect" href={firstRow} blocking="render" />
   </Fragment>
   <div class="wrap">
     <header class="masthead">
