@@ -3,8 +3,17 @@
 // an editor (operator, value, Apply / Cancel / Remove). Markup from components/PowerSearch.astro; this element knows
 // nothing about lessons. Modelled on Astryx's PowerSearch (MIT), reimplemented as a light-DOM custom element.
 //
+// Keys, as Astryx's Typeahead: DOM focus stays in the box; ↓ ↑ move the highlight and wrap, Home / End go to the first
+// and last suggestion while one is highlighted (else they move the caret), Enter picks, Escape and Tab close the menu
+// (Escape again clears the text), IME composition is left alone. ← or Backspace at the start of the box goes to the
+// last token; ← → walk the tokens; Backspace / Delete remove one. The clear button shows while there is text or a
+// token, clears both and hands focus back to the box. In the token editor the operators are one radio group (one Tab
+// stop, ← → select, runtime/roving.ts), and Apply stays focusable but refuses (aria-disabled) until the value is
+// complete. The page announces result counts (runtime/announce.ts); resultCount only shows the count.
+//
 //   el.filters                  the filters (get, or set to replace them without an event)
-//   el.resultCount = "12 …"     text shown at the end of the bar and announced politely
+//   el.text                     the text in the box (get, or set without an event)
+//   el.resultCount = "12 …"     text shown at the end of the bar (the page announces it: runtime/announce.ts)
 //   el.focusInput()
 //   "ps-change"  { filters, changeType: "add" | "edit" | "remove" | "clear", index }
 //   "ps-input"   { text, free }  the text being typed, debounced (150 ms, at least every 500 ms; at once when emptied);
@@ -12,6 +21,7 @@
 //                               being built ("area dat"), so a page can preview it as a search
 //   "ps-submit"  {}             Enter in an empty box with no menu open (e.g. go to the first result)
 import { debounce } from "../lib/timing";
+import { roving } from "../runtime/roving";
 
 // ---------- configuration ----------
 export interface EnumItem { value: string; label: string }
@@ -105,6 +115,9 @@ export class PowerSearch extends HTMLElement {
   get filters(): Filter[] { return this.#filters.map((f) => structuredClone(f)); }
   set filters(next: Filter[]) { this.#filters = next.filter((f) => this.#valid(f)).map((f) => structuredClone(f)); this.#renderTokens(); }
   set resultCount(text: string) { if (this.#count.textContent !== text) this.#count.textContent = text; }
+  /** The text in the box; setting it fires nothing (as filters). */
+  get text() { return this.input.value; }
+  set text(v: string) { this.input.value = v; this.#syncClear(); }
   focusInput() { this.input.focus(); }
 
   connectedCallback() {
@@ -124,6 +137,7 @@ export class PowerSearch extends HTMLElement {
     input.addEventListener("input", (e) => {
       this.#active = -1;
       this.#openMenu();
+      this.#syncClear();
       if ((e as InputEvent).isComposing) return;
       if (!input.value.trim()) { this.#emitInput.cancel(); this.#fire("ps-input", { text: "", free: false }); } else this.#emitInput(input.value);
     });
@@ -148,6 +162,8 @@ export class PowerSearch extends HTMLElement {
       this.#renderTokens();
       this.#fire("ps-change", { filters: this.filters, changeType: "clear", index: -1 } satisfies ChangeDetail);
       input.value = "";
+      this.#emitInput.cancel();
+      this.#syncClear();
       this.#fire("ps-input", { text: "", free: false });
       input.focus();
     });
@@ -229,8 +245,13 @@ export class PowerSearch extends HTMLElement {
       li.dataset.i = String(i);
       return li;
     }));
-    this.#clear.hidden = this.#filters.length === 0;
     this.toggleAttribute("data-has-filters", this.#filters.length > 0);
+    this.#syncClear();
+  }
+  /** The clear button shows while there is something to clear: text in the box or a token. */
+  #syncClear() {
+    const hide = this.#filters.length === 0 && this.input.value === "";
+    if (this.#clear.hidden !== hide) this.#clear.hidden = hide;
   }
   #tokenButtons() { return [...this.#list.querySelectorAll<HTMLButtonElement>(".ps-token-edit")]; }
   #tokenKey(e: KeyboardEvent) {
@@ -380,7 +401,7 @@ export class PowerSearch extends HTMLElement {
   #choose(it: Suggestion | undefined) {
     if (!it) return;
     const input = this.input;
-    const clearText = () => { input.value = ""; this.#emitInput.cancel(); this.#fire("ps-input", { text: "", free: false }); };
+    const clearText = () => { input.value = ""; this.#emitInput.cancel(); this.#syncClear(); this.#fire("ps-input", { text: "", free: false }); };
     if (it.value && this.#complete(it.value, it.op)) {
       clearText();
       this.#commit({ field: it.field.key, operator: it.op.key, value: it.value }, null);
@@ -405,13 +426,22 @@ export class PowerSearch extends HTMLElement {
     switch (e.key) {
       case "ArrowDown": e.preventDefault(); this.#move(1); break;
       case "ArrowUp": e.preventDefault(); this.#move(-1); break;
+      // While a suggestion is highlighted, Home and End go to the first and last one; otherwise they are the caret's.
+      case "Home":
+      case "End":
+        if (open && this.#active >= 0 && this.#items.length && !e.shiftKey) {
+          e.preventDefault();
+          this.#active = e.key === "Home" ? 0 : this.#items.length - 1;
+          this.#syncActive();
+        }
+        break;
       case "Enter":
         if (open && this.#active >= 0) { e.preventDefault(); this.#choose(this.#items[this.#active]); }
         else if (!input.value.trim()) { e.preventDefault(); this.#closeMenu(); this.#fire("ps-submit", {}); }
         break;
       case "Escape":
         if (open) { e.preventDefault(); this.#closeMenu(); }
-        else if (input.value) { e.preventDefault(); input.value = ""; this.#emitInput.cancel(); this.#fire("ps-input", { text: "", free: false }); }
+        else if (input.value) { e.preventDefault(); input.value = ""; this.#emitInput.cancel(); this.#syncClear(); this.#fire("ps-input", { text: "", free: false }); }
         else input.blur();
         break;
       case "Tab": this.#closeMenu(); break;
@@ -442,9 +472,11 @@ export class PowerSearch extends HTMLElement {
     opRow.setAttribute("aria-label", s.operator);
     const apply = el("button", { type: "button", class: "btn primary ps-apply" }, s.apply);
     const valueBox = el("div", { class: "ps-editor-value" });
+    // Apply refuses until the value is complete, but stays focusable (aria-disabled, never the native disabled).
     const update = () => {
       const op = this.#op(field, f.operator);
-      apply.disabled = !this.#complete(f.value, op);
+      const off = String(!this.#complete(f.value, op));
+      if (apply.getAttribute("aria-disabled") !== off) apply.setAttribute("aria-disabled", off);
     };
     const renderValue = () => {
       const op = this.#op(field, f.operator);
@@ -500,6 +532,13 @@ export class PowerSearch extends HTMLElement {
         opRow.append(b);
       }
       body.append(opRow);
+      // One Tab stop; ← → (and Home / End) move and select, as a segmented control.
+      roving(opRow, {
+        items: ".ps-op",
+        current: () => opRow.querySelector<HTMLElement>('.ps-op[aria-checked="true"]'),
+        select: (b) => { if (b.getAttribute("aria-checked") !== "true") b.click(); },
+        hint: "ps-ops",
+      });
     }
     body.append(valueBox);
     const cancel = el("button", { type: "button", class: "btn ps-cancel" }, s.cancel);
@@ -511,7 +550,7 @@ export class PowerSearch extends HTMLElement {
     }
     actions.append(cancel, apply);
     cancel.addEventListener("click", () => this.#closeEditor(true));
-    apply.addEventListener("click", () => this.#applyEditor());
+    apply.addEventListener("click", () => { if (apply.getAttribute("aria-disabled") !== "true") this.#applyEditor(); });
     ed.replaceChildren(title, body, actions);
     ed.onkeydown = (e) => {
       if (e.isComposing) return;

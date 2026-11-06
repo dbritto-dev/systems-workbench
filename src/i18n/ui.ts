@@ -51,6 +51,8 @@ const en = {
   "exp.watch": "Watch it in the figure",
   "q.n": "Q{i}",
   "q.covers": "A good answer covers",
+  // ux-collection
+  "search.shortcut": "Slash",
 } as const;
 
 export type UiKey = keyof typeof en;
@@ -105,6 +107,8 @@ const es: Record<UiKey, string> = {
   "exp.watch": "Míralo en la figura",
   "q.n": "P{i}",
   "q.covers": "Una buena respuesta cubre",
+  // ux-collection
+  "search.shortcut": "Barra diagonal",
 };
 
 const TABLES: Record<Locale, Record<UiKey, string>> = { en, es };

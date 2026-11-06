@@ -2,6 +2,11 @@
 // A structured filter bar: tokens (field + operator + value), a typeahead and a token editor. The behaviour is the
 // <power-search> element (src/elements/power-search.ts); this renders its markup, config and interface words.
 // Reusable: pass any config; listen for "ps-change" (filters) and "ps-input" (debounced typing).
+//
+// Astryx's TextInput and Typeahead: a native search field named by a real (visually hidden) <label>, a combobox whose
+// DOM focus stays in the field while aria-activedescendant walks a named listbox, a clear button, and the shortcut
+// hint as a Kbd (one badge per key, the group an image named by the spoken keys). The bar draws the page's one focus
+// ring (styles/ux.css) when the field has focus; the tokens and buttons in it ring themselves.
 import type { Config, Filter, Strings } from "../elements/power-search";
 import "../styles/power-search.css";
 
@@ -9,26 +14,34 @@ interface Props {
   config: Config;
   strings: Strings;
   filters?: Filter[];
-  /** Accessible name of the box (visually hidden). */
+  /** Accessible name of the box (a visually hidden label). */
   label: string;
   placeholder?: string;
-  /** Shown as a hint at the right of the empty box, e.g. "/". */
+  /** The keys of the shortcut shown at the end of the empty box, "+"-separated (e.g. "/"), one badge per key. */
   shortcut?: string;
+  /** The shortcut's spoken name ("Slash"); the badges themselves are hidden from assistive technology. */
+  shortcutLabel?: string;
+  /** Every shortcut that focuses the box, for aria-keyshortcuts (e.g. "/ Control+K Meta+K"). */
+  keyshortcuts?: string;
+  /** The field's id (one bar per page by default). */
+  id?: string;
   class?: string;
 }
-const { config, strings, filters = [], label, placeholder = "", shortcut, class: className } = Astro.props;
+const { config, strings, filters = [], label, placeholder = "", shortcut, shortcutLabel, keyshortcuts, id = "ps-input", class: className } = Astro.props;
 const data = JSON.stringify({ config, strings, filters }).replace(/</g, "\\u003c");
+const keys = shortcut ? shortcut.split("+").filter(Boolean) : [];
 ---
 <power-search class:list={["ps", className]}>
+  <label class="ps-label" for={id}>{label}</label>
   <div class="ps-bar">
     <svg class="ps-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3.5 3.5"></path></svg>
     <div class="ps-field">
       <ul class="ps-tokens" aria-label={label}></ul>
-      <input class="ps-input" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-label={label} placeholder={placeholder} autocomplete="off" spellcheck="false" enterkeyhint="search" />
+      <input class="ps-input" id={id} type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-keyshortcuts={keyshortcuts} placeholder={placeholder} autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" />
     </div>
     <div class="ps-end">
-      {shortcut && <kbd class="ps-kbd" aria-hidden="true">{shortcut}</kbd>}
-      <span class="ps-count" aria-live="polite"></span>
+      {keys.length > 0 && <span class="ps-kbd" role="img" aria-label={shortcutLabel ?? shortcut}>{keys.map((k) => <kbd aria-hidden="true">{k}</kbd>)}</span>}
+      <span class="ps-count"></span>
       <button type="button" class="ps-clear" hidden aria-label={strings.clearAll} title={strings.clearAll}>×</button>
     </div>
   </div>
