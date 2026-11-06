@@ -1,8 +1,8 @@
 // Smoke test for the built site. Serve it first (npm run preview), then:
 //   CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/site-check.cjs [baseUrl] [slug ...]   (slugs: separate or a,b,c)
 // For every lesson in English and Spanish: no console errors, the live code loads and animates the figure,
-// all five experiments run and show a verdict, nothing from the other language is left on the page, and the page
-// fits a 390 px phone. Also checks the collection pages and a redirect from an old lesson URL. Exits 1 on problems.
+// every one-of-N control has one selected option holding the Tab stop, all five experiments run (a prediction card,
+// then Run) and show a verdict, nothing from the other language is left on the page, and the page fits a 390 px phone. Also checks the collection pages and a redirect from an old lesson URL. Exits 1 on problems.
 const { chromium } = require("playwright");
 const lessons = require("../workbench/collection/lessons.json");
 
@@ -33,6 +33,13 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       // The live code writes the readout as soon as it runs; the static page says "starting" / "iniciando".
       const loaded = await page.waitForFunction(() => !/^(starting|iniciando)$/.test(document.querySelector("[data-readout]").textContent.trim()), null, { timeout: 6000 }).then(() => true, () => false);
       if (!loaded) fail(where, "live code never ran (readout still at its initial text)");
+      // Every one-of-N control (a radiogroup) shows one selected option, and that option is the group's Tab stop.
+      const groups = await page.$$eval('wb-seg[role="radiogroup"]', (gs) => gs.map((g) => {
+        const on = g.querySelectorAll('[role="radio"][aria-checked="true"]');
+        const stop = g.querySelectorAll('[role="radio"][tabindex="0"]');
+        return on.length === 1 && stop.length === 1 && stop[0] === on[0] ? "" : `${g.getAttribute("name")}: ${on.length} selected, ${stop.length} Tab stops`;
+      }).filter(Boolean));
+      if (groups.length) fail(where, `segments: ${groups.join("; ")}`);
       // Run every experiment with the first prediction.
       const cards = await page.$$("[data-exp]");
       if (cards.length !== 5) fail(where, `${cards.length} experiment cards`);
