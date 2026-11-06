@@ -1,19 +1,22 @@
 // @ts-nocheck: live code in the style of the other lessons; shared helpers come from src/runtime and src/lib.
 // The sorting room in the browser: runs the model, eases parcels toward where it has them (conveyor, desks, retry
-// shelf, cage, the ledger drawer they update), and answers the controls. mount() gets the build-time data from
+// shelf, cage, the ledger drawer they update; a "+N" tag at the tail for parcels past the conveyor), and answers the
+// controls. mount() gets the build-time data from
 // page.ts (projection, geometry, the parcel drawing) and root, the <wb-lesson>.
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { show, setLit, playPause } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
-import { makeSim, backoff } from "./sim";
+import { makeSim, backoff, OUTAGE } from "./sim";
 
 export default function mount({ P, G, PARCEL_SVG }, root) {
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const NS = "http://www.w3.org/2000/svg";
-  const layers = { back: q('[data-layer="back"]'), pile: q('[data-layer="pile"]'), mid: q('[data-layer="mid"]'), front: q('[data-layer="front"]') };
+  const layers = { back: q('[data-layer="back"]'), mid: q('[data-layer="mid"]'), front: q('[data-layer="front"]') };
+  const more = q("[data-more]"), moreText = q("[data-more-text]");
+  let moreShown = -1;
   const counters = Object.fromEntries(["lag", "oldest", "dead", "done", "stale", "rec0", "rec1", "rec2", "rec3"].map((n) => [n, WB.counter(svg, n, P)]));
   const backoffMeter = WB.meter(svg, "backoff", P);
   const dueMeters = G.SHELF_X.map((_, i) => WB.meter(svg, "due" + i, P));
@@ -58,13 +61,14 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
   // The first run opens a few seconds into an outage (as any run would after "Outage"), so the first frame shows the
   // cage filling and the line backing up; Start over and every setting begin from a quiet line.
   let first = true;
-  function restart(script = []) {
+  // warm: how far in the run opens (a Watch whose moment comes late opens later, with its first events in the warm-up)
+  function restart(script = [], warm = WARM) {
     for (const id of [...recs.keys()]) drop(id);
     const opening = first ? [{ dt: -12, type: "outage" }] : [];
     first = false;
-    model = makeSim(modelCfg([...opening, ...script].map((s) => ({ ...s, t: WARM + s.dt }))), seed);
+    model = makeSim(modelCfg([...opening, ...script].map((s) => ({ ...s, t: warm + s.dt }))), seed);
     seed = (seed * 7 + 3) % 9973 + 1;
-    clock = WARM; note = null; lastDead = -9; lastOk = { main: -9, retry: -9 };
+    clock = warm; note = null; lastDead = -9; lastOk = { main: -9, retry: -9 };
     model.runTo(clock);
     logAt = model.log.length;
     paint(0, true);
@@ -115,18 +119,16 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     scan();
     for (const r of recs.values()) r.seen = false;
     const line = model.line, w = model.worker, rw = model.rworker;
-    // the head on the desk while the worker has it; the rest on the conveyor, then the overflow pallet
+    // the head on the desk while the worker has it; the rest on the conveyor; past it, a "+N" tag in the last slot
     let i0 = 0;
-    if (w.m && line[0] === w.m) { place(w.m, G.DESK_SPOT, "back", w.phase === "work", w.m.tries > 1 || w.phase === "wait" ? w.m.tries : 0); i0 = 1; }
-    for (let i = i0; i < line.length; i++) {
-      const j = i - i0;
-      if (j < G.SLOTS) { place(line[i], [G.SLOT_X[j], G.LANE_Y, G.LANE_Z], "back", false, line[i].tries); continue; }
-      const k = j - G.SLOTS, layer = Math.floor(k / 4), c = k % 4;
-      if (layer < G.PILE.layers) place(line[i], [G.PILE.xs[c % 2], G.PILE.ys[Math.floor(c / 2)], G.PILE.z + layer * G.PILE.step], "pile", false, line[i].tries);
-    }
+    if (w.m && line[0] === w.m) { place(w.m, G.DESK_SPOT, "back", false, w.m.tries > 1 || w.phase === "wait" ? w.m.tries : 0); i0 = 1; }
+    const rest = line.length - i0, fits = rest <= G.SLOTS ? rest : G.SLOTS - 1;
+    for (let j = 0; j < fits; j++) place(line[i0 + j], [G.SLOT_X[j], G.LANE_Y, G.LANE_Z], "back", false, line[i0 + j].tries);
+    const over = rest - fits;
+    if (over !== moreShown) { moreShown = over; show(more, over > 0); if (over > 0) moreText.textContent = "+" + over; }
     const shelf = [...model.shelf].sort((a, b) => a.since - b.since);
     shelf.slice(0, G.SHELF_X.length).forEach((s, k) => place(s.m, [G.SHELF_X[k], G.SHELF_Y, G.SHELF_Z], "mid", false, s.m.tries));
-    if (rw.m) place(rw.m, G.RDESK_SPOT, "mid", rw.phase === "work", rw.m.tries);
+    if (rw.m) place(rw.m, G.RDESK_SPOT, "mid", false, rw.m.tries);
     model.dlq.slice(-G.CAGE_SPOTS.length).forEach((m, n) => place(m, G.CAGE_SPOTS[n], "back", false, m.tries));
 
     // parcels the model no longer holds were done: they fly to their customer's drawer and fade
@@ -174,9 +176,10 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
 
     const st = model.st, oldest = model.oldestWait();
     counters.lag.setClamped(line.length); counters.oldest.setClamped(Math.round(oldest));
-    counters.dead.setClamped(model.dlq.length); counters.done.setClamped(st.done); counters.stale.setClamped(st.stale + st.skipped);
+    // OUT OF ORDER counts what the stat counts: older versions written over newer ones (skips are the stat's suffix)
+    counters.dead.setClamped(model.dlq.length); counters.done.setClamped(st.done); counters.stale.setClamped(st.stale);
     stat("lag", line.length);
-    stat("oldest", oldest < 10 ? oldest.toFixed(1) + " s" : Math.round(oldest) + " s");
+    stat("oldest", Math.round(oldest) + " s");
     stat("done", st.done);
     stat("retries", st.retries);
     const good = model.dlq.filter((m) => !m.bad).length;
@@ -217,7 +220,15 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
   root.on("watch", (w) => {
     for (const key of ["rate", "flaky", "attempts", "mode", "parse", "stale"]) set(key, String(w[key]), true);
     set("speed", String(w.speed || 1));
-    restart(w.script || []);
+    const warm = w.warm || WARM;
+    restart(w.script || [], warm);
+    // a Watch that opens after an outage says so: the outage itself happened in the warm-up
+    const out = (w.script || []).find((s) => s.type === "outage" && s.dt < 0);
+    if (out) {
+      const ago = Math.round(-out.dt - OUTAGE), n = model.dlq.length;
+      tell(clock, "a " + OUTAGE + " s outage ended " + ago + " s ago · " + n + (n === 1 ? " good parcel" : " good parcels") + " in the cage",
+        "una caída de " + OUTAGE + " s terminó hace " + ago + " s · " + n + (n === 1 ? " paquete bueno" : " paquetes buenos") + " en la jaula", 6);
+    }
     wake();
   });
 

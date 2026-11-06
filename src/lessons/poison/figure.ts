@@ -4,7 +4,8 @@
 //   its head takes the parcel at the front and calls downstream, the records ledger at the front of the room;
 //   a parcel that fails waits on the worker's desk through its backoff (in place), or goes onto the retry shelf in
 //   front of the conveyor, where a second worker takes it again when its timer runs out (a retry topic);
-//   a parcel out of attempts drops into the dead-letter cage at the back right; redrive sends the cage back to the dock.
+//   a parcel out of attempts drops into the dead-letter cage at the back right; redrive sends the cage back to the dock;
+//   when the line is longer than the conveyor, a "+N" tag stands at its tail for the parcels not drawn.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, pennant, sign, plaque, faceText, litFill } from "../../../workbench/parts.mjs";
@@ -30,8 +31,8 @@ export const LANE_Z = BED_H + 0.4;
 export const SLOTS = 13;
 export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => 25.5 - 9 * i);
 
-export const PALLET = { x: -106, y: -68, w: 18, d: 18, r: 1 };
-export const PILE = { xs: [-101, -93], ys: [-63, -55], z: 2.8, step: 6.4, layers: 3 };
+// The "+N" tag at the tail: it takes the last slot when the line doesn't fit.
+export const MORE = { x: SLOT_X[SLOTS - 1], y: LANE_Y, z: LANE_Z };
 
 const WD = { x: 34, y: -94, w: 28, d: 18, r: 1.4 };
 const DESK_H = 10;
@@ -81,17 +82,18 @@ function plate() {
     + rulerStrip(P, { x: -106, y: -12, w: 42, d: 6, r: 1 });
 }
 
-// The producer's dock at the tail, with the producer behind it, and the overflow pallet beside it.
+// The producer's dock at the tail, with the producer behind it.
 function dock() {
   const out = [person(P, [PROD.x + PROD.w / 2, PROD.y - 8, 0], { scale: 0.72, hat: "cap" })];
   out.push(S(k.slabOf(PROD, 0, PROD_H, P, 3, 0.5), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(PROD, 2), PROD_H, P), { tone: "faint" }));
   return out.join("");
 }
-function pallet() {
-  const out = [S(k.slabOf(PALLET, 0, 2.5, P, 3, 0.3), { tone: "lo", crease: "none" })];
-  out.push(L([PALLET.y + 5, PALLET.y + 9, PALLET.y + 13].map((y) => k.lineOnTop([PALLET.x + 1, y], [PALLET.x + PALLET.w - 1, y], 2.5, P)).join(""), { tone: "faint" }));
-  return out.join("");
+// The tag at the tail for parcels the conveyor can't show: a card standing in the last slot (the live code sets it).
+function moreTag() {
+  const c = { x: MORE.x - 4.4, y: MORE.y + 3, w: 8.8, h: 6.6 };
+  return `<g data-more style="display:none">${S(k.slabOf({ x: c.x, y: c.y - 0.8, w: c.w, d: 0.8, r: 0.2 }, MORE.z, c.h, P, 2, 0.2), { tone: "hi", crease: "lo" })}`
+    + faceText(P, [MORE.x, c.y, MORE.z + 2], "+0", { size: 3.4, tone: "hi", anchor: "middle", attr: "data-more-text" }) + `</g>`;
 }
 
 // The partition: one roller conveyor. Rollers across the top, a rail along each side, slot marks on the front rail, an
@@ -108,7 +110,7 @@ function conveyor() {
   out.push(digitCounter(P, { x: -84, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "lag" }));
   out.push(word(-65, front, 2.8, "LAG"));
   out.push(digitCounter(P, { x: -44, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "oldest" }));
-  out.push(word(-25, front, 2.8, t("OLDEST WAIT S", "ESPERA MÁS LARGA S")));
+  out.push(word(-25, front, 2.8, t("OLDEST WAIT, S", "ESPERA MÁS LARGA, S")));
   return out.join("");
 }
 
@@ -125,7 +127,7 @@ function workerDesk() {
   out.push(deskTop(WD, "main"));
   const front = WD.y + WD.d;
   out.push(meter(P, { x: WD.x + 6, y: front, z: 2.2, r: 4, ticks: 8, name: "backoff", value: 0 }));
-  out.push(word(WD.x + 12, front, 3.4, t("BACKOFF", "ESPERA")));
+  out.push(word(WD.x + 12, front, 3.4, "BACKOFF"));
   return out.join("");
 }
 function retryDesk() {
@@ -148,7 +150,7 @@ function shelf() {
   return out.join("");
 }
 
-// Downstream's status panel on the ledger's right end: OK, FLAKY or DOWN (lit).
+// Downstream's status panel on the ledger's right end: OK, FLAKY or DOWN (lit: a failure).
 function status() {
   const at = { x: LEDGER.x + LEDGER.w + 1.2, y: LEDGER_FRONT - 1, z: 1.6, w: LEDGER.d - 2, h: 8, face: "x", posts: false, size: 3.6 };
   return `<g data-status="ok">${sign(P, { ...at, text: "OK" })}</g>`
@@ -188,7 +190,8 @@ function cageFront() {
 function ledger() {
   const out = [S(k.slabOf(LEDGER, 0, LEDGER_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(LEDGER, 2.2), LEDGER_H, P), { tone: "faint" }));
-  out.push(plaque(P, { x: LEDGER.x + 4, y: LEDGER.y + 3, z: LEDGER_H, w: 30, d: 8, text: t("RECORDS", "REGISTROS"), size: 3.4 }));
+  // the title plaque sits on the top past the drawers, clear of where done parcels land
+  out.push(plaque(P, { x: LEDGER.x + 3 + 28 * 4 + 4, y: LEDGER.y + 5, z: LEDGER_H, w: 36, d: 8, text: t("RECORDS", "REGISTROS"), size: 3.4 }));
   const f = LEDGER_FRONT;
   DRAWER_X.forEach((x, i) => {
     out.push(L(k.faceRectY(P, x, x + 26, f, 1, LEDGER_H - 1), { tone: "lo" }));
@@ -216,8 +219,8 @@ export function parcelSvg() {
   out.push(faceText(P, [0.8, 0.9, h], "0", { face: "top", size: 3.6, tone: "hi", anchor: "middle", attr: "data-num" }));
   out.push(faceText(P, [0, BOX.d / 2, 1.2], "A", { size: 3.6, tone: "hi", anchor: "middle", attr: "data-key" }));
   out.push(`<g data-tag style="display:none">`);
-  out.push(S(k.slabOf({ x: -3.6, y: -3.4, w: 4.4, d: 0.5, r: 0.1 }, h, 5, P, 1, 0.1), { tone: "hi", crease: "none", lit: true }).replace("data-lit", "data-lit data-lit-fill"));
-  out.push(faceText(P, [-1.4, -2.9, h + 1.2], "2", { size: 3.2, tone: "on-lit", anchor: "middle", attr: "data-tries" }));
+  out.push(S(k.slabOf({ x: -3.6, y: -3.4, w: 4.4, d: 0.5, r: 0.1 }, h, 5, P, 1, 0.1), { tone: "hi", crease: "lo" }));
+  out.push(faceText(P, [-1.4, -2.9, h + 1.2], "2", { size: 3.2, tone: "hi", anchor: "middle", attr: "data-tries" }));
   out.push(`</g>`);
   return out.join("");
 }
@@ -227,8 +230,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A sorting room on a base plate. At the back left a producer stands at a dock that drops numbered parcels onto the tail of one long roller conveyor, the partition; each parcel shows a customer letter, A to D, and that customer's version number. At the head, on the right, a worker takes the parcel at the front onto a desk and calls downstream. Downstream is the records ledger at the front of the room: one drawer per customer showing the version its record holds, a tab that lights when a record goes back to an older version, and counters for updates done and updates that arrived out of order. A status board behind the ledger reads OK, FLAKY or DOWN. A parcel that fails waits on the worker's desk while a backoff meter runs down, or goes onto the retry shelf in front of the conveyor, over a timer, where a second worker takes it again. A parcel out of attempts drops into the dead-letter cage at the back right. Counters on the conveyor show the lag and how long the oldest parcel has waited.",
-      "Una sala de clasificación sobre una placa base. Atrás a la izquierda, un productor está en un muelle que deja paquetes numerados al final de una sola cinta de rodillos larga, la partición; cada paquete muestra una letra de cliente, de la A a la D, y el número de versión de ese cliente. En la cabeza, a la derecha, un trabajador toma el paquete del frente, lo pone en su escritorio y llama al servicio de destino. El servicio de destino es el libro de registros al frente de la sala: un cajón por cliente con la versión que guarda su registro, una pestaña que se enciende cuando un registro vuelve a una versión más vieja, y contadores de actualizaciones hechas y de actualizaciones que llegaron fuera de orden. Un tablero detrás del libro dice OK, INESTABLE o CAÍDO. Un paquete que falla espera en el escritorio del trabajador mientras baja un medidor de espera, o pasa al estante de reintentos delante de la cinta, sobre un temporizador, donde un segundo trabajador lo vuelve a tomar. Un paquete sin intentos cae en la jaula de mensajes muertos, atrás a la derecha. Contadores en la cinta muestran el lag y cuánto lleva esperando el paquete más antiguo.",
+      "A sorting room on a base plate. At the back left a producer stands at a dock that drops numbered parcels onto the tail of one long roller conveyor, the partition; each parcel shows a customer letter, A to D, and that customer's version number. At the head, on the right, a worker takes the parcel at the front onto a desk and calls downstream. Downstream is the records ledger at the front of the room: one drawer per customer showing the version its record holds, a tab that lights when a record goes back to an older version, and counters for updates done and updates that arrived out of order. A status board on the ledger's right end reads OK, FLAKY or DOWN. A parcel that fails waits on the worker's desk while a backoff meter runs down, or goes onto the retry shelf in front of the conveyor, over a timer, where a second worker takes it again. A parcel out of attempts drops into the dead-letter cage at the back right. Counters on the conveyor show the lag and how long the oldest parcel has waited; when the line is longer than the conveyor, a tag at its tail counts the parcels not shown.",
+      "Una sala de clasificación sobre una placa base. Atrás a la izquierda, un productor está en un muelle que deja paquetes numerados al final de una sola cinta de rodillos larga, la partición; cada paquete muestra una letra de cliente, de la A a la D, y el número de versión de ese cliente. En la cabeza, a la derecha, un trabajador toma el paquete del frente, lo pone en su escritorio y llama al servicio de destino. El servicio de destino es el libro de registros al frente de la sala: un cajón por cliente con la versión que guarda su registro, una pestaña que se enciende cuando un registro vuelve a una versión más vieja, y contadores de actualizaciones hechas y de actualizaciones que llegaron fuera de orden. Un tablero en el extremo derecho del libro dice OK, INESTABLE o CAÍDO. Un paquete que falla espera en el escritorio del trabajador mientras baja un medidor de espera, o pasa al estante de reintentos delante de la cinta, sobre un temporizador, donde un segundo trabajador lo vuelve a tomar. Un paquete sin intentos cae en la jaula de mensajes muertos, atrás a la derecha. Contadores en la cinta muestran el lag y cuánto lleva esperando el paquete más antiguo; cuando la fila no cabe en la cinta, una etiqueta en su final cuenta los paquetes que no se ven.",
     ),
     body: [
       plate(),
@@ -238,8 +241,7 @@ export function buildFigure() {
       workerDesk(),
       `<g data-layer="back"></g>`,
       cageFront(),
-      pallet(),
-      `<g data-layer="pile"></g>`,
+      moreTag(),
       shelf(),
       retryWorker(),
       retryDesk(),
@@ -251,4 +253,4 @@ export function buildFigure() {
   });
 }
 
-export const GEOMETRY = { SLOT_X, LANE_Y, LANE_Z, SLOTS, PROD_SPOT, PILE, DESK_SPOT, RDESK_SPOT, CAGE_SPOTS, SHELF_X, SHELF_Y, SHELF_Z, DRAWER_SPOT, BOX };
+export const GEOMETRY = { SLOT_X, LANE_Y, LANE_Z, SLOTS, PROD_SPOT, DESK_SPOT, RDESK_SPOT, CAGE_SPOTS, SHELF_X, SHELF_Y, SHELF_Z, DRAWER_SPOT, BOX };
