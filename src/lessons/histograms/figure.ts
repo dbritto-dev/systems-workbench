@@ -28,7 +28,7 @@ export const RACKS = [
   { key: "C", x: -22, w: 48 },
   { key: "M", x: 32, w: 98 },
 ];
-export const TUBE_Y = FACE_Y - 6;               // tube centre line, near the front of each top, over its labels
+export const TUBE_Y = FACE_Y - 8.5;             // tube centre line: far enough back for each tube's label on the top in front of it
 export const TUBE = { host: { r: 1.9, h: 21, margin: 4.4 }, M: { r: 3.4, h: 25, margin: 6 } };
 const tubeSpec = (i) => (i === 3 ? TUBE.M : TUBE.host);
 // Tube centres along x for rack i and a bucket layout of n tubes.
@@ -115,20 +115,20 @@ function hostFace(i, first) {
   out.push(word(cx, FACE_Y, 8.4, "P99"), word(cx, FACE_Y, 4.6, "MS"));
   return out.join("");
 }
-// The merged rack's face: each tube's upper bound under it (per layout), and the rack's name.
+// The merged rack's top: each tube's upper bound printed in front of its own socket (per layout), the objective's
+// 300 ms edge framed; the rack's name on its face.
 function mergedFace() {
-  const r = RACKS[3], out = [];
+  const r = RACKS[3], out = [], y = FACE_Y - 1.3;
   for (const [layout, edges] of Object.entries(LAYOUTS)) {
     const xs = tubeXs(3, edges.length + 1);
     out.push(`<g data-labels="${layout}"${layout === "fine" ? "" : ' style="display:none"'}>`);
     [...edges.map(String), "+INF"].forEach((label, j) => {
-      const lit = edges[j] === SLO;
-      if (lit) out.push(litFill(S(k.slabOf({ x: xs[j] - 4.2, y: FACE_Y, w: 8.4, d: 0.6, r: 0.2 }, 8.6, 4.4, P, 2, 0.1), { tone: "hi", crease: "none", lit: true })));
-      out.push(word(xs[j], FACE_Y + (lit ? 0.6 : 0), 9.6, label, { anchor: "middle", tone: lit ? "on-lit" : "mid" }));
+      if (edges[j] === SLO) out.push(L(k.planOutline({ x: xs[j] - 4.4, y: y - 3.4, w: 8.8, d: 4.4, r: 0.5 }, CAB_H, P), { tone: "hi" }));
+      out.push(word(xs[j], y, CAB_H, label, { face: "top", anchor: "middle", tone: "hi" }));
     });
     out.push(`</g>`);
   }
-  out.push(word(r.x + 4, FACE_Y, 3.2, t("MERGED · ≤ MS", "COMBINADO · ≤ MS")));
+  out.push(word(r.x + 4, FACE_Y, 5.4, t("MERGED · TUBE EDGES ≤ MS", "COMBINADO · BORDES ≤ MS")));
   return out.join("");
 }
 
@@ -136,8 +136,8 @@ function mergedFace() {
 const DESK_WORDS = {
   avg: [t("AVG OF", "PROMEDIO"), t("P99s, MS", "DE P99, MS")],
   max: [t("MAX OF", "MÁXIMO"), t("P99s, MS", "DE P99, MS")],
-  est: [t("MERGED", "P99"), t("P99, MS", "COMBINADO")],
-  exact: [t("EXACT", "P99"), t("P99, MS", "EXACTO")],
+  est: [t("MERGED", "COMBINADO"), t("P99, MS", "P99, MS")],
+  exact: [t("EXACT", "EXACTO"), t("P99, MS", "P99, MS")],
   under: [t("UNDER", "BAJO"), t("300 MS, %", "300 MS, %")],
 };
 function desk(first) {
@@ -149,13 +149,16 @@ function desk(first) {
     const x = slotX(i) + c.dx;
     let end = x + span(c);
     if (key === "under") {
-      // whole percent on three wheels, a decimal point, then the tenths on their own wheel (as lesson 35's score wheels)
+      // whole percent on three wheels, a decimal point, then the tenths: one housing, the point inside it (as passwords)
       const tenths = Math.round(values.under), whole = { ...c, count: 3 };
-      out.push(digitCounter(P, { x, y: DESK_FACE, z: c.z, count: 3, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name: "under", value: Math.floor(tenths / 10) }));
-      const dotX = x + span(whole) + c.pad + 1.2;
-      out.push(D([at([dotX, DESK_FACE + 0.1, c.z + 0.4])], { size: 2.2, tone: "hi" }));
-      out.push(digitCounter(P, { x: dotX + 1.2 + c.pad, y: DESK_FACE, z: c.z, count: 1, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name: "under-f", value: tenths % 10 }));
-      end = dotX + 1.2 + c.pad + c.w;
+      const dotX = x + span(whole) + 1.1, fx = dotX + 1.1;
+      end = fx + c.w;
+      out.push(S(k.slabOf({ x: x - c.pad, y: DESK_FACE - 1.4, w: end - x + 2 * c.pad, d: 1.4, r: 0.5 }, c.z - c.pad, c.h + 2 * c.pad, P, 2), { tone: "hi", crease: "lo" }));
+      out.push(digitCounter(P, { x, y: DESK_FACE, z: c.z, count: 3, w: c.w, h: c.h, gap: c.gap, housing: false, name: "under", value: Math.floor(tenths / 10) }));
+      out.push(D([at([dotX, DESK_FACE + 0.1, c.z + 0.5])], { size: 1.3, tone: "hi" }));
+      out.push(digitCounter(P, { x: fx, y: DESK_FACE, z: c.z, count: 1, w: c.w, h: c.h, gap: c.gap, housing: false, name: "under-f", value: tenths % 10 }));
+      // "at least": with buckets that stop below 300 ms, the share under the top edge is all they can give
+      out.push(`<g data-atleast style="display:none">${word(x - c.pad - 1.2, DESK_FACE, c.z + 0.8, "≥", { size: 5, tone: "hi", anchor: "end" })}</g>`);
     } else out.push(digitCounter(P, { x, y: DESK_FACE, z: c.z, count: c.count, w: c.w, h: c.h, gap: c.gap, pad: c.pad, name: key, value: Math.min(9999, Math.round(values[key])) }));
     const cx = end + c.pad + 2;
     out.push(word(cx, DESK_FACE, 5.6, DESK_WORDS[key][0]), word(cx, DESK_FACE, 2.2, DESK_WORDS[key][1]));
@@ -187,8 +190,8 @@ export function buildFigure(first) {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A sorting room for request times on a base plate. Along the back stand three hosts, A, B and C, and a wider merged rack. Each host has a row of glass tubes on top, one per latency bucket, and finished requests drop into the tube for their time; the tube holding the host's 99th percentile is lit, and a counter on the host's front shows its p99 in milliseconds. Every scrape, a lit slip flies from each host to the merged rack, whose tubes hold the sum of all three, with each tube's upper bound printed under it. A desk in front shows five counters: the average and the largest of the three hosts' p99s, the p99 read off the merged tubes, the exact p99 of every request, and the share of requests under 300 milliseconds.",
-      "Una sala de clasificación de tiempos sobre una placa base. Al fondo hay tres hosts, A, B y C, y un estante combinado más ancho. Cada host tiene una fila de tubos de vidrio arriba, uno por bucket de latencia, y las solicitudes terminadas caen en el tubo de su tiempo; el tubo que contiene el percentil 99 del host está iluminado, y un contador en el frente del host muestra su p99 en milisegundos. En cada recolección, una ficha iluminada vuela de cada host al estante combinado, cuyos tubos tienen la suma de los tres, con el límite superior de cada tubo impreso debajo. Un escritorio adelante muestra cinco contadores: el promedio y el máximo de los p99 de los tres hosts, el p99 leído de los tubos combinados, el p99 exacto de todas las solicitudes y la proporción de solicitudes por debajo de 300 milisegundos.",
+      "A sorting room for request times on a base plate. Along the back stand three hosts, A, B and C, and a wider merged rack. Each host has a row of glass tubes on top, one per latency bucket, and finished requests drop into the tube for their time; the tube holding the host's 99th percentile is lit, and a counter on the host's front shows its p99 in milliseconds. Every scrape, a lit slip flies from each host to the merged rack, whose tubes hold the sum of all three, with each tube's upper bound printed on the top in front of it and the 300 millisecond edge framed. A desk in front shows five counters: the average and the largest of the three hosts' p99s, the p99 read off the merged tubes, the exact p99 of every request, and the share of requests under 300 milliseconds, with an at-least sign when the buckets stop below 300.",
+      "Una sala de clasificación de tiempos sobre una placa base. Al fondo hay tres hosts, A, B y C, y un estante combinado más ancho. Cada host tiene una fila de tubos de vidrio arriba, uno por bucket de latencia, y las solicitudes terminadas caen en el tubo de su tiempo; el tubo que contiene el percentil 99 del host está iluminado, y un contador en el frente del host muestra su p99 en milisegundos. En cada recolección, una ficha iluminada vuela de cada host al estante combinado, cuyos tubos tienen la suma de los tres, con el límite superior de cada tubo impreso arriba, delante de él, y el borde de 300 milisegundos enmarcado. Un escritorio adelante muestra cinco contadores: el promedio y el máximo de los p99 de los tres hosts, el p99 leído de los tubos combinados, el p99 exacto de todas las solicitudes y la proporción de solicitudes por debajo de 300 milisegundos, con un signo de «al menos» cuando los buckets terminan antes de 300.",
     ),
     body: [
       plate(),

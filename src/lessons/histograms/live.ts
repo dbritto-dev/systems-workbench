@@ -17,7 +17,7 @@ export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
   const say = (text) => root.figure.say(text);
   const stat = (key, value) => root.stat(key, value);
   const NS = "http://www.w3.org/2000/svg";
-  const chipsLayer = q('[data-layer="chips"]'), slipsLayer = q('[data-layer="slips"]');
+  const chipsLayer = q('[data-layer="chips"]'), slipsLayer = q('[data-layer="slips"]'), atLeastMark = q("[data-atleast]");
   const hostCounters = [0, 1, 2].map((i) => WB.counter(svg, "p99-" + i, P));
   const desk = Object.fromEntries(["avg", "max", "est", "exact", "under", "under-f"].map((n) => [n, WB.counter(svg, n, P)]));
   const NREF = RATE * WINDOW, FLIGHT = 1.6, FALL = 0.55, MAX_CHIPS = 36;
@@ -84,7 +84,10 @@ export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
     const tenths = Math.round(1000 * s.underBuckets);
     desk.under.setClamped(Math.floor(tenths / 10)); desk["under-f"].set(tenths % 10);
     stat("avg", ms(s.avg)); stat("max", ms(s.max)); stat("est", ms(s.est)); stat("exact", ms(s.exact));
-    stat("under", pc(s.underBuckets)); stat("underx", pc(s.underExact));
+    // buckets that stop below 300 ms can only say "at least the share under their top edge"
+    const atLeast = edges()[edges().length - 1] < SLO;
+    atLeastMark.style.display = atLeast ? "" : "none";
+    stat("under", (atLeast ? "≥ " : "") + pc(s.underBuckets)); stat("underx", pc(s.underExact));
   }
 
   // ---------- chips: one request in CHIP_EVERY drops into its tube ----------
