@@ -89,7 +89,7 @@ export function roving(group: HTMLElement, options: RovingOptions = {}): Roving 
 
   // ---------- the arrow-key hint ----------
   const hintKey = typeof hint === "string" ? hint : null;
-  let hintSeen = hint === false || (hintKey !== null && seenHints.has(hintKey));
+  let hintSeen = hint === false;
   let badge: HTMLElement | null = null, anchor: HTMLElement | null = null, timer: ReturnType<typeof setTimeout> | null = null;
   const place = () => {
     if (!badge || !anchor) return;
@@ -114,7 +114,8 @@ export function roving(group: HTMLElement, options: RovingOptions = {}): Roving 
     setTimeout(() => b.remove(), 200); // after the fade
   };
   const showHint = (at: HTMLElement) => {
-    if (hintSeen || !("showPopover" in HTMLElement.prototype)) return;
+    // A shared name is checked now, not when the group was set up: another group may have shown it since.
+    if (hintSeen || (hintKey !== null && seenHints.has(hintKey)) || !("showPopover" in HTMLElement.prototype)) return;
     if (items().filter((i) => !skip(i)).length < 2) return;
     hintSeen = true;
     if (hintKey !== null) seenHints.add(hintKey);
