@@ -3,11 +3,13 @@
 // line down the left side; twelve desk plots fill the floor (maxReplicas), and each desk that is open has one worker (a
 // pod) who serves one customer at a time, then the customer leaves through the exit stand on the right. A new worker
 // stands beside the desk with a clipboard until ready; a sent-home worker walks back to the staff room. Along the front:
-// the door counters (waiting, gave up), the autoscaler (its reading on a dial against the target, the next check, and
-// ready / starting / wanted counters) and the database (queries at once, how much slower each runs).
+// the door counters (waiting, gave up), the autoscaler, the HPA (its reading on a dial against the target, the next
+// check, and ready / starting / wanted counters) and the database (queries at once, how much slower each runs).
+// The workers are drawn once (page data) and placed at each desk by the live code: twelve copies of each pose would
+// double the page.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, person, figurine, dial, meter, faceText, lamp, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, person, figurine, dial, meter, faceText, litFill } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { MAX_R } from "./sim";
@@ -49,13 +51,13 @@ const FRONT_Y = 15, FRONT_D = 20, FRONT_H = 15;
 const DOOR = { x: -116, y: FRONT_Y, w: 54, d: FRONT_D, r: 2 };
 const CTRL = { x: -56, y: FRONT_Y, w: 90, d: FRONT_D, r: 2 };
 const DB = { x: 40, y: FRONT_Y, w: 76, d: FRONT_D, r: 2 };
-export const READ_DIAL = { x: CTRL.x + 14, y: CTRL.y + 10, r: 9.5, from: -0.75 * Math.PI, span: 1.5 * Math.PI };
+export const READ_DIAL = { x: CTRL.x + 14, y: CTRL.y + 9.5, r: 8.5, from: -0.75 * Math.PI, span: 1.5 * Math.PI };
 export const TARGETS = [0.6, 0.75, 0.9];
-// The target: a small wedge just outside the dial's rim, at the target's place on the scale.
+// The target: a small hollow wedge just outside the dial's rim, at the target's place on the scale.
 function targetMark(frac) {
-  const d = READ_DIAL, a = d.from + frac * d.span, w = 0.09;
+  const d = READ_DIAL, a = d.from + frac * d.span, w = 0.12;
   const pt = (ang, r) => [d.x + Math.sin(ang) * r, d.y - Math.cos(ang) * r];
-  return k.pathOf([pt(a, d.r - 1.6), pt(a - w, d.r + 2.2), pt(a + w, d.r + 2.2)].map(([x, y]) => k.iso([x, y, FRONT_H + 3.3], P)), true);
+  return k.pathOf([pt(a, d.r - 1.4), pt(a - w, d.r + 2.6), pt(a + w, d.r + 2.6)].map(([x, y]) => k.iso([x, y, FRONT_H + 3.3], P)), true);
 }
 export const CHECK_DIAL = { x: CTRL.x + 80, y: CTRL.y + 10, r: 6 };
 
@@ -74,7 +76,7 @@ function plate() {
 }
 
 // The line: a low lane with a rail along its back side and a footprint for each place; the gate at its back end
-// where customers come in.
+// where customers come in, its lintel carrying a "+N" for those waiting beyond the drawn places.
 function lane() {
   const out = [S(k.slabOf(LANE, 0, LANE_H, P, 3, 0.3), { tone: "lo", crease: "none" })];
   out.push(L(Array.from({ length: LINE_SLOTS }, (_, i) => { const [x, y] = LINE_AT(i); return k.ring(x, y, 2.6, LANE_H, P, 14); }).join(""), { tone: "faint" }));
@@ -85,8 +87,9 @@ function gate() {
   // two posts and a lintel across the back of the lane
   const y = LANE.y + 2;
   const out = [];
-  for (const x of [LANE.x + 1.5, LANE.x + LANE.w - 1.5]) out.push(S(k.slabOf({ x: x - 1.5, y: y - 1.5, w: 3, d: 3, r: 0.4 }, 0, 18, P, 2), { tone: "mid", crease: "none" }));
-  out.push(S(k.slabOf({ x: LANE.x, y: y - 2, w: LANE.w, d: 4, r: 0.6 }, 18, 3, P, 2), { tone: "hi", crease: "lo" }));
+  for (const x of [LANE.x + 1.5, LANE.x + LANE.w - 1.5]) out.push(S(k.slabOf({ x: x - 1.5, y: y - 1.5, w: 3, d: 3, r: 0.4 }, 0, 17, P, 2), { tone: "mid", crease: "none" }));
+  out.push(S(k.slabOf({ x: LANE.x, y: y - 2, w: LANE.w, d: 4, r: 0.6 }, 17, 6, P, 2), { tone: "hi", crease: "lo" }));
+  out.push(faceText(P, [LANE.x + LANE.w / 2, y + 2, 18.3], "", { size: 3.8, tone: "hi", anchor: "middle", attr: "data-more" }));
   return out.join("");
 }
 
@@ -116,18 +119,18 @@ function plot(i) {
   const s = SLOTS[i];
   return `<g data-plot="${i}">${L(k.planOutline({ x: s.cx - DESK.w / 2 - 2, y: s.y - DESK.d - 9, w: DESK.w + 4, d: DESK.d + 18, r: 1.5 }, 0, P), { tone: "faint", dashed: true })}</g>`;
 }
-function worker(i) {
-  const s = SLOTS[i];
-  const behind = WORKER_AT(s);
-  // the slip a worker holds while its request waits on the database (the same slip person() draws for holding: "slip")
-  const sc = WORKER_SCALE, [x, y] = behind;
-  const slip = S(k.slabOf({ x: x - 4.2 * sc, y: y + 4.6 * sc, w: 8.4 * sc, d: 0.5 * sc, r: 0.15 * sc }, 7 * sc, 7 * sc, P, 1, 0.2 * sc), { tone: "hi", crease: "lo" });
-  return `<g data-worker="${i}" style="display:none">${person(P, behind, { scale: sc })}<g data-slip="${i}" style="display:none">${slip}</g></g>`;
+// A desk's worker and its newcomer: empty groups the live code fills with the drawings below and moves into place.
+const worker = (i) => `<g data-worker="${i}" style="display:none"></g>`;
+const newcomer = (i) => `<g data-new="${i}" style="display:none"></g>`;
+// The worker behind a desk, drawn at the origin, with the slip it holds while its request waits on the database (the
+// same slip person() draws for holding: "slip").
+export function deskWorkerSvg() {
+  const sc = WORKER_SCALE;
+  const slip = S(k.slabOf({ x: -4.2 * sc, y: 4.6 * sc, w: 8.4 * sc, d: 0.5 * sc, r: 0.15 * sc }, 7 * sc, 7 * sc, P, 1, 0.2 * sc), { tone: "hi", crease: "lo" });
+  return `${person(P, [0, 0, 0], { scale: sc })}<g data-slip style="display:none">${slip}</g>`;
 }
-function newcomer(i) {
-  const s = SLOTS[i];
-  return `<g data-new="${i}" style="display:none">${person(P, SIDE_AT(s), { scale: WORKER_SCALE, holding: "clipboard" })}</g>`;
-}
+// A new worker with a clipboard, drawn at the origin.
+export const newcomerSvg = () => person(P, [0, 0, 0], { scale: WORKER_SCALE, holding: "clipboard" });
 function desk(i) {
   const s = SLOTS[i];
   const plan = { x: s.cx - DESK.w / 2, y: s.y - DESK.d, w: DESK.w, d: DESK.d, r: 1 };
@@ -152,23 +155,24 @@ function door() {
   return out.join("");
 }
 
-// The autoscaler: the reading on a dial against the target (the lit wedge), the time to the next check on a small dial,
-// a lamp that lights when it changes the count, and its counters.
+// The autoscaler, the HPA: the reading on a dial against the target (a hollow wedge), the time to the next check on a
+// small dial, and its counters.
 function controller() {
   const out = [S(k.slabOf(CTRL, 0, FRONT_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(CTRL, 2), FRONT_H, P), { tone: "faint" }));
   const d = READ_DIAL;
   out.push(dial(P, { x: d.x, y: d.y, z: FRONT_H, r: d.r, h: 3, ticks: 20, every: 5, from: d.from, span: d.span, name: "reading", value: 0.5 }));
   for (const frac of TARGETS) out.push(`<path class="as-target" data-target="${frac}"${frac === 0.6 ? "" : ' style="display:none"'} d="${targetMark(frac)}"/>`);
+  // the scale's ends: 0 at the front left, 100% at the front right
+  for (const [a, v, anchor] of [[d.from, "0", "end"], [d.from + d.span, "100%", "start"]]) out.push(faceText(P, [d.x + Math.sin(a) * (d.r + 3.2) + (anchor === "end" ? 0.8 : -0.8), d.y - Math.cos(a) * (d.r + 3.2) + 1.6, FRONT_H], v, { face: "top", size: CAP, tone: "hi", anchor }));
   out.push(dial(P, { x: CHECK_DIAL.x, y: CHECK_DIAL.y, z: FRONT_H, r: CHECK_DIAL.r, h: 3, ticks: 15, every: 5, name: "check", value: 0, knurl: false }));
   // words on the top, beside each dial
   out.push(`<g data-metric-word="cpu">${faceText(P, [d.x + 12, d.y + 2.6, FRONT_H], "CPU", { face: "top", size: CAP + 0.6, tone: "hi" })}</g>`);
   out.push(`<g data-metric-word="busy" style="display:none">${faceText(P, [d.x + 12, d.y + 2.6, FRONT_H], t("BUSY", "OCUPADO"), { face: "top", size: CAP + 0.6, tone: "hi" })}</g>`);
   out.push(faceText(P, [CHECK_DIAL.x - 10, CHECK_DIAL.y + 1.6, FRONT_H], t("CHECK", "REVISIÓN"), { face: "top", size: CAP, tone: "mid", anchor: "end" }));
-  out.push(`<g data-scale-lamp="off">${lamp(P, [CTRL.x + 47, CTRL.y + 10, FRONT_H], { r: 2.4 })}</g>`);
-  out.push(`<g data-scale-lamp="on" style="display:none">${litFill(lamp(P, [CTRL.x + 47, CTRL.y + 10, FRONT_H], { r: 2.4, lit: true }))}</g>`);
+  out.push(faceText(P, [CTRL.x + 47, CTRL.y + 7, FRONT_H], "HPA", { face: "top", size: CAP + 1.4, tone: "hi", anchor: "middle" }));
   const f = CTRL.y + CTRL.d;
-  const cols = [[CTRL.x + 5, "ready", t("READY", "LISTOS")], [CTRL.x + 35, "starting", t("STARTING", "ARRANCANDO")], [CTRL.x + 66, "wanted", t("WANTED", "PEDIDOS")]];
+  const cols = [[CTRL.x + 5, "ready", t("READY", "LISTOS")], [CTRL.x + 35, "starting", t("STARTING", "ARRANCANDO")], [CTRL.x + 66, "wanted", t("WANTED", "DESEADOS")]];
   for (const [x, name, words] of cols) {
     out.push(digitCounter(P, { x, y: f, z: 2.2, count: 2, w: 4.4, h: 5.8, gap: 0.7, pad: 1.2, name }));
     out.push(caption(x - 1.2, f, 11.4, words));
@@ -186,10 +190,16 @@ function database() {
   out.push(L(drawers.join(""), { tone: "lo" }));
   out.push(faceText(P, [DB.x + 21, DB.y + 11.6, FRONT_H], t("DATABASE", "BASE DE DATOS"), { face: "top", size: CAP + 0.4, tone: "hi", anchor: "middle" }));
   const f = DB.y + DB.d;
+  out.push(`<g data-db="on" style="display:none">`);
   out.push(digitCounter(P, { x: DB.x + 5, y: f, z: 2.2, count: 2, w: 4.4, h: 5.8, gap: 0.7, pad: 1.2, name: "queries" }));
   out.push(caption(DB.x + 3.8, f, 11.4, t("QUERIES", "CONSULTAS")));
   out.push(meter(P, { x: DB.x + 62, y: f, z: 2.2, r: 6.2, ticks: 7, zone: 0.5, name: "slow" }));
   out.push(caption(DB.x + 62, f, 11.4, t("SLOWER", "MÁS LENTA"), { anchor: "middle" }));
+  out.push(`</g><g data-db="off">`);
+  // with the workers' CPU as the bottleneck the requests make no queries: say so rather than show idle dials
+  out.push(caption(DB.x + 4, f, 8.2, t("NOT USED: THE BOTTLENECK", "SIN USO: EL CUELLO DE BOTELLA"), { tone: "hi" }));
+  out.push(caption(DB.x + 4, f, 3.6, t("IS THE WORKERS' CPU", "ES LA CPU DE LOS TRABAJADORES"), { tone: "hi" }));
+  out.push(`</g>`);
   return out.join("");
 }
 
@@ -211,8 +221,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A service floor with an autoscaler, on a base plate. Customers (requests) come in through a gate at the back left and wait in one line down the left side. Twelve desk plots fill the floor, the most workers the floor can hold; an open desk has one worker, a pod, who serves one customer at a time, and served customers leave through the exit stand on the right, which counts them. A new worker stands beside the desk with a clipboard until ready; a worker sent home walks back to the staff room at the back right. Along the front: the door counters for customers waiting and customers who gave up, the autoscaler with a dial showing the workers' average reading against a lit target mark, a small dial counting down to its next check and counters for ready, starting and wanted workers, and the database with a counter of queries running at once and a meter of how much slower each one runs.",
-      "Un piso de atención con un autoescalador, sobre una placa base. Los clientes (solicitudes) entran por una puerta atrás a la izquierda y esperan en una sola fila por el lado izquierdo. Doce lugares para escritorios llenan el piso, la mayor cantidad de trabajadores que cabe; un escritorio abierto tiene un trabajador, un pod, que atiende a un cliente a la vez, y los clientes atendidos salen por el puesto de salida de la derecha, que los cuenta. Un trabajador nuevo espera junto al escritorio con una tablilla hasta estar listo; un trabajador que se manda a casa vuelve caminando a la sala del personal, atrás a la derecha. Al frente: los contadores de la puerta para los clientes en espera y los que se rindieron, el autoescalador con un dial que muestra la lectura promedio de los trabajadores frente a una marca encendida del objetivo, un dial pequeño con la cuenta regresiva hasta su próxima revisión y contadores de trabajadores listos, arrancando y pedidos, y la base de datos con un contador de consultas al mismo tiempo y un medidor de cuánto más lenta corre cada una.",
+      "A service floor with an autoscaler, on a base plate. Customers (requests) come in through a gate at the back left and wait in one line down the left side. Twelve desk plots fill the floor, the most workers the floor can hold; an open desk has one worker, a pod, who serves one customer at a time, and served customers leave through the exit stand on the right, which counts them. A new worker stands beside the desk with a clipboard until ready; a worker sent home walks back to the staff room at the back right. Along the front: the door counters for customers waiting and customers who gave up, the autoscaler, marked HPA, with a dial from 0 to 100% showing the workers' average reading against a hollow target mark, a small dial counting down to its next check and counters for ready, starting and wanted workers, and the database with a counter of queries running at once and a meter of how much slower each one runs, or a note that it isn't used when the workers' CPU is the bottleneck. A tag on the gate's lintel counts the customers waiting beyond the drawn line.",
+      "Un piso de atención con un autoescalador, sobre una placa base. Los clientes (solicitudes) entran por una puerta atrás a la izquierda y esperan en una sola fila por el lado izquierdo. Doce lugares para escritorios llenan el piso, la mayor cantidad de trabajadores que cabe; un escritorio abierto tiene un trabajador, un pod, que atiende a un cliente a la vez, y los clientes atendidos salen por el puesto de salida de la derecha, que los cuenta. Un trabajador nuevo espera junto al escritorio con una tablilla hasta estar listo; un trabajador que se manda a casa vuelve caminando a la sala del personal, atrás a la derecha. Al frente: los contadores de la puerta para los clientes en espera y los que se rindieron, el autoescalador, marcado HPA, con un dial de 0 a 100% que muestra la lectura promedio de los trabajadores frente a una marca hueca del objetivo, un dial pequeño con la cuenta regresiva hasta su próxima revisión y contadores de trabajadores listos, arrancando y deseados, y la base de datos con un contador de consultas al mismo tiempo y un medidor de cuánto más lenta corre cada una, o una nota de que no se usa cuando el cuello de botella es la CPU de los trabajadores. Una etiqueta en el dintel de la puerta cuenta los clientes que esperan más allá de la fila dibujada.",
     ),
     body: [
       plate(),
@@ -230,12 +240,12 @@ export function buildFigure() {
 }
 
 export const FIGURE_CSS = `
-.as-target{fill:var(--anatomy-lit);stroke:var(--anatomy-lit);stroke-width:.6;stroke-linejoin:round}
+.as-target{fill:var(--anatomy-paper);stroke:var(--anatomy-hi);stroke-width:.8;stroke-linejoin:round}
 .iso-stage [data-layer] *{pointer-events:none}
 `;
 
 export const GEOMETRY = {
   SLOTS, WORKER: SLOTS.map(WORKER_AT), SIDE: SLOTS.map(SIDE_AT), SEAT: SLOTS.map(SEAT_AT), ROWS, DESK_D: DESK.d,
   LINE: Array.from({ length: LINE_SLOTS }, (_, i) => LINE_AT(i)), ENTRY: ENTRY_AT, EXIT_X: EXIT.x + 1, EXIT_Y: [EXIT.y + 4, EXIT.y + EXIT.d - 4],
-  STAFF: STAFF_AT, READ_DIAL, FRONT_H, SLOW_MAX,
+  STAFF: STAFF_AT, READ_DIAL, FRONT_H, SLOW_MAX, LINE_SLOTS,
 };

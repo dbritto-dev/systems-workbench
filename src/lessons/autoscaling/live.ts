@@ -4,11 +4,11 @@
 import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
-import { playPause, show } from "../../runtime/dom";
+import { playPause, show, setText } from "../../runtime/dom";
 import { lerp } from "../../lib/tween";
 import { makeFloor, SYNC, MAX_R } from "./sim";
 
-export default function mount({ P, G, CUST_SVG, WALKER_SVG }, root) {
+export default function mount({ P, G, CUST_SVG, WALKER_SVG, DESK_WORKER_SVG, NEWCOMER_SVG }, root) {
   const { stage, svg } = root.figure;
   const q = (s) => svg.querySelector(s);
   const qa = (s) => [...svg.querySelectorAll(s)];
@@ -24,9 +24,14 @@ export default function mount({ P, G, CUST_SVG, WALKER_SVG }, root) {
   const counters = Object.fromEntries(["waiting", "gaveup", "ready", "starting", "wanted", "queries", "served"].map((n) => [n, WB.counter(svg, n, P)]));
   const readDial = WB.dial(svg, "reading", P), checkDial = WB.dial(svg, "check", P), slowMeter = WB.meter(svg, "slow", P);
   const targets = qa("[data-target]"), words = qa("[data-metric-word]");
-  const lampOn = q('[data-scale-lamp="on"]'), lampOff = q('[data-scale-lamp="off"]');
   const gaveBox = q('[data-counter="gaveup"] .iso-solid');
-  const slips = idx.map((i) => q('[data-slip="' + i + '"]'));
+  const moreText = q("[data-more]"), dbOn = q('[data-db="on"]'), dbOff = q('[data-db="off"]');
+  // each desk's worker and newcomer: one drawing each, placed at the desk
+  idx.forEach((i) => {
+    workers[i].innerHTML = DESK_WORKER_SVG; workers[i].setAttribute("transform", translateAlong(P, G.WORKER[i]));
+    newcomers[i].innerHTML = NEWCOMER_SVG; newcomers[i].setAttribute("transform", translateAlong(P, G.SIDE[i]));
+  });
+  const slips = idx.map((i) => workers[i].querySelector("[data-slip]"));
   const poses = idx.map(() => "");
 
   // where a moving thing is drawn: behind the desks of the first row whose desks are not behind it
@@ -72,6 +77,7 @@ export default function mount({ P, G, CUST_SVG, WALKER_SVG }, root) {
     prevState = model.slots.map((p) => (p ? p.state : null));
     targets.forEach((el) => show(el, el.getAttribute("data-target") === String(Number(cfg.target))));
     words.forEach((el) => show(el, el.getAttribute("data-metric-word") === cfg.metric));
+    show(dbOn, cfg.db === "db"); show(dbOff, cfg.db !== "db");
     paint(0, true);
   }
 
@@ -86,11 +92,11 @@ export default function mount({ P, G, CUST_SVG, WALKER_SVG }, root) {
         lastScale = e.t;
         const m = L(metricName());
         note = { t: e.t, text: e.type === "up"
-          ? T("check: " + m + " " + pctOf(e.reading) + " vs target " + pctOf(Number(cfg.target)) + " → wants " + e.to + " (had " + e.from + ") · new ones start", "revisión: " + m + " " + pctOf(e.reading) + " vs objetivo " + pctOf(Number(cfg.target)) + " → pide " + e.to + " (había " + e.from + ") · los nuevos arrancan")
+          ? T("check: " + m + " " + pctOf(e.reading) + " vs target " + pctOf(Number(cfg.target)) + " → wants " + e.to + " (had " + e.from + ") · new ones start", "revisión: " + m + " " + pctOf(e.reading) + " vs objetivo " + pctOf(Number(cfg.target)) + " → desea " + e.to + " (había " + e.from + ") · los nuevos arrancan")
           : T("check: " + m + " " + pctOf(e.reading) + " → down to " + e.to + " (had " + e.from + ")", "revisión: " + m + " " + pctOf(e.reading) + " → baja a " + e.to + " (había " + e.from + ")") };
       }
       if (e.type === "check" && e.desired === e.was && e.reading < Number(cfg.target) * 0.9 && e.was > model.minAt(e.t) && Number(cfg.window) > 0 && (!note || e.t - note.t > 6)) {
-        note = { t: e.t, text: T("check: " + L(metricName()) + " " + pctOf(e.reading) + " · the window keeps " + e.was + " (most wanted in the last " + cfg.window + " s)", "revisión: " + L(metricName()) + " " + pctOf(e.reading) + " · la ventana mantiene " + e.was + " (lo más pedido en los últimos " + cfg.window + " s)") };
+        note = { t: e.t, text: T("check: " + L(metricName()) + " " + pctOf(e.reading) + " · the window keeps " + e.was + " (most wanted in the last " + cfg.window + " s)", "revisión: " + L(metricName()) + " " + pctOf(e.reading) + " · la ventana mantiene " + e.was + " (el máximo deseado en los últimos " + cfg.window + " s)") };
       }
       if (e.type === "spike") note = { t: e.t, text: T("spike: " + e.rate + " customers a second for " + e.secs / 60 + " minutes", "pico: " + e.rate + " clientes por segundo durante " + e.secs / 60 + " minutos") };
     }
@@ -112,8 +118,9 @@ export default function mount({ P, G, CUST_SVG, WALKER_SVG }, root) {
     scanLog();
     const now = performance.now();
     for (const r of recs.values()) r.seen = false;
-    // the line: the first LINE slots
+    // the line: the first LINE slots, and "+N" on the gate for the rest
     const line = model.line;
+    setText(moreText, line.length > G.LINE.length ? "+" + (line.length - G.LINE.length) : "");
     for (let i = 0; i < Math.min(line.length, G.LINE.length); i++) {
       const c = line[i];
       place("c" + c.id, "cust", G.LINE[i], false, clock - c.born < 1.5 && !snap);
@@ -185,8 +192,6 @@ export default function mount({ P, G, CUST_SVG, WALKER_SVG }, root) {
     const reading = n ? sum / n : 0;
     readDial.set(reading);
     checkDial.set(Math.max(0, Math.min(1, (model.nextCheck - clock) / SYNC)));
-    const lit = clock - lastScale < 2.5;
-    show(lampOn, lit); show(lampOff, !lit);
     const out = clock - lastGaveUp < 2;
     if (gaveBox) { gaveBox.toggleAttribute("data-lit", out); gaveBox.toggleAttribute("data-lit-fill", out); }
     const st = model.st;
@@ -234,7 +239,8 @@ export default function mount({ P, G, CUST_SVG, WALKER_SVG }, root) {
   root.on("watch", (w) => {
     for (const name of ["traffic", "startup", "target", "window", "min", "metric", "db"]) set(name, w[name], true);
     set("speed", String(w.speed || 1));
-    restart(w.traffic === "bursts" ? 100 : 45);
+    // start inside the action: 15 s into the spike, or 10 s into a lull of the swings, so the outcome shows within seconds
+    restart(w.traffic === "bursts" ? 130 : 75);
     if (loop.paused) loop.setPaused(false);
   });
 

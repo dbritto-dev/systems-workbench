@@ -4,7 +4,7 @@ import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { n0, one, pct } from "../../lib/format";
 import { LIT_FILL_CSS } from "../../../workbench/parts.mjs";
-import { buildFigure, customerSvg, walkerSvg, P, GEOMETRY, FIGURE_CSS } from "./figure";
+import { buildFigure, customerSvg, walkerSvg, deskWorkerSvg, newcomerSvg, P, GEOMETRY, FIGURE_CSS } from "./figure";
 import { startupRun, targetRun, flapRun, floorRun, dbRun, SPIKE, FLOOR, DBRUN, PATIENCE, SYNC, READ_WINDOW, MAX_R, SEEDS, KNEE } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (twelve seeds each).
@@ -136,7 +136,7 @@ const EXPERIMENTS = [
       "A lull reads about a third of what the burst did, far outside the tolerance, so with no window the autoscaler sends workers home at the next check; the next burst then lands on a few workers and waits a start-up for the rest. That's flapping: capacity always a step behind, and every new pod pays its start-up again (and cold caches, new connections). The scale-down stabilization window makes it scale down only to the highest recommendation of the last 5 minutes, so a 2-minute lull doesn't shrink the floor. That's why Kubernetes stabilizes scale-down for 300 s by default but scale-up not at all. The price here is " + more(RESULTS.flap.w300.podMin, RESULTS.flap.w0.podMin) + " more pod-minutes. Make the window longer than the gaps between your bursts, or limit how fast it may scale down (behavior policies, e.g. one pod a minute).",
       "Una calma lee cerca de un tercio de lo que leía la ráfaga, muy fuera de la tolerancia, así que sin ventana el autoescalador manda trabajadores a casa en la siguiente revisión; la próxima ráfaga cae sobre pocos trabajadores y espera un arranque por el resto. Eso es oscilar (flapping): la capacidad siempre va un paso atrás, y cada pod nuevo vuelve a pagar su arranque (y cachés en frío, conexiones nuevas). La ventana de estabilización de la reducción hace que solo reduzca hasta la recomendación más alta de los últimos 5 minutos, así que una calma de 2 minutos no achica el piso. Por eso Kubernetes estabiliza la reducción 300 s por defecto y el aumento nada. El precio aquí es " + more(RESULTS.flap.w300.podMin, RESULTS.flap.w0.podMin) + " más de minutos de pod. Haz la ventana más larga que las pausas entre tus ráfagas, o limita qué tan rápido puede reducir (las políticas de behavior, por ejemplo un pod por minuto).",
     ),
-    watch: { traffic: "bursts", startup: "45", target: "0.6", window: "0", min: "2", metric: "cpu", db: "app", speed: 3 },
+    watch: { traffic: "bursts", startup: "45", target: "0.6", window: "0", min: "2", metric: "cpu", db: "app", speed: 8 },
   },
   {
     id: "floor",
@@ -206,13 +206,13 @@ export default defineLesson({
     plate: {
       title: t("Service floor", "Piso de atención"),
       keys: [
-        { mark: "lit", label: t("A customer who gave up; the target mark on the autoscaler's dial; its lamp when it changes the count", "Un cliente que se rindió; la marca del objetivo en el dial del autoescalador; su lámpara cuando cambia la cantidad") },
+        { mark: "lit", label: t("A customer who gives up, and the GAVE UP counter as it counts them", "Un cliente que se rinde, y el contador ABANDONOS cuando lo cuenta") },
         { mark: "raised", label: t("Workers (pods): behind the desk when ready, beside it with a clipboard while starting", "Trabajadores (pods): detrás del escritorio cuando están listos, al lado con una tablilla mientras arrancan") },
         { mark: "flat", label: t("Desk plots: " + MAX_R + " places, the most workers the floor holds (maxReplicas)", "Lugares para escritorios: " + MAX_R + ", la mayor cantidad de trabajadores que cabe (maxReplicas)") },
       ],
       caption: t(
-        "Customers (requests) come in through the gate at the back left and wait in the line; one who has waited " + PATIENCE + " s gives up, lights and counts under GAVE UP (an error). Each open desk has one worker, who serves one customer at a time: a request is 1 s of CPU (0.5 to 1.5 s), so a worker serves about one a second. Served customers leave through the exit stand on the right. The meter on each desk is that worker's reading. The autoscaler's dial shows the workers' average reading over the last " + READ_WINDOW + " s against the lit target mark; the small dial counts down to the next check, every " + SYNC + " s. At a check it wants ceil(workers × reading ÷ target), within a 10% tolerance; scale-up at most doubles the count (or adds 4), and scale-down goes only as low as the highest count wanted during the window. A new worker stands beside its desk with a clipboard until ready; one sent home finishes its customer and walks back to the staff room. A worker can't use more CPU than it requested, so its reading tops out at 100%. With the database as the bottleneck, a request is 0.25 s of CPU and then a query, during which the worker holds a slip; the database meter shows how much slower each query runs with that many at once. Rates and times are illustrative and round.",
-        "Los clientes (solicitudes) entran por la puerta de atrás a la izquierda y esperan en la fila; quien ya esperó " + PATIENCE + " s se rinde, se enciende y cuenta en ABANDONOS (un error). Cada escritorio abierto tiene un trabajador, que atiende a un cliente a la vez: una solicitud es 1 s de CPU (de 0.5 a 1.5 s), así que un trabajador atiende cerca de una por segundo. Los clientes atendidos salen por el puesto de salida de la derecha. El medidor de cada escritorio es la lectura de ese trabajador. El dial del autoescalador muestra la lectura promedio de los trabajadores en los últimos " + READ_WINDOW + " s frente a la marca encendida del objetivo; el dial pequeño cuenta hasta la próxima revisión, cada " + SYNC + " s. En una revisión quiere ceil(trabajadores × lectura ÷ objetivo), con una tolerancia de 10%; un aumento como mucho duplica la cantidad (o suma 4), y una reducción solo baja hasta la cantidad más alta pedida durante la ventana. Un trabajador nuevo espera junto a su escritorio con una tablilla hasta estar listo; uno que se manda a casa termina con su cliente y vuelve caminando a la sala del personal. Un trabajador no puede usar más CPU de la que solicitó, así que su lectura llega como mucho a 100%. Con la base de datos como cuello de botella, una solicitud es 0.25 s de CPU y después una consulta, durante la cual el trabajador sostiene una papeleta; el medidor de la base de datos muestra cuánto más lenta corre cada consulta con tantas a la vez. Las tasas y los tiempos son ilustrativos y redondos.",
+        "Customers (requests) come in through the gate at the back left and wait in the line; one who has waited " + PATIENCE + " s gives up and counts under GAVE UP (an error). Each open desk has one worker, a pod, who serves one customer at a time, about one a second; the meter on the desk is that worker's reading. The autoscaler, the HPA, shows the workers' average reading over the last " + READ_WINDOW + " s against the target mark; the small dial counts down to the next check, every " + SYNC + " s. At a check it wants ceil(workers × reading ÷ target), and scales down only as low as the most it wanted during the window. A new worker stands beside its desk with a clipboard until ready; one sent home walks back to the staff room. With the database as the bottleneck, a worker holds a slip while its query runs.",
+        "Los clientes (solicitudes) entran por la puerta de atrás a la izquierda y esperan en la fila; quien ya esperó " + PATIENCE + " s se rinde y cuenta en ABANDONOS (un error). Cada escritorio abierto tiene un trabajador, un pod, que atiende a un cliente a la vez, cerca de uno por segundo; el medidor del escritorio es su lectura. El autoescalador, el HPA, muestra la lectura promedio de los trabajadores en los últimos " + READ_WINDOW + " s frente a la marca del objetivo; el dial pequeño cuenta hasta la próxima revisión, cada " + SYNC + " s. En una revisión desea ceil(trabajadores × lectura ÷ objetivo), y solo reduce hasta lo máximo que deseó durante la ventana. Un trabajador nuevo espera junto a su escritorio con una tablilla hasta estar listo; uno que se manda a casa vuelve a la sala del personal. Con la base de datos como cuello de botella, el trabajador sostiene una papeleta mientras corre su consulta.",
       ),
       stage: { "data-floor": "" },
       label: t("Autoscaling simulation. Space pauses or resumes.", "Simulación de autoescalado. Espacio pausa o reanuda."),
@@ -220,7 +220,7 @@ export default defineLesson({
     svg: buildFigure(),
     stats: [
       ["pods", t("Workers ready / starting", "Trabajadores listos / arrancando")],
-      ["wanted", t("Wanted", "Pedidos")],
+      ["wanted", t("Wanted", "Deseados")],
       ["reading", t("Reading", "Lectura")],
       ["waiting", t("Waiting", "En espera")],
       ["gaveup", t("Gave up", "Abandonos")],
@@ -237,8 +237,8 @@ export default defineLesson({
       { speed: true },
       { actions: [["spike", t("Spike now", "Pico ahora"), { primary: true }], ["reset", t("Start over", "Empezar de nuevo")], ["pause", t("Pause", "Pausa")]], label: t("Do something", "Haz algo") },
     ],
-    note: t("Spike now sends 7 a second (5 with the database as the bottleneck) for 3 minutes. The Spikes setting sends the same for 4 minutes in every 12; Daily wave goes from 3 to 7 a second and back over 12 minutes. Changing a setting starts the run again.",
-      "Pico ahora manda 7 por segundo (5 con la base de datos como cuello de botella) durante 3 minutos. El ajuste Picos manda lo mismo durante 4 minutos de cada 12; Ola diaria va de 3 a 7 por segundo y vuelve en 12 minutos. Cambiar un ajuste reinicia la ejecución."),
+    note: t("Spike now sends 7 a second (5 with the database as the bottleneck) for 3 minutes. The Spikes setting sends the same for 4 minutes in every 12; Daily wave goes from 3 to 7 a second and back over 12 minutes. Changing a setting starts the run again. A request is 1 s of CPU (0.5 to 1.5 s). The HPA leaves the count alone within a 10% tolerance, and a scale-up at most doubles it (or adds 4). A worker can't use more CPU than it requested, so its reading tops out at 100%. With the database as the bottleneck, a request is 0.25 s of CPU and then a query; the database meter shows how much slower each query runs with that many at once. Rates and times are illustrative and round.",
+      "Pico ahora manda 7 por segundo (5 con la base de datos como cuello de botella) durante 3 minutos. El ajuste Picos manda lo mismo durante 4 minutos de cada 12; Ola diaria va de 3 a 7 por segundo y vuelve en 12 minutos. Cambiar un ajuste reinicia la ejecución. Una solicitud es 1 s de CPU (de 0.5 a 1.5 s). El HPA no cambia la cantidad dentro de una tolerancia de 10%, y un aumento como mucho la duplica (o suma 4). Un trabajador no puede usar más CPU de la que solicitó, así que su lectura llega como mucho a 100%. Con la base de datos como cuello de botella, una solicitud es 0.25 s de CPU y después una consulta; el medidor de la base de datos muestra cuánto más lenta corre cada consulta con tantas a la vez. Las tasas y los tiempos son ilustrativos y redondos."),
   },
   predict: { intro: t("Each experiment changes one thing. Choose what you expect <em>before</em> running it. Results come from the same model as the machine, averaged over " + SEEDS.length + " seeded runs.", "Cada experimento cambia una sola cosa. Elige lo que esperas <em>antes</em> de ejecutarlo. Los resultados salen del mismo modelo que la máquina, promediados sobre " + SEEDS.length + " ejecuciones con semilla fija."), experiments: withResults(EXPERIMENTS, RUNS) },
   explain: { questions: QUESTIONS },
@@ -251,5 +251,7 @@ ${LIT_FILL_CSS}
     G: GEOMETRY,
     CUST_SVG: customerSvg(),
     WALKER_SVG: walkerSvg(),
+    DESK_WORKER_SVG: deskWorkerSvg(),
+    NEWCOMER_SVG: newcomerSvg(),
   },
 });
