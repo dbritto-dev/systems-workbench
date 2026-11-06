@@ -104,7 +104,8 @@ listeners of their own:
   shows on screen with a live role isn't announced again, and nothing present at load is announced. An owner from
   `announcer({ replace: true })` withdraws its previous message if it hasn't been read yet (result counts).
 - **Roving focus** (`runtime/roving.ts`), for a composite control only (radiogroup, segmented control, tablist,
-  toolbar); independent controls (chips, a row of buttons) stay one Tab stop each. One Tab stop: the selected member
+  toolbar, single-choice chips like the collection's area filters); independent controls (multi-select chips, a
+  row of unrelated buttons) stay one Tab stop each. One Tab stop: the selected member
   (`current`), else the first enabled one. ← → follow the rendered direction (swapped under RTL, checked at key time)
   and wrap, ↑ ↓ with `orientation: "vertical"`, Home and End; disabled and hidden members are skipped. `select` makes
   selection follow focus; Tab-in never changes the value. A caller's keydown on a member runs first and can
