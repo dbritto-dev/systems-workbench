@@ -33,9 +33,11 @@ export const SLOTS = 8;
 export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => QD.x + QD.w - 10 - i * 13.6);
 export const RACK_Z = QD_H + 0.6;
 export const QUEUE_IN = [QD.x + 8, RACK_Y, QD_H + 1];   // where the sender's envelopes land (the back of the line)
-// The hidden row behind the line: envelopes out to a worker that crashed wait here until their timeout runs out.
+// The hidden row behind the line: envelopes out to a worker that crashed wait here, dimmed, until their timeout runs
+// out; its groove carries the word HIDDEN at its left end.
 export const HIDE_Y = QD.y + 6;
 export const HIDE_X = Array.from({ length: 4 }, (_, i) => QD.x + QD.w - 10 - i * 13.6);
+const HIDE_GROOVE = { x0: QD.x + 4, x1: HIDE_X[0] + 7 };
 
 // The ledger, back right: an open book and the dedupe table's index box.
 const LG = { x: 44, y: -104, w: 82, d: 42, r: 2 };
@@ -104,14 +106,16 @@ function queue() {
   // the rack: a groove the envelopes stand in, and a mark under each place in the line
   out.push(S(k.slabOf({ x: QD.x + 2, y: RACK_Y - 2.2, w: QD.w - 4, d: 4.4, r: 0.6 }, QD_H, 0.8, P, 2), { tone: "lo", crease: "none" }));
   out.push(L(SLOT_X.map((x) => k.lineOnTop([x, RACK_Y + 3.4], [x, RACK_Y + 6.6], QD_H, P)).join(""), { tone: "mid" }));
-  out.push(S(k.slabOf({ x: HIDE_X[3] - 7, y: HIDE_Y - 2, w: HIDE_X[0] - HIDE_X[3] + 14, d: 4, r: 0.6 }, QD_H, 0.6, P, 2), { tone: "lo", crease: "none" }));
+  out.push(S(k.slabOf({ x: HIDE_GROOVE.x0, y: HIDE_Y - 2, w: HIDE_GROOVE.x1 - HIDE_GROOVE.x0, d: 4, r: 0.6 }, QD_H, 0.6, P, 2), { tone: "lo", crease: "none" }));
+  out.push(faceText(P, [HIDE_GROOVE.x0 + 2, HIDE_Y + 1.5, QD_H + 0.6], t("HIDDEN →", "OCULTOS →"), { face: "top", size: 3, tone: "hi" }));
   const z1 = 9.4, z2 = 19.4;
   out.push(text(QD.x + 4, QD_FRONT, z2, t("QUEUE", "COLA"), TITLE));
   out.push(text(QD.x + QD.w - 4, QD_FRONT, z2, t("FRONT OF THE LINE →", "FRENTE DE LA FILA →"), LABEL, { anchor: "end" }));
   out.push(counter({ x: QD.x + 4, y: QD_FRONT, z: z1, count: 2, name: "waiting" }));
   out.push(text(QD.x + 17.2, QD_FRONT, z1 + 1.6, t("WAITING", "EN ESPERA"), LABEL));
   out.push(counter({ x: QD.x + 37.4, y: QD_FRONT, z: z1, count: 3, name: "again" }));
-  out.push(text(QD.x + 56, QD_FRONT, z1 + 1.6, t("DELIVERED AGAIN", "REENTREGADOS"), LABEL));
+  out.push(text(QD.x + 56, QD_FRONT, z1 + 3.6, t("ORDERS", "PEDIDOS"), LABEL));
+  out.push(text(QD.x + 56, QD_FRONT, z1 - 0.4, t("DELIVERED AGAIN", "REENTREGADOS"), LABEL));
   out.push(counter({ x: QD.x + 90, y: QD_FRONT, z: z1, count: 2, name: "lost" }));
   out.push(text(QD.x + 103.2, QD_FRONT, z1 + 1.6, t("LOST", "PERDIDOS"), LABEL));
   return out.join("");
@@ -148,7 +152,7 @@ function indexBox() {
   const front = IDX.y + IDX.d;
   out.push(counter({ x: IDX.x + 2.6, y: front, z: LG_H + 1.4, count: 3, w: 4.2, h: 5.4, pad: 0.9, name: "seen" }));
   out.push(text(IDX.x + 18, front, LG_H + 2.8, t("SEEN", "VISTOS"), LABEL));
-  for (const [key, words] of [["off", t("NO DEDUPE", "SIN DEDUPE")], ["msg", t("MSG IDS", "IDS MENSAJE")], ["order", t("ORDER IDS", "IDS PEDIDO")]]) {
+  for (const [key, words] of [["off", t("NO DEDUPE", "SIN DEDUPLICAR")], ["msg", t("MSG IDS", "IDS MENSAJE")], ["order", t("ORDER IDS", "IDS PEDIDO")]]) {
     out.push(`<g data-dedupe-plaque="${key}"${key === "off" ? "" : ' style="display:none"'}>${faceText(P, [IDX.x + IDX.w / 2, IDX.y + 17, top], words, { face: "top", size: 3.6, tone: "hi", anchor: "middle" })}</g>`);
   }
   return out.join("");
@@ -180,6 +184,18 @@ function worker(i) {
   }, "run");
 }
 
+// The workers' ack rule: a plaque on the base in front of the desks (one wording per ack mode, the live code shows one).
+const ACK_PLATE = { x: DX[0] - DESK.w / 2, y: DESK_FRONT + 4, w: DX[2] - DX[0] + DESK.w, d: 9 };
+function ackPlaque() {
+  const out = [S(k.slabOf({ ...ACK_PLATE, r: 0.8 }, 0, 0.8, P, 3, 0.3), { tone: "hi", crease: "lo" })];
+  out.push(L(k.planOutline(k.insetPlan({ ...ACK_PLATE, r: 0.8 }, 0.9), 0.8, P), { tone: "faint" }));
+  const words = { first: t("ACK ON RECEIPT, THEN THE WORK", "ACK AL RECIBIR, DESPUÉS EL TRABAJO"), after: t("ACK AFTER THE LEDGER", "ACK DESPUÉS DEL LIBRO"), txn: t("LEDGER AND ACK: ONE TRANSACTION", "LIBRO Y ACK: UNA TRANSACCIÓN") };
+  for (const [key, w] of Object.entries(words)) {
+    out.push(`<g data-ack-plaque="${key}"${key === "after" ? "" : ' style="display:none"'}>${faceText(P, [ACK_PLATE.x + ACK_PLATE.w / 2, ACK_PLATE.y + ACK_PLATE.d / 2 + 1.4, 0.8], w, { face: "top", size: 3.8, tone: "hi", anchor: "middle" })}</g>`);
+  }
+  return out.join("");
+}
+
 // ---------- the mail service ----------
 function mail() {
   const out = [S(k.slabOf(PO, 0, PO_H, P, 3, 0.6), { tone: "mid" })];
@@ -189,7 +205,7 @@ function mail() {
   out.push(L(SENT_X.map((x) => k.lineOnTop([x, SENT_Y + 3.4], [x, SENT_Y + 6.6], PO_H, P)).join(""), { tone: "mid" }));
   // the key check: a plate on the top that says whether the service checks idempotency keys
   out.push(S(k.slabOf({ ...KEY_PLATE, r: 0.8 }, PO_H, 0.8, P, 3, 0.3), { tone: "hi", crease: "lo" }));
-  for (const [key, words] of [["off", t("NO KEY CHECK", "SIN CLAVE")], ["on", t("KEY CHECK", "REVISA CLAVE")]]) {
+  for (const [key, words] of [["off", t("NO KEY CHECK", "NO REVISA CLAVE")], ["on", t("KEY CHECK", "REVISA CLAVE")]]) {
     out.push(`<g data-key-plaque="${key}"${key === "off" ? "" : ' style="display:none"'}>${faceText(P, [KEY_PLATE.x + KEY_PLATE.w / 2, KEY_PLATE.y + KEY_PLATE.d / 2 + 1.2, PO_H + 0.8], words, { face: "top", size: 3.8, tone: "hi", anchor: "middle" })}</g>`);
   }
   // the tray where repeats with a known key are dropped
@@ -206,7 +222,8 @@ function mail() {
 }
 
 // ---------- moving things, drawn at the origin and moved with translateAlong ----------
-// An envelope: order number on top, message id below. Lit when its visibility timeout ran out while a worker still has it.
+// An envelope: order number on top, message id below. Lit when its visibility timeout ran out while a worker still has it;
+// dimmed (the live code) while it waits in the hidden row.
 export function envelopeSvg() {
   return `<g class="wb-lit-group" data-env>${card(P, { x: -5.5, y: 0.3, z: 0, w: 11, h: 8.8, text: "#0", sub: "m0", size: 3.4, subSize: 3, attr: "data-env-o", subAttr: "data-env-m" })}</g>`;
 }
@@ -224,8 +241,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A mail-order room on a base plate. At the back left, the sender sends each order as an envelope to the queue; a counter on the sender's booth shows how many it sent again because the queue's reply never came. At the back middle, the queue's rack holds the envelopes waiting in line, the front of the line on the right; counters show how many wait, how many orders were delivered again and how many were lost. At the front left, workers A, B and C take the envelope at the front of the line to their desks. A dial on each desk shows how much of that envelope's visibility timeout is left; the envelope lights when the timeout has run out while the worker still has it, because the queue then hands it to someone else too. A plate on each desk says what the worker is doing. At the back right, the ledger, an open book, counts the orders written in it and those written twice; an index box on it holds the dedupe table. At the front right, the mail service keeps the latest letters sent to customers on its rack, the second copy of a letter lit, and counts letters sent, letters sent twice and repeats it dropped by their idempotency key.",
-      "Una sala de pedidos por correo sobre una placa base. Al fondo a la izquierda, el remitente envía cada pedido como un sobre a la cola; un contador en su puesto muestra cuántos reenvió porque nunca llegó la respuesta de la cola. Al fondo en el medio, el estante de la cola tiene los sobres esperando en fila, con el frente de la fila a la derecha; unos contadores muestran cuántos esperan, cuántos pedidos se entregaron de nuevo y cuántos se perdieron. Adelante a la izquierda, los trabajadores A, B y C llevan el sobre del frente de la fila a sus escritorios. Un dial en cada escritorio muestra cuánto le queda al tiempo de invisibilidad de ese sobre; el sobre se enciende cuando ese tiempo venció y el trabajador todavía lo tiene, porque entonces la cola también se lo da a otro. Una placa en cada escritorio dice qué hace el trabajador. Al fondo a la derecha, el libro, un libro abierto, cuenta los pedidos escritos y los escritos dos veces; una caja de fichas encima guarda la tabla de deduplicación. Adelante a la derecha, el servicio de correo tiene en su estante las últimas cartas enviadas a los clientes, con la segunda copia de una carta encendida, y cuenta las cartas enviadas, las enviadas dos veces y las repeticiones que descartó por su clave de idempotencia.",
+      "A mail-order room on a base plate. At the back left, the sender sends each order as an envelope to the queue; a counter on the sender's booth shows how many it sent again because the queue's reply never came. At the back middle, the queue's rack holds the envelopes waiting in line, the front of the line on the right; counters show how many wait, how many orders were delivered again and how many were lost. Behind the line, a hidden row holds, dimmed, the envelopes of workers that crashed. At the front left, workers A, B and C take the envelope at the front of the line to their desks, and a plaque on the base in front of the desks says when they ack. A dial on each desk shows how much of that envelope's visibility timeout is left; the envelope lights when the timeout has run out while the worker still has it, because the queue then hands it to someone else too. A plate on each desk says what the worker is doing. At the back right, the ledger, an open book, counts the orders written in it and those written twice; an index box on it holds the dedupe table. At the front right, the mail service keeps the latest letters sent to customers on its rack, the second copy of a letter lit, and counts letters sent, letters sent twice and repeats it dropped by their idempotency key.",
+      "Una sala de pedidos por correo sobre una placa base. Al fondo a la izquierda, el remitente envía cada pedido como un sobre a la cola; un contador en su puesto muestra cuántos reenvió porque nunca llegó la respuesta de la cola. Al fondo en el medio, el estante de la cola tiene los sobres esperando en fila, con el frente de la fila a la derecha; unos contadores muestran cuántos esperan, cuántos pedidos se entregaron de nuevo y cuántos se perdieron. Detrás de la fila, una hilera oculta guarda, atenuados, los sobres de los trabajadores que se cayeron. Adelante a la izquierda, los trabajadores A, B y C llevan el sobre del frente de la fila a sus escritorios, y una placa sobre la base delante de los escritorios dice cuándo hacen el ack. Un dial en cada escritorio muestra cuánto le queda al tiempo de invisibilidad de ese sobre; el sobre se enciende cuando ese tiempo venció y el trabajador todavía lo tiene, porque entonces la cola también se lo da a otro. Una placa en cada escritorio dice qué hace el trabajador. Al fondo a la derecha, el libro, un libro abierto, cuenta los pedidos escritos y los escritos dos veces; una caja de fichas encima guarda la tabla de deduplicación. Adelante a la derecha, el servicio de correo tiene en su estante las últimas cartas enviadas a los clientes, con la segunda copia de una carta encendida, y cuenta las cartas enviadas, las enviadas dos veces y las repeticiones que descartó por su clave de idempotencia.",
     ),
     body: [
       plate(),
@@ -236,6 +253,7 @@ export function buildFigure() {
       indexBox(),
       DX.map((_, i) => worker(i)).join(""),
       DX.map((_, i) => desk(i)).join(""),
+      ackPlaque(),
       `<g data-layer="desk"></g>`,
       mail(),
       `<g data-layer="sent"></g>`,

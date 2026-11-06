@@ -109,7 +109,7 @@ export function makeSim(cfgIn = {}, seed = 1) {
     if (m.acked || m.lastRecv !== recv || m.visibleAt > t + 1e-9) return;
     inflight.delete(m);
     visible.unshift(m);
-    say(t, "shown", { m, held: !!m.holder });
+    say(t, "shown", { m, held: !!m.holder, holder: m.holder ? m.holder.i : -1 });   // who still has it, as of now
     dispatch(t);
   }
 
