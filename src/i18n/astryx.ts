@@ -10,7 +10,11 @@ export const ASTRYX_OVERRIDES: Record<string, Record<string, string>> = {
 
     // collection
 
-    // chrome
+    // chrome: TopNav ("Navegación superior"), Link ("(se abre en una pestaña nueva)"), the SegmentedControl's keyboard
+    // hint ("para navegar") read fine. Astryx's es-ES has no names for the hint's arrow keys, so they fell back to
+    // English (inside the aria-hidden hint, but still English on a Spanish page).
+    "@astryx.kbd.key.left": "Flecha izquierda",
+    "@astryx.kbd.key.right": "Flecha derecha",
 
     // shared
     "@astryx.listInput.reorderInstructions":

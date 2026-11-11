@@ -1,13 +1,17 @@
 ---
-// The language links (EN / ES) and the theme switch (Auto / Light / Dark), on every page.
-// - Language: part of the URL, so each is a link to this page in that language, the current one marked
-//   aria-current="page" (Astryx's TopNavItem). In a page's top navigation they are a labelled group; on their own
-//   they are a <nav> landmark (nav={false|true}).
-// - Theme: a one-of-N segmented control (Astryx's SegmentedControl): role="radiogroup" of role="radio" buttons, one
-//   Tab stop, ← → / Home / End move and select, the "← → to navigate" hint once (elements/site-switches.ts). The
-//   choice is remembered in this browser. Auto is checked in the HTML (no stored choice: the page follows the
-//   device); markTheme, inlined right after the markup, checks the stored one before the first paint.
+// The language links (EN / ES) and the theme switch (Auto / Light / Dark), on every page, built from astryx-astro
+// components (behaviour: elements/site-switches.ts; look: styles/switches.css).
+// - Language: part of the URL, so each is an Astryx Link to this page in that language, the current one marked
+//   aria-current="page". In a page's top navigation they are a labelled group; on their own they are a <nav>
+//   landmark (nav={false|true}).
+// - Theme: an Astryx SegmentedControl: role="radiogroup" of role="radio" buttons, one Tab stop, ← → / Home / End move
+//   and select, the "← → to navigate" hint once. The choice is remembered in this browser. Auto is selected in the
+//   HTML (no stored choice: the page follows the device); markTheme, inlined right after the markup, selects the
+//   stored one before the first paint, writing the same attributes the SegmentedControl renders.
 import { getRelativeLocaleUrl } from "astro:i18n";
+import Link from "astryx-astro/components/Link/Link.astro";
+import SegmentedControl from "astryx-astro/components/SegmentedControl/SegmentedControl.astro";
+import SegmentedControlItem from "astryx-astro/components/SegmentedControl/SegmentedControlItem.astro";
 import { LOCALES, type Locale } from "../i18n";
 import { useUi } from "../i18n/ui";
 import "../styles/switches.css";
@@ -27,16 +31,14 @@ const Lang = nav ? "nav" : "div";
 const choices = [["auto", "Auto"], ["light", ui("theme.light")], ["dark", ui("theme.dark")]] as const;
 ---
 <site-switches class="switches" data-size={size}>
-  <Lang class="sw-group sw-lang" role={nav ? undefined : "group"} aria-label={ui("lang.label")}>
+  <Lang class="sw-lang" role={nav ? undefined : "group"} aria-label={ui("lang.label")}>
     {LOCALES.map((l) => (
-      <a class="ux-hit" href={getRelativeLocaleUrl(l, path)} hreflang={l} lang={l} aria-current={l === locale ? "page" : undefined} data-lang-link={l}>{l.toUpperCase()}</a>
+      <Link class="ux-hit" href={getRelativeLocaleUrl(l, path)} hreflang={l} lang={l} aria-current={l === locale ? "page" : undefined} data-lang-link={l} color="inherit" type="inherit">{l.toUpperCase()}</Link>
     ))}
   </Lang>
-  <div class="sw-group sw-theme" role="radiogroup" aria-label={ui("theme.label")}>
-    {choices.map(([value, label]) => (
-      <button type="button" class="ux-hit" role="radio" aria-checked={String(value === "auto")} data-theme-choice={value}>{label}</button>
-    ))}
-  </div>
+  <SegmentedControl class="sw-theme" label={ui("theme.label")} value="auto" size={size}>
+    {choices.map(([value, label]) => <SegmentedControlItem class="ux-hit" value={value} label={label} />)}
+  </SegmentedControl>
 </site-switches>
 <script is:inline set:html={`(${markTheme})(document.currentScript.previousElementSibling)`} />
 <script>

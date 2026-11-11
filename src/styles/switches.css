@@ -1,18 +1,21 @@
-/* The site switches (components/Switches.astro): the language links and the theme radiogroup share one look, small
-   mono segments with the current one filled in ink. Behaviour follows Astryx (src/lessons/README.md, "UX
-   foundation"): hover paints only on a hover-capable pointer and never on the current segment; a press tints an
-   unselected segment at once and fades out on release; the focus ring is ux.css's, drawn above the neighbours.
-   Two sizes: sm (28px, lesson pages) and md (32px, the collection page). */
+/* The site switches (components/Switches.astro): the language Links and the theme SegmentedControl share one look,
+   small mono segments in a row, edges touching, with the current one filled in ink. The components bring the
+   behaviour: hover paints only on a hover-capable pointer and never on the current segment; a press tints an
+   unselected segment (Astryx's pressed overlay, --color-overlay-pressed); the focus ring is ux.css's, drawn above the
+   neighbours. What this file sets is particular to the switches (the bordered, touching segments, their sizes and
+   type), so it lives here rather than in the theme. Two sizes: sm (28px, lesson pages) and md (32px, the collection
+   page). */
 .switches {
   --sw-edge: var(--edge, var(--anatomy-lo));
   --sw-ink: var(--ink, var(--anatomy-strong));
   --sw-plate: var(--plate, var(--anatomy-card));
   --sw-text: var(--anatomy-muted);
-  --sw-press: color-mix(in srgb, var(--sw-ink) 12%, transparent);
   --sw-height: var(--ux-size-sm);
   --sw-pad: 5px 10px;
   --sw-font: 500 11px/1.2 var(--mono, var(--anatomy-mono));
   --sw-tracking: 0.06em;
+  /* Hover shows as an ink edge and ink text, not a fill (our look); the press keeps Astryx's overlay. */
+  --color-overlay-hover: transparent;
   display: flex;
   gap: 10px 20px;
   flex-wrap: wrap;
@@ -26,60 +29,64 @@
   --sw-tracking: 0.04em;
   column-gap: 10px;
 }
-.switches .sw-group {
+.switches .sw-lang {
   display: flex;
 }
-.switches .sw-group > :is(a, button) {
+/* The theme control: no track of its own (Astryx paints a grey one with 2px padding); the segments draw the edges. */
+.switches .astryx-segmented-control {
+  gap: 0;
+  padding: 0;
+  background-color: transparent;
+}
+.switches :is(.sw-lang > .astryx-link, .astryx-segmented-control-item) {
   /* On a coarse pointer the tappable area grows toward 44px above and below (.ux-hit), by at most half the 10px gap
      to a wrapped row or the top navigation's other row; the segments touch side by side, so not sideways. */
   --ux-hit-gap-block: 5px;
-  appearance: none;
   position: relative;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  height: auto;
   min-height: var(--sw-height);
   margin: 0;
   padding: var(--sw-pad);
   border: 1px solid var(--sw-edge);
   border-radius: 0;
-  background: transparent;
+  box-shadow: none;
   color: var(--sw-text);
   font: var(--sw-font);
   letter-spacing: var(--sw-tracking);
   text-decoration: none;
-  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  /* The press fades out on release (the press itself shows at once, below). */
-  transition: background-color var(--ux-duration-exit) var(--ux-ease-exit);
 }
-.switches .sw-group > :is(a, button) + :is(a, button) {
+.switches :is(.sw-lang > .astryx-link, .astryx-segmented-control-item) + :is(.astryx-link, .astryx-segmented-control-item) {
   margin-inline-start: -1px;
 }
-/* The current segment: an ink fill (the language link with aria-current, the checked theme). It shows no hover or
-   press paint: a persistent selection wins. */
-.switches .sw-group > :is(a[aria-current="page"], button[aria-checked="true"]) {
+/* The current segment: an ink fill (the language link with aria-current, the selected theme). It shows no hover or
+   press paint: a persistent selection wins. The SegmentedControl's sliding lens copies this paint. */
+.switches :is(.sw-lang > .astryx-link[aria-current="page"], .astryx-segmented-control-item[data-selected="selected"]) {
   z-index: 1;
-  background: var(--sw-ink);
+  background-color: var(--sw-ink);
   border-color: var(--sw-ink);
   color: var(--sw-plate);
+}
+.switches .astryx-segmented-control-item[data-selected="selected"] {
   cursor: default;
 }
-.switches .sw-group > a[aria-current="page"] {
-  cursor: pointer;
-}
 @media (hover: hover) {
-  .switches .sw-group > :is(a:not([aria-current="page"]), button:not([aria-checked="true"])):where(:not([aria-disabled="true"])):hover {
+  .switches :is(.sw-lang > .astryx-link:not([aria-current="page"]), .astryx-segmented-control-item:not([data-selected="selected"])):where(:not([aria-disabled="true"])):hover {
     z-index: 2;
     border-color: var(--anatomy-hi);
     color: var(--sw-ink);
+    text-decoration: none;
   }
 }
-.switches .sw-group > :is(a:not([aria-current="page"]), button:not([aria-checked="true"])):where(:not([aria-disabled="true"])):is(:active, [data-pressed]) {
-  background-color: var(--sw-press);
-  transition-duration: 0s;
+/* A press on the current language link (it still navigates, to this page) keeps the ink fill. */
+.switches .sw-lang > .astryx-link[aria-current="page"]:active {
+  background-color: var(--sw-ink);
 }
 /* The ring is drawn above both neighbours, so the segments' shared edges don't cover it. */
-.switches .sw-group > :focus-visible {
+.switches :is(.sw-lang > .astryx-link, .astryx-segmented-control-item):focus-visible {
   z-index: 3;
 }
 /* Without JavaScript the theme can't change, so the theme switch isn't shown (the page follows the device). */
@@ -88,9 +95,10 @@
     display: none;
   }
 }
-/* Forced colours: the current segment is the system's selection colour. */
+/* Forced colours: the current segment is the system's selection colour, as Astryx does for the SegmentedControl (our
+   ink fill above would otherwise win over its rule). */
 @media (forced-colors: active) {
-  .switches .sw-group > :is(a[aria-current="page"], button[aria-checked="true"]) {
+  .switches :is(.sw-lang > .astryx-link[aria-current="page"], .astryx-segmented-control-item[data-selected="selected"]) {
     forced-color-adjust: none;
     background: Highlight;
     border-color: Highlight;

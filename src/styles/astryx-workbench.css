@@ -110,5 +110,25 @@
   /* ---------- Dialog ---------- */
 
   /* ---------- TopNav, Link ---------- */
+
+  /* ---------- Keyboard hint (SegmentedControl, TabList, Toolbar) ---------- */
+  /* "← → to navigate": a card plate with a hairline edge, square, small mono text; keys boxed in the same edge. */
+  .ax-keyboard-hint {
+    padding: 4px 8px;
+    border: 1px solid var(--color-border-emphasized);
+    box-shadow: none;
+    font: 500 11px/1.4 var(--font-family-code);
+    letter-spacing: 0.04em;
+    color: var(--anatomy-muted);
+  }
+  .ax-keyboard-hint .astryx-kbd > kbd {
+    min-width: 18px;
+    height: auto;
+    padding: 0 3px;
+    border: 1px solid var(--color-border-emphasized);
+    background-color: transparent;
+    font: inherit;
+    color: var(--color-text-primary);
+  }
 }
 }
