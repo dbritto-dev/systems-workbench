@@ -45,10 +45,6 @@ body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body
 .tools{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:center}
 /* The "/" hint shows only while the box is empty, unfocused and holds no filter, and not on a phone (no keyboard). */
 .tools .search-kbd:is(.astryx-power-search:focus-within *, .astryx-power-search:has(.astryx-token) *, .astryx-power-search:has(input:not(:placeholder-shown)) *){display:none}
-/* One ring: the theme rings the search box (and the token editor's text boxes) while their text entry has focus, and
-   a token's box while its button has it (Astryx paints those on the container). ux.css's ring is unlayered, so it would also ring the input and the
-   token's button themselves; unlayered rules are the only ones that can turn it off there. */
-.astryx-power-search :is(.ax-input :is(input,textarea),.ax-token-action):focus-visible{outline-style:none}
 .status{min-height:18px;margin:8px 0 14px;font:500 11px/1.6 var(--mono);letter-spacing:.04em;color:var(--muted)}
 
 /* The area chips: a SegmentedControl laid out as a strip of touching bordered chips, scrolling sideways when they

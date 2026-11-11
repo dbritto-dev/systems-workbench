@@ -52,16 +52,21 @@
 /* ---------- focus ring ---------- */
 /* One ring for every focusable thing, on :focus-visible only, written as longhands so a variant can change a part
    without wiping the rest. Zero specificity: a component that paints the ring elsewhere (a wrapper around a hidden
-   input) turns it off on the child with outline-style: none and draws it with the same tokens. */
-:where(:focus-visible) {
-  outline-width: var(--ux-focus-width);
-  outline-style: var(--ux-focus-style);
-  outline-color: var(--ux-focus-color);
-  outline-offset: var(--ux-focus-offset);
-}
-/* The error variant: a destructive action, or a field with an error, rings in the error colour. */
-:where([data-ux-ring="error"], [aria-invalid="true"]) {
-  --ux-focus-color: var(--ux-focus-color-error);
+   input) turns it off on the child with outline-style: none and draws it with the same tokens.
+   It sits in the workbench-base layer (styles/layers.css), below astryx-astro's components: they draw their own ring
+   (the theme gives it these tokens), sometimes on a container rather than the focused element (a text field, a
+   token's remove button), and a global ring on top of theirs would draw two. */
+@layer workbench-base {
+  :where(:focus-visible) {
+    outline-width: var(--ux-focus-width);
+    outline-style: var(--ux-focus-style);
+    outline-color: var(--ux-focus-color);
+    outline-offset: var(--ux-focus-offset);
+  }
+  /* The error variant: a destructive action, or a field with an error, rings in the error colour. */
+  :where([data-ux-ring="error"], [aria-invalid="true"]) {
+    --ux-focus-color: var(--ux-focus-color-error);
+  }
 }
 /* The modality gate (runtime/modality.ts, Astryx's data-astryx-modality): after a pointer press or a screen reader's
    click, a programmatic focus shows no ring, except on a text field, where the ring shows where typing goes. A
