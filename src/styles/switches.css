@@ -3,7 +3,8 @@
    behaviour: hover paints only on a hover-capable pointer and never on the current segment; a press tints an
    unselected segment (Astryx's pressed overlay, --color-overlay-pressed); the focus ring is ux.css's, drawn above the
    neighbours. What this file sets is particular to the switches (the bordered, touching segments, their sizes and
-   type), so it lives here rather than in the theme. Two sizes: sm (28px, lesson pages) and md (32px, the collection
+   type), so it lives here rather than in the theme; the theme control's lack of a track and its joined segments are
+   every SegmentedControl's (styles/astryx-workbench.css). Two sizes: sm (28px, lesson pages) and md (32px, the collection
    page). */
 .switches {
   --sw-edge: var(--edge, var(--anatomy-lo));
@@ -31,12 +32,6 @@
 }
 .switches .sw-lang {
   display: flex;
-}
-/* The theme control: no track of its own (Astryx paints a grey one with 2px padding); the segments draw the edges. */
-.switches .astryx-segmented-control {
-  gap: 0;
-  padding: 0;
-  background-color: transparent;
 }
 .switches :is(.sw-lang > .astryx-link, .astryx-segmented-control-item) {
   /* On a coarse pointer the tappable area grows toward 44px above and below (.ux-hit), by at most half the 10px gap
