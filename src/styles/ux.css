@@ -63,9 +63,10 @@
 :where([data-ux-ring="error"], [aria-invalid="true"]) {
   --ux-focus-color: var(--ux-focus-color-error);
 }
-/* The modality gate (runtime/modality.ts): after a pointer press, a programmatic focus shows no ring, except on a
-   text field, where the ring shows where typing goes. A keydown switches back before focus moves. */
-:root[data-ux-modality="pointer"] :focus-visible:not(textarea, [contenteditable]:not([contenteditable="false"]), input:not([type="button" i], [type="submit" i], [type="reset" i], [type="checkbox" i], [type="radio" i], [type="range" i], [type="color" i], [type="file" i], [type="image" i])) {
+/* The modality gate (runtime/modality.ts, Astryx's data-astryx-modality): after a pointer press or a screen reader's
+   click, a programmatic focus shows no ring, except on a text field, where the ring shows where typing goes. A
+   keydown switches back before focus moves. */
+:root:not([data-astryx-modality="keyboard"]) :focus-visible:not(textarea, [contenteditable]:not([contenteditable="false"]), input:not([type="button" i], [type="submit" i], [type="reset" i], [type="checkbox" i], [type="radio" i], [type="range" i], [type="color" i], [type="file" i], [type="image" i])) {
   outline-style: none !important;
 }
 

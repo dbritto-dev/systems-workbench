@@ -1,9 +1,10 @@
 ---
 // Every page: document head (title, description, language alternates), the theme set before first paint,
 // old ?lang= links sent to the right language's URL, and the UX foundation: styles/ux.css (focus ring, motion,
-// disabled, target sizes) and the input modality on <html data-ux-modality>, heard from the first key or tap
-// (runtime/modality.ts, inlined in the head). With skipTo, a "Skip to content" link to that id is the first Tab stop
-// (styles/chrome.css).
+// disabled, target sizes) and the input modality on <html data-astryx-modality>, Astryx's, heard from the first key or
+// tap (runtime/modality.ts: startModality, inlined in the head, starts the tracker Astryx's components share). With
+// skipTo, a "Skip to content" link to that id is the first Tab stop (styles/chrome.css). It is ours: Astryx draws one
+// only inside AppShell, which would take over the page's frame.
 // Fonts: the faces a page draws above the fold are preloaded, so the first paint already uses them instead of
 // swapping from the fallback (a swap shifts text sideways): headings 600, text 400, and the mono weights the page
 // names (lessons label in 400 and 500; the collection only in 500).
@@ -26,7 +27,7 @@ import "../styles/fonts.css";
 import "../styles/ux.css";
 import "../styles/chrome.css";
 import { useUi } from "../i18n/ui";
-import { trackModality } from "../runtime/modality";
+import { startModality } from "../runtime/modality";
 
 interface Props {
   locale: Locale;
@@ -47,7 +48,7 @@ const ui = useUi(locale);
 const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
 ---
 <!doctype html>
-<html lang={locale} data-lang={locale} data-astryx-theme="workbench" data-ux-modality="keyboard">
+<html lang={locale} data-lang={locale} data-astryx-theme="workbench" data-astryx-modality="keyboard">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -74,7 +75,7 @@ const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
         } catch (e) {}
       })();
     </script>
-    <script is:inline set:html={`(${trackModality})(document.documentElement)`} />
+    <script is:inline set:html={`(${startModality})(document)`} />
     <slot name="head" />
   </head>
   <body class={bodyClass}>

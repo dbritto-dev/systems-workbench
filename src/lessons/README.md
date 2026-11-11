@@ -71,7 +71,7 @@ until one is picked, and the verdict is said through `announce()`.
 | Kit geometry in the browser (`iso`, `pathOf`, `translateAlong`, `depthOf`, …) | `workbench/vendor-anatomy/kit/iso-kit.mjs` (tree-shaken) |
 | Bilingual text | `t(en, es)` from `src/i18n` |
 | Focus ring, motion timings, target sizes, disabled look (CSS) | the `--ux-*` tokens and rules in `src/styles/ux.css` (on every page; see "UX foundation") |
-| Did the last input come from the keyboard or a pointer? | `modality()`, `showsFocusRing(el)`, `isTextEntry(el)` from `src/runtime/modality` (`<html data-ux-modality>`) |
+| Did the last input come from the keyboard or a pointer? | `modality()`, `showsFocusRing(el)`, `isTextEntry(el)` from `src/runtime/modality` (Astryx's `<html data-astryx-modality>`) |
 | Tell a screen reader something changed | `announce(text, "polite" \| "assertive")`, `announcer({ replace })`, `clearAnnouncements()` from `src/runtime/announce` |
 | One Tab stop and arrow keys for a group or toolbar, with the "← → to navigate" hint | `roving(group, { items, orientation, wrap, current, select, skip, hint })` from `src/runtime/roving` |
 
@@ -90,10 +90,11 @@ listeners of their own:
   One focus move shows one ring: a wrapper that paints the ring for a hidden input uses
   `:has(> input:focus-visible)` (not `:focus-within`) and sets `outline-style: none` on the input. Inside a box that
   clips (`overflow`), draw the ring inside instead (`outline-offset: calc(-1 * var(--ux-focus-width))`).
-- **Modality** (`runtime/modality.ts`): `<html data-ux-modality="keyboard|pointer">`, rendered as `keyboard` and kept
-  by a script in the head (pointerdown → pointer; a keydown without Meta, Alt or Ctrl → keyboard). After a pointer
-  press `ux.css` hides the ring on a programmatic focus (focus returned to a trigger, a dialog's first control), except
-  on text fields. A ring painted some other way checks `:root:not([data-ux-modality="pointer"])`, or
+- **Modality** (`runtime/modality.ts`): Astryx's `<html data-astryx-modality="keyboard|pointer|virtual">`, rendered as
+  `keyboard` and kept by one tracker that the head starts before the first paint and astryx-astro's components share
+  (pointerdown → pointer; a keydown without Meta, Alt or Ctrl → keyboard; a screen reader's click → virtual). Unless
+  it is keyboard, `ux.css` hides the ring on a programmatic focus (focus returned to a trigger, a dialog's first
+  control), except on text fields. A ring painted some other way checks `:root[data-astryx-modality="keyboard"]`, or
   `showsFocusRing(el)` in script.
 - **Motion** (`ux.css`): `--ux-duration-fast` (175ms; hover, press, colour), `-medium` (410ms; entrances, exits, a
   fill), `-slow` (975ms; continuous movement), each with `-min` / `-max`, and `--ux-duration-exit`; easings
