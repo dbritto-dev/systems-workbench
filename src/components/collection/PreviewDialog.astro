@@ -1,9 +1,15 @@
 ---
 // A closer look at a lesson without leaving the collection: the machine large, the lede, the five experiments.
+// Astryx's Dialog (a native modal <dialog>, src/elements/dialog.ts in astryx-astro): the page behind is inert, Tab
+// stays inside, Escape or a press that starts and ends on the backdrop closes it, focus moves to its title when it
+// opens and goes back to the Preview button that opened it (with the ring only after keyboard input), and
+// announcements are read from inside it. The title is a DialogHeader title (it names the dialog); the lede describes
+// it. Close is a native close invoker, so it works before any script runs.
 // <lesson-preview> (src/elements/lesson-preview.ts) fills it in from the search index, fetched the first time a
-// preview opens. A native modal <dialog> (Astryx's Dialog): named by its title and described by the lede, focus moves
-// in when it opens, Escape or a press on the backdrop closes it, focus goes back to the button that opened it, and
-// while it is open announcements are read from inside it (runtime/announce.ts).
+// preview opens, and then opens it through the Dialog element's show().
+import Dialog from "astryx-astro/components/Dialog/Dialog.astro";
+import DialogHeader from "astryx-astro/components/Dialog/DialogHeader.astro";
+import Button from "astryx-astro/components/Button/Button.astro";
 import { useUi } from "../../i18n/ui";
 import type { Locale } from "../../i18n";
 
@@ -12,18 +18,18 @@ const { locale, index } = Astro.props;
 const ui = useUi(locale);
 ---
 <lesson-preview index={index} locale={locale}>
-<dialog id="preview" aria-labelledby="dlg-title" aria-describedby="dlg-lede">
-  <div class="dlg">
-    <div class="dlg-shot"><span class="plate-corner tl" data-d="no"></span><span class="plate-corner tr" data-d="machine"></span><img class="on-light" data-d="light" alt="" /><img class="on-dark" data-d="dark" alt="" /></div>
-    <div class="dlg-text">
-      <div class="meta"><span data-d="area"></span><span data-d="concept"></span></div>
-      <h2 id="dlg-title" data-d="title"></h2>
-      <p id="dlg-lede" data-d="lede"></p>
-      <ol data-d="exps"></ol>
-      <div class="dlg-actions"><span class="counts" data-d="counts"></span><span class="card-actions"><button type="button" class="btn" data-close>{ui("dialog.close")}</button><a class="btn primary" data-d="url">{ui("card.open")}</a></span></div>
+  <Dialog id="preview" class="preview" width={1040} maxHeight="calc(100dvh - 32px)" padding={0} aria-describedby="dlg-lede">
+    <div class="dlg">
+      <div class="dlg-shot"><span class="plate-corner tl" data-d="no"></span><span class="plate-corner tr" data-d="machine"></span><img class="on-light" data-d="light" alt="" /><img class="on-dark" data-d="dark" alt="" /></div>
+      <div class="dlg-text">
+        <div class="meta"><span data-d="area"></span><span data-d="concept"></span></div>
+        <DialogHeader class="dlg-head" padding={0} locale={locale}><span slot="title" data-d="title"></span></DialogHeader>
+        <p id="dlg-lede" data-d="lede"></p>
+        <ol data-d="exps"></ol>
+        <div class="dlg-actions"><span class="counts" data-d="counts"></span><span class="card-actions"><Button label={ui("dialog.close")} data-ax-dialog-close="" /><Button label={ui("card.open")} variant="primary" href="#" data-d="url" /></span></div>
+      </div>
     </div>
-  </div>
-</dialog>
+  </Dialog>
 </lesson-preview>
 <script>
   import "../../elements/lesson-preview";
