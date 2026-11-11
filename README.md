@@ -104,7 +104,9 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 82 | [CSRF & SameSite](https://dbritto-dev.github.io/systems-workbench/lessons/csrf/) | Security | Bank street | The browser sends a site's cookies whoever asked, so another site can forge a signed-in request. SameSite, tokens and origin checks close it. |
 | 83 | [SQL Injection](https://dbritto-dev.github.io/systems-workbench/lessons/injection/) | Security | Records room | Paste input into SQL and a quote can end the data and start code. Parameters, an allowlist and a narrow account stop it. |
 
-The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and deployed to
+The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and
+[astryx-astro](https://dbritto-dev.github.io/astryx-astro/) (Meta's Astryx design system ported to Astro) in our own
+"workbench" theme, and deployed to
 GitHub Pages: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
 links forward to the new URLs.
 
@@ -134,11 +136,15 @@ src/
                             header, machine, experiments, questions, related lessons, footer)
   components/               Switches, PowerSearch, lesson/ (FigurePlate, Panel, Experiments, Questions),
                             collection/ (cards, toolbar, preview dialog)
+  middleware.ts             tells astryx-astro's components the theme and our Spanish strings (i18n/astryx.ts)
   pages/[...lang]/          the collection and the lesson pages, once per language
   pages/workbench/          the parts gallery
   pages/search-index.json.ts  every lesson's text in both languages, for search
   styles/                   ux (focus ring, motion, targets, disabled: the --ux-* tokens), chrome (skip link, lesson
-                            top navigation, related lessons, links), collection, lesson additions, switches
+                            top navigation, related lessons, links), collection, lesson additions, switches,
+                            astryx-workbench (the Astryx theme: its tokens on our palette and type, square corners),
+                            layers (the CSS layer order: astryx-astro's reset, our tag defaults, its components, the
+                            theme; our class rules unlayered on top)
 workbench/                  the drawing layer the figures build on: the Anatomy kit (vendored), shared parts,
                             digits, the lesson stylesheet (served as virtual:workbench.css)
 ```
@@ -157,7 +163,9 @@ Built on Astro's own features rather than custom code wherever Astro has one: co
 i18n routing and `astro:i18n` URL helpers, `astro:assets` (images), the Fonts API (Montserrat, Source Sans 3 and
 Inconsolata, self-hosted from `@fontsource` packages), bundled `<script>` modules and
 `import.meta.glob` (shared and per-lesson chunks), `prefetch` (lesson pages load on hover), `redirects` (old URLs)
-and `@astrojs/sitemap` (both languages).
+and `@astrojs/sitemap` (both languages). Components come from astryx-astro (a pinned GitHub dependency): import
+each by path (`astryx-astro/components/Button/Button.astro`), not from the package index, so a page ships only the
+CSS of the components it uses.
 
 ## Working on it
 

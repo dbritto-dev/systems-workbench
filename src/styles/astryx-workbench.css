@@ -1,0 +1,114 @@
+/* The "workbench" Astryx theme: astryx-astro's components (node_modules/astryx-astro) drawn in our look. Base.astro
+   loads astryx-astro's stylesheet (reset, tokens, shared rules) and this file, and puts data-astryx-theme="workbench"
+   on <html>; src/middleware.ts tells the server components the theme's name.
+
+   It is written the way `astryx theme build` writes a theme (generated themes: astryx-astro/src/styles/themes/*.css):
+   everything in the astryx-theme layer, scoped to the theme's root and stopping at a nested theme. Our own CSS is
+   unlayered and always wins over it; the components' own rules (astryx-base) lose to it.
+
+   The tokens point at our palette (the Anatomy kit's --anatomy-* colours, built in workbench/styles.mjs) instead of
+   holding colours of their own, so light and dark follow the palette, which follows data-theme on <html> like
+   Astryx's light-dark() does. The palette is declared on :root on the collection and on body.iso on lessons, so the
+   tokens are declared on both (as styles/ux.css does for the focus ring): each resolves against the palette in use.
+
+   Our look, in token terms: ink (--anatomy-strong) is the accent, so a selected segment or a primary button is
+   ink-filled with card-coloured text; greys come from the palette; Montserrat for headings, Source Sans 3 for text,
+   Inconsolata for code, labels and controls; square corners (every radius 0 but "full", which stays round for dots
+   and spinners); the focus ring is ux.css's: 2px of ink, 3px outside. Status text keeps Astryx's colours, which are
+   tuned for AA contrast; the status fills use the palette's red, green and blue.
+
+   Component rules (below the tokens) only change the look where a token can't: our controls use the mono face in
+   small caps sizes. One section per component, so areas edit apart. */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-theme {
+@scope ([data-astryx-theme="workbench"]) to ([data-astryx-theme]) {
+  :scope, .iso {
+    /* Type */
+    --font-family-body: var(--font-body);
+    --font-family-heading: var(--font-heading);
+    --font-family-code: var(--font-mono);
+
+    /* Surfaces */
+    --color-background-body: var(--anatomy-page);
+    --color-background-surface: var(--anatomy-card);
+    --color-background-card: var(--anatomy-card);
+    --color-background-popover: var(--anatomy-card);
+    --color-background-muted: var(--anatomy-page);
+    --color-background-inverted: var(--anatomy-strong);
+
+    /* Ink as the accent */
+    --color-accent: var(--anatomy-strong);
+    --color-accent-muted: color-mix(in srgb, var(--anatomy-strong) 14%, transparent);
+    --color-on-accent: var(--anatomy-card);
+    --color-text-accent: var(--anatomy-strong);
+    --color-icon-accent: var(--anatomy-strong);
+
+    /* Text and icons: primary is the strong ink, secondary the body text, disabled the low grey (disabled text is
+       exempt from contrast; it is also dimmed). */
+    --color-text-primary: var(--anatomy-strong);
+    --color-text-secondary: var(--anatomy-text);
+    --color-text-disabled: var(--anatomy-lo);
+    --color-icon-primary: var(--anatomy-strong);
+    --color-icon-secondary: var(--anatomy-text);
+    --color-icon-disabled: var(--anatomy-lo);
+
+    /* Lines */
+    --color-border: var(--anatomy-faint);
+    --color-border-emphasized: var(--anatomy-lo);
+    --color-track: var(--anatomy-faint);
+    --color-skeleton: var(--anatomy-faint);
+    --color-neutral: color-mix(in srgb, var(--anatomy-strong) 8%, transparent);
+
+    /* Hover and press tints over a surface */
+    --color-overlay-hover: color-mix(in srgb, var(--anatomy-strong) 6%, transparent);
+    --color-overlay-pressed: color-mix(in srgb, var(--anatomy-strong) 12%, transparent);
+    --color-tint-hover: var(--anatomy-strong);
+
+    /* Status fills from the palette (text keeps Astryx's AA-tuned colours) */
+    --color-success: var(--anatomy-green);
+    --color-error: var(--anatomy-red);
+    --color-info: var(--anatomy-blue);
+
+    /* Square corners */
+    --radius-inner: 0px;
+    --radius-element: 0px;
+    --radius-container: 0px;
+    --radius-page: 0px;
+    --radius-chat: 0px;
+
+    /* Selection and elevation */
+    --shadow-inset-hover: inset 0 0 0 1px var(--anatomy-hi);
+    --shadow-inset-selected: inset 0 0 0 1px var(--anatomy-strong);
+    --shadow-low: var(--anatomy-lift);
+
+    /* Focus: ux.css's ring */
+    --focus-outline-width: var(--ux-focus-width);
+    --focus-outline-style: var(--ux-focus-style);
+    --focus-outline-color: var(--ux-focus-color);
+    --focus-outline-offset: var(--ux-focus-offset);
+  }
+
+  /* ---------- Button ---------- */
+
+  /* ---------- SegmentedControl ---------- */
+
+  /* ---------- SelectableCard ---------- */
+
+  /* ---------- ProgressBar ---------- */
+
+  /* ---------- Collapsible ---------- */
+
+  /* ---------- Tooltip ---------- */
+
+  /* ---------- Kbd ---------- */
+
+  /* ---------- TextInput, PowerSearch ---------- */
+
+  /* ---------- Card, ClickableCard ---------- */
+
+  /* ---------- Dialog ---------- */
+
+  /* ---------- TopNav, Link ---------- */
+}
+}

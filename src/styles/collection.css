@@ -8,7 +8,17 @@
   --body:var(--font-body);
   --mono:var(--font-mono);
 }
+/* Element defaults (bare tag selectors) sit in the workbench-base layer: above astryx-astro's reset, below its
+   components (styles/layers.css), so an Astryx element keeps its own look. */
+@layer workbench-base{
 *{box-sizing:border-box}
+h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
+mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:var(--ink);padding:0 1px}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)}
+footer a{color:inherit}
+dialog{width:min(1040px,100% - 32px);max-height:calc(100% - 32px);padding:0;border:1px solid var(--edge);background:var(--plate);color:var(--text)}
+dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);backdrop-filter:blur(2px)}
+}
 body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased}
 .wrap{max-width:1120px;margin:0 auto;padding-block:48px 88px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
@@ -27,7 +37,6 @@ body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body
 .btn.primary:where(:not([aria-disabled="true"])):active{background:color-mix(in srgb,var(--ink) 86%,var(--plate))}
 @media (forced-colors:active){.filters button[aria-checked="true"]{forced-color-adjust:none;background:Highlight;border-color:Highlight;color:HighlightText}}
 .head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 40px;align-items:end;margin:40px 0 28px;padding-bottom:28px;border-bottom:1px solid var(--rule)}
-h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
 .intro{max-width:60ch;margin:16px 0 0;font-size:16px}
 .stats{display:grid;grid-template-columns:repeat(3,auto);gap:0;border:1px solid var(--rule);background:var(--plate)}
 .stats div{padding:10px 16px;border-right:1px solid var(--rule)}
@@ -37,7 +46,6 @@ h1{font:600 clamp(36px,6vw,64px)/.95 var(--display);letter-spacing:-.02em;color:
 .tools{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:center}
 .search{position:relative;min-width:0}
 .status{min-height:18px;margin:8px 0 14px;font:500 11px/1.6 var(--mono);letter-spacing:.04em;color:var(--muted)}
-mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:var(--ink);padding:0 1px}
 .hit{font:500 11.5px/1.45 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hit b{font-weight:500;color:var(--text)}
 .empty{grid-column:1/-1;display:grid;justify-items:center;gap:12px;padding:36px 20px;border:1px dashed var(--edge);text-align:center}
@@ -99,10 +107,6 @@ mark{background:color-mix(in srgb,var(--ink) 14%,transparent);color:var(--ink);p
 .card-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:auto;padding-top:10px}
 .counts{font:500 11px/1 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
 .card-actions{display:flex;gap:8px}
-footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)}
-footer a{color:inherit}
-dialog{width:min(1040px,100% - 32px);max-height:calc(100% - 32px);padding:0;border:1px solid var(--edge);background:var(--plate);color:var(--text)}
-dialog::backdrop{background:color-mix(in srgb, var(--sheet) 70%, transparent);backdrop-filter:blur(2px)}
 .dlg{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
 .dlg-shot{position:relative;padding:36px 18px 18px;border-right:1px solid var(--rule);display:flex;align-items:center}
 .dlg-shot img{width:100%;height:auto;display:block}

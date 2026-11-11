@@ -17,22 +17,28 @@ export const THEME_CSS = `
 `;
 
 export const PAGE_CSS = `
+/* Element defaults (bare tag selectors) sit in the workbench-base layer: above astryx-astro's reset, below its components (styles/layers.css), so an Astryx <button>, heading or paragraph keeps its own look. */
+@layer workbench-base{
 *{box-sizing:border-box}
-body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:15px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-.page{width:min(780px,100% - 32px);margin:56px auto 96px;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
-.mono{font-family:var(--anatomy-mono)}
-.eyebrow{font-family:var(--anatomy-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--anatomy-muted)}
 h1{font-size:30px;line-height:1.2;font-weight:600;color:var(--anatomy-strong);margin:10px 0 12px;letter-spacing:-.01em}
 h2{font-size:21px;font-weight:600;color:var(--anatomy-strong);margin:0 0 8px;letter-spacing:-.005em}
 h3{font-size:16px;font-weight:600;color:var(--anatomy-strong);margin:0}
 p{margin:0 0 12px}
 strong{color:var(--anatomy-strong);font-weight:600}
 code{font-family:var(--anatomy-mono);font-size:.88em;color:var(--anatomy-strong)}
+section{margin-top:72px}
+button{font:inherit;color:inherit}
+footer{margin-top:72px;padding-top:16px;border-top:1px solid var(--anatomy-faint);font-size:12.5px;color:var(--anatomy-muted)}
+footer a{color:inherit}
+}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:15px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.page{width:min(780px,100% - 32px);margin:56px auto 96px;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+.mono{font-family:var(--anatomy-mono)}
+.eyebrow{font-family:var(--anatomy-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--anatomy-muted)}
 .lede{font-size:17px;max-width:62ch}
 .parts{display:flex;flex-wrap:wrap;gap:6px 18px;margin:18px 0 0;padding:0;list-style:none;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-muted)}
 .parts a{color:inherit;text-decoration:none;border-bottom:1px solid var(--anatomy-faint)}
 .parts a:hover{color:var(--anatomy-strong)}
-section{margin-top:72px}
 .section-head{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:baseline;margin-bottom:18px}
 .section-head .eyebrow{grid-row:span 2;padding-top:5px}
 .section-head p{grid-column:2;margin:0;max-width:60ch}
@@ -47,7 +53,6 @@ section{margin-top:72px}
 .control>span,.control>label{font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted)}
 .wb-vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;pointer-events:none;user-select:none}
 .seg{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start}
-button{font:inherit;color:inherit}
 /* Controls behave like Astryx's (src/lessons/README.md, "UX foundation"; elements/wb-controls.ts, wb-button.ts). Press feedback: an overlay under the label, at once on pointerdown (data-pressed), fading on release; never on a disabled control, nor on a selected segment. */
 wb-seg>button,.btn,.choice,summary{position:relative;isolation:isolate}
 wb-seg>button::before,.btn::before,.choice::before,summary::before{content:"";position:absolute;inset:0;z-index:-1;background:currentColor;opacity:0;pointer-events:none;transition:opacity var(--ux-duration-exit) var(--ux-ease-exit)}
@@ -122,15 +127,13 @@ summary{cursor:pointer;padding:14px 16px;color:var(--anatomy-strong);list-style:
 summary::-webkit-details-marker{display:none}
 summary .n{font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-muted);padding-top:3px;flex:none}
 summary .q{flex:1;min-width:0}
-summary::after{content:"";flex:none;align-self:center;width:6px;height:6px;margin:0 2px 3px;border:solid var(--anatomy-muted);border-width:0 1.5px 1.5px 0;rotate:45deg;transition:rotate var(--ux-duration-fast) var(--ux-ease-standard)}
+summary::after{content:"";box-sizing:content-box;flex:none;align-self:center;width:6px;height:6px;margin:0 2px 3px;border:solid var(--anatomy-muted);border-width:0 1.5px 1.5px 0;rotate:45deg;transition:rotate var(--ux-duration-fast) var(--ux-ease-standard)}
 details[open]>summary::after{rotate:225deg;margin-block:3px 0}
 details[open] summary{border-bottom:1px solid var(--anatomy-faint)}
 .answer{padding:12px 16px 14px 44px;font-size:14px}
 .answer .eyebrow{display:block;margin-bottom:4px}
 @media (forced-colors:active){wb-seg>button:is([aria-checked="true"],[aria-pressed="true"]),.btn[aria-pressed="true"]{forced-color-adjust:none;background:Highlight;border-color:Highlight;color:HighlightText}wb-seg::before{background:Highlight}.choice:has(>input:checked){border-color:Highlight;outline:2px solid Highlight;outline-offset:-3px}}
 @media (prefers-reduced-motion:reduce){.btn[data-pressed]{transform:none}}
-footer{margin-top:72px;padding-top:16px;border-top:1px solid var(--anatomy-faint);font-size:12.5px;color:var(--anatomy-muted)}
-footer a{color:inherit}
 @media (max-width:640px){
   h1{font-size:25px}
   .stats{grid-template-columns:repeat(3,1fr)}

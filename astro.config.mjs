@@ -2,6 +2,7 @@
 // English lives at the root (/lessons/cache/), Spanish under /es/ (/es/lessons/cache/).
 import { defineConfig, fontProviders } from "astro/config";
 import sitemap from "@astrojs/sitemap";
+import astryx from "astryx-astro/integration";
 import { readFileSync } from "node:fs";
 import { LESSON_CSS, TOKENS_CSS } from "./workbench/styles.mjs";
 
@@ -50,7 +51,8 @@ export default defineConfig({
     ...Object.fromEntries(lessons.filter((l) => l.html).map((l) => [`/${l.html}`, `${base}/lessons/${l.slug}/`])),
     "/workbench/parts-gallery.html": `${base}/workbench/parts-gallery/`,
   },
-  integrations: [sitemap({ i18n: { defaultLocale: "en", locales: { en: "en", es: "es" } } })],
+  // astryx-astro: Astryx's components ported to Astro (layouts/Base.astro, styles/astryx-workbench.css).
+  integrations: [astryx(), sitemap({ i18n: { defaultLocale: "en", locales: { en: "en", es: "es" } } })],
   // The lessons' model and figure code (lessons/, workbench/) sits outside src/.
   vite: { plugins: [workbenchStyles()], server: { fs: { allow: ["."] } } },
 });

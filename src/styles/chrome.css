@@ -6,6 +6,11 @@
   --chrome-press: color-mix(in srgb, var(--anatomy-strong) 12%, transparent);
 }
 
+/* ---------- links ---------- */
+/* astryx-astro's reset (layouts/Base.astro) makes links inherit their decoration; ours keep the browser's underline
+   unless a rule takes it off. Zero specificity, so any such rule wins. */
+:where(a:any-link) { text-decoration: underline; }
+
 /* ---------- skip link ---------- */
 /* The first Tab stop on a page: "Skip to content", visually hidden until it has focus, then an ink tab at the top
    corner. It moves the reader past the top navigation to <main>. */

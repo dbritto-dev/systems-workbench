@@ -1,0 +1,9 @@
+/* The order of the site's CSS layers, declared before any stylesheet uses one: layouts/Base.astro inlines this
+   file at the top of <head>, before the bundled stylesheets. Lowest first:
+     reset           astryx-astro's reset
+     workbench-base  our element defaults: bare tag selectors (h1, p, button, footer…) in workbench/styles.mjs and
+                     styles/collection.css. Below the components, so a tag rule never restyles an Astryx component.
+     astryx-base     astryx-astro's components
+     astryx-theme    our "workbench" theme (styles/astryx-workbench.css)
+   Everything else, our components' class rules, is unlayered and wins over every layer. */
+@layer reset, workbench-base, astryx-base, astryx-theme;

@@ -11,9 +11,17 @@
 // <link rel="expect">), so it shows everything above the fold at once. The parser sometimes yields at an inline
 // script near the top (the switches' markTheme), and a paint there showed the top bar alone, the rest a frame
 // later. Browsers without rel="expect" paint as before.
+// Components: astryx-astro (Astryx's components in Astro) in our "workbench" theme: its stylesheet (reset, tokens and
+// shared rules, all in CSS layers below ours), the theme (styles/astryx-workbench.css) and data-astryx-theme on
+// <html>. Light or dark is data-theme on <html>, as before; the theme's colours follow it. The order of the CSS
+// layers (styles/layers.css) is inlined first thing in <head>: the bundled stylesheets come later, and the first
+// layer named fixes its place, so that order holds whichever stylesheet loads first.
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { Font } from "astro:assets";
 import { LOCALES, type Locale } from "../i18n";
+import layerOrder from "../styles/layers.css?raw";
+import "astryx-astro/astryx.css";
+import "../styles/astryx-workbench.css";
 import "../styles/fonts.css";
 import "../styles/ux.css";
 import "../styles/chrome.css";
@@ -39,10 +47,11 @@ const ui = useUi(locale);
 const canonical = new URL(getRelativeLocaleUrl(locale, path), Astro.site);
 ---
 <!doctype html>
-<html lang={locale} data-lang={locale} data-ux-modality="keyboard">
+<html lang={locale} data-lang={locale} data-astryx-theme="workbench" data-ux-modality="keyboard">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <style is:inline set:html={layerOrder} />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />

@@ -181,6 +181,9 @@ importers:
       astro:
         specifier: ^7.4.4
         version: 7.4.4(@types/node@24.19.2)(yaml@2.9.1)
+      astryx-astro:
+        specifier: github:dbritto-dev/astryx-astro#bb441773687b1ea8daf5445f7fa0ef37a4ed872e&path:/packages/astryx-astro
+        version: git+https://github.com/dbritto-dev/astryx-astro.git#bb441773687b1ea8daf5445f7fa0ef37a4ed872e&path:/packages/astryx-astro(astro@7.4.4(@types/node@24.19.2)(yaml@2.9.1))
       playwright:
         specifier: ^1.47.0
         version: 1.64.1
@@ -382,6 +385,15 @@ packages:
 
   '@fontsource/source-sans-3@5.3.1':
     resolution: {integrity: sha512-O3YxvbotUOgYI2Zx0bBcEMNjnwitRf9P2+9pd54sMoux1NHrdXnMwZusw2P78lFhEzOPN4glOEQmX0ASaS68uA==}
+
+  '@formatjs/fast-memoize@3.1.7':
+    resolution: {integrity: sha512-zXfhLpvA6T7+efdt9JLbBwZ00tT7NsBMDVnDu8rpHeNNv8KfRZAMo2gkG0k9lK/Nzc//3kJ9pImsfuJxk3KhUA==}
+
+  '@formatjs/icu-messageformat-parser@3.5.23':
+    resolution: {integrity: sha512-iB1fYfhtSGd8uH9A8b1m01Ujcv6QtQnJasefP3jPApmz72L/zNipzf3BdoinTMd1xuviVChjUJWL60iTwjUQ+w==}
+
+  '@formatjs/icu-skeleton-parser@2.1.13':
+    resolution: {integrity: sha512-IdAJ9NrHn7AF0zqncD9UpxQozTYyJtbwwrZnJMEKVxTcOOXtVkUb2XYTpNOGTAv58NCsk0rjRB9G+i2SvBmGAQ==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -863,6 +875,12 @@ packages:
       '@astrojs/markdown-remark':
         optional: true
 
+  astryx-astro@git+https://github.com/dbritto-dev/astryx-astro.git#bb441773687b1ea8daf5445f7fa0ef37a4ed872e&path:/packages/astryx-astro:
+    resolution: {commit: bb441773687b1ea8daf5445f7fa0ef37a4ed872e, path: /packages/astryx-astro, repo: https://github.com/dbritto-dev/astryx-astro.git, type: git}
+    version: 0.1.0
+    peerDependencies:
+      astro: ^7.0.0
+
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
     engines: {node: '>= 0.4'}
@@ -1065,6 +1083,9 @@ packages:
   http-cache-semantics@4.3.0:
     resolution: {integrity: sha512-M5t5LlJpS1UHMjvwRQVdFHvPISGeLAxNcrWuJkeGh0KxsqCHZ1O3NXZU/8x7cD0BDcGW8kapxMKTvwlqrNkHkA==}
 
+  intl-messageformat@12.1.5:
+    resolution: {integrity: sha512-quhcDFAxy4wr/GrgWgmMjuegoedNUIxGNLORfXgDgdjuv8cBM88ClLTLXmfYC1roMSR1PPc55yUEkpJ5m67W2g==}
+
   iron-webcrypto@1.2.1:
     resolution: {integrity: sha512-feOM6FaSr6rEABp/eDfVseKyTMDt+KGpeB35SkVn9Tyn0CqvVsY3EwI0v5i8nMHyJnzCIQf7nsy3p41TPkJZhg==}
 
@@ -1160,6 +1181,9 @@ packages:
   lru-cache@11.5.3:
     resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
     engines: {node: 20 || >=22}
+
+  lucide-static@1.70.0:
+    resolution: {integrity: sha512-A9UgY98g94IuHQY7rl7/AFwHX7T1qNpzryim+Kw5CGhdV2STobtBY+ib/Z44ohyqXEJB88gvXFAeJ87uOOHKLw==}
 
   magic-string@1.4.5:
     resolution: {integrity: sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w==}
@@ -1375,6 +1399,15 @@ packages:
     resolution: {integrity: sha512-bkxnTg1kSU0guhIBmibA6UUhrQmPVA1XsQLN+ylCd+UWzbnLkySOcXpyk1mrl05f+pcaCx2eHb+sp6BgMZWX+Q==}
     engines: {node: '>=16'}
     hasBin: true
+
+  temporal-polyfill@1.0.6:
+    resolution: {integrity: sha512-tYyEry1HLGUDbm2356W3iYD0OZdo7rlP7h98Zr/EnjqLZQwTAfcBDUvJnJbfA15v/vQad57hJZScG5O0W2oKEA==}
+
+  temporal-spec@1.0.1:
+    resolution: {integrity: sha512-wxVoanmDeavXie1vu2JaQ3WIc3JZnWAOYFBsJyATaVsXsycKYUflGsyBmrRSnoCpZJpwPyr38VpgSUlQ8CbFxg==}
+
+  temporal-utils@1.0.3:
+    resolution: {integrity: sha512-9jbTSX3HvkOWvDpNpFzwX/d1mkCrgQgwLmVTOEiuocZGKHsrQJtttGZFmybJ2zYP5zCSZuU5ZyeS8+eOEPABiQ==}
 
   tiny-inflate@1.0.3:
     resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
@@ -1769,6 +1802,14 @@ snapshots:
   '@fontsource/montserrat@5.3.0': {}
 
   '@fontsource/source-sans-3@5.3.1': {}
+
+  '@formatjs/fast-memoize@3.1.7': {}
+
+  '@formatjs/icu-messageformat-parser@3.5.23':
+    dependencies:
+      '@formatjs/icu-skeleton-parser': 2.1.13
+
+  '@formatjs/icu-skeleton-parser@2.1.13': {}
 
   '@img/colour@1.1.0':
     optional: true
@@ -2196,6 +2237,14 @@ snapshots:
       - uploadthing
       - yaml
 
+  astryx-astro@git+https://github.com/dbritto-dev/astryx-astro.git#bb441773687b1ea8daf5445f7fa0ef37a4ed872e&path:/packages/astryx-astro(astro@7.4.4(@types/node@24.19.2)(yaml@2.9.1)):
+    dependencies:
+      astro: 7.4.4(@types/node@24.19.2)(yaml@2.9.1)
+      intl-messageformat: 12.1.5
+      lucide-static: 1.70.0
+      temporal-polyfill: 1.0.6
+      ultrahtml: 1.7.0
+
   axobject-query@4.1.0: {}
 
   bail@2.0.2: {}
@@ -2385,6 +2434,11 @@ snapshots:
 
   http-cache-semantics@4.3.0: {}
 
+  intl-messageformat@12.1.5:
+    dependencies:
+      '@formatjs/fast-memoize': 3.1.7
+      '@formatjs/icu-messageformat-parser': 3.5.23
+
   iron-webcrypto@1.2.1: {}
 
   is-arrayish@0.3.4: {}
@@ -2445,6 +2499,8 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.33.0
 
   lru-cache@11.5.3: {}
+
+  lucide-static@1.70.0: {}
 
   magic-string@1.4.5:
     dependencies:
@@ -2734,6 +2790,15 @@ snapshots:
       csso: 5.0.5
       picocolors: 1.1.1
       sax: 1.6.1
+
+  temporal-polyfill@1.0.6:
+    dependencies:
+      temporal-spec: 1.0.1
+      temporal-utils: 1.0.3
+
+  temporal-spec@1.0.1: {}
+
+  temporal-utils@1.0.3: {}
 
   tiny-inflate@1.0.3: {}
 
