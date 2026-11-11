@@ -85,26 +85,29 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       const errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(BASE + path);
-      const cards = await page.$$eval(".card", (c) => c.length);
+      const cards = await page.$$eval("[data-cards] > [data-slug]", (c) => c.length);
       if (cards !== lessons.length) fail(`collection ${lang}`, `${cards} cards`);
       const chrome = await page.evaluate(chromeState);
       if (chrome) fail(`collection ${lang}`, chrome);
-      // Power search: free text previews results; "area traffic" + Enter makes an Area token.
-      await page.click(".ps-input");
+      // Power search (Astryx's PowerSearch): free text previews results; "area traffic", then the "Area is Traffic"
+      // suggestion (the second: free text is always offered first), makes an Area token, and the area chip follows.
+      await page.click("ax-power-search input[role=combobox]");
       await page.keyboard.type(lang === "es" ? "reintento" : "retry");
       await page.waitForTimeout(800);
-      const status = await page.textContent(".ps-count");
+      const status = await page.textContent("[data-ax-result-count-text]");
       if (!/\d/.test(status || "")) fail(`collection ${lang}`, `search count "${status}"`);
-      await page.fill(".ps-input", "");
+      await page.fill("ax-power-search input[role=combobox]", "");
       await page.keyboard.type(lang === "es" ? "área tráfico" : "area traffic");
       await page.waitForTimeout(300);
+      await page.keyboard.press("ArrowDown");
       await page.keyboard.press("Enter");
       await page.waitForTimeout(300);
-      const token = await page.textContent(".ps-token-edit").catch(() => "");
-      const areas = await page.$$eval(".card:not([hidden])", (c) => [...new Set(c.map((x) => x.dataset.area))]);
-      if (!token || areas.length !== 1 || areas[0] !== "Traffic") fail(`collection ${lang}`, `area token "${token}" → ${areas.join(",")}`);
+      const token = await page.textContent("ax-power-search .astryx-token").catch(() => "");
+      const areas = await page.$$eval("[data-cards] > [data-slug]:not([hidden])", (c) => [...new Set(c.map((x) => x.dataset.area))]);
+      const chip = await page.getAttribute('#area-filters [aria-checked="true"]', "data-value").catch(() => null);
+      if (!token || areas.length !== 1 || areas[0] !== "Traffic" || chip !== "Traffic") fail(`collection ${lang}`, `area token "${token}" → ${areas.join(",")}, chip ${chip}`);
       await page.keyboard.press("Escape");
-      await page.locator(".card:not([hidden]) [data-preview]").first().click();
+      await page.locator("[data-cards] > [data-slug]:not([hidden]) [data-preview]").first().click();
       await page.waitForTimeout(500);
       const dlg = await page.evaluate(() => document.querySelector("dialog")?.open && document.querySelector("[data-d=title]").textContent);
       if (!dlg) fail(`collection ${lang}`, "preview dialog empty");

@@ -1,15 +1,25 @@
 ---
-// The power search (text plus filters as tokens: area, title, machine, experiments, questions, lesson number) and the
-// area filters (a strip that scrolls sideways on narrow screens, with ‹ › buttons), kept in step with the Area token.
+// The collection's search and area filters (role="search"): Astryx's PowerSearch (text plus filters as tokens: area,
+// title, machine, experiments, questions, lesson number; src/lib/lesson-filters.ts) with the "/" shortcut shown as a
+// Kbd, and the area chips, a SegmentedControl kept in step with the Area token.
 //
-// The area chips are a single choice, "All" or one area, so they are a segmented control (Astryx's SegmentedControl):
-// a radiogroup with one Tab stop, ← → / Home / End moving and selecting (runtime/roving.ts, wired by
-// <lesson-collection>). When the search holds several areas (or "Area is not …"), no chip is checked. The strip marks
-// the chip the URL asks for and measures itself while the page is parsed (elements/filter-strip.ts), so the checked
-// chip, the ‹ › buttons and the fades are right on the first paint. Without JavaScript every chip is its own Tab stop.
-import PowerSearch from "../PowerSearch.astro";
+// The chips are a single choice, "All" or one area: Astryx's SegmentedControl (a radiogroup, one Tab stop, ← → / Home
+// / End select, the "← → to navigate" hint). When the search holds several areas (or "Area is not …"), no chip is
+// checked. Each chip shows how many lessons it would show (data-count, drawn by collection.css, so it is part of the
+// chip's name: "Data 12"). The strip scrolls sideways when the chips don't fit, with ‹ › buttons (Astryx Buttons).
+//
+// Before first paint, the inline script after the strip checks the chip the URL asks for (markArea, writing the same
+// attributes <ax-segmented-control> keeps: aria-checked, data-selected, tabindex and the overlay class) and measures
+// the strip (measureStrip: the ‹ › buttons and the fades), so the first paint is the settled one
+// (src/elements/filter-strip.ts). <lesson-collection> keeps both in step afterwards. Without JavaScript the chips
+// can't filter (they never could) and the page lists every lesson.
+import PowerSearch from "astryx-astro/components/PowerSearch/PowerSearch.astro";
+import Kbd from "astryx-astro/components/Kbd/Kbd.astro";
+import SegmentedControl from "astryx-astro/components/SegmentedControl/SegmentedControl.astro";
+import SegmentedControlItem from "astryx-astro/components/SegmentedControl/SegmentedControlItem.astro";
+import Button from "astryx-astro/components/Button/Button.astro";
 import { useUi, AREAS, AREA_NAMES } from "../../i18n/ui";
-import { lessonFilters, lessonFilterStrings } from "../../lib/lesson-filters";
+import { lessonFilters } from "../../lib/lesson-filters";
 import type { Locale } from "../../i18n";
 import type { Lesson } from "../../lib/lessons";
 import { markArea, measureStrip } from "../../elements/filter-strip";
@@ -21,19 +31,30 @@ const counts = Object.fromEntries(AREAS.map((a) => [a, lessons.filter((l) => l.a
 const areas = AREAS.filter((a) => counts[a] > 0);
 ---
 <div class="tools" role="search">
-  <div class="search">
-    <PowerSearch config={lessonFilters(locale, areas, lessons.length)} strings={lessonFilterStrings(locale)} label={ui("search.label")} placeholder={ui("search.placeholder")} shortcut="/" shortcutLabel={ui("search.shortcut")} keyshortcuts="/ Control+K Meta+K" id="lesson-search" />
-  </div>
+  <PowerSearch
+    id="lesson-search"
+    config={lessonFilters(locale, areas, lessons.length)}
+    label={ui("search.label")}
+    placeholder={ui("search.placeholder")}
+    startIcon="search"
+    maxTokenLength={32}
+    maxSearchResults={10}
+    locale={locale}
+  >
+    <Kbd slot="endContent" keys="/" class="search-kbd" />
+  </PowerSearch>
   <div class="filters-wrap">
-    <button type="button" class="scroll-btn" data-scroll="-1" aria-label={ui("filters.left")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg></button>
+    <Button class="scroll-btn" data-scroll="-1" label={ui("filters.left")} icon="chevronLeft" isIconOnly aria-controls="area-filters" />
     <div class="filters-view">
-      <div class="filters" id="area-filters" role="radiogroup" aria-label={ui("filters.label")}>
-        <button type="button" role="radio" data-filter="all" aria-checked="true">{ui("filters.all")} <b>{lessons.length}</b></button>
-        {areas.map((a) => <button type="button" role="radio" data-filter={a} aria-checked="false">{AREA_NAMES[a][locale]} <b>{counts[a]}</b></button>)}
+      <div class="filters">
+        <SegmentedControl id="area-filters" value="all" label={ui("filters.label")} locale={locale}>
+          <SegmentedControlItem value="all" label={ui("filters.all")} data-count={lessons.length} />
+          {areas.map((a) => <SegmentedControlItem value={a} label={AREA_NAMES[a][locale]} data-count={counts[a]} />)}
+        </SegmentedControl>
       </div>
     </div>
-    <button type="button" class="scroll-btn" data-scroll="1" aria-label={ui("filters.right")} aria-controls="area-filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg></button>
+    <Button class="scroll-btn" data-scroll="1" label={ui("filters.right")} icon="chevronRight" isIconOnly aria-controls="area-filters" />
   </div>
   <script is:inline set:html={`(function(w){(${markArea})(w);(${measureStrip})(w)})(document.currentScript.previousElementSibling)`} />
 </div>
-<p class="status" id="search-status" data-status></p>
+<p class="status" id="search-status" role="status" data-status></p>

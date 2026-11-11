@@ -1,5 +1,5 @@
-// The collection page's area filters: a strip of chips that scrolls sideways when it doesn't fit, with ‹ › buttons
-// and a fade at an edge that has more chips past it (markup in components/collection/Toolbar.astro).
+// The collection page's area filters: Astryx's SegmentedControl in a strip that scrolls sideways when it doesn't fit,
+// with ‹ › buttons and a fade at an edge that has more chips past it (markup in components/collection/Toolbar.astro).
 //
 // markArea() checks the chip the URL's search asks for, and measureStrip() sets the strip's scroll state. Toolbar.astro
 // inlines both functions' source right after the strip, so they run while the page is parsed and the first paint
@@ -8,7 +8,10 @@
 // attribute when its value changes, so nothing flips back and forth.
 
 /** Checks the chip for the URL's area filter (?f=area.is.Data): "All" with none, that area's chip with exactly one
- *  "Area is" of one area, no chip otherwise (several areas, or "Area is not …"). <lesson-collection> keeps it so. */
+ *  "Area is" of one area, no chip otherwise (several areas, or "Area is not …"). It writes what
+ *  <ax-segmented-control> writes when its value changes (aria-checked, data-selected, the hover overlay class on the
+ *  unchecked chips, the one Tab stop on the checked chip, else the first), so the element finds a consistent state
+ *  when it connects. <lesson-collection> keeps it so through the element's `value`. */
 export function markArea(wrap: Element) {
   let want: string | null = "all";
   try {
@@ -16,9 +19,17 @@ export function markArea(wrap: Element) {
     const one = areas.length === 1 ? /^area\.is\.([^,]+)$/.exec(areas[0]) : null;
     want = areas.length === 0 ? "all" : one ? one[1] : null;
   } catch { /* no URL: the markup's "All" */ }
-  wrap.querySelectorAll<HTMLElement>("[data-filter]").forEach((b) => {
-    const on = String(b.dataset.filter === want);
-    if (b.getAttribute("aria-checked") !== on) b.setAttribute("aria-checked", on);
+  const chips = [...wrap.querySelectorAll<HTMLElement>('[role="radio"][data-value]')];
+  const stop = chips.find((b) => b.dataset.value === want) ?? chips[0];
+  const set = (b: HTMLElement, name: string, value: string | null) => {
+    if (b.getAttribute(name) !== value) value === null ? b.removeAttribute(name) : b.setAttribute(name, value);
+  };
+  chips.forEach((b) => {
+    const on = b.dataset.value === want;
+    set(b, "aria-checked", String(on));
+    set(b, "data-selected", on ? "selected" : null);
+    set(b, "tabindex", b === stop ? "0" : "-1");
+    if (b.classList.contains("ax-overlay-bg") === on) b.classList.toggle("ax-overlay-bg", !on);
   });
 }
 
@@ -35,8 +46,8 @@ export function measureStrip(wrap: Element) {
   const right = !fits && strip.scrollLeft < max - 2;
   set("data-more-left", left);
   set("data-more-right", right);
-  const arrows = wrap.querySelectorAll<HTMLButtonElement>("[data-scroll]");
-  const off = (b: HTMLButtonElement | undefined, on: boolean) => {
+  const arrows = wrap.querySelectorAll<HTMLElement>("[data-scroll]");
+  const off = (b: HTMLElement | undefined, on: boolean) => {
     if (b && (b.getAttribute("aria-disabled") === "true") !== !on) b.setAttribute("aria-disabled", String(!on));
   };
   off(arrows[0], left);

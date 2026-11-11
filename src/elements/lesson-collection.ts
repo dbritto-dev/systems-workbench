@@ -1,24 +1,29 @@
 // <lesson-collection index="…/search-index.json" locale="en">: the collection page's search, area filters and cards
 // (components/collection/Toolbar.astro and the card grid, in pages/[...lang]/index.astro).
 //
-// Search is a <power-search>: tokens filter (Area is Data or Search, Experiments mention "retry", Lesson from 40, …;
-// the fields are in src/lib/lesson-filters.ts) and the text being typed previews a free-text search, debounced by the
-// element. The area chips are a shortcut for the Area token. Every filter goes in the URL (?f=area.is.Data&q=retry),
-// so a search can be shared. The search engine and the index load only when someone searches, arrives with a
-// search in the URL, or opens a preview. A render only touches what changed. A card's Preview button sends a
-// "lesson-preview" event, which <lesson-preview> opens on.
+// Search is Astryx's PowerSearch (<ax-power-search>): tokens filter (Area is Data or Search, Experiments mention
+// "retry", Lesson from 40, …; the fields are in src/lib/lesson-filters.ts), and the text being typed previews a
+// free-text search (debounced here, from the field's astryx-change-query) while it reads as free text rather than a
+// filter being built ("area dat"). The area chips (Astryx's SegmentedControl) are a shortcut for the Area token.
+// Every filter goes in the URL (?f=area.is.Data&q=retry), so a search can be shared; an arrival's ?q= text becomes a
+// Text token. The search engine and the index load only when someone searches, arrives with a search in the URL, or
+// opens a preview. A render only touches what changed. A card's Preview button sends a "lesson-preview" event, which
+// <lesson-preview> opens on.
 //
-// The area chips are a segmented control (one Tab stop; ← → / Home / End select; runtime/roving.ts). When the count of
-// lessons shown changes after something the reader did, it is announced politely (runtime/announce.ts), with the
-// status and empty-state text; a newer count withdraws one not yet read. Nothing is announced on arrival. Actions
-// that hide the control they were pressed on hand focus on (Show all areas → the All chip; Clear → the search box).
+// Announcements have one owner each: PowerSearch announces the result count it shows (resultCount), the status line
+// is a polite live region (role="status") for "Nothing matches …", and the empty state (Astryx's EmptyState)
+// announces its text when it appears or changes. Actions that hide the control they were pressed on hand focus on
+// (Show all areas → the All chip; Clear → the search box). "/" and Ctrl / Cmd+K focus the search (Astryx's hotkeys).
 import type { Scope, SearchRun } from "../lib/search";
 import type { SearchDoc } from "../lib/search-index";
-import type { ChangeDetail, Filter, PowerSearch } from "./power-search";
+import type { PowerSearchElement, PowerSearchChangeDetail } from "astryx-astro/elements/power-search";
+import type { PowerSearchFilter as Filter } from "astryx-astro/components/PowerSearch/powerSearchModel";
+import type { SegmentedControlElement } from "astryx-astro/elements/segmented-control";
+import { createInternalConfig, createPowerSearchSource, type PowerSearchConfig } from "astryx-astro/components/PowerSearch/powerSearchModel";
+import { registerHotkey } from "astryx-astro/elements/hotkeys";
 import { loadIndex, picker, PREVIEW_EVENT, type Locale, type PreviewDetail } from "./lesson-index";
 import { measureStrip } from "./filter-strip";
-import { roving } from "../runtime/roving";
-import { announcer } from "../runtime/announce";
+import { debounce } from "../lib/timing";
 
 export class LessonCollection extends HTMLElement {
   connectedCallback() {
@@ -34,7 +39,7 @@ const SCOPE_OF: Record<string, Scope> = { text: "all", title: "title", machine: 
 // ---- the URL: ?f=area.is.Data,Search&f=experiments.contains.retry&q=storm ----
 const encode = (f: Filter) => {
   const v = f.value;
-  const val = v.type === "enum_list" ? v.value.join(",") : v.type === "empty" ? "" : String(v.value);
+  const val = v.type === "enum_list" ? v.value.join(",") : v.type === "string" || v.type === "integer" ? String(v.value) : "";
   return `${f.field}.${f.operator}.${val}`;
 };
 const decode = (s: string): Filter | null => {
@@ -42,37 +47,37 @@ const decode = (s: string): Filter | null => {
   if (!m) return null;
   const [, field, operator, raw] = m;
   if (field === "area") return { field, operator, value: { type: "enum_list", value: raw.split(",").filter(Boolean) } };
-  if (field === "lesson") return { field, operator, value: { type: "integer", value: Number(raw) } };
+  if (field === "lesson") return Number.isInteger(Number(raw)) && raw ? { field, operator, value: { type: "integer", value: Number(raw) } } : null;
   return raw ? { field, operator, value: { type: "string", value: raw } } : null;
 };
 
 function init(root: HTMLElement) {
-  const grid = root.querySelector<HTMLElement>("main.grid")!;
+  const grid = root.querySelector<HTMLElement>("[data-cards]")!;
   const locale = (root.getAttribute("locale") === "es" ? "es" : "en") as Locale;
   const { L, T } = picker(locale);
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const index = () => loadIndex(root.getAttribute("index")!);
-  const ps = root.querySelector<PowerSearch>("power-search")!;
-  const chips = [...root.querySelectorAll<HTMLButtonElement>("[data-filter]")];
+  const ps = root.querySelector<PowerSearchElement>("ax-power-search")!;
+  const input = ps.querySelector<HTMLInputElement>('input[role="combobox"]')!;
+  const chips = root.querySelector<SegmentedControlElement>("ax-segmented-control")!;
+  const chipButtons = [...chips.querySelectorAll<HTMLElement>('[role="radio"][data-value]')];
+  input.setAttribute("aria-keyshortcuts", "/ Control+K Meta+K");
 
   // What's asked for: the tokens, and the text being typed (a preview of a Text search).
   let filters: Filter[] = [];
   let typed = "";
   let search: Awaited<ReturnType<typeof startSearch>> | null = null;
   let starting: Promise<unknown> | null = null;
-  // Set by the reader's first change: from then on a render announces its count (an arrival's render doesn't).
-  let changed = false;
   const ensureSearch = () => (starting ??= startSearch().then((s) => { search = s; s.render(); }));
-  const update = () => { changed = true; syncChips(); writeUrl(); if (search) search.render(); else void ensureSearch(); };
+  const update = () => { syncChips(); writeUrl(); if (search) search.render(); else void ensureSearch(); };
 
   // ---- area chips: a shortcut for one "Area is …" token ----
   const areaTokens = () => filters.filter((f) => f.field === "area");
   const syncChips = () => {
     const a = areaTokens();
     const one = a.length === 1 && a[0].operator === "is" && a[0].value.type === "enum_list" && a[0].value.value.length === 1 ? a[0].value.value[0] : null;
-    const checked = a.length === 0 ? "all" : one;
-    chips.forEach((b) => { const on = String(b.dataset.filter === checked); if (b.getAttribute("aria-checked") !== on) b.setAttribute("aria-checked", on); });
-    nav.sync();
+    const checked = a.length === 0 ? "all" : one ?? "";
+    if (chips.value !== checked) chips.value = checked;
   };
   const setArea = (area: string) => {
     filters = filters.filter((f) => f.field !== "area");
@@ -80,21 +85,15 @@ function init(root: HTMLElement) {
     ps.filters = filters;
     update();
   };
-  // A segmented control: one Tab stop (the checked chip, else the first), ← → / Home / End move and select.
-  const group = root.querySelector<HTMLElement>(".filters")!;
-  const nav = roving(group, {
-    items: "[data-filter]",
-    current: () => group.querySelector<HTMLElement>('[aria-checked="true"]'),
-    select: (b) => b.click(),
+  chips.addEventListener("astryx-change", (e) => {
+    setArea((e as CustomEvent<{ value: string }>).detail.value);
+    const b = chipButtons.find((x) => x.dataset.value === (e as CustomEvent<{ value: string }>).detail.value);
+    b?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" });
   });
-  chips.forEach((b) => b.addEventListener("click", () => {
-    if (b.getAttribute("aria-checked") !== "true") setArea(b.dataset.filter!);
-    b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce() ? "auto" : "smooth" });
-  }));
 
   // The strip was measured before first paint (Toolbar.astro); measure again when it can change.
-  const strip = root.querySelector<HTMLElement>(".filters")!, wrap = root.querySelector<HTMLElement>(".filters-wrap")!;
-  const arrows = wrap.querySelectorAll<HTMLButtonElement>("[data-scroll]");
+  const wrap = root.querySelector<HTMLElement>(".filters-wrap")!, strip = wrap.querySelector<HTMLElement>(".filters")!;
+  const arrows = wrap.querySelectorAll<HTMLElement>("[data-scroll]");
   const edges = () => measureStrip(wrap);
   arrows.forEach((b) => b.addEventListener("click", () => {
     if (b.getAttribute("aria-disabled") === "true") return;   // nothing more that way
@@ -114,23 +113,37 @@ function init(root: HTMLElement) {
 
   // ---- previews: <lesson-preview> opens on this event; hovering a Preview button starts fetching the index ----
   root.querySelectorAll<HTMLElement>("[data-preview]").forEach((b) => {
-    b.addEventListener("click", () => b.dispatchEvent(new CustomEvent<PreviewDetail>(PREVIEW_EVENT, { bubbles: true, detail: { card: b.closest<HTMLElement>(".card")!, opener: b } })));
+    b.addEventListener("click", () => b.dispatchEvent(new CustomEvent<PreviewDetail>(PREVIEW_EVENT, { bubbles: true, detail: { card: b.closest<HTMLElement>("[data-slug]")!, opener: b } })));
     b.addEventListener("pointerenter", () => void index(), { once: true });
   });
 
   // ---- the power search ----
-  ps.input.addEventListener("focus", () => void ensureSearch(), { once: true });
-  ps.addEventListener("ps-change", (e) => { filters = (e as CustomEvent<ChangeDetail>).detail.filters; update(); });
-  // The text being typed previews a search only while it reads as free text, not while a filter is being typed.
-  ps.addEventListener("ps-input", (e) => { const d = (e as CustomEvent<{ text: string; free: boolean }>).detail; typed = d.free ? d.text.trim() : ""; update(); });
-  ps.addEventListener("ps-submit", () => grid.querySelector<HTMLElement>(":scope > .card:not([hidden]) .card-link")?.focus());
-  document.addEventListener("keydown", (e) => {
-    const el = document.activeElement as HTMLElement | null;
-    const typing = !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
-    if (((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) && !document.querySelector("dialog[open]")) {
-      e.preventDefault(); ps.focusInput(); ps.input.select();
-    }
+  // Free text, as PowerSearch ranks it: its "Search for …" row is offered and no finished filter is ("area dat" is a
+  // filter being built, "retry" a search).
+  const config = JSON.parse(ps.getAttribute("data-ax-config") || "{}") as PowerSearchConfig;
+  const source = createPowerSearchSource(createInternalConfig(config), 1000);
+  const isFree = (text: string) => {
+    if (!text.trim()) return false;
+    const rows = source.search(text);
+    return rows.some((r) => r.id.startsWith("__content_search__:")) && !rows.some((r) => r.id.includes(":value:"));
+  };
+  const preview = debounce((text: string) => { typed = isFree(text) ? text.trim() : ""; update(); }, 150, { maxWait: 500 });
+  input.addEventListener("focus", () => void ensureSearch(), { once: true });
+  ps.addEventListener("astryx-change", (e) => {
+    if (e.defaultPrevented) return;
+    filters = (e as CustomEvent<PowerSearchChangeDetail>).detail.filters;
+    update();
   });
+  ps.addEventListener("astryx-change-query", (e) => {
+    const text = (e as CustomEvent<{ query: string }>).detail.query;
+    if (text.trim()) preview(text);
+    else { preview.cancel(); if (typed) { typed = ""; update(); } }   // emptied: at once
+  });
+  const searchOpen = () => !!document.querySelector("dialog[open]");
+  const focusSearch = () => { ps.focus(); input.select(); };
+  registerHotkey({ keys: "/", onPress: focusSearch, isDisabled: searchOpen });
+  registerHotkey({ keys: "ctrl+k", onPress: focusSearch, allowInInputs: true, isDisabled: searchOpen });
+  registerHotkey({ keys: "meta+k", onPress: focusSearch, allowInInputs: true, isDisabled: searchOpen });
 
   const writeUrl = () => {
     try {
@@ -142,14 +155,13 @@ function init(root: HTMLElement) {
       if (u.href !== location.href) history.replaceState(null, "", u);
     } catch {}
   };
-  // Arriving with a search: ?f= tokens and ?q= text (older links have only ?q=).
+  // Arriving with a search: ?f= tokens, and ?q= text, which becomes a Text token.
   try {
     const p = new URLSearchParams(location.search);
     const fromUrl = p.getAll("f").map(decode).filter((f): f is Filter => f !== null);
     const q = p.get("q")?.trim() ?? "";
-    if (fromUrl.length) { ps.filters = fromUrl; filters = ps.filters; }
-    if (q) { ps.text = q; typed = q; }
-    if (filters.length || typed) { syncChips(); void ensureSearch(); }
+    if (q) fromUrl.push({ field: "text", operator: "contains", value: { type: "string", value: q } });
+    if (fromUrl.length) { ps.filters = fromUrl; filters = ps.filters; update(); }
   } catch {}
 
   async function startSearch() {
@@ -159,11 +171,10 @@ function init(root: HTMLElement) {
     const bySlug = new Map<string, SearchDoc>(docs.map((l) => [l.slug, l]));
     const status = root.querySelector<HTMLElement>("[data-status]")!;
     const empty = root.querySelector<HTMLElement>("[data-empty]")!;
-    const cards = [...grid.querySelectorAll<HTMLElement>(".card")];
+    const cards = [...grid.querySelectorAll<HTMLElement>(":scope > [data-slug]")];
     const shown = new Map<HTMLElement, string>();
-    const marks = (c: HTMLElement) => c.querySelectorAll<HTMLElement>(".card-link, .card-body > p");
+    const marks = (c: HTMLElement) => c.querySelectorAll<HTMLElement>(".card-title, .card-blurb");
     cards.forEach((c) => marks(c).forEach((e) => shown.set(e, e.textContent ?? "")));
-    const say = announcer({ replace: true });
 
     // What each element last showed, so a render leaves unchanged cards alone.
     const marked = new Map<HTMLElement, string>();
@@ -259,7 +270,7 @@ function init(root: HTMLElement) {
         return searching && h ? -h.score : 1e6 + cards.indexOf(c);
       };
       const order = [...cards].sort((a, b) => rank(a) - rank(b));
-      const now = [...grid.querySelectorAll<HTMLElement>(":scope > .card")];
+      const now = [...grid.querySelectorAll<HTMLElement>(":scope > [data-slug]")];
       if (order.some((c, i) => now[i] !== c)) order.forEach((c) => grid.insertBefore(c, empty));
 
       // Chip counts: lessons that pass everything except the area filters.
@@ -280,11 +291,17 @@ function init(root: HTMLElement) {
         marks(c).forEach((e) => { if (marked.get(e) !== k) { marked.set(e, k); mark(e, shown.get(e)!, showTerms); } });
         hitLine(c, h);
       }
-      chips.forEach((b) => { const n = per[b.dataset.filter!] ?? 0; setText(b.querySelector("b")!, String(n)); if (b.hasAttribute("data-zero") !== (n === 0)) b.toggleAttribute("data-zero", n === 0); });
+      chipButtons.forEach((b) => {
+        const n = String(per[b.dataset.value!] ?? 0);
+        if (b.dataset.count !== n) b.dataset.count = n;
+        if (b.hasAttribute("data-zero") !== (n === "0")) b.toggleAttribute("data-zero", n === "0");
+      });
 
       const active = searching || rest.length > 0;
-      ps.resultCount = active ? plural(visible) : "";
-      // The status line explains the special cases; the count is in the bar.
+      // The count shows in the bar, and PowerSearch announces it when it changes.
+      const count = active ? plural(visible) : null;
+      if (ps.resultCount !== count) ps.resultCount = count;
+      // The status line (a polite live region) explains the special cases.
       let msg = "";
       const none = runs.find((r) => r.res.mode === "none");
       const some = runs.find((r) => r.res.mode === "some");
@@ -292,34 +309,36 @@ function init(root: HTMLElement) {
       else if (some) msg = T(`No lesson has every word of ${quote(some.q)}; showing lessons with some of them.`, `Ninguna lección tiene todas las palabras de ${quote(some.q)}; se muestran las que tienen alguna.`);
       setText(status, msg);
       const nothing = active && visible === 0;
-      if (empty.hidden !== !nothing) empty.hidden = !nothing;
+      const desc = empty.querySelector<HTMLElement>(".astryx-empty-state-description")!;
+      // EmptyState announces its text when it changes while shown: emptied while hidden, so showing it is a change.
+      if (!nothing && !empty.hidden) { empty.hidden = true; desc.textContent = ""; }
+      if (nothing && empty.hidden) empty.hidden = false;
       let hint = "";
       if (nothing) {
         const elsewhere = per.all > 0 && areaTokens().length > 0;
         hint = elsewhere
           ? T("None in these areas. The other matches are in other areas.", "Ninguna en estas áreas. Las demás coincidencias están en otras áreas.")
           : T("Try another word, in English or Spanish, or remove a filter.", "Prueba otra palabra, en inglés o en español, o quita un filtro.");
-        setText(empty.querySelector("p")!, hint);
+        setText(desc, hint);
         empty.querySelector<HTMLElement>("[data-all]")!.hidden = !elsewhere;
       }
-      // The count, said once per change the reader made (never for an arrival's search), with what the status line
-      // and the empty state now say; a newer count takes back one not yet read.
-      if (changed) say([`${plural(visible)}.`, msg, hint].filter(Boolean).join(" "));
     };
 
     // Both actions hide the empty state, and the button with it: focus moves on instead of dropping to the page.
     empty.querySelector("[data-clear]")!.addEventListener("click", () => {
       filters = [];
       ps.filters = [];
-      ps.text = "";
+      // The text too, through the field's own input event, so the Tokenizer's query empties with it.
+      if (input.value) { input.value = ""; input.dispatchEvent(new Event("input", { bubbles: true })); }
       typed = "";
+      preview.cancel();
       update();
-      ps.focusInput();
+      ps.focus();
     });
     empty.querySelector("[data-all]")!.addEventListener("click", () => {
       setArea("all");
-      const all = group.querySelector<HTMLElement>('[data-filter="all"]')!;
-      nav.focus(all);
+      const all = chipButtons.find((b) => b.dataset.value === "all")!;
+      all.focus();
       all.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
     return { render };

@@ -8,7 +8,41 @@ export const ASTRYX_OVERRIDES: Record<string, Record<string, string>> = {
   es: {
     // lesson
 
-    // collection
+    // collection: PowerSearch (with its Tokenizer, Typeahead, Selector and value editors), Kbd, Dialog, EmptyState.
+    // es-ES says "añadir" and "introducir" and uses the Spanish perfect ("se ha añadido"); some keys it lacks fall
+    // back to English.
+    "@astryx.powersearch.allFiltersRemoved": "Se quitaron todos los filtros",
+    "@astryx.powersearch.editableFiltersRemoved": "Se quitaron los filtros editables",
+    "@astryx.powersearch.editor.addFilter": "+ Agregar filtro",
+    "@astryx.powersearch.operator.startsWith": "empieza con",
+    "@astryx.powersearch.operator.notStartsWith": "no empieza con",
+    "@astryx.powersearch.valueEditor.addValuesPlaceholder": "Agregar valores…",
+    "@astryx.powersearch.valueEditor.enterNumberPlaceholder": "Escribe un número…",
+    "@astryx.powersearch.valueEditor.enterValuePlaceholder": "Escribe un valor…",
+    "@astryx.numberInput.invalidNumber": "Número no válido",
+    "@astryx.inputClearButton.tooltip": "Borrar",
+    "@astryx.tokenizer.add": "Agregar",
+    "@astryx.tokenizer.addValue": "Agregar {value}",
+    "@astryx.tokenizer.allRemoved": "Se quitaron todos los elementos",
+    "@astryx.tokenizer.tokenAdded": "Se agregó {label}",
+    "@astryx.tokenizer.tokenRemoved": "Se quitó {label}",
+    "@astryx.typeahead.emptySearchResults": "No se encontraron resultados",
+    "@astryx.selector.emptySearchResults": "No se encontraron resultados",
+    "@astryx.kbd.key.alt": "Alt",
+    "@astryx.kbd.key.backspace": "Retroceso",
+    "@astryx.kbd.key.command": "Comando",
+    "@astryx.kbd.key.control": "Control",
+    "@astryx.kbd.key.controlShort": "Ctrl",
+    "@astryx.kbd.key.down": "Flecha abajo",
+    "@astryx.kbd.key.enter": "Enter",
+    "@astryx.kbd.key.escape": "Escape",
+    "@astryx.kbd.key.escapeShort": "Esc",
+    "@astryx.kbd.key.left": "Flecha izquierda",
+    "@astryx.kbd.key.plus": "Más",
+    "@astryx.kbd.key.right": "Flecha derecha",
+    "@astryx.kbd.key.shift": "Mayús",
+    "@astryx.kbd.key.tab": "Tab",
+    "@astryx.kbd.key.up": "Flecha arriba",
 
     // chrome: TopNav ("Navegación superior"), Link ("(se abre en una pestaña nueva)"), the SegmentedControl's keyboard
     // hint ("para navegar") read fine. Astryx's es-ES has no names for the hint's arrow keys, so they fell back to

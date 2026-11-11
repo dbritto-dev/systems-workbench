@@ -102,8 +102,70 @@
   /* ---------- Tooltip ---------- */
 
   /* ---------- Kbd ---------- */
+  /* A key is a small boxed mono glyph in the muted grey, on no fill: a hairline all round, not Astryx's raised key. */
+  .astryx-kbd > kbd {
+    min-width: 20px;
+    height: 20px;
+    padding-inline: 6px;
+    border: 1px solid var(--color-border);
+    background-color: transparent;
+    font-family: var(--font-family-code);
+    font-size: 11px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1;
+    color: var(--anatomy-muted);
+  }
 
   /* ---------- TextInput, PowerSearch ---------- */
+  /* The field is a plate with a hairline edge that darkens under a hovering pointer. Focus is the page's one ring
+     (ux.css's tokens) around the whole box while its text entry has focus, not Astryx's accent border and inset glow;
+     a token or the clear button rings itself. Typed text is body text; tokens, the result count and the editor's
+     controls are mono, like every control here. */
+  .ax-input:not([data-disabled]):not([data-status]):focus-within { border-color: var(--color-border-emphasized); box-shadow: none; }
+  @media (hover: hover) {
+    .ax-input:not([data-disabled]):not([data-status]):hover:not(:focus-within) { border-color: var(--anatomy-hi); box-shadow: none; }
+  }
+  .ax-input:not([data-disabled]):has(> :is(input, textarea):focus-visible) {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+  .astryx-tokenizer.ax-input[data-size="md"] { min-height: 38px; padding-inline-start: 11px; }
+  .astryx-tokenizer[data-ax-placeholder-box][data-size="md"] { height: 38px; }
+  .ax-typeahead-input { font-size: 14px; }
+  .ax-typeahead-input::placeholder, .ax-input-native::placeholder { color: var(--anatomy-muted); }
+  .ax-tokenizer-end-lane[data-size="md"] { top: calc(38px / 2 - 1px); }
+  .ax-power-search-result-count {
+    font-family: var(--font-family-code);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+  }
+  /* A filter token: a bordered mono chip on the plate (field and operator in body grey, the value in ink). */
+  .astryx-power-search .astryx-token[data-color="default"] {
+    border: 1px solid var(--color-border-emphasized);
+    background-color: var(--color-background-surface);
+    font-family: var(--font-family-code);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  /* The ✕ is a whole 24px target (WCAG 2.5.8; Astryx draws 16px and widens only its ::after, which axe can't see),
+     square like everything here. */
+  .astryx-power-search .ax-token-remove { min-width: 24px; min-height: 24px; margin-inline-end: -6px; border-radius: 0; }
+  .astryx-power-search .astryx-token[data-size="md"] { height: 26px; }
+  .astryx-power-search .ax-power-search-token-value { font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+  /* The suggestion menu and the token editor: plates with a hairline edge and a soft drop shadow. */
+  .astryx-power-search .astryx-popover {
+    border: 1px solid var(--color-border-emphasized);
+    box-shadow: 0 10px 28px -12px rgb(0 0 0 / 0.35);
+  }
+  .astryx-power-search .ax-typeahead-group-heading {
+    font-family: var(--font-family-code);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
 
   /* ---------- Card, ClickableCard ---------- */
 
