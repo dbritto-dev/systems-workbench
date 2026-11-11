@@ -103,6 +103,8 @@ wb-experiment[data-done] .result{display:block}
 .question .n,details .n{font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-muted);padding-top:3px;flex:none}
 .question .q,details .q{flex:1;min-width:0}
 .question>.astryx-collapsible-content{padding:0}
+/* The chevron takes the room the CSS chevron of the <details> took, so a question wraps where it did. */
+.question .ax-collapsible-chevron{width:11px;height:11px;font-size:11px}
 .answer{padding:12px 16px 14px 44px;font-size:14px}
 .answer .eyebrow{display:block;margin-bottom:4px}
 /* Without JavaScript the questions are the <noscript> copy: native details in the same look. */
