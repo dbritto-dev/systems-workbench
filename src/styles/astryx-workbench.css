@@ -91,8 +91,7 @@
   }
 
   /* ---------- Button ---------- */
-  /* Our buttons: a hairline box in the low grey, mono 12px, 6px 10px, at least 32px tall (a long label wraps rather
-     than truncating); secondary is unfilled with body text, primary ink-filled; hover (enabled, secondary) draws the
+  /* Our buttons: a hairline box in the low grey, mono 12px, 6px 10px, at least 32px tall; secondary is unfilled with body text, primary ink-filled; hover (enabled, secondary) draws the
      edge and the text darker. Astryx's press scale, hover/press overlay, disabled and loading paint stay. */
   .astryx-button {
     gap: 6px;
@@ -105,7 +104,6 @@
     font-size: 12px;
     line-height: 1.2;
     font-weight: var(--font-weight-normal);
-    white-space: normal;
     transition-property: background-image, background-color, border-color, color, opacity, transform;
   }
   .astryx-button[data-size="md"] { height: auto; min-height: var(--size-element-md); }
@@ -141,7 +139,7 @@
   .astryx-toggle-button-group > .astryx-button:focus-visible { z-index: 3; box-shadow: 0 0 0 calc(var(--focus-outline-offset) + var(--focus-outline-width)) var(--anatomy-card); }
 
   /* ---------- SegmentedControl ---------- */
-  /* Our segmented control: no track, joined mono segments (hairline edges shared, wrapping on a narrow row), the
+  /* Our segmented control: no track, joined mono segments (hairline edges shared), the
      selected one ink-filled with card text (the lens slides that surface); hover draws the edge and text darker. In
      the joined row a focused segment sits on a card-coloured gap, so its ring shows beside an ink neighbour. The
      site switches' theme control keeps its own sizes and type (styles/switches.css); its "← → to navigate" hint is
@@ -151,9 +149,6 @@
     padding: 0;
     gap: 0;
     background-color: transparent;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    max-width: 100%;
   }
   .astryx-segmented-control-item {
     padding-block: 6px;

@@ -52,11 +52,13 @@ body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:15px
 .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 18px;padding:14px 12px;align-items:start}
 .control{display:grid;gap:6px;align-content:start}
 .control>span,.control .astryx-field-label{font-family:var(--anatomy-mono);font-size:10.5px;line-height:1.65;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted)}
+/* A row's segmented control wraps on a narrow panel instead of running past it. */
+wb-seg .astryx-segmented-control{flex-wrap:wrap;align-items:flex-start;max-width:100%}
 .actions{--ux-hit-gap-block:4px;--ux-hit-gap-inline:4px}
-/* A text box (TextInput): the row's label is the field's; at most 280px wide. Our ring: on the box, around the field, as for any wrapper of an input (src/lessons/README.md, "UX foundation"). */
+/* A long button label wraps on a narrow row rather than truncating (Astryx keeps a Button to one line). */
+.actions .astryx-button{white-space:normal}
+/* A text box (TextInput): the row's label is the field's; at most 280px wide. (Its ring is the theme's, on the box.) */
 .control .text-in{gap:6px;max-width:280px}
-.text-in .ax-input-native:focus-visible{outline-style:none}
-.text-in .ax-input:has(>.ax-input-native:focus-visible){outline-width:var(--ux-focus-width);outline-style:var(--ux-focus-style);outline-color:var(--ux-focus-color);outline-offset:var(--ux-focus-offset)}
 /* A busy button (elements/wb-button.ts setBusy) refuses through aria-disabled but is not dimmed: Astryx dims only data-ax-disabled. */
 .astryx-button[aria-busy="true"]{opacity:1}
 .note{font-size:13px;color:var(--anatomy-muted);margin-top:10px}

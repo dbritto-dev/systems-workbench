@@ -56,7 +56,7 @@ body{margin:0;background:var(--sheet);color:var(--text);font:15px/1.6 var(--body
 .filters-view{position:relative;min-width:0}
 .filters{overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px;scroll-padding-inline:28px}
 .filters::-webkit-scrollbar{display:none}
-.filters .astryx-segmented-control{display:flex;width:max-content;max-width:none;gap:0;padding:0;background:none;border-radius:0}
+.filters .astryx-segmented-control{display:flex;width:max-content;max-width:none}
 .filters .astryx-segmented-control-item{flex:0 0 auto;height:auto;min-height:32px;padding:7px 11px;gap:6px;border:1px solid var(--edge);font:500 11.5px/1.2 var(--mono);letter-spacing:.04em;color:var(--text);scroll-snap-align:start}
 .filters .astryx-segmented-control-item+.astryx-segmented-control-item{margin-left:-1px}
 .filters .astryx-segmented-control-item[data-selected]{background:var(--ink);border-color:var(--ink);color:var(--plate);font-weight:500;box-shadow:none;z-index:1}
