@@ -84,7 +84,7 @@ as an Astryx Tooltip on hover, keyboard focus or a tap), never with the native `
 | Focus ring, motion timings, target sizes, disabled look (CSS) | the `--ux-*` tokens and rules in `src/styles/ux.css` (on every page; see "UX foundation") |
 | Did the last input come from the keyboard or a pointer? | `modality()`, `showsFocusRing(el)`, `isTextEntry(el)` from `src/runtime/modality` (Astryx's `<html data-astryx-modality>`) |
 | Tell a screen reader something changed | `announce(text, "polite" \| "assertive")`, `announcer({ replace })`, `clearAnnouncements()` from `src/runtime/announce` (astryx-astro's live regions) |
-| One Tab stop and arrow keys for a group or toolbar, with the "← → to navigate" hint | `roving(group, { items, orientation, wrap, current, select, skip, hint })` from `src/runtime/roving` |
+| One Tab stop and arrow keys for a group or toolbar, with the "← → to navigate" hint | an Astryx component that has them (SegmentedControl, TabList, Toolbar), or `data-astryx-roving` from `astryx-astro/elements/runtime/roving` |
 
 If two lessons need the same helper and it isn't listed, add it to `src/lib` or `src/runtime` rather than to a lesson.
 If a lesson's `page.ts` and `live.ts` need the same helper, export it from that lesson's `sim.ts`.
@@ -128,21 +128,18 @@ listeners of their own:
   `workbench/I18N.md` rules Astryx's es-ES out.
 - **Announcements** (`runtime/announce.ts`, over astryx-astro's `elements/runtime/announce`): one polite and one
   assertive region per page, created empty, `aria-atomic`, visually hidden; inside the topmost open modal `<dialog>`
-  while one is open. A
-  write clears the region, sets the text on the next frame (same-frame messages joined, a repeat kept once) and
+  while one is open. A write clears the region, sets the text on the next frame (same-frame messages joined, a repeat kept once) and
   clears it 2s later. Polite unless it's an error or time-critical. One owner per message: what an element already
   shows on screen with a live role isn't announced again, and nothing present at load is announced. An owner from
   `announcer({ replace: true })` withdraws its previous message if it hasn't been read yet (result counts).
-- **Roving focus** (Astryx's SegmentedControl on lesson pages; `runtime/roving.ts` where a page still builds its own
-  composite), for a composite control only (radiogroup, segmented control, tablist,
-  toolbar, single-choice chips like the collection's area filters); independent controls (multi-select chips, a
-  row of unrelated buttons) stay one Tab stop each. One Tab stop: the selected member
-  (`current`), else the first enabled one. ← → follow the rendered direction (swapped under RTL, checked at key time)
-  and wrap, ↑ ↓ with `orientation: "vertical"`, Home and End; disabled and hidden members are skipped. `select` makes
-  selection follow focus; Tab-in never changes the value. A caller's keydown on a member runs first and can
-  `preventDefault()`. The arrow-key hint shows once per group (or once per page for groups sharing `hint: "name"`) on
-  keyboard entry from outside, and goes on the first arrow, on leaving, or after 3s. Set the tabindex by script only,
-  so without JavaScript every member stays reachable.
+- **Roving focus**: Astryx's (its SegmentedControl, TabList and Toolbar, or `data-astryx-roving` from
+  `astryx-astro/elements/runtime/roving` for a composite of our own), for a composite control only (radiogroup,
+  segmented control, tablist, toolbar, single-choice chips like the collection's area filters); independent controls
+  (multi-select chips, a row of unrelated buttons) stay one Tab stop each. One Tab stop: the selected member, else
+  the first enabled one. ← → follow the rendered direction (swapped under RTL), Home and End; disabled and hidden
+  members are skipped. Selection follows focus within the group; Tab-in never changes the value. The "← → to
+  navigate" hint shows once per control on keyboard entry from outside, and goes on the first arrow, on leaving, or
+  after 3s. Without JavaScript the control still shows its state; links and native controls still work.
 
 ## Machine conventions
 
