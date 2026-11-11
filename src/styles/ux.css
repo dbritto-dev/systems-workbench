@@ -79,8 +79,9 @@
 /* Disabled is aria-disabled="true" on a control that stays focusable (never the native disabled attribute, which
    drops it from the Tab order and swallows the events a reason tooltip needs). It paints at half opacity, keeps its
    focus ring, and gets no hover or press: write hover and press rules for enabled controls only,
-   :where(:not([aria-disabled="true"])):hover. A disabled group dims once, not again for each member. */
-[aria-disabled="true"] {
+   :where(:not([aria-disabled="true"])):hover. A disabled group dims once, not again for each member. A busy control
+   (aria-busy, spinner showing) also refuses presses through aria-disabled but stays at full strength. */
+[aria-disabled="true"]:not([aria-busy="true"]) {
   opacity: var(--ux-disabled-opacity);
   cursor: default;
 }

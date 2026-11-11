@@ -5,7 +5,10 @@ import { PARTS_CSS, LIT_FILL_PAGE_CSS } from "./parts.mjs";
 import { LANG_CSS } from "./i18n.mjs";
 
 const light = k.ISO_CSS.match(/\.iso\[data-theme="light"\]\{([^}]*)\}/)[1];
-const dark = k.ISO_CSS.match(/\.iso\{([^}]*)\}/)[1];
+// The kit's dark block also names its mono face (--anatomy-mono), which the light block doesn't. Left in, the dark
+// palette's rules below would outrank src/styles/fonts.css's :root .iso { --anatomy-mono: var(--font-mono) }, and
+// dark lessons would draw labels, stats and readouts in the system mono instead of Inconsolata.
+const dark = k.ISO_CSS.match(/\.iso\{([^}]*)\}/)[1].replace(/--anatomy-mono:[^;]*;?/, "");
 
 // Light by default; dark from the device, or forced either way by the theme switch (data-theme on <html>).
 export const THEME_CSS = `
@@ -59,8 +62,6 @@ wb-seg .astryx-segmented-control{flex-wrap:wrap;align-items:flex-start;max-width
 .actions .astryx-button{white-space:normal}
 /* A text box (TextInput): the row's label is the field's; at most 280px wide. (Its ring is the theme's, on the box.) */
 .control .text-in{gap:6px;max-width:280px}
-/* A busy button (elements/wb-button.ts setBusy) refuses through aria-disabled but is not dimmed: Astryx dims only data-ax-disabled. */
-.astryx-button[aria-busy="true"]{opacity:1}
 .note{font-size:13px;color:var(--anatomy-muted);margin-top:10px}
 /* An experiment card (components/lesson/Experiment.astro): an Astryx Card inside <wb-experiment>. */
 wb-experiment{display:block;margin-top:14px}
