@@ -17,8 +17,9 @@
    and spinners); the focus ring is ux.css's: 2px of ink, 3px outside. Status text keeps Astryx's colours, which are
    tuned for AA contrast; the status fills use the palette's red, green and blue.
 
-   Component rules (below the tokens) only change the look where a token can't: our controls use the mono face in
-   small caps sizes. One section per component, so areas edit apart. */
+   Component rules (below the tokens) only change the look where a token can't: our controls are hairline boxes in
+   the mono face at small sizes, joined in a row where Astryx spaces them, ink-filled when selected or pressed. One
+   section per component, so areas edit apart. */
 @layer reset, astryx-base, astryx-theme;
 
 @layer astryx-theme {
@@ -90,16 +91,159 @@
   }
 
   /* ---------- Button ---------- */
+  /* Our buttons: a hairline box in the low grey, mono 12px, 6px 10px, at least 32px tall (a long label wraps rather
+     than truncating); secondary is unfilled with body text, primary ink-filled; hover (enabled, secondary) draws the
+     edge and the text darker. Astryx's press scale, hover/press overlay, disabled and loading paint stay. */
+  .astryx-button {
+    gap: 6px;
+    padding-block: 6px;
+    padding-inline: 10px;
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--anatomy-lo);
+    font-family: var(--font-family-code);
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: var(--font-weight-normal);
+    white-space: normal;
+    transition-property: background-image, background-color, border-color, color, opacity, transform;
+  }
+  .astryx-button[data-size="md"] { height: auto; min-height: var(--size-element-md); }
+  .astryx-button[data-variant="secondary"] { background-color: transparent; color: var(--anatomy-text); }
+  .astryx-button[data-variant="primary"] { border-color: var(--anatomy-strong); }
+  @media (hover: hover) {
+    .astryx-button:is([data-variant="secondary"], [data-variant="ghost"]):where(:not(:disabled, [aria-disabled="true"], [data-is-pressed="true"])):hover {
+      border-color: var(--anatomy-hi);
+      color: var(--anatomy-strong);
+    }
+  }
+
+  /* ---------- ToggleButton ---------- */
+  /* A toggle is one of our buttons (body text, unfilled); pressed is ink-filled with card text and keeps its weight.
+     In a ToggleButtonGroup the toggles join like segments: no gap, shared edges, the pressed or hovered one on top. */
+  .astryx-button.astryx-toggle-button { color: var(--anatomy-text); }
+  .astryx-button.astryx-toggle-button[data-is-pressed="true"] {
+    background-color: var(--anatomy-strong);
+    border-color: var(--anatomy-strong);
+    color: var(--anatomy-card);
+  }
+  @media (forced-colors: active) {
+    .astryx-button.astryx-toggle-button[data-is-pressed="true"] { background-color: Highlight; border-color: Highlight; color: HighlightText; }
+  }
+  .astryx-toggle-button[data-is-pressed="true"] .ax-toggle-button-label-text,
+  .ax-toggle-button-label-reserve { font-weight: inherit; }
+  .astryx-toggle-button-group { gap: 0; flex-wrap: wrap; align-items: flex-start; }
+  .astryx-toggle-button-group > .astryx-button + .astryx-button { margin-inline-start: calc(-1 * var(--border-width)); }
+  .astryx-toggle-button-group > .astryx-button[data-is-pressed="true"] { z-index: 1; }
+  @media (hover: hover) {
+    .astryx-toggle-button-group > .astryx-button:where(:not([aria-disabled="true"], :disabled)):hover { z-index: 2; }
+  }
+  .astryx-toggle-button-group > .astryx-button:focus-visible { z-index: 3; box-shadow: 0 0 0 calc(var(--focus-outline-offset) + var(--focus-outline-width)) var(--anatomy-card); }
 
   /* ---------- SegmentedControl ---------- */
+  /* Our segmented control: no track, joined mono segments (hairline edges shared, wrapping on a narrow row), the
+     selected one ink-filled with card text (the lens slides that surface); hover draws the edge and text darker. In
+     the joined row a focused segment sits on a card-coloured gap, so its ring shows beside an ink neighbour. The
+     site switches' theme control keeps its own sizes and type (styles/switches.css); its "← → to navigate" hint is
+     the Keyboard hint section below. */
+  .astryx-segmented-control {
+    --_segmented-control-padding: 0px;
+    padding: 0;
+    gap: 0;
+    background-color: transparent;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    max-width: 100%;
+  }
+  .astryx-segmented-control-item {
+    padding-block: 6px;
+    padding-inline: 10px;
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--anatomy-lo);
+    font-family: var(--font-family-code);
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: var(--font-weight-normal);
+    color: var(--anatomy-text);
+    transition-property: color, background-color, border-color, box-shadow;
+  }
+  .astryx-segmented-control-item:is([data-size="sm"], [data-size="md"], [data-size="lg"]) { height: auto; min-height: var(--size-element-md); padding-inline: 10px; }
+  .astryx-segmented-control-item + .astryx-segmented-control-item { margin-inline-start: calc(-1 * var(--border-width)); }
+  .astryx-segmented-control-item[data-selected="selected"] {
+    background-color: var(--anatomy-strong);
+    border-color: var(--anatomy-strong);
+    color: var(--anatomy-card);
+    font-weight: var(--font-weight-normal);
+    box-shadow: none;
+    z-index: 1;
+  }
+  @media (forced-colors: active) {
+    .astryx-segmented-control-item[data-selected="selected"] { background-color: Highlight; border-color: Highlight; color: HighlightText; }
+  }
+  @media (hover: hover) {
+    .astryx-segmented-control:where(:not([aria-disabled="true"])) > .astryx-segmented-control-item:where(:not([aria-disabled="true"], [data-selected="selected"])):hover {
+      border-color: var(--anatomy-hi);
+      color: var(--anatomy-strong);
+      z-index: 2;
+    }
+  }
+  .astryx-segmented-control-item:focus-visible { z-index: 3; box-shadow: 0 0 0 calc(var(--focus-outline-offset) + var(--focus-outline-width)) var(--anatomy-card); }
+  .astryx-segmented-control-item[data-disabled="disabled"] { color: var(--anatomy-text); }
 
   /* ---------- SelectableCard ---------- */
+  /* A hairline card in the low grey; hover draws the edge darker; selected is a 2px ink ring (the border plus a 1px
+     inset), so nothing moves. */
+  .astryx-card.astryx-selectable-card { border-color: var(--anatomy-lo); }
+  @media (hover: hover) {
+    .astryx-card.astryx-selectable-card:not([data-ax-disabled]):hover { border-color: var(--anatomy-hi); }
+  }
+  .astryx-card.astryx-selectable-card:has(> .ax-selectable-card-input:checked) {
+    border-color: var(--color-accent);
+    --_card-ring: inset 0 0 0 var(--border-width) var(--color-accent);
+  }
 
   /* ---------- ProgressBar ---------- */
+  /* Mono 12px; the track a 12px hairline box in the low grey, square; the neutral fill our mid grey, the accent ink;
+     the value in strong ink, tabular. */
+  .astryx-progress-bar { gap: 4px; min-width: 0; font-family: var(--font-family-code); font-size: 12px; line-height: 1.4; }
+  .ax-progress-bar-label { font-size: inherit; line-height: inherit; font-weight: var(--font-weight-normal); color: var(--anatomy-text); }
+  .ax-progress-bar-value { font-size: inherit; line-height: inherit; font-weight: var(--font-weight-medium); color: var(--anatomy-strong); font-variant-numeric: tabular-nums; }
+  .astryx-progress-bar-track {
+    box-sizing: border-box;
+    height: 12px;
+    border: var(--border-width) solid var(--anatomy-lo);
+    border-radius: 0;
+    background-color: transparent;
+  }
+  .astryx-progress-bar-fill { border-radius: 0; }
+  .astryx-progress-bar-fill[data-variant="neutral"] { background-color: var(--anatomy-mid); }
 
   /* ---------- Collapsible ---------- */
+  /* The trigger in body text and strong ink at the text size; the chevron muted; the content in body text. */
+  .astryx-collapsible-trigger {
+    font-family: var(--font-family-body);
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: var(--font-weight-normal);
+    color: var(--anatomy-strong);
+  }
+  .astryx-collapsible-trigger > .ax-collapsible-chevron[data-size] { color: var(--anatomy-muted); }
+  .astryx-collapsible-content { font-size: inherit; line-height: inherit; color: var(--anatomy-text); }
 
   /* ---------- Tooltip ---------- */
+  /* A card-coloured plate with a hairline edge, strong ink, mono 12px (not Astryx's inverted bubble). */
+  .astryx-tooltip {
+    border: var(--border-width) solid var(--anatomy-lo);
+    background-color: var(--anatomy-card);
+    color: var(--anatomy-strong);
+    font-family: var(--font-family-code);
+    font-size: 12px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+  .astryx-tooltip .ax-tooltip-content { padding-block: 4px; padding-inline: 8px; }
 
   /* ---------- Kbd ---------- */
   /* A key is a small boxed mono glyph in the muted grey, on no fill: a hairline all round, not Astryx's raised key. */
@@ -166,6 +310,10 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
+  /* TextInput (lesson panel): our box (6px 8px around 13px text, at least 32px tall). */
+  .astryx-text-input { padding-block: 6px; padding-inline: 8px; }
+  .astryx-text-input[data-size="md"] { height: auto; min-height: var(--size-element-md); }
+  .astryx-text-input .ax-input-native { font-size: 13px; line-height: 1.65; }
 
   /* ---------- Card, ClickableCard ---------- */
   /* A clickable card answers a hovering pointer with its edge (Card's emphasized border), not a tint over the whole

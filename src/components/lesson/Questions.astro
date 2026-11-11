@@ -1,8 +1,12 @@
 ---
-// Explain-it-back questions, each with what a good answer covers behind a native <details> (Astryx's Collapsible,
-// without JavaScript): the summary is the trigger (Enter and Space toggle it, the browser exposes the expanded
-// state), the answer lands at once, and a decorative chevron at the end turns from down (closed) to up (open). The
+// Explain-it-back questions, each an Astryx Collapsible (closed): the trigger is a button (aria-expanded,
+// aria-controls; Enter and Space toggle it), the answer lands at once, and its chevron turns from down (closed) to up
+// (open). Closed answers are hidden="until-found", so find-in-page still reaches them and opens the question. The
 // questions are independent disclosures: each its own Tab stop, no arrow keys between them.
+// Without JavaScript a Collapsible can't open, so the same questions are also written as native <details> inside
+// <noscript>: a browser with scripting on never renders them, one without shows them instead of the Collapsibles
+// (hidden there by the lesson CSS under @media (scripting: none)).
+import Collapsible from "astryx-astro/components/Collapsible/Collapsible.astro";
 import { pick, type Bi, type Locale } from "../../i18n";
 import { useUi } from "../../i18n/ui";
 
@@ -10,9 +14,19 @@ interface Props { locale: Locale; questions: [Bi, Bi][] }
 const { locale, questions } = Astro.props;
 const ui = useUi(locale);
 ---
-{questions.map(([q, a], i) => (
-  <details>
-    <summary><span class="n">{ui("q.n", { i: i + 1 })}</span><span class="q">{pick(q, locale)}</span></summary>
-    <div class="answer"><span class="eyebrow">{ui("q.covers")}</span>{pick(a, locale)}</div>
-  </details>
-))}
+<div class="questions">
+  {questions.map(([q, a], i) => (
+    <Collapsible class="question" defaultIsOpen={false}>
+      <Fragment slot="trigger"><span class="n">{ui("q.n", { i: i + 1 })}</span><span class="q">{pick(q, locale)}</span></Fragment>
+      <div class="answer"><span class="eyebrow">{ui("q.covers")}</span>{pick(a, locale)}</div>
+    </Collapsible>
+  ))}
+</div>
+<noscript>
+  {questions.map(([q, a], i) => (
+    <details>
+      <summary><span class="n">{ui("q.n", { i: i + 1 })}</span><span class="q">{pick(q, locale)}</span></summary>
+      <div class="answer"><span class="eyebrow">{ui("q.covers")}</span>{pick(a, locale)}</div>
+    </details>
+  ))}
+</noscript>

@@ -1,22 +1,31 @@
 ---
-// One predict-then-run card: a <wb-experiment> (src/elements/wb-experiment.ts) with its build-time result (in the
-// page's language) and the settings its Watch button sends to the live code.
-// The predictions are a single-choice group of selectable cards (Astryx's SelectableCard): each card is a <label>
-// whose first child is a visually hidden native radio, so the group is one Tab stop, the arrows move and select, the
-// whole card is clickable, and it all works without JavaScript. The question above the cards names the group.
-// The options are shuffled on every page load by the element's own shuffleChoices(). The card carries a copy of that
-// function and calls it on its own options as soon as they are parsed, before the card is first painted, so the order
-// never visibly jumps (the element's module only runs after the whole page is parsed). The copy is scoped to this card:
-// no global, and it touches nothing outside the card. The order written here is the one shown without JavaScript: the
-// right option sits at a place hashed from the lesson and experiment ids, so even that order doesn't give it away.
-// data-choice keeps each option's index in page.ts, which `answer` refers to.
-// Run starts disabled (aria-disabled, still focusable) with its reason, "Pick a prediction first", as a tooltip
-// written here and opened by ./wb-button.ts on hover, keyboard focus or a tap.
+// One predict-then-run card: a <wb-experiment> (src/elements/wb-experiment.ts) around an Astryx Card, with its
+// build-time result (in the page's language) and the settings its Watch button sends to the live code.
+// The predictions are a radiogroup of Astryx SelectableCards (type="radio"), named by the question above them: each
+// card's first child is a visually hidden native radio, so the group is one Tab stop and the arrows move and select;
+// Astryx makes the whole card clickable. Without JavaScript the radio covers its card (lesson CSS, keyed on the
+// group not being data-shuffled), so a card is still clickable.
+// The options are shuffled on every page load by shuffleChoices() (src/elements/shuffle-choices.ts). The card
+// carries a copy of that function and calls it on its own options as soon as they are parsed, before the card is
+// first painted, so the order never visibly jumps (the element's module only runs after the whole page is parsed).
+// The copy is scoped to this card: no global, and it touches nothing outside the card. The order written here is the
+// one shown without JavaScript: the right option sits at a place hashed from the lesson and experiment ids, so even
+// that order doesn't give it away. data-choice keeps each option's index in page.ts, which `answer` refers to.
+// Run is an Astryx Button, disabled (aria-disabled, still focusable) with its reason, "Pick a prediction first", as
+// its Tooltip; Watch is a Button. The result is rendered here, hidden until the card is run: the verdict's place,
+// the bars as Astryx ProgressBars (value = the share, the value label = the result's text, the "after" bar in the
+// accent), and the explanation.
+import Card from "astryx-astro/components/Card/Card.astro";
+import HStack from "astryx-astro/components/Stack/HStack.astro";
+import VStack from "astryx-astro/components/Stack/VStack.astro";
+import SelectableCard from "astryx-astro/components/SelectableCard/SelectableCard.astro";
+import Button from "astryx-astro/components/Button/Button.astro";
+import ProgressBar from "astryx-astro/components/ProgressBar/ProgressBar.astro";
 import { pick, type Locale } from "../../i18n";
 import { useUi } from "../../i18n/ui";
 import type { Lesson } from "../../lib/lessons";
 import type { ExperimentResult, ResultBar } from "../../lessons/types";
-import { shuffleChoices } from "../../elements/wb-experiment";
+import { shuffleChoices } from "../../elements/shuffle-choices";
 
 type Exp = Lesson["page"]["predict"]["experiments"][number];
 interface Props { locale: Locale; slug: string; experiment: Exp; index: number; count: number }
@@ -27,31 +36,40 @@ order.splice(hash(`${slug}:${e.id}`) % e.options.length, 0, e.answer);
 const ui = useUi(locale);
 const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
-const bars = (list: ResultBar[]) => list.map(([label, share, text, after]) => (after ? [L(label), share, L(text), true] : [L(label), share, L(text)]));
-const resultOf = (r: ExperimentResult | undefined) =>
-  !r ? null : "groups" in r ? { verdict: L(r.verdict), groups: r.groups.map((g) => ({ title: L(g.title), bars: bars(g.bars) })) } : { verdict: L(r.verdict), bars: bars(r.bars) };
+const groups = (r: ExperimentResult | undefined): { title: string; bars: ResultBar[] }[] =>
+  !r ? [] : "groups" in r ? r.groups.map((g) => ({ title: L(g.title), bars: g.bars })) : [{ title: "", bars: r.bars }];
 const id = `wb-exp${index + 1}`;
 ---
 <wb-experiment class="exp" role="article" aria-labelledby={`${id}-title`} data-exp={e.id} exp={e.id} answer={String(e.answer)}>
-  <div class="exp-head"><h3 id={`${id}-title`}>{index + 1}. {L(e.title)}</h3><span class="eyebrow">{ui("exp.count", { i: index + 1, n: count })}</span></div>
-  <div class="exp-change">{L(e.change)}</div>
-  <div class="exp-q" id={`${id}-q`}>{L(e.question)}</div>
-  <div class="choices" role="radiogroup" aria-labelledby={`${id}-q`}>
-    {order.map((j, k) => (
-      <label class="choice" data-choice={j}><input type="radio" name={`${id}-prediction`} value={String(j)} autocomplete="off" /><span class="mark" aria-hidden="true">{"ABCDE"[k]}</span><span class="text">{L(e.options[j])}</span></label>
-    ))}
-  </div>
-  <script is:inline set:html={`(${shuffleChoices})(document.currentScript.previousElementSibling)`} />
-  <div class="actions">
-    <button class="btn primary ux-hit" type="button" data-run aria-disabled="true" aria-describedby={`${id}-why-off`} data-wb-tip={`${id}-why-off`}>{ui("exp.run")}</button>
-    <span class="wb-tip" role="tooltip" id={`${id}-why-off`} popover="manual">{ui("exp.pickFirst")}</span>
-    <button class="btn ux-hit" type="button" data-watch>{ui("exp.watch")}</button>
-  </div>
-  <div class="result">
-    <div class="verdict" data-outcome></div>
-    <div class="bars" data-bars></div>
-    <p>{L(e.why)}</p>
-  </div>
-  {e.result && <script type="application/json" data-result set:html={json(resultOf(e.result))} />}
-  {e.watch !== undefined && <script type="application/json" data-watch-settings set:html={json(e.watch)} />}
+  <Card class="exp-card">
+    <HStack class="exp-head" justify="between" align="end" gap={3} wrap="wrap"><h3 id={`${id}-title`}>{index + 1}. {L(e.title)}</h3><span class="eyebrow">{ui("exp.count", { i: index + 1, n: count })}</span></HStack>
+    <div class="exp-change">{L(e.change)}</div>
+    <div class="exp-q" id={`${id}-q`}>{L(e.question)}</div>
+    <VStack class="choices" role="radiogroup" aria-labelledby={`${id}-q`} gap={1.5}>
+      {order.map((j, k) => (
+        <SelectableCard class="choice" type="radio" name={`${id}-prediction`} value={String(j)} label={L(e.options[j])} data-choice={j}><span class="mark" aria-hidden="true">{"ABCDE"[k]}</span><span class="text">{L(e.options[j])}</span></SelectableCard>
+      ))}
+    </VStack>
+    <script is:inline set:html={`(${shuffleChoices})(document.currentScript.previousElementSibling)`} />
+    <HStack class="actions" gap={2} wrap="wrap">
+      <Button label={ui("exp.run")} variant="primary" isDisabled tooltip={ui("exp.pickFirst")} data-run class="ux-hit" />
+      <Button label={ui("exp.watch")} data-watch class="ux-hit" />
+    </HStack>
+    <div class="result">
+      <div class="verdict" data-outcome></div>
+      <div class="bars">
+        {groups(e.result).map((g) => (
+          <Fragment>
+            {g.title && <div class="bar-group">{g.title}</div>}
+            {g.bars.map(([label, share, text, after]) => (
+              <ProgressBar class="bar" label={L(label)} value={Math.max(1, Math.round(100 * share))} hasValueLabel formatValueLabel={() => L(text)} variant={after ? "accent" : "neutral"} />
+            ))}
+          </Fragment>
+        ))}
+      </div>
+      <p>{L(e.why)}</p>
+    </div>
+    {e.result && <script type="application/json" data-result set:html={json({ verdict: L(e.result.verdict) })} />}
+    {e.watch !== undefined && <script type="application/json" data-watch-settings set:html={json(e.watch)} />}
+  </Card>
 </wb-experiment>

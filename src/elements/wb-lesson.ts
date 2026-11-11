@@ -10,9 +10,11 @@
 //   root.seg(name)               a <wb-seg>: .value to read or press an option
 //   root.press(name, value)      press an option of the segment(s) called name, without a "change" event (for a
 //                                multi-select segment, a list or space-separated values: the options to have on)
-//   root.button(name)            an action button <button data-act="name">, e.g. to relabel it
+//   root.button(name)            an action button <button data-act="name"> (an Astryx Button)
+//   root.relabel(name, text)     write an action button's label (never button.textContent: the Button's label is a
+//                                span inside it, beside its spinner and live region)
 //   root.disable(name, on, reason?)  disable (or enable) an action button, a segment or a text box by name, the
-//                                focusable way (aria-disabled), with an optional reason shown as a tooltip
+//                                focusable way (aria-disabled), with an optional reason shown as an Astryx Tooltip
 //   root.on(type, fn)            "change" (name, value, detail) from a segment, "action" (name, detail) from a
 //                                button or Space on the figure, "watch" (watch, id) from an experiment card
 //   root.$(selector), root.$$(selector)   elements inside the lesson
@@ -20,8 +22,8 @@
 //
 // A press before the live code has loaded isn't lost: a segment's change, an action and a Watch are kept and sent
 // again once mount() has run. The segment shows its new choice at once; an action button is busy until then.
-import type { ChangeDetail, ActionDetail, WbSeg, WbStats, WbActions, WbControls } from "./wb-controls";
-import { setBusy, setDisabled } from "./wb-button";
+import type { ChangeDetail, ActionDetail, WbSeg, WbStats, WbControls } from "./wb-controls";
+import { relabel, setBusy, setDisabled } from "./wb-button";
 import type { WbFigure } from "./wb-figure";
 import type { WatchDetail } from "./wb-experiment";
 import "./wb-controls";
@@ -58,9 +60,12 @@ export class WbLesson extends HTMLElement {
   stat(key: string, value: unknown) { this.stats?.set(key, value); }
   seg(name: string) { return this.querySelector<WbSeg>(`wb-seg[name="${name}"]`); }
   press(name: string, value: string | number | boolean | string[]) { this.querySelectorAll<WbSeg>(`wb-seg[name="${name}"]`).forEach((s) => { s.value = Array.isArray(value) ? value : String(value); }); }
-  button(name: string) { return this.querySelector<WbActions>("wb-actions")?.button(name) ?? this.querySelector<HTMLButtonElement>(`button[data-act="${name}"]`); }
+  button(name: string) { return this.querySelector<HTMLButtonElement>(`wb-actions button[data-act="${name}"]`); }
+  relabel(name: string, text: string) { const b = this.button(name); if (b) relabel(b, text); }
   disable(name: string, on: boolean, reason?: string | null) {
-    const el = this.button(name) ?? this.seg(name) ?? this.querySelector<HTMLInputElement>(`[data-input="${name}"]`);
+    const seg = this.button(name) ? null : this.seg(name);
+    if (seg) return seg.disable(null, on, reason);
+    const el = this.button(name) ?? this.querySelector<HTMLInputElement>(`[data-input="${name}"]`);
     if (el) setDisabled(el, on, reason);
   }
 

@@ -1,13 +1,23 @@
 ---
-// Under the figure: the stats strip <wb-stats>, one <wb-stat> per figure (written by the live code), and the controls
-// <wb-controls>, one <wb-control> row each, labelled by its visible label:
-//   - a one-of-N choice <wb-seg role="radiogroup"> (the speed control is one): option buttons with role="radio" and
-//     aria-checked, the selected one ink-filled;
-//   - a toggle group <wb-seg multiple role="group">: option buttons with aria-pressed;
-//   - a row of action buttons <wb-actions role="group"> (one maybe marked primary; Pause is a toggle, aria-pressed);
-//   - a text box, with a real <label>.
-// Everything that shows is in the HTML; src/elements/wb-controls.ts adds the keyboard (one Tab stop and arrow keys
-// for a one-of-N choice), the sliding selected surface, press feedback and disabled reasons.
+// Under the figure, on an Astryx Card: the stats strip <wb-stats>, one <wb-stat> per figure (written by the live
+// code), and the controls <wb-controls>, one <wb-control> row each, labelled by its visible label. The controls are
+// astryx-astro components (src/elements/wb-controls.ts wraps them for the lesson API):
+//   - a one-of-N choice (the speed control is one): a SegmentedControl in <wb-seg>; its segments carry data-set /
+//     data-value; the selected one is ink-filled; one Tab stop, ← → / Home / End select, "← → to navigate" hint;
+//   - a toggle group (multiple): a ToggleButtonGroup type="multiple" of ToggleButtons in <wb-seg multiple>;
+//   - a row of action buttons <wb-actions role="group"> (an HStack): Buttons with data-act, one maybe primary;
+//     Pause is a ToggleButton (aria-pressed);
+//   - a text box: a TextInput (its <input> carries data-input), labelled by the row's label.
+// Everything that shows is rendered here, state included (selected, pressed), so the first paint is final.
+import Card from "astryx-astro/components/Card/Card.astro";
+import HStack from "astryx-astro/components/Stack/HStack.astro";
+import SegmentedControl from "astryx-astro/components/SegmentedControl/SegmentedControl.astro";
+import SegmentedControlItem from "astryx-astro/components/SegmentedControl/SegmentedControlItem.astro";
+import ToggleButtonGroup from "astryx-astro/components/ToggleButton/ToggleButtonGroup.astro";
+import ToggleButton from "astryx-astro/components/ToggleButton/ToggleButton.astro";
+import Button from "astryx-astro/components/Button/Button.astro";
+import TextInput from "astryx-astro/components/TextInput/TextInput.astro";
+import VisuallyHidden from "astryx-astro/components/VisuallyHidden/VisuallyHidden.astro";
 import { pick, type Locale } from "../../i18n";
 import type { Control } from "../../lessons/types";
 
@@ -22,10 +32,8 @@ const segs = controls.map((c) =>
 );
 // The panel is once per page, so its row ids only need to be unique within it.
 const id = (i: number, part: string) => `wb-c${i}-${part}`;
-const on = (s: NonNullable<(typeof segs)[number]>, value: string | number) =>
-  s.multiple ? String(s.value).split(" ").includes(String(value)) : String(value) === String(s.value);
 ---
-<div class="panel">
+<Card class="panel" padding={0}>
   <wb-stats class="stats" data-stats>
     {stats.map(([key, label, initial = "0"]) => <wb-stat class="stat" key={key}><b data-s={key}>{L(initial)}</b><span>{L(label)}</span></wb-stat>)}
   </wb-stats>
@@ -35,35 +43,43 @@ const on = (s: NonNullable<(typeof segs)[number]>, value: string | number) =>
       if (s) return (
         <wb-control class="control" for={c.for} hidden={c.hidden || undefined}><span id={id(i, "label")}>{s.label}</span>
           {s.multiple ? (
-            <wb-seg class="seg" role="group" aria-labelledby={id(i, "label")} name={s.name} multiple>
-              {s.options.map(([value, text]) => <button type="button" data-set={s.name} data-value={String(value)} aria-pressed={String(on(s, value))}>{L(text)}</button>)}
+            <wb-seg name={s.name} multiple>
+              <ToggleButtonGroup label={s.label} aria-labelledby={id(i, "label")} type="multiple" value={String(s.value).split(" ").filter(Boolean)}>
+                {s.options.map(([value, text]) => <ToggleButton value={String(value)} label={L(text)} data-set={s.name} data-value={String(value)} />)}
+              </ToggleButtonGroup>
             </wb-seg>
           ) : (
-            <wb-seg class="seg" role="radiogroup" aria-labelledby={id(i, "label")} name={s.name} value={String(s.value)}>
-              {s.options.map(([value, text]) => <button type="button" role="radio" data-set={s.name} data-value={String(value)} aria-checked={String(on(s, value))}>{L(text)}</button>)}
+            <wb-seg name={s.name}>
+              <SegmentedControl label={s.label} aria-labelledby={id(i, "label")} value={String(s.value)} locale={locale}>
+                {s.options.map(([value, text]) => <SegmentedControlItem value={String(value)} label={L(text)} data-set={s.name} />)}
+              </SegmentedControl>
             </wb-seg>
           )}
         </wb-control>
       );
       if ("actions" in c) return (
         <wb-control class="control" for={c.for} hidden={c.hidden || undefined}><span id={id(i, "label")}>{L(c.label)}</span>
-          <wb-actions class="actions" role="group" aria-labelledby={id(i, "label")}>{c.actions.map(([act, text, opts]) => (
-            <button class={opts?.primary ? "btn primary ux-hit" : "btn ux-hit"} type="button" data-act={act} aria-pressed={act === "pause" ? "false" : undefined}>{L(text)}</button>
-          ))}</wb-actions>
+          <HStack as="wb-actions" class="actions" role="group" aria-labelledby={id(i, "label")} gap={2} wrap="wrap">{c.actions.map(([act, text, opts]) =>
+            act === "pause"
+              ? <ToggleButton label={L(text)} data-act={act} class="ux-hit" />
+              : <Button label={L(text)} variant={opts?.primary ? "primary" : "secondary"} data-act={act} class="ux-hit" />
+          )}</HStack>
         </wb-control>
       );
       if ("input" in c) return (
-        <wb-control class="control" for={c.for} hidden={c.hidden || undefined}><label for={id(i, "input")}>{L(c.label)}</label>
-          <input class="text-in" id={id(i, "input")} type="text" data-input={c.input} placeholder={c.placeholder && L(c.placeholder)} aria-describedby={c.aria && id(i, "desc")} maxlength={c.maxLength} autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" />
-          {c.aria && <span class="wb-vh" id={id(i, "desc")}>{L(c.aria)}</span>}
+        <wb-control class="control" for={c.for} hidden={c.hidden || undefined}>
+          <TextInput label={L(c.label)} id={id(i, "input")} data-input={c.input} placeholder={c.placeholder && L(c.placeholder)}
+            aria-describedby={c.aria && id(i, "desc")} maxlength={c.maxLength} autoComplete="off" autoCapitalize="off"
+            hasSpellCheck={false} enterKeyHint="done" locale={locale} containerClass="text-in" />
+          {c.aria && <VisuallyHidden id={id(i, "desc")}>{L(c.aria)}</VisuallyHidden>}
         </wb-control>
       );
     })}
   </wb-controls>
   {note && <p class="note panel-note">{L(note)}</p>}
-</div>
+</Card>
 <style is:global>
   .panel-note { padding: 0 12px 12px; margin: 0; }
   .controls > .control[hidden] { display: none; }
-  wb-stat, wb-control { display: block; }
+  wb-stat, wb-control, wb-seg { display: block; }
 </style>

@@ -141,8 +141,7 @@ export default function mount({ P, G, CABLES, TOKEN_SVG }, root) {
   const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => { step(sim, dt * speed); paint(); statClock += dt; if (statClock > 0.2) { statClock = 0; showStats(); } }, onPause: pause.onPause });
   pause.bind(loop);
-  const killBtn = root.button("kill");
-  const killLabel = () => { killBtn.textContent = sim.flag.on ? "Kill switch" : L("Turn back on", "Volver a encender"); };
+  const killLabel = () => { root.relabel("kill", sim.flag.on ? "Kill switch" : L("Turn back on", "Volver a encender")); };
 
   function set(name, raw, quiet) {
     if (name === "speed") speed = Number(raw);

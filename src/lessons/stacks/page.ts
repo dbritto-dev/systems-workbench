@@ -178,7 +178,7 @@ export default defineLesson({
 .tile[data-lit]{stroke:var(--anatomy-lit);stroke-width:1.1}
 .caret{stroke:var(--anatomy-lit);stroke-width:1.4}
 [data-stacks] [data-stale]{opacity:.3}
-@media (max-width:640px){[data-exp="overflow"] .bar{grid-template-columns:96px 1fr minmax(52px,min-content)}}
+@media (max-width:640px){[data-exp="overflow"] .bars .bar{grid-template-columns:96px 1fr minmax(52px,min-content)}}
 `,
   data: {
     P,

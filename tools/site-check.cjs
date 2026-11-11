@@ -45,16 +45,17 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       // The live code writes the readout as soon as it runs; the static page says "starting" / "iniciando".
       const loaded = await page.waitForFunction(() => !/^(starting|iniciando)$/.test(document.querySelector("[data-readout]").textContent.trim()), null, { timeout: 6000 }).then(() => true, () => false);
       if (!loaded) fail(where, "live code never ran (readout still at its initial text)");
-      // Every one-of-N control (a radiogroup) shows one selected option, and that option is the group's Tab stop.
-      const groups = await page.$$eval('wb-seg[role="radiogroup"]', (gs) => gs.map((g) => {
+      // Every one-of-N control (a SegmentedControl, role="radiogroup", in a <wb-seg>) shows one selected option, and
+      // that option is the group's Tab stop.
+      const groups = await page.$$eval('wb-seg [role="radiogroup"]', (gs) => gs.map((g) => {
         const on = g.querySelectorAll('[role="radio"][aria-checked="true"]');
         const stop = g.querySelectorAll('[role="radio"][tabindex="0"]');
-        return on.length === 1 && stop.length === 1 && stop[0] === on[0] ? "" : `${g.getAttribute("name")}: ${on.length} selected, ${stop.length} Tab stops`;
+        return on.length === 1 && stop.length === 1 && stop[0] === on[0] ? "" : `${g.closest("wb-seg").getAttribute("name")}: ${on.length} selected, ${stop.length} Tab stops`;
       }).filter(Boolean));
       if (groups.length) fail(where, `segments: ${groups.join("; ")}`);
       const chrome = await page.evaluate(chromeState);
       if (chrome) fail(where, chrome);
-      // Run every experiment with the first prediction.
+      // Run every experiment with the first prediction (a click on its SelectableCard).
       const cards = await page.$$("[data-exp]");
       if (cards.length !== 5) fail(where, `${cards.length} experiment cards`);
       for (const card of cards) {

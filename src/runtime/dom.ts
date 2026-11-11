@@ -1,5 +1,6 @@
 // Small DOM helpers that every lesson's live code used to write for itself.
 import { L, type Loop } from "./wb";
+import { setPressed } from "../elements/wb-button";
 
 /** Show or hide an element (display), touching the DOM only when it changes. */
 export function show(el: HTMLElement | SVGElement, on: boolean) {
@@ -22,14 +23,14 @@ export function setD(el: Element, d: string) {
 export const setLit = (g: Element, on: boolean) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", on));
 
 /**
- * Play/Pause for a lesson: the Pause button is a toggle (aria-pressed: pressed while paused; its label stays
- * "Pause"), the readout says "paused", and the "pause" action (the Pause button, or Space on the figure) toggles the
+ * Play/Pause for a lesson: the Pause button is an Astryx ToggleButton (aria-pressed and data-is-pressed: pressed
+ * while paused; its label stays "Pause"), the readout says "paused", and the "pause" action (the Pause button, or Space on the figure) toggles the
  * loop. Pass onPause to WB.loop(), then call bind(loop), which also shows the loop's state now (a loop starts paused
  * under reduced motion).
  */
 export function playPause(root: { button(name: string): HTMLButtonElement | null; figure: { say(text: string): void }; on(type: "action", fn: (name: string, detail: { event: CustomEvent }) => void): unknown }) {
   const btn = root.button("pause");
-  const show = (on: boolean) => { if (btn && btn.getAttribute("aria-pressed") !== String(on)) btn.setAttribute("aria-pressed", String(on)); };
+  const show = (on: boolean) => { if (btn) setPressed(btn, on); };
   return {
     onPause(on: boolean) {
       show(on);

@@ -44,8 +44,6 @@ export default function mount({ ROUTES, GAUGE }, root) {
   let net, inflight, spot, nextSpotAt, history, seed = (Date.now() % 1e6) + 1, killed = null;
   const keyOf = (a, b) => (a < b ? a + "-" + b : b + "-" + a);
 
-  const cutBtn = root.button("cut");
-  const killBtn = root.button("kill");
 
   function restart() {
     inflight = new Map();
@@ -65,8 +63,8 @@ export default function mount({ ROUTES, GAUGE }, root) {
   }
 
   function labelButtons() {
-    cutBtn.textContent = net.partition ? L("Heal the network", "Restablecer la red") : L("Cut the network", "Cortar la red");
-    killBtn.textContent = killed !== null ? L("Switch it back on", "Volver a encenderlo") : (cfg.topology === "hubs" || cfg.topology === "star" ? L("Switch off a hub", "Apagar un hub") : L("Switch off a node", "Apagar un nodo"));
+    root.relabel("cut", net.partition ? L("Heal the network", "Restablecer la red") : L("Cut the network", "Cortar la red"));
+    root.relabel("kill", killed !== null ? L("Switch it back on", "Volver a encenderlo") : (cfg.topology === "hubs" || cfg.topology === "star" ? L("Switch off a hub", "Apagar un hub") : L("Switch off a node", "Apagar un nodo")));
   }
   function setCut(on) {
     net.setPartition(on);

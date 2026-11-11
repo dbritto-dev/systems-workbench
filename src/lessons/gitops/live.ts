@@ -272,7 +272,7 @@ export default function mount({ P, G, WALKER, WALKER_SYNC, POD_READY, POD_START 
     paint(); showStats(); wake();
   }
   root.on("change", (name, value) => set(name, value));
-  const relabel = () => { const b = root.button("worker"); if (b) b.textContent = m.head().spec.worker ? L("Remove the worker in git", "Quitar el worker de git") : L("Put the worker back in git", "Volver a poner el worker"); };
+  const relabel = () => root.relabel("worker", m.head().spec.worker ? L("Remove the worker in git", "Quitar el worker de git") : L("Put the worker back in git", "Volver a poner el worker"));
   const now = (fn) => { fn(); m.runTo(clock + 0.01); paint(); showStats(); relabel(); wake(); };
   const actions = {
     release: () => now(() => m.actions.release()),

@@ -1,9 +1,5 @@
 /* Additions to the generated lesson stylesheet (workbench.css) for the site. The top navigation, the related lessons
-   and the footer's links are site chrome: styles/chrome.css. */
-/* Lesson elements (src/elements): the wrappers take no box of their own; the card is a block like the article was. */
+   and the footer's links are site chrome: styles/chrome.css. The look of the astryx-astro components the lesson uses
+   is styles/astryx-workbench.css; their place on the page is workbench/styles.mjs. */
+/* Lesson elements (src/elements): the wrappers take no box of their own. */
 wb-lesson, wb-figure { display: contents; }
-wb-experiment { display: block; }
-/* A result's bars in titled groups. */
-.bar-group { font-family: var(--anatomy-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--anatomy-muted); margin-top: 6px; }
-.bar-group:first-child { margin-top: 0; }
-

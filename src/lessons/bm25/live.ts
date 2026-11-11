@@ -175,7 +175,6 @@ export default function mount({ P, G }, root) {
   }
   const stat = (key, value) => root.stat(key, value);
 
-  const stuffBtn = root.button("stuff");
   const pause = playPause(root);
   const loop = WB.loop({ stage, step: (dt) => {
     t += dt * cfg.speed;
@@ -199,7 +198,7 @@ export default function mount({ P, G }, root) {
     start(0);
   }
   root.on("change", (name, value) => set(name, value));
-  function stuffLabel() { stuffBtn.textContent = cfg.stuff ? tr("Un-stuff D16", "Quitar el relleno de D16") : tr("Stuff “cheap” ×20 into D16", "Rellenar D16 con “cheap” ×20"); }
+  function stuffLabel() { root.relabel("stuff", cfg.stuff ? tr("Un-stuff D16", "Quitar el relleno de D16") : tr("Stuff “cheap” ×20 into D16", "Rellenar D16 con “cheap” ×20")); }
   function setStuff(on) { cfg.stuff = on; stuffLabel(); }
   const actions = {
     stuff: () => { setStuff(!cfg.stuff); cfg.tour = false; if (!cfg.stuff || cfg.qid === "cheap") start(0); else { setQuery("cheap"); start(0); } if (loop.paused) loop.setPaused(false); },

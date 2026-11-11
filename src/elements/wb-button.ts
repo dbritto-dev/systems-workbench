@@ -1,56 +1,34 @@
-// What the lesson page's buttons, segments and cards share (Astryx's Button, disabled-with-reason and Tooltip rules):
+// State changes the lesson page makes at run time on astryx-astro's controls (Button, ToggleButton,
+// SegmentedControlItem, TextInput), written the way those components render the same state on the server, so
+// Astryx's CSS, its tooltip runtime and its disabled-interaction guard treat them alike:
 //
-//   trackPress(root, selector)       press feedback: data-pressed on the pressed control from pointerdown until the
-//                                    lift, a slide off or a cancel (CSS paints the overlay and the 0.98 scale)
-//   setDisabled(el, on, reason?)     disabled the focusable way: aria-disabled="true", never the native attribute,
-//                                    so the control keeps its Tab stop and its focus; a text field also turns
-//                                    readOnly. With a reason, a tooltip says why (setReason).
-//   setReason(el, text | null)       the reason a control is disabled: a tooltip (role="tooltip", in the top layer)
-//                                    that describes el (aria-describedby) and opens on hover, on keyboard focus and
-//                                    on a tap of the disabled control; Escape closes it
-//   setBusy(button, on)              an action that hasn't finished: aria-busy at once, activation refused
-//                                    (aria-disabled) at full opacity, and after 310 ms the label hides (keeping its
-//                                    space) under a spinner; "Loading" is said once
-//   isRefused(el)                    true while el (or its group) is disabled or busy: activation does nothing
+//   setDisabled(el, on, reason?)   disabled the focusable way (Astryx contract #2): aria-disabled="true", never the
+//                                  native attribute, plus the component's own marker (a Button's data-ax-disabled,
+//                                  a segment's data-disabled, a text box's data-disabled on its <ax-text-input>; a
+//                                  text field also turns readOnly). With a reason, an Astryx Tooltip says why.
+//   setReason(el, text | null)     the reason el is disabled: an <ax-tooltip> layer (the markup <Tooltip> renders,
+//                                  driven by astryx-astro's tooltip runtime: hover, keyboard focus, a tap on the
+//                                  disabled control, Escape) that describes el, enabled only while el is disabled
+//   setBusy(button, on)            an action that hasn't finished: a Button's loading state (aria-busy, activation
+//                                  refused through aria-disabled at full opacity, the label kept in place under a
+//                                  spinner revealed after --duration-medium-min, "Loading" said once)
+//   setPressed(button, on)         a ToggleButton's pressed state (aria-pressed and the theme's data-is-pressed)
+//   relabel(button, text)          a Button's visible label (and its aria-label while it has one)
+//   isRefused(el)                  true while el (or its group) is disabled or busy: activation does nothing
 //
-// A reason tooltip can also be written into the page at build time (Experiment.astro does, for Run): any element with
-// data-wb-tip="<id of a [role=tooltip] element>" gets the same behaviour, from listeners on the document.
-// Node-safe: Experiment.astro imports wb-experiment at build time, which imports this module.
-import { announce } from "../runtime/announce";
-import { showsFocusRing } from "../runtime/modality";
-import { L, still } from "../runtime/wb";
-
-const SPINNER_DELAY = 310; // --ux-duration-medium-min: fast actions never flash a spinner
-const TIP_DELAY = 200; // hover delay before a tooltip opens
-const TIP_BRIDGE = 100; // time to move the pointer from the control onto its tooltip
+// A reason written into the page at build time (Experiment.astro's Run: <Button tooltip isDisabled>) is the same
+// layer, so setDisabled() and setReason() work on it too.
+import "astryx-astro/elements/runtime/tooltip";
+import "astryx-astro/elements/runtime/disabledInteraction";
+import { L } from "../runtime/wb";
 
 export const isRefused = (el: Element) =>
   el.getAttribute("aria-busy") === "true" || el.closest('[aria-disabled="true"]') !== null;
 
-// ---------- press feedback ----------
-const tracked = new WeakSet<Element>();
-/** data-pressed on the control under a primary-button press, from pointerdown until it lifts, slides off or is
- *  cancelled. Not on a disabled or busy control. */
-export function trackPress(root: Element, selector: string) {
-  if (tracked.has(root)) return;
-  tracked.add(root);
-  root.addEventListener("pointerdown", (e) => {
-    const ev = e as PointerEvent;
-    if (ev.button !== 0) return;
-    const el = (ev.target as Element).closest?.(selector);
-    if (!el || !root.contains(el) || isRefused(el)) return;
-    el.setAttribute("data-pressed", "");
-    const end = () => {
-      el.removeAttribute("data-pressed");
-      el.removeEventListener("pointerleave", end);
-      removeEventListener("pointerup", end, true);
-      removeEventListener("pointercancel", end, true);
-    };
-    el.addEventListener("pointerleave", end);
-    addEventListener("pointerup", end, true);
-    addEventListener("pointercancel", end, true);
-  });
-}
+const isButton = (el: Element) => el.classList.contains("astryx-button");
+const isToggle = (el: Element) => el.hasAttribute("data-ax-toggle-button");
+const isSegment = (el: Element) => el.classList.contains("astryx-segmented-control-item");
+const textBox = (el: Element) => (el instanceof HTMLInputElement ? el.closest<HTMLElement>("ax-text-input") : null);
 
 // ---------- describedby ----------
 const ids = (el: Element) => (el.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
@@ -61,114 +39,80 @@ function describe(el: Element, id: string, on: boolean) {
   else el.removeAttribute("aria-describedby");
 }
 
+// ---------- pressed, label ----------
+/** A ToggleButton's pressed state, as Astryx's toggle behaviour writes it. */
+export function setPressed(button: Element, on: boolean) {
+  const v = String(on);
+  if (button.getAttribute("aria-pressed") !== v) button.setAttribute("aria-pressed", v);
+  if (button.hasAttribute("data-is-pressed") && button.getAttribute("data-is-pressed") !== v) button.setAttribute("data-is-pressed", v);
+}
+
+/** Writes a Button's visible label (a ToggleButton's text and its width reserve too). */
+export function relabel(button: HTMLElement, text: string) {
+  const spans = button.querySelectorAll<HTMLElement>(".ax-toggle-button-label-text, .ax-toggle-button-label-reserve");
+  const targets = spans.length ? [...spans] : [...button.querySelectorAll<HTMLElement>(".ax-button-label")];
+  if (!targets.length) { if (button.textContent !== text) button.textContent = text; return; }
+  for (const t of targets) if (t.textContent !== text) t.textContent = text;
+  if (button.hasAttribute("aria-label")) button.setAttribute("aria-label", text);
+}
+
 // ---------- reason tooltips ----------
 let n = 0;
-let open: { tip: HTMLElement; trigger: HTMLElement } | null = null;
-let showTimer: ReturnType<typeof setTimeout> | null = null, hideTimer: ReturnType<typeof setTimeout> | null = null;
-
-const tipOf = (trigger: Element) => {
-  const id = trigger.getAttribute("data-wb-tip");
+/** The element that triggers el's tooltip: a text box's <ax-text-input> (as TextInput's disabledMessage does), else el. */
+const triggerOf = (el: HTMLElement) => textBox(el) ?? el;
+const layerOf = (trigger: Element) => {
+  const id = trigger.getAttribute("data-ax-tooltip");
   return id ? document.getElementById(id) : null;
 };
-const triggerOf = (node: EventTarget | null) =>
-  node instanceof Element ? node.closest<HTMLElement>("[data-wb-tip]") : null;
-const clearTimers = () => {
-  if (showTimer !== null) clearTimeout(showTimer);
-  if (hideTimer !== null) clearTimeout(hideTimer);
-  showTimer = hideTimer = null;
-};
 
-function place(tip: HTMLElement, trigger: HTMLElement) {
-  const r = trigger.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-  const vw = document.documentElement.clientWidth;
-  const x = Math.max(8, Math.min(r.left, vw - w - 8));
-  const y = r.top - 4 - h >= 8 ? r.top - 4 - h : r.bottom + 4; // above, else below
-  tip.style.left = `${Math.round(x)}px`;
-  tip.style.top = `${Math.round(y)}px`;
-}
-function hide() {
-  clearTimers();
-  if (!open) return;
-  try { open.tip.hidePopover(); } catch { /* closed */ }
-  open = null;
-}
-function show(trigger: HTMLElement) {
-  clearTimers();
-  // A reason shows only while its control is disabled.
-  const tip = tipOf(trigger);
-  if (!tip || trigger.getAttribute("aria-disabled") !== "true" || trigger.hasAttribute("data-busy-refuses") || !("showPopover" in tip)) return;
-  if (open && open.tip !== tip) hide();
-  try { if (!tip.matches(":popover-open")) tip.showPopover(); } catch { return; }
-  open = { tip, trigger };
-  place(tip, trigger);
+/** An <ax-tooltip> layer, as <Tooltip placement="above"> renders it in sibling mode. */
+function makeLayer(trigger: HTMLElement): HTMLElement {
+  const layer = document.createElement("ax-tooltip");
+  layer.id = `wb-tip-${++n}`;
+  layer.setAttribute("popover", "hint");
+  layer.setAttribute("role", "tooltip");
+  layer.className = "astryx-tooltip ax-layer ax-layer-motion";
+  layer.setAttribute("data-astryx-layer-root", "");
+  layer.setAttribute("data-placement", "above");
+  layer.setAttribute("data-align", "center");
+  layer.setAttribute("data-astryx-keep-clear", "");
+  // A text box's reason opens on any focus inside the box (TextInput's focusTrigger="always").
+  if (trigger.localName === "ax-text-input") layer.setAttribute("data-ax-focus-trigger", "always");
+  layer.style.setProperty("--_astryx-layer-clearance", "var(--spacing-1)");
+  layer.append(Object.assign(document.createElement("span"), { className: "ax-tooltip-content" }));
+  // A sibling of the trigger's row, never inside a joined row of segments (that would break its edges).
+  const host = trigger.closest("ax-segmented-control, [data-ax-toggle-button-group]") ?? trigger;
+  host.after(layer);
+  trigger.setAttribute("data-ax-tooltip", layer.id);
+  return layer;
 }
 
-let listening = false;
-/** Installs the document listeners that open and close reason tooltips (once per page). */
-export function ensureTips() {
-  if (listening || typeof document === "undefined") return;
-  listening = true;
-  const hover = matchMedia("(hover: hover)");
-  document.addEventListener("pointerover", (e) => {
-    if ((e as PointerEvent).pointerType !== "mouse" || !hover.matches) return;
-    const t = triggerOf(e.target);
-    const onTip = open && e.target instanceof Node && open.tip.contains(e.target);
-    if (onTip || (t && open?.trigger === t)) { if (hideTimer !== null) { clearTimeout(hideTimer); hideTimer = null; } return; }
-    if (t) { clearTimers(); showTimer = setTimeout(() => show(t), TIP_DELAY); }
-  });
-  document.addEventListener("pointerout", (e) => {
-    if ((e as PointerEvent).pointerType !== "mouse") return;
-    const from = triggerOf(e.target) ?? (open && e.target instanceof Node && open.tip.contains(e.target) ? open.trigger : null);
-    if (!from) return;
-    const to = (e as PointerEvent).relatedTarget;
-    if (to instanceof Node && (from.contains(to) || (open && open.tip.contains(to)))) return;
-    if (showTimer !== null) { clearTimeout(showTimer); showTimer = null; }
-    if (open) { if (hideTimer !== null) clearTimeout(hideTimer); hideTimer = setTimeout(hide, TIP_BRIDGE); }
-  });
-  document.addEventListener("focusin", (e) => {
-    const t = triggerOf(e.target);
-    if (t && showsFocusRing(e.target as Element)) show(t);
-    else if (open && !(t && open.trigger === t)) hide();
-  });
-  document.addEventListener("focusout", (e) => {
-    if (open && triggerOf(e.target) === open.trigger) hide();
-  });
-  // A tap (or click) on a disabled control opens its reason; a press anywhere else closes it.
-  document.addEventListener("click", (e) => {
-    const t = triggerOf(e.target);
-    if (t && t.getAttribute("aria-disabled") === "true") show(t);
-  });
-  document.addEventListener("pointerdown", (e) => {
-    if (open && !(e.target instanceof Node && (open.trigger.contains(e.target) || open.tip.contains(e.target)))) hide();
-  }, true);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && open && !e.isComposing) hide();
-  });
-  addEventListener("scroll", () => { if (open) place(open.tip, open.trigger); }, { capture: true, passive: true });
-  addEventListener("resize", () => { if (open) place(open.tip, open.trigger); }, { passive: true });
-}
-
-/** Sets (text) or removes (null) the reason el is disabled; it shows only while el is aria-disabled. */
+/** Sets (text) or removes (null) the reason el is disabled; the tooltip shows only while el is aria-disabled. */
 export function setReason(el: HTMLElement, text: string | null) {
-  ensureTips();
-  let tip = tipOf(el);
+  const trigger = triggerOf(el);
+  let layer = layerOf(trigger);
   if (text === null) {
-    if (tip) { if (open?.tip === tip) hide(); describe(el, tip.id, false); tip.remove(); }
-    el.removeAttribute("data-wb-tip");
+    if (layer) { (layer as HTMLElement & { hideNow?: () => void }).hideNow?.(); describe(el, layer.id, false); layer.remove(); }
+    trigger.removeAttribute("data-ax-tooltip");
     return;
   }
-  if (!tip) {
-    tip = document.createElement("span");
-    tip.id = `wb-tip-${++n}`;
-    tip.className = "wb-tip";
-    tip.setAttribute("role", "tooltip");
-    tip.setAttribute("popover", "manual");
-    (el.closest("wb-lesson, main") ?? document.body).append(tip);
-    el.setAttribute("data-wb-tip", tip.id);
+  layer ??= makeLayer(trigger);
+  const content = layer.querySelector(".ax-tooltip-content") ?? layer;
+  if (content.textContent !== text) content.textContent = text;
+  syncReason(el);
+}
+
+/** The reason is described and enabled while el is disabled, and quiet (closed, not describing) otherwise. */
+function syncReason(el: HTMLElement) {
+  const layer = layerOf(triggerOf(el));
+  if (!layer) return;
+  const on = el.getAttribute("aria-disabled") === "true";
+  describe(el, layer.id, on);
+  if (on) layer.removeAttribute("data-ax-enabled");
+  else {
+    layer.setAttribute("data-ax-enabled", "false");
+    (layer as HTMLElement & { hideNow?: () => void }).hideNow?.();
   }
-  if (tip.textContent !== text) tip.textContent = text;
-  describe(el, tip.id, el.getAttribute("aria-disabled") === "true");
-  if (open?.tip === tip) place(tip, el);
 }
 
 /** Disables (or enables) a control without taking it out of the Tab order. A reason (or null to drop it) is
@@ -176,43 +120,63 @@ export function setReason(el: HTMLElement, text: string | null) {
 export function setDisabled(el: HTMLElement, on: boolean, reason?: string | null) {
   if (on) el.setAttribute("aria-disabled", "true");
   else el.removeAttribute("aria-disabled");
-  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.readOnly = on;
-  const tip = tipOf(el);
+  el.removeAttribute("data-busy-refuses"); // an explicit state replaces a busy refusal
+  if (isButton(el)) {
+    el.toggleAttribute("data-ax-disabled", on);
+    // A ToggleButton always carries the guard marker; a Button only while it is aria-disabled.
+    if (!isToggle(el)) el.toggleAttribute("data-ax-disabled-interaction", on);
+  } else if (isSegment(el)) {
+    if (on) { el.setAttribute("data-disabled", "disabled"); el.setAttribute("data-astryx-segment-disabled", ""); }
+    else { el.removeAttribute("data-disabled"); el.removeAttribute("data-astryx-segment-disabled"); }
+    el.classList.toggle("ax-overlay-bg", !on && el.getAttribute("aria-checked") !== "true");
+  } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    el.readOnly = on;
+    const box = textBox(el);
+    if (box) { if (on) box.setAttribute("data-disabled", "disabled"); else box.removeAttribute("data-disabled"); }
+  }
   if (reason !== undefined) setReason(el, reason);
-  else if (tip) describe(el, tip.id, on);
-  if (!on && open?.trigger === el) hide();
+  else syncReason(el);
 }
 
 // ---------- busy ----------
-const spinners = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
-/** Marks an action as pending (on) or done (off). The button keeps its size, its focus and its Tab stop. */
+const spinnerTemplate = () => document.querySelector<HTMLTemplateElement>("template[data-wb-spinner]");
+
+/** Marks an action as pending (on) or done (off): a Button's loading state, built as Button renders isLoading.
+ *  The button keeps its size, its focus and its Tab stop. */
 export function setBusy(button: HTMLElement, on: boolean) {
-  const t = spinners.get(button);
-  if (t !== undefined) { clearTimeout(t); spinners.delete(button); }
+  const content = button.querySelector<HTMLElement>(":scope > .ax-button-content");
+  const live = button.querySelector<HTMLElement>(':scope > [role="status"]');
   if (on) {
     if (button.getAttribute("aria-busy") === "true") return;
     button.setAttribute("aria-busy", "true");
-    // Refuses activation while pending; the busy look (full opacity) wins over the disabled one in CSS.
-    if (button.getAttribute("aria-disabled") !== "true") button.setAttribute("data-busy-refuses", "");
-    button.setAttribute("aria-disabled", "true");
-    const spin = () => {
-      spinners.delete(button);
-      button.setAttribute("data-busy", "");
-      if (!button.querySelector(":scope > .wb-spin")) {
-        const s = document.createElement("span");
-        s.className = "wb-spin";
-        s.setAttribute("aria-hidden", "true");
-        button.append(s);
-      }
-      announce(L("Loading", "Cargando"));
-    };
-    if (still.matches) spin();
-    else spinners.set(button, setTimeout(spin, SPINNER_DELAY));
+    // Refuses activation while pending (runtime/disabledInteraction), at full opacity: busy is not disabled.
+    if (button.getAttribute("aria-disabled") !== "true") {
+      button.setAttribute("data-busy-refuses", "");
+      button.setAttribute("aria-disabled", "true");
+      button.setAttribute("data-ax-disabled-interaction", "");
+    }
+    // The content is hidden from assistive tech while loading, so the name moves to aria-label.
+    if (!button.hasAttribute("aria-label")) { button.setAttribute("aria-label", (button.querySelector(".ax-button-label")?.textContent ?? button.textContent ?? "").trim()); button.setAttribute("data-busy-label", ""); }
+    const spin = Object.assign(document.createElement("span"), { className: "ax-button-spinner" });
+    spin.setAttribute("data-ax-delayed", "");
+    spin.setAttribute("aria-hidden", "true");
+    const t = spinnerTemplate();
+    if (t) spin.append(t.content.cloneNode(true));
+    button.prepend(spin);
+    if (content) { content.setAttribute("data-ax-hidden", "delayed"); content.setAttribute("aria-hidden", "true"); }
+    // Button's polite region: written on the next frame, so it is heard.
+    if (live) requestAnimationFrame(() => { if (button.getAttribute("aria-busy") === "true") live.textContent = L("Loading", "Cargando"); });
   } else {
     if (button.getAttribute("aria-busy") !== "true") return;
     button.removeAttribute("aria-busy");
-    button.removeAttribute("data-busy");
-    if (button.hasAttribute("data-busy-refuses")) { button.removeAttribute("data-busy-refuses"); button.removeAttribute("aria-disabled"); }
-    button.querySelector(":scope > .wb-spin")?.remove();
+    if (button.hasAttribute("data-busy-refuses")) {
+      button.removeAttribute("data-busy-refuses");
+      button.removeAttribute("aria-disabled");
+      if (!isToggle(button)) button.removeAttribute("data-ax-disabled-interaction");
+    }
+    if (button.hasAttribute("data-busy-label")) { button.removeAttribute("data-busy-label"); button.removeAttribute("aria-label"); }
+    button.querySelector(":scope > .ax-button-spinner")?.remove();
+    if (content) { content.removeAttribute("data-ax-hidden"); content.removeAttribute("aria-hidden"); }
+    if (live) live.textContent = "";
   }
 }

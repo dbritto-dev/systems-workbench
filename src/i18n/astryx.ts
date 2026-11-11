@@ -7,6 +7,9 @@
 export const ASTRYX_OVERRIDES: Record<string, Record<string, string>> = {
   es: {
     // lesson
+    // The keyboard hint's keys (SegmentedControl): es-ES has no strings for them, so they would read in English.
+    "@astryx.kbd.key.left": "Flecha izquierda",
+    "@astryx.kbd.key.right": "Flecha derecha",
 
     // collection: PowerSearch (with its Tokenizer, Typeahead, Selector and value editors), Kbd, Dialog, EmptyState.
     // es-ES says "añadir" and "introducir" and uses the Spanish perfect ("se ha añadido"); some keys it lacks fall

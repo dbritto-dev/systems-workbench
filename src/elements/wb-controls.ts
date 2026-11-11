@@ -1,41 +1,39 @@
-// The controls under a lesson's figure (markup from components/lesson/Panel.astro). They behave like Astryx's
-// SegmentedControl, ToggleButton and Button (src/lessons/README.md, "UX foundation"); the look stays ours.
+// The controls under a lesson's figure (markup from components/lesson/Panel.astro). The controls themselves are
+// astryx-astro's: SegmentedControl, ToggleButtonGroup + ToggleButton, Button, TextInput, with Astryx's keyboard,
+// focus, hover, press and hint behaviour. These elements wrap them and translate their events into the lesson API
+// (src/lessons/README.md) that every live.ts uses through <wb-lesson>:
 //
 //   <wb-stats>   the stats strip: one <wb-stat key="done"> per figure. stats.set("done", 12) or stat.set(12) writes
 //                its value, touching the DOM only on change.
 //   <wb-controls> the controls area: one <wb-control> per row (a label and a segment, buttons or a text box).
 //                controls.showFor("lookups") shows the rows with for="lookups" and hides the other rows that have a
 //                for= (rows without one always show).
-//   <wb-seg name="speed" value="1" role="radiogroup">   a one-of-N choice (a segmented control): buttons with
-//                role="radio" and aria-checked. One Tab stop (the selected option); ← → (swapped under RTL) wrap,
-//                Home and End, and selection follows focus; the first keyboard entry shows the "← → to navigate"
-//                hint. The selected surface slides from the old option to the new one. A click, an arrow or a key
-//                on another option sends a "wb-change" event, { name, value, button, pressed }, which bubbles to
-//                the lesson; unless a listener cancels it (preventDefault) or changes the pressed options itself,
-//                that option becomes the selected one. Activating the selected option does nothing.
-//                seg.value = "3" selects an option without an event.
-//   <wb-seg multiple role="group">   a toggle group: options switch on and off independently (buttons with
-//                aria-pressed, each its own Tab stop; pressed: the clicked option's new state); seg.value is the
-//                pressed values separated by spaces.
-//   <wb-actions> a row of buttons <button data-act="name">, each its own Tab stop. A click sends "wb-action",
-//                { name, button }. A button with aria-pressed (Pause) is a toggle: a click flips it at once, and
-//                the live code keeps it in step with what it shows (runtime/dom.ts, playPause).
+//   <wb-seg name="speed">   wraps a SegmentedControl (<ax-segmented-control>, a radiogroup of role="radio" buttons
+//                with data-set / data-value). Astryx's cancelable "astryx-change" { value } becomes a cancelable
+//                "wb-change" { name, value, button, pressed: true }, which bubbles to the lesson; if a listener
+//                cancels it (preventDefault) or presses options itself (root.press), the control keeps that, else
+//                Astryx applies the choice. seg.value = "3" selects an option without an event (Astryx slides).
+//   <wb-seg name multiple>  wraps a ToggleButtonGroup type="multiple" (aria-pressed toggles, each its own Tab stop):
+//                its "astryx-change" { value: [...] } becomes "wb-change" { name, value: the toggled option,
+//                button, pressed: its new state }, with the same veto. seg.value is the pressed values separated by
+//                spaces; setting it presses those, without an event.
+//   <wb-actions> a group of Buttons <button data-act="name">, each its own Tab stop. A click sends "wb-action",
+//                { name, button }. Pause is a ToggleButton: Astryx flips it ("astryx-pressed-change"), which sends
+//                "wb-action"; the live code keeps it in step with what it shows (runtime/dom.ts, playPause), and a
+//                state it writes during the event wins over Astryx's.
 //
 // Disabled is aria-disabled="true" (the control keeps its Tab stop and focus), optionally with a reason tooltip:
 // seg.disable(value | null, on, reason?), actions.disable(name, on, reason?), or root.disable(name, on, reason?)
-// from <wb-lesson>. Busy, press feedback and reason tooltips come from ./wb-button.
+// from <wb-lesson>; the state is written as the Astryx component renders it (./wb-button).
 //
-// Lessons rarely touch these directly: <wb-lesson> gives live code root.stat(), root.seg(), root.button() and
-// root.on("change" | "action", …).
-import { roving, type Roving } from "../runtime/roving";
-import { still } from "../runtime/wb";
-import { isRefused, setDisabled, trackPress } from "./wb-button";
+// Lessons rarely touch these directly: <wb-lesson> gives live code root.stat(), root.seg(), root.button(),
+// root.relabel() and root.on("change" | "action", …).
+import "astryx-astro/elements/segmented-control";
+import type { SegmentedControlElement } from "astryx-astro/elements/segmented-control";
+import { isRefused, relabel, setDisabled, setPressed } from "./wb-button";
 
 export interface ChangeDetail { name: string; value: string; button: HTMLButtonElement; pressed: boolean }
 export interface ActionDetail { name: string; button?: HTMLButtonElement }
-
-const hidden = (el: Element) => el.getClientRects().length === 0;
-const nativeDisabled = (el: Element) => (el as HTMLButtonElement).disabled === true;
 
 export class WbStat extends HTMLElement {
   get key() { return this.getAttribute("key") ?? ""; }
@@ -67,102 +65,80 @@ export class WbControls extends HTMLElement {
 
 export class WbSeg extends HTMLElement {
   #touched = false;
-  #nav: Roving | null = null;
-  #slideEnd: (() => void) | null = null;
   get name() { return this.getAttribute("name") ?? ""; }
-  get buttons() { return [...this.querySelectorAll<HTMLButtonElement>("button[data-value]")]; }
   get multiple() { return this.hasAttribute("multiple"); }
-  /** The attribute that says an option is on: aria-checked in a one-of-N group, aria-pressed in a toggle group. */
-  get #state() { return this.multiple ? "aria-pressed" : "aria-checked"; }
-  get #selected() { return this.buttons.find((b) => b.getAttribute(this.#state) === "true"); }
-  get value() { return this.multiple ? this.buttons.filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.value).join(" ") : this.getAttribute("value") ?? ""; }
+  /** The Astryx control: <ax-segmented-control>, or the ToggleButtonGroup's role="group" element. */
+  get group() { return this.querySelector<HTMLElement>("ax-segmented-control, [data-ax-toggle-button-group]")!; }
+  get buttons() { return [...this.querySelectorAll<HTMLButtonElement>("button[data-value]")]; }
+  get #pressedValues() { return this.buttons.filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.value!); }
+  get value() {
+    if (this.multiple) return this.#pressedValues.join(" ");
+    return this.buttons.find((b) => b.getAttribute("aria-checked") === "true")?.dataset.value ?? "";
+  }
   set value(v: string | number | boolean | string[]) {
     this.#touched = true;
-    const on = new Set(Array.isArray(v) ? v : this.multiple ? String(v).split(" ").filter(Boolean) : [String(v)]);
-    const was = this.#selected;
-    if (!this.multiple && this.getAttribute("value") !== String(v)) this.setAttribute("value", String(v));
-    this.buttons.forEach((b) => { const p = String(on.has(b.dataset.value!)); if (b.getAttribute(this.#state) !== p) b.setAttribute(this.#state, p); });
-    if (!this.multiple) { this.#slide(was, this.#selected); this.#nav?.sync(); }
-  }
-  /** The whole group is disabled (aria-disabled on the group: it dims once and keeps its Tab stop). */
-  get disabled() { return this.getAttribute("aria-disabled") === "true"; }
-  set disabled(on: boolean) { setDisabled(this, on); }
-  /** Disables one option (value) or the whole group (null), with an optional reason tooltip. */
-  disable(value: string | number | null, on: boolean, reason?: string | null) {
-    const el = value === null ? this : this.buttons.find((b) => b.dataset.value === String(value));
-    if (el) setDisabled(el, on, reason);
-  }
-  #refused(b: HTMLButtonElement) { return nativeDisabled(b) || isRefused(b); }
-  #pressedState() { return this.buttons.map((b) => b.getAttribute(this.#state)).join(); }
-
-  connectedCallback() {
-    this.addEventListener("click", this.#click);
-    trackPress(this, "button[data-value]");
-    if (!this.multiple && !this.#nav) {
-      this.#nav = roving(this, {
-        items: "button[data-value]",
-        current: () => this.#selected,
-        select: (b) => { if (!this.#refused(b as HTMLButtonElement)) this.#activate(b as HTMLButtonElement); },
-        skip: (b) => this.#refused(b as HTMLButtonElement) || hidden(b),
-        hint: "wb-seg",
-      });
+    if (this.multiple) {
+      const on = Array.isArray(v) ? v.map(String) : String(v).split(" ").filter(Boolean);
+      // As ToggleButtonGroup's own value setter writes it (behaviors/toggleButtonGroup.ts).
+      this.buttons.forEach((b) => setPressed(b, on.includes(b.dataset.value!)));
+      this.group.setAttribute("data-ax-value-order", JSON.stringify(on.filter((x) => this.buttons.some((b) => b.dataset.value === x))));
+    } else {
+      (this.group as SegmentedControlElement).value = String(v);
     }
   }
-  disconnectedCallback() {
-    this.removeEventListener("click", this.#click);
-    this.#nav?.destroy();
-    this.#nav = null;
+  /** The whole group is disabled (aria-disabled on the group: it dims once and keeps its Tab stop). */
+  get disabled() { return this.group.getAttribute("aria-disabled") === "true"; }
+  set disabled(on: boolean) { this.disable(null, on); }
+  /** Disables one option (value) or the whole group (null), with an optional reason tooltip. */
+  disable(value: string | number | null, on: boolean, reason?: string | null) {
+    if (value !== null) {
+      const b = this.buttons.find((x) => x.dataset.value === String(value));
+      if (b) setDisabled(b, on, reason);
+      return;
+    }
+    // A disabled SegmentedControl marks the group and every segment (as it renders isDisabled); a ToggleButton
+    // group disables each member.
+    if (!this.multiple) {
+      if (on) this.group.setAttribute("aria-disabled", "true"); else this.group.removeAttribute("aria-disabled");
+    }
+    this.buttons.forEach((b) => setDisabled(b, on));
+    if (reason !== undefined && this.buttons[0]) setDisabled(this.buttons[0], on, reason);
   }
-  #click = (e: Event) => {
-    const button = (e.target as Element).closest<HTMLButtonElement>("button[data-value]");
-    if (!button || !this.contains(button) || this.#refused(button)) return;
-    this.#activate(button);
+
+  connectedCallback() { this.addEventListener("astryx-change", this.#change); }
+  disconnectedCallback() { this.removeEventListener("astryx-change", this.#change); }
+
+  #change = (e: Event) => {
+    if (e.target !== this.group) return;
+    const ev = e as CustomEvent<{ value: string | string[] | null }>;
+    let detail: ChangeDetail | null = null;
+    if (this.multiple) {
+      const next = Array.isArray(ev.detail.value) ? ev.detail.value : [];
+      const was = this.#pressedValues;
+      const toggled = [...next.filter((v) => !was.includes(v)), ...was.filter((v) => !next.includes(v))][0];
+      const button = this.buttons.find((b) => b.dataset.value === toggled);
+      if (button) detail = { name: this.name, value: toggled, button, pressed: next.includes(toggled) };
+    } else {
+      const value = String(ev.detail.value ?? "");
+      const button = this.buttons.find((b) => b.dataset.value === value);
+      if (button) detail = { name: this.name, value, button, pressed: true };
+    }
+    if (detail && !this.#ask(detail)) ev.preventDefault();
   };
-  #activate(button: HTMLButtonElement) {
-    if (!this.multiple && button.getAttribute("aria-checked") === "true") return;
-    const pressed = this.multiple ? button.getAttribute("aria-pressed") !== "true" : true;
-    this.#commit({ name: this.name, value: button.dataset.value!, button, pressed });
-  }
-  /** Sends the change and, unless a listener refused it or pressed something itself, applies it. */
-  #commit(detail: ChangeDetail) {
+  #pressedState() { return this.buttons.map((b) => b.getAttribute(this.multiple ? "aria-pressed" : "aria-checked")).join(); }
+  /** Sends "wb-change"; true when no listener refused it or pressed something itself (so the choice applies). */
+  #ask(detail: ChangeDetail) {
     this.#touched = false;
     const before = this.#pressedState();
     const go = this.dispatchEvent(new CustomEvent("wb-change", { bubbles: true, cancelable: true, detail }));
-    if (!go || this.#touched || this.#pressedState() !== before) return;
-    if (this.multiple) detail.button.setAttribute("aria-pressed", String(detail.pressed));
-    else this.value = detail.value;
+    return go && !this.#touched && this.#pressedState() === before;
   }
-  /** Sends a change again that was made before the live code had loaded (<wb-lesson> keeps it). */
-  replay(detail: ChangeDetail) { this.#commit(detail); }
-
-  // The selected surface slides from the old option to the new one: the group's ::before is placed on the new
-  // option and transformed back to the old one, then let go (transform only). The selected option paints its own
-  // fill the rest of the time, so the first paint needs no script. Under reduced motion the change is instant.
-  #slide(from: HTMLElement | undefined, to: HTMLElement | undefined) {
-    this.#slideEnd?.();
-    if (!from || !to || from === to || still.matches || !this.isConnected) return;
-    const g = this.getBoundingClientRect(), a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
-    if (!g.width || !a.width || !b.width) return;
-    const s = this.style;
-    s.setProperty("--wb-sx", `${b.left - g.left - this.clientLeft}px`);
-    s.setProperty("--wb-sy", `${b.top - g.top - this.clientTop}px`);
-    s.setProperty("--wb-sw", `${b.width}px`);
-    s.setProperty("--wb-sh", `${b.height}px`);
-    s.setProperty("--wb-st", `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width}, ${a.height / b.height})`);
-    this.setAttribute("data-slide", "from");
-    void this.offsetWidth; // commit the start position
-    this.setAttribute("data-slide", "to");
-    s.setProperty("--wb-st", "none");
-    const end = () => {
-      clearTimeout(timer);
-      this.removeEventListener("transitionend", onEnd);
-      this.removeAttribute("data-slide");
-      this.#slideEnd = null;
-    };
-    const onEnd = (e: TransitionEvent) => { if (e.target === this && e.pseudoElement === "::before") end(); };
-    const timer = setTimeout(end, 600);
-    this.addEventListener("transitionend", onEnd);
-    this.#slideEnd = end;
+  /** Sends a change again that was made before the live code had loaded (<wb-lesson> keeps it); Astryx already
+   *  showed it, so this only re-applies it if a listener didn't decide otherwise. */
+  replay(detail: ChangeDetail) {
+    if (!this.#ask(detail)) return;
+    if (this.multiple) setPressed(detail.button, detail.pressed);
+    else this.value = detail.value;
   }
 }
 
@@ -173,18 +149,34 @@ export class WbActions extends HTMLElement {
     const b = this.button(name);
     if (b) setDisabled(b, on, reason);
   }
+  /** Writes an action button's label. */
+  relabel(name: string, text: string) {
+    const b = this.button(name);
+    if (b) relabel(b, text);
+  }
   connectedCallback() {
     this.addEventListener("click", this.#click);
-    trackPress(this, "button[data-act]");
+    this.addEventListener("astryx-pressed-change", this.#pressed);
   }
-  disconnectedCallback() { this.removeEventListener("click", this.#click); }
+  disconnectedCallback() {
+    this.removeEventListener("click", this.#click);
+    this.removeEventListener("astryx-pressed-change", this.#pressed);
+  }
+  // A plain button acts on its click (Astryx's disabled-interaction guard has already stopped one on a disabled
+  // button); a busy one refuses.
   #click = (e: Event) => {
     const button = (e.target as Element).closest<HTMLButtonElement>("button[data-act]");
-    if (!button || !this.contains(button) || nativeDisabled(button) || isRefused(button)) return;
-    // A toggle shows its new state at once (optimistic); the live code confirms it.
-    if (button.hasAttribute("aria-pressed")) button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
-    const detail: ActionDetail = { name: button.dataset.act!, button };
-    this.dispatchEvent(new CustomEvent("wb-action", { bubbles: true, detail }));
+    if (!button || !this.contains(button) || button.hasAttribute("data-ax-toggle-button") || isRefused(button)) return;
+    this.dispatchEvent(new CustomEvent("wb-action", { bubbles: true, detail: { name: button.dataset.act!, button } satisfies ActionDetail }));
+  };
+  // A toggle acts when Astryx flips it. Astryx then shows the new state, unless the live code wrote one itself.
+  #pressed = (e: Event) => {
+    const button = e.target as HTMLButtonElement;
+    if (!(button instanceof HTMLButtonElement) || !button.dataset.act || !this.contains(button)) return;
+    const before = button.getAttribute("aria-pressed");
+    this.dispatchEvent(new CustomEvent("wb-action", { bubbles: true, detail: { name: button.dataset.act, button } satisfies ActionDetail }));
+    const now = button.getAttribute("aria-pressed");
+    if (now !== before) { e.preventDefault(); setPressed(button, now === "true"); }
   };
 }
 
