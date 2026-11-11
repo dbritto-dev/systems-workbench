@@ -1,7 +1,7 @@
 // Smoke test for the built site. Serve it first (npm run preview), then:
 //   CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/site-check.cjs [baseUrl] [slug ...]   (slugs: separate or a,b,c)
 // For every lesson in English and Spanish: no console errors, the live code loads and animates the figure,
-// every one-of-N control has one selected option holding the Tab stop, all five experiments run (a prediction card,
+// every one-of-N control (the theme switch too) has one selected option holding the Tab stop, all five experiments run (a prediction card,
 // then Run) and show a verdict, nothing from the other language is left on the page, and the page fits a 390 px phone. Also checks the collection pages and a redirect from an old lesson URL. Exits 1 on problems.
 const { chromium } = require("playwright");
 const lessons = require("../workbench/collection/lessons.json");
@@ -12,6 +12,18 @@ const only = new Set(process.argv.slice(2).filter((a) => !isUrl(a)).flatMap((a) 
 const unknown = [...only].filter((s) => !lessons.some((l) => l.slug === s));
 if (unknown.length) { console.error(`unknown lesson(s): ${unknown.join(", ")}`); process.exit(1); }
 const problems = [];
+// The site chrome (in the page): the top navigation is a TopNav (lessons), the language links mark this page, and the
+// theme switch (a SegmentedControl) shows one selected segment holding the group's one Tab stop. "" when all is well.
+const chromeState = () => {
+  const out = [];
+  if (document.querySelector(".page") && !document.querySelector("header .astryx-top-nav")) out.push("no TopNav");
+  const cur = document.querySelectorAll('.switches a[data-lang-link][aria-current="page"]');
+  if (cur.length !== 1 || cur[0].getAttribute("hreflang") !== document.documentElement.lang) out.push(`${cur.length} current language links`);
+  const segs = [...document.querySelectorAll('.switches ax-segmented-control [role="radio"]')];
+  const on = segs.filter((b) => b.getAttribute("aria-checked") === "true"), stops = segs.filter((b) => b.getAttribute("tabindex") === "0");
+  if (segs.length !== 3 || on.length !== 1 || stops.length !== 1 || on[0] !== stops[0]) out.push(`theme switch: ${on.length} selected, ${stops.length} Tab stops`);
+  return out.join(", ");
+};
 const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(`  ✗ ${what}`); };
 
 (async () => {
@@ -40,6 +52,8 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
         return on.length === 1 && stop.length === 1 && stop[0] === on[0] ? "" : `${g.getAttribute("name")}: ${on.length} selected, ${stop.length} Tab stops`;
       }).filter(Boolean));
       if (groups.length) fail(where, `segments: ${groups.join("; ")}`);
+      const chrome = await page.evaluate(chromeState);
+      if (chrome) fail(where, chrome);
       // Run every experiment with the first prediction.
       const cards = await page.$$("[data-exp]");
       if (cards.length !== 5) fail(where, `${cards.length} experiment cards`);
@@ -73,6 +87,8 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       await page.goto(BASE + path);
       const cards = await page.$$eval(".card", (c) => c.length);
       if (cards !== lessons.length) fail(`collection ${lang}`, `${cards} cards`);
+      const chrome = await page.evaluate(chromeState);
+      if (chrome) fail(`collection ${lang}`, chrome);
       // Power search: free text previews results; "area traffic" + Enter makes an Area token.
       await page.click(".ps-input");
       await page.keyboard.type(lang === "es" ? "reintento" : "retry");
