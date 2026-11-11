@@ -55,9 +55,7 @@ const en = {
   "search.shortcut": "Slash",
   // ux-chrome
   "chrome.skip": "Skip to content",
-  "chrome.topNav": "Top navigation",
   "chrome.onPage": "On this page",
-  "chrome.newTab": "(opens in a new tab)",
   // ux-lesson
   "exp.run": "Run the experiment",
   "exp.pickFirst": "Pick a prediction first",
@@ -119,9 +117,7 @@ const es: Record<UiKey, string> = {
   "search.shortcut": "Barra diagonal",
   // ux-chrome
   "chrome.skip": "Saltar al contenido",
-  "chrome.topNav": "Navegación superior",
   "chrome.onPage": "En esta página",
-  "chrome.newTab": "(se abre en una pestaña nueva)",
   // ux-lesson
   "exp.run": "Ejecutar el experimento",
   "exp.pickFirst": "Primero elige una predicción",

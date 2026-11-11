@@ -1,0 +1,27 @@
+---
+// A run of HTML text (a footer, a credit) whose links are Astryx Links: each <a href="…"> in the string becomes a
+// <Link> that inherits the text's colour and size, always underlined (in running text a link must not rely on colour
+// alone). A link with target="_blank" is an external link: Astryx opens it in a new tab with rel="noopener
+// noreferrer", a small external-link icon and "(opens in new tab)" for screen readers, in the page's language.
+// Everything else in the string is inserted as HTML, as before.
+import Link from "astryx-astro/components/Link/Link.astro";
+
+interface Props {
+  html: string;
+}
+const { html } = Astro.props;
+const decode = (v: string) => v.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+type Part = { text: string } | { href: string; external: boolean; inner: string };
+const parts: Part[] = [];
+let last = 0;
+for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)) {
+  parts.push({ text: html.slice(last, m.index) });
+  const attrs = Object.fromEntries([...m[1].matchAll(/([\w-]+)\s*=\s*"([^"]*)"/g)].map(([, k, v]) => [k.toLowerCase(), decode(v)]));
+  parts.push({ href: attrs.href ?? "", external: attrs.target === "_blank", inner: m[2] });
+  last = m.index + m[0].length;
+}
+parts.push({ text: html.slice(last) });
+---
+{parts.map((p) => "text" in p
+  ? <Fragment set:html={p.text} />
+  : <Link href={p.href} isExternalLink={p.external} color="inherit" type="inherit" hasUnderline><Fragment set:html={p.inner} /></Link>)}

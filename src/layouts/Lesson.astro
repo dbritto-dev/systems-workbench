@@ -1,12 +1,19 @@
 ---
 // A lesson page: the top navigation (the way back, language and theme), then <main>: the header, the machine
 // (figure + panel), predict-then-run cards, explain-back questions and related lessons; then the footer. Base.astro
-// puts a "Skip to content" link to <main> first. The chrome's look and link behaviour is styles/chrome.css.
+// puts a "Skip to content" link to <main> first. The chrome is astryx-astro's: the top navigation is a TopNav (the way
+// back a TopNavItem, the switches its end content), the related lessons and the footer's links are Links; its
+// layout here is styles/chrome.css, its look the "TopNav, Link" section of styles/astryx-workbench.css.
 // The figure's still frame is plain HTML/SVG, so the page reads and prints without JavaScript. <wb-lesson> holds the
 // machine and the experiments and loads the lesson's live code (the model and the animation) as they come into view.
 import { getRelativeLocaleUrl } from "astro:i18n";
 import Base from "./Base.astro";
+import TopNav from "astryx-astro/components/TopNav/TopNav.astro";
+import TopNavItem from "astryx-astro/components/TopNav/TopNavItem.astro";
+import Link from "astryx-astro/components/Link/Link.astro";
+import Stack from "astryx-astro/components/Stack/Stack.astro";
 import Switches from "../components/Switches.astro";
+import LinkedText from "../components/LinkedText.astro";
 import Experiments from "../components/lesson/Experiments.astro";
 import Questions from "../components/lesson/Questions.astro";
 import FigurePlate from "../components/lesson/FigurePlate.astro";
@@ -14,7 +21,6 @@ import Panel from "../components/lesson/Panel.astro";
 import { pick, type Locale } from "../i18n";
 import { useUi } from "../i18n/ui";
 import { plain, conceptOf, two, type Lesson } from "../lib/lessons";
-import { markNewTabLinks } from "../lib/links";
 import "virtual:workbench.css";
 import "../styles/lesson.css";
 
@@ -30,10 +36,10 @@ const path = `lessons/${lesson.slug}/`;
   <Fragment slot="head">{p.css && <Fragment set:html={`<style>${p.css}</style>`} />}</Fragment>
   <div class="page">
   <header class="topbar">
-    <nav class="topnav" aria-label={ui("chrome.topNav")}>
-      <a class="back" href={getRelativeLocaleUrl(locale)}><span aria-hidden="true">←</span>{ui("lesson.back")}</a>
-      <Switches locale={locale} path={path} nav={false} />
-    </nav>
+    <TopNav>
+      <TopNavItem label={ui("lesson.back")} href={getRelativeLocaleUrl(locale)}><span aria-hidden="true">←</span>{ui("lesson.back")}</TopNavItem>
+      <Switches slot="endContent" locale={locale} path={path} nav={false} />
+    </TopNav>
   </header>
   <main id="main">
     <header class="lesson-head">
@@ -71,16 +77,16 @@ const path = `lessons/${lesson.slug}/`;
     {related.length > 0 && (
       <nav class="related" aria-labelledby="related-title">
         <h2 id="related-title">{ui("lesson.related")}</h2>
-        <ul>
+        <Stack as="ul" direction="horizontal" gap={2} wrap="wrap">
           {related.map((r) => (
-            <li><a href={getRelativeLocaleUrl(locale, `lessons/${r.slug}/`)}><span class="n">{two(r.n)}</span>{plain(conceptOf(r), locale)}</a></li>
+            <li><Link href={getRelativeLocaleUrl(locale, `lessons/${r.slug}/`)} color="primary" type="inherit"><span class="n">{two(r.n)}</span>{plain(conceptOf(r), locale)}</Link></li>
           ))}
-        </ul>
+        </Stack>
       </nav>
     )}
 
   </main>
-  <footer set:html={markNewTabLinks(p.footer ? L(p.footer) : ui("lesson.footer"), ui("chrome.newTab"))} />
+  <footer><LinkedText html={p.footer ? L(p.footer) : ui("lesson.footer")} /></footer>
   </div>
   <script>
     import "../elements/wb-lesson";

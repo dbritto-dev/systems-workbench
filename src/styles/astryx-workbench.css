@@ -110,6 +110,27 @@
   /* ---------- Dialog ---------- */
 
   /* ---------- TopNav, Link ---------- */
+  /* A top navigation item is a small mono caps label in the muted grey, flush with the text column (no padding of
+     its own); hover turns it ink instead of laying a tint under it; a press keeps Astryx's pressed overlay. Links
+     keep Astryx's look (ink, the accent; underlined on hover or always with hasUnderline). */
+  .astryx-top-nav-item:not([data-mode="drawer"]) {
+    --color-overlay-hover: transparent;
+    gap: 1ch;
+    min-height: var(--ux-target-min);
+    padding: 0;
+    font-family: var(--font-family-code);
+    font-size: 11px;
+    font-weight: var(--font-weight-normal);
+    line-height: 1.2;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--anatomy-muted);
+  }
+  @media (hover: hover) {
+    .astryx-top-nav-item:not([data-mode="drawer"]):where(:not([aria-disabled="true"])):hover {
+      color: var(--color-text-primary);
+    }
+  }
 
   /* ---------- Keyboard hint (SegmentedControl, TabList, Toolbar) ---------- */
   /* "← → to navigate": a card plate with a hairline edge, square, small mono text; keys boxed in the same edge. */

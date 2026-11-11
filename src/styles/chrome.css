@@ -1,19 +1,21 @@
 /* Site chrome around the content (layouts/Base.astro imports it on every page): the skip link, and on lesson pages
-   (layouts/Lesson.astro) the top navigation, the header's in-page links, the related lessons and the footer's
-   links. Behaviour follows Astryx's TopNav and Link (src/lessons/README.md, "UX foundation"): hover paints only on a
-   hover-capable pointer; a press tints the link at once and fades out on release; focus is ux.css's ring. */
+   (layouts/Lesson.astro) the layout of the top navigation (an Astryx TopNav), the related lessons (Astryx Links) and
+   the header's in-page links. The components' look is the "TopNav, Link" section of styles/astryx-workbench.css; their
+   behaviour is Astryx's: hover paints only on a hover-capable pointer, a press tints at once and fades on release,
+   focus is ux.css's ring. What is here is particular to one place. */
 :where(:root, .iso) {
   --chrome-press: color-mix(in srgb, var(--anatomy-strong) 12%, transparent);
 }
 
 /* ---------- links ---------- */
 /* astryx-astro's reset (layouts/Base.astro) makes links inherit their decoration; ours keep the browser's underline
-   unless a rule takes it off. Zero specificity, so any such rule wins. */
-:where(a:any-link) { text-decoration: underline; }
+   unless a rule takes it off. Zero specificity, so any such rule wins. An anchor an Astryx component renders (a Link,
+   a TopNavItem: classes astryx-* or ax-*) decides its own underline: unlayered, this rule would beat Astryx's. */
+:where(a:any-link:not([class*="astryx-"], [class*="ax-"])) { text-decoration: underline; }
 
 /* ---------- skip link ---------- */
 /* The first Tab stop on a page: "Skip to content", visually hidden until it has focus, then an ink tab at the top
-   corner. It moves the reader past the top navigation to <main>. */
+   corner. It moves the reader past the top navigation to <main>. Ours: Astryx has one only inside AppShell. */
 .skip-link {
   position: absolute;
   inset-block-start: 8px;
@@ -47,56 +49,34 @@
   user-select: none;
 }
 
-/* Visually hidden text (Astryx's VisuallyHidden): read by screen readers, never drawn. */
-.chrome-vh {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  pointer-events: none;
-  user-select: none;
-}
-
 /* ---------- lesson top navigation ---------- */
 /* The way back on the start side, the switches on the end side; on a phone the switches wrap under it rather than
-   leave the screen. The bar sits in the page's top margin and isn't positioned (no stacking context). */
+   leave the screen (Astryx's bar never wraps: its end content doesn't shrink and its start side shrinks to nothing).
+   The bar sits in the page's top margin and isn't positioned (no stacking context). */
 .topbar {
   margin: -36px 0 18px;
 }
-.topnav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+.topbar .astryx-top-nav {
   flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
 }
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 1ch;
-  min-height: var(--ux-target-min);
-  font-family: var(--anatomy-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--anatomy-muted);
-  text-decoration: none;
+.topbar .ax-top-nav-left {
+  flex: 0 1 auto;
+}
+.topbar .ax-top-nav-end {
+  flex-shrink: 1;
+  min-width: 0;
+  margin-inline-start: 0;
 }
 
-/* ---------- links: hover on a hover-capable pointer, press at once ---------- */
-/* The lesson's in-page links (.parts), the related lessons, the way back and the footer's links. */
-:is(.back, .lesson-head .parts a, .related a, .page > footer a) {
+/* ---------- the lesson header's in-page links ---------- */
+.lesson-head .parts a {
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--ux-duration-exit) var(--ux-ease-exit);
 }
-:is(.back, .lesson-head .parts a, .related a, .page > footer a):active {
+.lesson-head .parts a:active {
   background-color: var(--chrome-press);
   transition-duration: 0s;
 }
@@ -106,25 +86,13 @@
   color: inherit;
 }
 @media (hover: hover) {
-  .back:hover,
   .lesson-head .parts a:hover {
     color: var(--anatomy-strong);
   }
-  .related a:hover {
-    border-color: var(--anatomy-strong);
-  }
-}
-
-/* An external link that opens a new tab: a small trailing ↗ (decorative; the link says "opens in a new tab"). */
-.ext-icon {
-  display: inline-block;
-  margin-inline-start: 0.15em;
-  font-size: 0.8em;
-  line-height: 1;
-  text-decoration: none;
 }
 
 /* ---------- related lessons ---------- */
+/* Astryx Links drawn as plates: number and concept, a hairline edge that turns ink on hover (no underline). */
 .related {
   margin-top: 56px;
 }
@@ -136,21 +104,23 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
-.related a {
-  display: inline-flex;
+.related .astryx-link {
   align-items: baseline;
-  gap: 8px;
   padding: 8px 12px;
   min-height: var(--ux-target-min);
   border: 1px solid var(--anatomy-mid);
-  color: var(--anatomy-strong);
-  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .related .astryx-link:hover {
+    border-color: var(--anatomy-strong);
+    color: var(--anatomy-strong);
+    text-decoration: none;
+  }
 }
 .related .n {
+  margin-inline-end: 8px;
   font-family: var(--anatomy-mono);
   font-size: 11px;
   color: var(--anatomy-muted);
