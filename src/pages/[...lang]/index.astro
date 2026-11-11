@@ -1,10 +1,16 @@
 ---
-// The collection: every lesson as a card, with search and area filters.
+// The collection: every lesson as a card, with search and area filters. Laid out with astryx-astro's components
+// (Heading, Text, Grid of ClickableCards, EmptyState); the stats strip and the cards' previews are ours.
 // The first paint waits until the first two cards are parsed (Base's paintAfter), so a slow parse never paints the
 // header alone and then the toolbar and cards: what is above the fold appears at once, settled.
 import Base from "../../layouts/Base.astro";
 import HStack from "astryx-astro/components/Stack/HStack.astro";
 import Link from "astryx-astro/components/Link/Link.astro";
+import Heading from "astryx-astro/components/Text/Heading.astro";
+import Text from "astryx-astro/components/Text/Text.astro";
+import Grid from "astryx-astro/components/Grid/Grid.astro";
+import EmptyState from "astryx-astro/components/EmptyState/EmptyState.astro";
+import Button from "astryx-astro/components/Button/Button.astro";
 import Switches from "../../components/Switches.astro";
 import LinkedText from "../../components/LinkedText.astro";
 import Toolbar from "../../components/collection/Toolbar.astro";
@@ -36,8 +42,8 @@ const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json
     <HStack class="top" justify="between" align="center" gap={3}><span>{ui("site.tagline")}</span><Switches locale={locale} path="" size="md" /></HStack>
     <div class="head">
       <div>
-        <h1>{ui("site.name")}</h1>
-        <p class="intro">{ui("site.intro")}</p>
+        <Heading level={1} class="title">{ui("site.name")}</Heading>
+        <Text as="p" class="intro" color="secondary">{ui("site.intro")}</Text>
       </div>
       <div class="stats" role="list" aria-label={ui("stats.label")}>
         <div role="listitem"><b>{lessons.length}</b> <span>{ui("stats.lessons")}</span></div>
@@ -48,9 +54,16 @@ const INDEX = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}search-index.json
     </header>
     <lesson-collection index={INDEX} locale={locale}>
     <Toolbar locale={locale} lessons={lessons} />
-    <main class="grid" id="lessons">
-      {lessons.map((lesson, i) => <LessonCard lesson={lesson} locale={locale} eager={i < 2} />)}
-      <div class="empty" data-empty hidden><p></p><span class="card-actions"><button type="button" class="btn" data-all>{ui("search.showAll")}</button><button type="button" class="btn" data-clear>{ui("search.clear")}</button></span></div>
+    <main id="lessons">
+      <Grid class="cards" columns={{ minWidth: 360, max: 2 }} gap={5} data-cards>
+        {lessons.map((lesson, i) => <LessonCard lesson={lesson} locale={locale} eager={i < 2} />)}
+        <EmptyState class="empty" data-empty hidden title={ui("search.none")} description=" " headingLevel={2}>
+          <Fragment slot="actions">
+            <Button label={ui("search.showAll")} data-all />
+            <Button label={ui("search.clear")} data-clear />
+          </Fragment>
+        </EmptyState>
+      </Grid>
     </main>
     </lesson-collection>
     <footer>

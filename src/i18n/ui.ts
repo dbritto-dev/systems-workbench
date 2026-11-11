@@ -52,7 +52,7 @@ const en = {
   "q.n": "Q{i}",
   "q.covers": "A good answer covers",
   // ux-collection
-  "search.shortcut": "Slash",
+  "search.none": "No lesson matches",
   // ux-chrome
   "chrome.skip": "Skip to content",
   "chrome.onPage": "On this page",
@@ -114,7 +114,7 @@ const es: Record<UiKey, string> = {
   "q.n": "P{i}",
   "q.covers": "Una buena respuesta cubre",
   // ux-collection
-  "search.shortcut": "Barra diagonal",
+  "search.none": "Ninguna lección coincide",
   // ux-chrome
   "chrome.skip": "Saltar al contenido",
   "chrome.onPage": "En esta página",

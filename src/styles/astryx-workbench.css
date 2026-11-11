@@ -168,6 +168,16 @@
   }
 
   /* ---------- Card, ClickableCard ---------- */
+  /* A clickable card answers a hovering pointer with its edge (Card's emphasized border), not a tint over the whole
+     plate; a press still paints Astryx's pressed overlay. */
+  @media (hover: hover) {
+    .astryx-clickable-card:not([data-ax-disabled]):hover { --_press-overlay: transparent; }
+    .astryx-clickable-card:not([data-ax-disabled]):hover:active { --_press-overlay: var(--color-overlay-pressed); }
+  }
+  /* One focus move, one ring (src/lessons/README.md, "UX foundation"): the card rings for its own link only. A
+     control inside it (a Button) rings itself, so the card's focus-within ring would be a second one.
+     astryx-astro: ClickableCard paints .ax-focus-within, which rings the card for any focused descendant. */
+  .astryx-clickable-card:has(:focus-visible:not(.ax-clickable-card-action)) { outline-style: none; }
 
   /* ---------- Dialog ---------- */
 
