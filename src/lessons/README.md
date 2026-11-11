@@ -14,8 +14,10 @@ imports Node modules), e.g. `breaker/blade.ts`, `throttle/paths.ts`, `concurrenc
 
 ## The page's elements, and how live code uses them
 
-Every page is built from custom elements in `src/elements/`; the Astro components render their markup and the
-elements give it behaviour. `root`, the `<wb-lesson>`, is all a lesson's live code talks to:
+The page's controls are [astryx-astro](https://dbritto-dev.github.io/astryx-astro/)'s components (Meta's Astryx in
+Astro) drawn in our look (`src/styles/astryx-workbench.css`); `src/components/lesson/` renders them, and the custom
+elements in `src/elements/` wrap them in the lesson API. `root`, the `<wb-lesson>`, is all a lesson's live code talks
+to:
 
 ```js
 export default function mount({ P, G }, root) {
@@ -26,6 +28,7 @@ export default function mount({ P, G }, root) {
   root.on("change", (name, value) => { … });       // a <wb-seg> option was chosen (selected for you)
   root.press("speed", 3);                          // select an option without an event
   root.disable("flip", true, L("Blue is rebuilding", "Azul se está reconstruyendo"));  // never btn.disabled
+  root.relabel("flip", L("Flip to blue", "Cambiar a azul"));  // never btn.textContent
   const actions = { burst: () => { … } };
   root.on("action", (name) => actions[name]?.());  // a <wb-actions> button
   root.on("watch", (settings, id) => { … });       // an experiment's "Watch it on the machine"
@@ -40,15 +43,23 @@ The cards (`<wb-experiment>`) run without the lesson's code: their results come 
 buttons (`actions`) or a text box (`input`, read with `root.$('[data-input="name"]')`). Look up anything else with
 `root.$(selector)` / `root.$$(selector)`, never `document`.
 
-How they behave (Astryx's components, our look): a one-of-N segment is a radiogroup with one Tab stop, arrows that
-select (wrapping, Home and End), a sliding selected surface and the "← → to navigate" hint; choosing the selected
-option again sends nothing. A `multiple` segment is a toggle group (each option its own Tab stop). Action buttons
-are separate Tab stops; Pause is a toggle that keeps its label. Disable a control with `root.disable(name, on,
-reason?)` (aria-disabled: it keeps its Tab stop, and the reason shows as a tooltip on hover, keyboard focus or a
-tap), never with the native `disabled`. A press before the live code has loaded is kept and sent again after
-`mount()`; the action button is busy (`aria-busy`, a spinner after 310 ms) until then. The prediction cards are
-native radios inside labels (one Tab stop, the whole card clickable, Enter selects); Run is disabled with its reason
-until one is picked, and the verdict is said through `announce()`.
+What they are and how they behave (Astryx's behaviour, our look):
+
+| `page.ts` | Component | Behaviour |
+|---|---|---|
+| `seg` | SegmentedControl in `<wb-seg>` | radiogroup, one Tab stop, ← → / Home / End select, sliding selected surface, "← → to navigate" hint; choosing the selected option again sends nothing |
+| `seg` + `multiple: true` | ToggleButtonGroup (`type="multiple"`) of ToggleButtons | each option its own Tab stop, `aria-pressed` |
+| `speed` | SegmentedControl | as `seg` |
+| `actions` | Buttons in `<wb-actions>` (an HStack); `primary: true` is the primary variant | separate Tab stops; `pause` is a ToggleButton that keeps its label |
+| `input` | TextInput (its `<input>` has `data-input`) | the row's label is the field's |
+| experiments | Card; predictions are SelectableCards (radio); Run and Watch are Buttons; result bars are ProgressBars | one Tab stop for the predictions, the whole card clickable, Enter selects; Run is disabled with its reason (Tooltip) until one is picked; the verdict is said through `announce()` |
+| questions | Collapsible (a `<details>` copy in `<noscript>`) | each its own Tab stop |
+
+Disable a control with `root.disable(name, on, reason?)` (aria-disabled: it keeps its Tab stop, and the reason shows
+as an Astryx Tooltip on hover, keyboard focus or a tap), never with the native `disabled`. Relabel a button with
+`root.relabel(name, text)`: an Astryx Button's label is a span beside its spinner and live region, so
+`button.textContent = …` would wipe them. A press before the live code has loaded is kept and sent again after
+`mount()`; the action button shows Astryx's loading state (`aria-busy`, a spinner after 310 ms) until then.
 
 ## Shared code: import it, don't copy it
 
@@ -67,12 +78,12 @@ until one is picked, and the verdict is said through `announce()`.
 | Show/hide, text, a path's `d`, lit accent, Play/Pause | `show`, `setText`, `setD`, `setLit`, `playPause(root)` from `src/runtime/dom` |
 | Readout, stats, segments, buttons, experiment cards | the elements, through `root` (above) |
 | Experiment results | `withResults(EXPERIMENTS, RUNS)` from `src/lessons/types` (in `page.ts`) |
-| The panel's primary button | `{ actions: [["go", t("Go", "Ir"), { primary: true }], …] }` in `page.ts` (drawn as `.btn.primary`) |
+| The panel's primary button | `{ actions: [["go", t("Go", "Ir"), { primary: true }], …] }` in `page.ts` (an Astryx Button, variant `primary`) |
 | Kit geometry in the browser (`iso`, `pathOf`, `translateAlong`, `depthOf`, …) | `workbench/vendor-anatomy/kit/iso-kit.mjs` (tree-shaken) |
 | Bilingual text | `t(en, es)` from `src/i18n` |
 | Focus ring, motion timings, target sizes, disabled look (CSS) | the `--ux-*` tokens and rules in `src/styles/ux.css` (on every page; see "UX foundation") |
 | Did the last input come from the keyboard or a pointer? | `modality()`, `showsFocusRing(el)`, `isTextEntry(el)` from `src/runtime/modality` (Astryx's `<html data-astryx-modality>`) |
-| Tell a screen reader something changed | `announce(text, "polite" \| "assertive")`, `announcer({ replace })`, `clearAnnouncements()` from `src/runtime/announce` |
+| Tell a screen reader something changed | `announce(text, "polite" \| "assertive")`, `announcer({ replace })`, `clearAnnouncements()` from `src/runtime/announce` (astryx-astro's live regions) |
 | One Tab stop and arrow keys for a group or toolbar, with the "← → to navigate" hint | `roving(group, { items, orientation, wrap, current, select, skip, hint })` from `src/runtime/roving` |
 
 If two lessons need the same helper and it isn't listed, add it to `src/lib` or `src/runtime` rather than to a lesson.
@@ -109,13 +120,21 @@ listeners of their own:
 - **Disabled** (`ux.css`): `aria-disabled="true"`, never the native `disabled` (the control keeps its Tab stop, its
   focus and its ring). It paints at `--ux-disabled-opacity` (0.5), once for a disabled group. Write hover and press
   rules for enabled controls only: `:where(:not([aria-disabled="true"])):hover`. Script refuses the activation.
-- **Announcements** (`runtime/announce.ts`): one polite (`role="status"`) and one assertive (`role="alert"`) region per
-  page, mounted empty, `aria-atomic`, visually hidden; inside the topmost open modal `<dialog>` while one is open. A
+- **Components**: astryx-astro's, imported by path (`astryx-astro/components/<Dir>/<Name>.astro`), with their own
+  keyboard, focus, hover, press, tooltip and hint behaviour; never add listeners of our own for what a component
+  already does. Their look is `src/styles/astryx-workbench.css` (tokens first, then one section per component, in the
+  `astryx-theme` layer); a rule for one place (a card's padding, the bars' row) goes in that place's CSS
+  (`workbench/styles.mjs` for the lesson page). Their Spanish strings are overridden in `src/i18n/astryx.ts` where
+  `workbench/I18N.md` rules Astryx's es-ES out.
+- **Announcements** (`runtime/announce.ts`, over astryx-astro's `elements/runtime/announce`): one polite and one
+  assertive region per page, created empty, `aria-atomic`, visually hidden; inside the topmost open modal `<dialog>`
+  while one is open. A
   write clears the region, sets the text on the next frame (same-frame messages joined, a repeat kept once) and
   clears it 2s later. Polite unless it's an error or time-critical. One owner per message: what an element already
   shows on screen with a live role isn't announced again, and nothing present at load is announced. An owner from
   `announcer({ replace: true })` withdraws its previous message if it hasn't been read yet (result counts).
-- **Roving focus** (`runtime/roving.ts`), for a composite control only (radiogroup, segmented control, tablist,
+- **Roving focus** (Astryx's SegmentedControl on lesson pages; `runtime/roving.ts` where a page still builds its own
+  composite), for a composite control only (radiogroup, segmented control, tablist,
   toolbar, single-choice chips like the collection's area filters); independent controls (multi-select chips, a
   row of unrelated buttons) stay one Tab stop each. One Tab stop: the selected member
   (`current`), else the first enabled one. ← → follow the rendered direction (swapped under RTL, checked at key time)

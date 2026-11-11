@@ -13,7 +13,7 @@ import type { Bi } from "../i18n";
 export type { Bi };
 
 /** A control under the figure: a <wb-control> row. `for` puts it in a group, so the live code can show one group at a
- *  time (root.controls.showFor(group)); `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (.btn.primary). */
+ *  time (root.controls.showFor(group)); `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (an Astryx Button, variant "primary"); "pause" is a ToggleButton. */
 export type Control = (
   | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number; /** Options switch on and off independently; value: the ones on at first, space-separated. */ multiple?: boolean }
   | { speed: true; options?: [value: number, label: string][]; value?: number }
