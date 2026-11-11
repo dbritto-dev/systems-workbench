@@ -122,11 +122,12 @@ src/
   lessons/                  one folder per lesson, plus types.ts (defineLesson) and the README
   lib/                      shared code: random, stats, tween, format, draw (figure shorthands), timing (debounce),
                             the lesson list, the search engine (BM25F, scoped by field) and its index, and the
-                            collection's search filters (lesson-filters.ts)
+                            collection's search filters (lesson-filters.ts, an Astryx PowerSearch config)
   elements/                 the custom elements every page is built from: wb-lesson (loads a lesson's live code),
                             wb-figure, wb-stats + wb-stat, wb-controls + wb-control, wb-seg, wb-actions,
-                            wb-experiment, wb-button (press, busy, disabled with a reason); site-switches, power-search (a structured filter bar), lesson-collection,
-                            lesson-preview
+                            wb-experiment, wb-button (press, busy, disabled with a reason); site-switches; lesson-collection (the
+                            collection's search, area chips and cards, on Astryx's PowerSearch and SegmentedControl),
+                            lesson-preview (fills Astryx's Dialog), filter-strip (the chips' pre-paint state)
   runtime/                  shared browser code for live code: wb.ts (loop, counters, dials, meters, L/T),
                             dom.ts (show, setText, setD, setLit, playPause); and for components (the UX foundation,
                             src/lessons/README.md): modality.ts (Astryx's keyboard/pointer tracker, started before first
@@ -135,8 +136,8 @@ src/
   layouts/                  Base (head, language alternates, theme, UX foundation, skip link) and Lesson (top navigation,
                             header, machine, experiments, questions, related lessons, footer)
   components/               Switches (Astryx Links + SegmentedControl), LinkedText (HTML text with Astryx Links),
-                            PowerSearch, lesson/ (FigurePlate, Panel, Experiments, Questions),
-                            collection/ (cards, toolbar, preview dialog)
+                            lesson/ (FigurePlate, Panel, Experiments, Questions), collection/ (cards: ClickableCard;
+                            toolbar: PowerSearch, Kbd, SegmentedControl; preview: Dialog)
   middleware.ts             tells astryx-astro's components the theme and our Spanish strings (i18n/astryx.ts)
   pages/[...lang]/          the collection and the lesson pages, once per language
   pages/workbench/          the parts gallery
