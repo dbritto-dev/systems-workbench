@@ -197,12 +197,10 @@ as static assets (`wrangler.jsonc`: no Worker script, trailing-slash URLs). The 
 alternates and the sitemap are built from it. Cloudflare reads `dist/_headers` (browsers keep the hashed files under `/_astro/` for a year) and
 `dist/_redirects` (old `*-workbench.html` URLs answer with a 301), both made by the build.
 
-`.github/workflows/old-address.yml` keeps the old GitHub Pages address working: on every push it builds the site and
-publishes `tools/github-pages-redirect.mjs`'s output there, one small page per site page that forwards to the same
-page on `SITE_URL` (query and `#section` kept) and names it as canonical, plus a 404 page that maps any other old
-path. It uses the same address (or the `SITE_URL` repository variable, when set) and waits until the site answers there before
-publishing. To build the site for a sub-path instead of a domain's root, set `BASE_PATH` (e.g.
-`BASE_PATH=/systems-workbench pnpm build`).
+The old GitHub Pages address keeps working through the `gh-pages` branch, which GitHub Pages publishes as is: an
+`index.html` and a `404.html` (served for every other path) that send the visitor to the same path on the site,
+keeping the query and the `#section`. Nothing there needs rebuilding when lessons are added. To build the site for a
+sub-path instead of a domain's root, set `BASE_PATH` (e.g. `BASE_PATH=/systems-workbench pnpm build`).
 
 ### Adding a lesson
 
