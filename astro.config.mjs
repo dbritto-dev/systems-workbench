@@ -20,7 +20,7 @@ const workbenchStyles = () => ({
 // address or a custom domain); canonical links, language alternates and the sitemap are built from it. BASE_PATH
 // serves the site under a sub-path instead (e.g. /systems-workbench, as on GitHub Pages before); every link and
 // asset URL follows it.
-const site = process.env.SITE_URL || "https://systems-workbench.pages.dev";
+const site = process.env.SITE_URL || "https://systems-workbench.dbritto-dev.workers.dev";
 const base = (process.env.BASE_PATH || "").replace(/\/+$/, "");
 const lessons = JSON.parse(readFileSync("./workbench/collection/lessons.json", "utf8"));
 

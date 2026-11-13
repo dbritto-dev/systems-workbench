@@ -10,7 +10,7 @@ import { mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 
 const [dist = "dist", out = "github-pages"] = process.argv.slice(2);
-const site = (process.env.SITE_URL || "https://systems-workbench.pages.dev").replace(/\/+$/, "");
+const site = (process.env.SITE_URL || "https://systems-workbench.dbritto-dev.workers.dev").replace(/\/+$/, "");
 const OLD_BASE = "/systems-workbench";
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
