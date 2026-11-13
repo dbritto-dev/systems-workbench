@@ -1,5 +1,5 @@
-// Builds the redirect site the old GitHub Pages address serves now that the site lives on Cloudflare Pages
-// (.github/workflows/deploy.yml). For every page in the built site (dist/, served at the root of SITE_URL) it writes
+// Builds the redirect site the old GitHub Pages address serves now that the site lives on Cloudflare
+// (.github/workflows/old-address.yml). For every page in the built site (dist/, served at the root of SITE_URL) it writes
 // a page at the same path that sends the visitor to the new address, keeping the query and the #section: GitHub Pages
 // serves it under /systems-workbench/, so https://dbritto-dev.github.io/systems-workbench/es/lessons/cache/ goes to
 // <SITE_URL>/es/lessons/cache/. Each page also names the new address as canonical, so search engines move the

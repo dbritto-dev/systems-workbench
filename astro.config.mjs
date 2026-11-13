@@ -1,5 +1,5 @@
-// Systems Workbench site. Static output for Cloudflare Pages at https://systems-workbench.pages.dev/
-// (.github/workflows/deploy.yml).
+// Systems Workbench site. Static output, served by Cloudflare as the systems-workbench Worker's static assets
+// (wrangler.jsonc): the repo is connected in the Cloudflare dashboard, which builds and deploys every push to main.
 // English lives at the root (/lessons/cache/), Spanish under /es/ (/es/lessons/cache/).
 import { defineConfig, fontProviders } from "astro/config";
 import sitemap from "@astrojs/sitemap";
@@ -16,9 +16,10 @@ const workbenchStyles = () => ({
   load: (id) => (id in STYLES ? STYLES[id]() : undefined),
 });
 
-// Where the site is served: the root of SITE_URL. The default is the Cloudflare Pages address; the deploy workflow
-// passes the real one (a custom domain, or a pages.dev name with a suffix). BASE_PATH serves it under a sub-path
-// instead (e.g. /systems-workbench, as on GitHub Pages before); every link and asset URL follows it.
+// Where the site is served: the root of SITE_URL, a build variable in the Worker's build settings (its workers.dev
+// address or a custom domain); canonical links, language alternates and the sitemap are built from it. BASE_PATH
+// serves the site under a sub-path instead (e.g. /systems-workbench, as on GitHub Pages before); every link and
+// asset URL follows it.
 const site = process.env.SITE_URL || "https://systems-workbench.pages.dev";
 const base = (process.env.BASE_PATH || "").replace(/\/+$/, "");
 const lessons = JSON.parse(readFileSync("./workbench/collection/lessons.json", "utf8"));
@@ -40,7 +41,7 @@ const REDIRECTS = {
   ...Object.fromEntries(lessons.filter((l) => l.html).map((l) => [`/${l.html}`, `${base}/lessons/${l.slug}/`])),
   "/workbench/parts-gallery.html": `${base}/workbench/parts-gallery/`,
 };
-// Cloudflare Pages reads redirects from dist/_redirects and applies them before serving any file. Astro's forwarding
+// Cloudflare reads redirects from dist/_redirects and applies them before serving any file. Astro's forwarding
 // pages for these URLs are folders (lessons/cache/cache-workbench.html/index.html), which Pages wouldn't find at the
 // old .html address, so the rules are what keeps old links working there.
 const cloudflareRedirects = () => ({
@@ -68,7 +69,7 @@ export default defineConfig({
   // Lesson links are fetched on hover, so opening one is near-instant.
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
   // Old standalone lesson URLs (lessons/cache/cache-workbench.html) forward to the lesson's page: Astro writes a page
-  // there that forwards, and cloudflareRedirects() lists them for Cloudflare Pages, which answers with a real 301.
+  // there that forwards, and cloudflareRedirects() lists them for Cloudflare, which answers with a real 301.
   redirects: REDIRECTS,
   // astryx-astro: Astryx's components ported to Astro (layouts/Base.astro, styles/astryx-workbench.css).
   integrations: [astryx(), sitemap({ i18n: { defaultLocale: "en", locales: { en: "en", es: "es" } } }), cloudflareRedirects()],

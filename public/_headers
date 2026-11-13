@@ -1,4 +1,4 @@
-# Cloudflare Pages response headers (https://developers.cloudflare.com/pages/configuration/headers/).
+# Response headers for the site's static assets on Cloudflare (https://developers.cloudflare.com/workers/static-assets/headers/).
 # Astro names every built script, stylesheet, font and image under /_astro/ by its content hash, so a file there
 # never changes: browsers can keep it for a year without asking again. Pages and other files keep Cloudflare's
 # default (revalidate on each visit), so a deploy shows up at once.

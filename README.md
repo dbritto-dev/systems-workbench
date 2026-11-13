@@ -7,8 +7,7 @@ parts:
 2. **Predict, then run**: five experiments. Pick what you think will happen, then run the same model and compare.
 3. **Explain it back**: questions to answer out loud or in pairs.
 
-**Live site:** https://systems-workbench.pages.dev/ on Cloudflare Pages, deployed by `.github/workflows/deploy.yml` on
-every push to `main`. The old address, https://dbritto-dev.github.io/systems-workbench/, forwards each page to the same
+**Live site:** https://systems-workbench.pages.dev/ on Cloudflare, which builds and deploys every push to `main`. The old address, https://dbritto-dev.github.io/systems-workbench/, forwards each page to the same
 page there.
 
 **English and Spanish:** every page exists in both languages: English at the root, Spanish under `/es/`, with EN / ES
@@ -110,7 +109,7 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and
 [astryx-astro](https://dbritto-dev.github.io/astryx-astro/) (Meta's Astryx design system ported to Astro) in our own
 "workbench" theme, and deployed to
-Cloudflare Pages: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
+Cloudflare: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
 links forward to the new URLs.
 
 ## How the site is put together
@@ -180,7 +179,7 @@ The site needs Node 22.23+ (see `.nvmrc`) and [pnpm](https://pnpm.io) (the versi
 ```sh
 pnpm install
 pnpm dev                          # the Astro dev server
-pnpm build                        # build the site into dist/ (what the deploy workflow runs)
+pnpm build                        # build the site into dist/ (what Cloudflare runs)
 pnpm preview                      # serve dist/ at http://localhost:4321/
 pnpm check:site                   # with preview running: every lesson in both languages, experiments, 390 px, search
 pnpm previews queues              # with preview running: re-shoot a lesson's card image (light + dark)
@@ -191,17 +190,19 @@ Set `CHROMIUM_PATH` if Playwright should use a browser other than its own.
 
 ### Deploying
 
-`.github/workflows/deploy.yml` builds the site and deploys `dist/` to the `systems-workbench` Cloudflare Pages
-project with Wrangler (the first run creates the project). It needs two repository secrets: `CLOUDFLARE_API_TOKEN`, an
-API token with the **Cloudflare Pages: Edit** permission, and `CLOUDFLARE_ACCOUNT_ID`. The site's address is the
-`SITE_URL` repository variable (default `https://systems-workbench.pages.dev`): set it when the project's pages.dev
-name differs or a custom domain is added, since canonical links, language alternates and the sitemap are built from
-it. `public/_headers` lets browsers keep the hashed files under `/_astro/` for a year.
+The repo is connected to the `systems-workbench` Worker in the Cloudflare dashboard (Workers Builds). Every push to
+`main` runs the build command, `pnpm run build`, then the deploy command, `npx wrangler deploy`, which uploads `dist/`
+as static assets (`wrangler.jsonc`: no Worker script, trailing-slash URLs). Set the `SITE_URL` build variable there to
+the site's address (its workers.dev URL or a custom domain): canonical links, language alternates and the sitemap are
+built from it. Cloudflare reads `dist/_headers` (browsers keep the hashed files under `/_astro/` for a year) and
+`dist/_redirects` (old `*-workbench.html` URLs answer with a 301), both made by the build.
 
-The same workflow refreshes the old GitHub Pages address with `tools/github-pages-redirect.mjs`: one small page per
-site page that forwards to the same page on `SITE_URL` (query and `#section` kept) and names it as canonical, plus a
-404 page that maps any other old path. To build the site for a sub-path instead of a domain's root, set `BASE_PATH`
-(e.g. `BASE_PATH=/systems-workbench pnpm build`).
+`.github/workflows/old-address.yml` keeps the old GitHub Pages address working: on every push it builds the site and
+publishes `tools/github-pages-redirect.mjs`'s output there, one small page per site page that forwards to the same
+page on `SITE_URL` (query and `#section` kept) and names it as canonical, plus a 404 page that maps any other old
+path. It needs the same address as the `SITE_URL` repository variable, and waits until the site answers there before
+publishing. To build the site for a sub-path instead of a domain's root, set `BASE_PATH` (e.g.
+`BASE_PATH=/systems-workbench pnpm build`).
 
 ### Adding a lesson
 

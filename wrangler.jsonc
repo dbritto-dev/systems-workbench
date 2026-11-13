@@ -1,0 +1,16 @@
+// Cloudflare Workers config: the site is static, so this Worker has no script, only assets (dist/, built by
+// `pnpm run build`). Workers Builds (the repo is connected in the Cloudflare dashboard) runs the build command, then
+// `npx wrangler deploy`, which uploads dist/. Without this file, `wrangler deploy` would try to reconfigure the project
+// as a server-rendered Astro app.
+//
+// dist/_headers (from public/) and dist/_redirects (written by astro.config.mjs) are read from the assets folder.
+{
+  "name": "systems-workbench",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // /lessons/cache serves lessons/cache/index.html and redirects to /lessons/cache/, matching the site's links.
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  }
+}
