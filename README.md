@@ -79,7 +79,7 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 57 | [Stale-While-Revalidate](https://dbritto-dev.github.io/systems-workbench/lessons/swr/) | Frontend | Copy rack | Show the cached copy at once, refetch in the background: instant screens that can show old data for a while. |
 | 58 | [Optimistic UI](https://dbritto-dev.github.io/systems-workbench/lessons/optimistic/) | Frontend | Front counter | Show the like before the server says yes. Instant, until a failure must roll back or a late answer undoes the tap. |
 | 59 | [Quorums](https://dbritto-dev.github.io/systems-workbench/lessons/quorum/) | Distributed | Vault row | N copies, W acks per write, R replies per read. Reads are fresh when R + W > N, not because every node is healthy. |
-| 60 | [Replication Lag](https://dbritto-dev.github.io/systems-workbench/lessons/replicalag/) | Distributed | Copy desks | A leader and two followers: why a save can be missing on the next read, and a page can go back in time. |
+| 60 | [Replication Lag](https://dbritto-dev.github.io/systems-workbench/lessons/replicalag/) | Distributed | Copy desks | A leader and two followers: why a save can be missing on the next read, a page can go back in time, and a failover can lose acknowledged writes. |
 | 61 | [Clocks & Last-Write-Wins](https://dbritto-dev.github.io/systems-workbench/lessons/clocks/) | Distributed | Records desk | Last write wins keeps the highest timestamp. With a few ms of clock skew, the later edit loses, silently. |
 | 62 | [Leases & Fencing Tokens](https://dbritto-dev.github.io/systems-workbench/lessons/fencing/) | Distributed | Key office | A lease runs out while its holder is paused, and the holder wakes up writing. Fencing tokens let the storage refuse it. |
 | 63 | [Leader Election](https://dbritto-dev.github.io/systems-workbench/lessons/election/) | Distributed | Signal towers | Nodes elect a leader by majority vote. Without a majority, a network split gives two leaders and loses saved writes. |
@@ -103,6 +103,7 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 81 | [Timing Attacks](https://dbritto-dev.github.io/systems-workbench/lessons/timing/) | Security | Combination checker | Stopping at the first wrong byte leaks how close a guess was. Averaging finds it; constant-time compares remove it. |
 | 82 | [CSRF & SameSite](https://dbritto-dev.github.io/systems-workbench/lessons/csrf/) | Security | Bank street | The browser sends a site's cookies whoever asked, so another site can forge a signed-in request. SameSite, tokens and origin checks close it. |
 | 83 | [SQL Injection](https://dbritto-dev.github.io/systems-workbench/lessons/injection/) | Security | Records room | Paste input into SQL and a quote can end the data and start code. Parameters, an allowlist and a narrow account stop it. |
+| 84 | [Backup and Restore](https://dbritto-dev.github.io/systems-workbench/lessons/backups/) | Resilience | Backup room | Replicas copy a bad DELETE in seconds. A snapshot plus the archived log restores to the second before it, and only a tested restore proves it. |
 
 The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and
 [astryx-astro](https://dbritto-dev.github.io/astryx-astro/) (Meta's Astryx design system ported to Astro) in our own
