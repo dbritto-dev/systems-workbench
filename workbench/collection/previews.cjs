@@ -6,7 +6,7 @@ const path = require('path');
 // Shoots each lesson from the built site: serve it first (pnpm build && pnpm preview), then
 //   CHROMIUM_PATH=... node workbench/collection/previews.cjs [slug]
 const L = JSON.parse(fs.readFileSync(path.join(__dirname, 'lessons.json'), 'utf8'));
-const SITE = (process.env.SITE || 'http://localhost:4321/systems-workbench/').replace(/\/?$/, '/');
+const SITE = (process.env.SITE || 'http://localhost:4321/').replace(/\/?$/, '/');
 const OUT = path.join(__dirname, 'previews');
 const CHROMIUM = process.env.CHROMIUM_PATH || undefined; // e.g. /opt/pw-browsers/chromium
 const only = process.argv[2];

@@ -7,7 +7,9 @@ parts:
 2. **Predict, then run**: five experiments. Pick what you think will happen, then run the same model and compare.
 3. **Explain it back**: questions to answer out loud or in pairs.
 
-**Live site:** https://dbritto-dev.github.io/systems-workbench/ (deployed by `.github/workflows/pages.yml` on every push to `main`).
+**Live site:** https://systems-workbench.pages.dev/ on Cloudflare Pages, deployed by `.github/workflows/deploy.yml` on
+every push to `main`. The old address, https://dbritto-dev.github.io/systems-workbench/, forwards each page to the same
+page there.
 
 **English and Spanish:** every page exists in both languages: English at the root, Spanish under `/es/`, with EN / ES
 links beside the theme switch. The Spanish is neutral Latin American Spanish; [workbench/I18N.md](workbench/I18N.md)
@@ -20,95 +22,95 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 
 | # | Lesson | Area | Machine | What it teaches |
 |---|---|---|---|---|
-| 01 | [Cache](https://dbritto-dev.github.io/systems-workbench/lessons/cache/) | Data | Records office | A cache is a small, fast shelf of copies in front of a big, slow store. |
-| 02 | [Pub/Sub](https://dbritto-dev.github.io/systems-workbench/lessons/pubsub/) | Messaging | Dispatch office | Publish/subscribe lets one part of a system announce something without knowing who listens. |
-| 03 | [Load Balancer](https://dbritto-dev.github.io/systems-workbench/lessons/loadbalancing/) | Traffic | Sorting station | A load balancer decides which server gets each request, and that one decision sets how long users wait. |
-| 04 | [Circuit Breaker](https://dbritto-dev.github.io/systems-workbench/lessons/breaker/) | Resilience | Switchboard | When a service you depend on gets slow or fails, the danger is not the failed calls: it is your own workers waiting on them. |
-| 05 | [Rate Limiter](https://dbritto-dev.github.io/systems-workbench/lessons/ratelimit/) | Traffic | Ticket dispenser | A rate limiter hands out permission at a fixed pace and says "not now" (HTTP 429) when it runs out. |
-| 06 | [Retry Storm](https://dbritto-dev.github.io/systems-workbench/lessons/retrystorm/) | Resilience | Ticket office | Retries feel safe, but when many clients retry at once they keep a system overloaded long after the fault is gone. |
-| 07 | [Hash Ring](https://dbritto-dev.github.io/systems-workbench/lessons/hashring/) | Data | Sorting carousel | When data is split across nodes, every key needs a home, and adding or losing a node should move as few keys as possible. |
-| 08 | [Canary Deploy](https://dbritto-dev.github.io/systems-workbench/lessons/canary/) | Delivery | Railway junction | A canary deploy sends a small share of real traffic to the new version, watches it, and either rolls it back or promotes it. |
-| 09 | [Blue-Green](https://dbritto-dev.github.io/systems-workbench/lessons/bluegreen/) | Delivery | Two press lines | Two full copies of production: deploy to the idle one, flip all traffic with one switch, keep the old one ready. |
-| 10 | [Rolling Deploy](https://dbritto-dev.github.io/systems-workbench/lessons/rolling/) | Delivery | Module yard | A rolling deploy replaces a service one piece at a time, so it never has to stop. |
-| 11 | [Index](https://dbritto-dev.github.io/systems-workbench/lessons/indexes/) | Data | Library | An index is a sorted copy of a few columns that points back to the rows: fast lookups, paid for on every write. |
-| 12 | [Pagination](https://dbritto-dev.github.io/systems-workbench/lessons/pagination/) | Data | Filing machine | How a list API remembers where the last page ended decides how fast deep pages are and whether rows repeat or vanish. |
-| 13 | [Concurrency](https://dbritto-dev.github.io/systems-workbench/lessons/concurrency/) | Concurrency | Range and stirring head | Concurrency is one worker juggling many tasks by switching between them. It hides waiting but adds no extra hands. |
-| 14 | [Parallelism](https://dbritto-dev.github.io/systems-workbench/lessons/parallelism/) | Concurrency | Workshop | Parallelism is many pieces of work at the same instant. More workers help only as far as the work can be split. |
-| 15 | [Async](https://dbritto-dev.github.io/systems-workbench/lessons/async/) | Concurrency | Restaurant pass | Async I/O lets one worker start many slow operations and handle each result when it's ready, instead of waiting. |
-| 16 | [Event Loop](https://dbritto-dev.github.io/systems-workbench/lessons/eventloop/) | Concurrency | Event loop | JavaScript runs your code on one thread, one task at a time. Timers, network replies and drawing all wait their turn. |
-| 17 | [Race Condition](https://dbritto-dev.github.io/systems-workbench/lessons/races/) | Concurrency | Bank office | Two requests read the same value, both write, and one quietly undoes the other. Nothing crashes, so it hides. |
-| 18 | [Broadcast](https://dbritto-dev.github.io/systems-workbench/lessons/broadcast/) | Distributed | Signal network | Broadcast means every node learns every value; the topology decides how many messages that costs and how long it takes. |
-| 19 | [Gossip](https://dbritto-dev.github.io/systems-workbench/lessons/gossip/) | Distributed | Gossip village | Every round, whoever knows tells a few random others. Nobody coordinates, nothing is retried, and everyone hears it fast. |
-| 20 | [Kafka Log](https://dbritto-dev.github.io/systems-workbench/lessons/kafkalog/) | Messaging | Rail yard | A log keeps records in arrival order and doesn't delete them on read; each consumer group keeps a bookmark instead. |
-| 21 | [Counter](https://dbritto-dev.github.io/systems-workbench/lessons/counter/) | Distributed | Branch tally | Counting sounds trivial until several machines count at once: lost updates, retries, and counters that never conflict. |
-| 22 | [Feature Flag](https://dbritto-dev.github.io/systems-workbench/lessons/featureflags/) | Delivery | Lighting console | A feature flag ships new code switched off and lets you decide, at run time, who sees it. |
-| 23 | [Health Probe](https://dbritto-dev.github.io/systems-workbench/lessons/probes/) | Resilience | Shopping street | Readiness asks “can you take traffic now?”, liveness asks “do you need a restart?” Mix them up and blips become outages. |
-| 24 | [Outbox](https://dbritto-dev.github.io/systems-workbench/lessons/outbox/) | Messaging | Order office | Save to the database and tell other services in two writes, and a crash between them loses or invents events. |
-| 25 | [Idempotency](https://dbritto-dev.github.io/systems-workbench/lessons/idempotency/) | Resilience | Payment counter | A lost reply makes the client pay again. An idempotency key lets the server spot the retry and replay the result. |
-| 26 | [Saga](https://dbritto-dev.github.io/systems-workbench/lessons/sagas/) | Distributed | Travel agency | Flight, hotel, car, card: no shared transaction, so when a late step fails a saga undoes the earlier ones in reverse. |
-| 27 | [N+1 Query](https://dbritto-dev.github.io/systems-workbench/lessons/nplusone/) | Data | Warehouse picker | One query for the list, then one per row. Each is a round trip, so it's invisible locally and slow in staging. |
-| 28 | [Cache Stampede](https://dbritto-dev.github.io/systems-workbench/lessons/stampede/) | Data | Bakery | When a hot cache entry expires, every request misses at once and the database takes the whole herd. |
-| 29 | [Connection Pool](https://dbritto-dev.github.io/systems-workbench/lessons/connpool/) | Data | Taxi rank | Connections are slow to open and the database holds few. Most pool trouble is sizing, leaks and holding one too long. |
-| 30 | [Cardinality](https://dbritto-dev.github.io/systems-workbench/lessons/cardinality/) | Observability | Tally hall | Every metric label multiplies the series you store, and every trace costs space, so what you record must be chosen. |
-| 31 | [Debounce](https://dbritto-dev.github.io/systems-workbench/lessons/debounce/) | Frontend | Elevator lobby | Wait until events stop, then act once. Every keystroke restarts the wait, so a burst becomes one request. |
-| 32 | [Throttle](https://dbritto-dev.github.io/systems-workbench/lessons/throttle/) | Frontend | Metronome gate | Run the handler at most once per interval while events keep coming: steady updates during a scroll, the rest dropped. |
-| 33 | [Queue](https://dbritto-dev.github.io/systems-workbench/lessons/queues/) | Fundamentals | Parcel office | First in, first out. Between producers and workers a queue soaks up bursts and survives crashes, if you ack right. |
-| 34 | [Stack](https://dbritto-dev.github.io/systems-workbench/lessons/stacks/) | Fundamentals | Plate stacks | Last in, first out: every function call, every undo, and under overload, which users still get an answer in time. |
-| 35 | [BM25](https://dbritto-dev.github.io/systems-workbench/lessons/bm25/) | Search | Assay bench | Rare words weigh more, repeats help less and less, long documents are discounted: why codes match and paraphrases don't. |
-| 36 | [Semantic Search](https://dbritto-dev.github.io/systems-workbench/lessons/semantic/) | Search | Star-map table | Embeddings place text by meaning, so paraphrases match with no shared words, while exact codes and names slip away. |
-| 37 | [Rank Fusion](https://dbritto-dev.github.io/systems-workbench/lessons/rrf/) | Search | Count room | Merge rankings by 1/(k + rank), not raw scores: no normalising, and two judges agreeing beats one judge's favourite. |
-| 38 | [Hybrid Search](https://dbritto-dev.github.io/systems-workbench/lessons/hybrid/) | Search | Sorting plant | Run keyword and meaning search together and merge: each covers the other's misses, if you fuse and size them right. |
-| 39 | [Contextual Retrieval](https://dbritto-dev.github.io/systems-workbench/lessons/contextual/) | Search | Print shop | Chunks lose their context when cut. Stamp each with a short summary before indexing, then rerank: far fewer misses. |
-| 40 | [Hash Table](https://dbritto-dev.github.io/systems-workbench/lessons/hashtable/) | Fundamentals | Pigeonhole rack | A hash table jumps straight to a bucket. It stays fast only while the hash spreads keys and buckets stay uncrowded. |
-| 41 | [Priority Queue](https://dbritto-dev.github.io/systems-workbench/lessons/heap/) | Fundamentals | Triage tree | A priority queue always serves the most important item next. A heap keeps it cheap: O(log n) to add or take the top. |
-| 42 | [Ring Buffer](https://dbritto-dev.github.io/systems-workbench/lessons/ringbuffer/) | Fundamentals | Ring table | A fixed array used as a queue: fast and allocation-free, until the writer catches the reader and something must give. |
-| 43 | [Latency Numbers](https://dbritto-dev.github.io/systems-workbench/lessons/latency/) | Fundamentals | Courier depot | Each step out from the CPU costs a few to 1,000 times more. Where data lives often matters more than the code. |
-| 44 | [Tail Latency](https://dbritto-dev.github.io/systems-workbench/lessons/percentiles/) | Fundamentals | Timing hall | Most requests are fast; users remember the slow ones. Percentiles show the tail, and fan-out multiplies it. |
-| 45 | [Big-O](https://dbritto-dev.github.io/systems-workbench/lessons/bigo/) | Fundamentals | Race track | Big-O is how work grows with input size. Five real algorithms race on the same data: doubling, constants, worst case. |
-| 46 | [Timeouts & Deadlines](https://dbritto-dev.github.io/systems-workbench/lessons/deadlines/) | Traffic | Relay desks | Fixed timeouts leave inner services working after the caller quits. One deadline, passed on, tells each when to stop. |
-| 47 | [Load Shedding](https://dbritto-dev.github.io/systems-workbench/lessons/shedding/) | Traffic | Takeaway kitchen | Past capacity, a server that takes everything stays busy serving clients who left. Saying no early saves goodput. |
-| 48 | [Hedged Requests](https://dbritto-dev.github.io/systems-workbench/lessons/hedging/) | Traffic | Kitchen pass | Slow answer? Send a copy to another replica and keep the first reply. It cuts the tail, as long as copies stay rare. |
-| 49 | [HTTP/1.1 vs HTTP/2](https://dbritto-dev.github.io/systems-workbench/lessons/http2/) | Traffic | Order depot | HTTP/1.1 waits a round trip per request on each connection; HTTP/2 sends all at once, but a lost packet stalls them all. |
-| 50 | [Fair Queueing](https://dbritto-dev.github.io/systems-workbench/lessons/fairqueue/) | Traffic | Dispatch desk | In one shared line a batch job makes everyone wait. A lane per tenant, served in turn, keeps each wait its own. |
-| 51 | [Frame Budget](https://dbritto-dev.github.io/systems-workbench/lessons/frames/) | Frontend | Frame conveyor | At 60 Hz each frame gets 16.7 ms. A long task drops every frame it covers, and a click waits for the next paint. |
-| 52 | [Layout Thrashing](https://dbritto-dev.github.io/systems-workbench/lessons/layout/) | Frontend | Typesetting bench | Read a size after changing a style and the browser lays out the page on the spot. Do it per item and it thrashes. |
-| 53 | [List Virtualization](https://dbritto-dev.github.io/systems-workbench/lessons/virtualization/) | Frontend | Reading window | A 10,000-row list puts 10,000 rows in the DOM. Windowing renders only what is on screen, and loses Ctrl+F. |
-| 54 | [Re-render Cascades](https://dbritto-dev.github.io/systems-workbench/lessons/rerenders/) | Frontend | Component board | A state change re-renders everything below it. Keep state low, subscribe narrowly, and memo only where it pays. |
-| 55 | [Request Waterfalls](https://dbritto-dev.github.io/systems-workbench/lessons/waterfalls/) | Frontend | Relay track | Fetch on render and each request waits for another. Every link costs a round trip, however fast the server is. |
-| 56 | [Critical Rendering Path](https://dbritto-dev.github.io/systems-workbench/lessons/renderpath/) | Frontend | Page-load bench | Nothing paints before the HTML, the head's stylesheets and its classic scripts. Then images and fonts decide LCP and CLS. |
-| 57 | [Stale-While-Revalidate](https://dbritto-dev.github.io/systems-workbench/lessons/swr/) | Frontend | Copy rack | Show the cached copy at once, refetch in the background: instant screens that can show old data for a while. |
-| 58 | [Optimistic UI](https://dbritto-dev.github.io/systems-workbench/lessons/optimistic/) | Frontend | Front counter | Show the like before the server says yes. Instant, until a failure must roll back or a late answer undoes the tap. |
-| 59 | [Quorums](https://dbritto-dev.github.io/systems-workbench/lessons/quorum/) | Distributed | Vault row | N copies, W acks per write, R replies per read. Reads are fresh when R + W > N, not because every node is healthy. |
-| 60 | [Replication Lag](https://dbritto-dev.github.io/systems-workbench/lessons/replicalag/) | Distributed | Copy desks | A leader and two followers: why a save can be missing on the next read, a page can go back in time, and a failover can lose acknowledged writes. |
-| 61 | [Clocks & Last-Write-Wins](https://dbritto-dev.github.io/systems-workbench/lessons/clocks/) | Distributed | Records desk | Last write wins keeps the highest timestamp. With a few ms of clock skew, the later edit loses, silently. |
-| 62 | [Leases & Fencing Tokens](https://dbritto-dev.github.io/systems-workbench/lessons/fencing/) | Distributed | Key office | A lease runs out while its holder is paused, and the holder wakes up writing. Fencing tokens let the storage refuse it. |
-| 63 | [Leader Election](https://dbritto-dev.github.io/systems-workbench/lessons/election/) | Distributed | Signal towers | Nodes elect a leader by majority vote. Without a majority, a network split gives two leaders and loses saved writes. |
-| 64 | [Two-Phase Commit](https://dbritto-dev.github.io/systems-workbench/lessons/twophase/) | Distributed | Commit desk | All or nothing across databases: prepare, vote, commit. Lose the coordinator after a yes vote and rows stay locked. |
-| 65 | [Isolation Levels](https://dbritto-dev.github.io/systems-workbench/lessons/isolation/) | Data | Records office | Transactions don't stop lost updates, and snapshots let write skew through. Stricter levels turn clashes into retries. |
-| 66 | [Write-Ahead Log](https://dbritto-dev.github.io/systems-workbench/lessons/wal/) | Data | Ledger room | A commit is safe once its log record is on disk. Cut the power on a ledger room and see what recovery brings back. |
-| 67 | [LSM Tree vs B-Tree](https://dbritto-dev.github.io/systems-workbench/lessons/lsm/) | Data | Two storage rooms | A B-tree rewrites whole pages in place; an LSM tree batches writes into sorted files. Cheaper writes, paid for later. |
-| 68 | [Bloom Filter](https://dbritto-dev.github.io/systems-workbench/lessons/bloom/) | Fundamentals | Peg board | A few bits per key answer NO for sure or MAYBE by chance. Too many hashes, too many keys or a delete break it. |
-| 69 | [Delivery Guarantees](https://dbritto-dev.github.io/systems-workbench/lessons/guarantees/) | Messaging | Mail-order room | A message can come twice with nothing broken. Exactly-once is at-least-once delivery plus effects that ignore a repeat. |
-| 70 | [Poison Messages](https://dbritto-dev.github.io/systems-workbench/lessons/poison/) | Messaging | Sorting room | One message that always fails stops an ordered line; giving up too soon sends good ones, hit by an outage, to the DLQ. |
-| 71 | [Consumer Groups](https://dbritto-dev.github.io/systems-workbench/lessons/consumers/) | Messaging | Sorting hall | A group shares a topic's partitions among its consumers. Every join, leave or silent crash stops it to rebalance. |
-| 72 | [Burn-Rate Alerts](https://dbritto-dev.github.io/systems-workbench/lessons/burnrate/) | Observability | Error-budget tank | Page on how fast the error budget burns, over a long and a short window, not on a fixed error-rate line. |
-| 73 | [Trace Sampling](https://dbritto-dev.github.io/systems-workbench/lessons/sampling/) | Observability | Trace archive | What a trace sampler keeps: whole traces or fragments, the rare failure or not, and what a count over them means. |
-| 74 | [Merging Percentiles](https://dbritto-dev.github.io/systems-workbench/lessons/histograms/) | Observability | Sorting room | A p99 is a rank, so hosts' p99s don't average into the fleet's. Histogram buckets add up: read the p99 off the sum. |
-| 75 | [Autoscaling](https://dbritto-dev.github.io/systems-workbench/lessons/autoscaling/) | Traffic | Service floor | An autoscaler adds pods after the load arrives, and new pods take time to start: fine for slow waves, late for spikes. |
-| 76 | [Bulkheads](https://dbritto-dev.github.io/systems-workbench/lessons/bulkheads/) | Resilience | Ship's hold | One slow dependency can hold every worker. A cap per dependency keeps the failure inside its own compartment. |
-| 77 | [Graceful Shutdown](https://dbritto-dev.github.io/systems-workbench/lessons/shutdown/) | Delivery | Shop at closing time | Kubernetes sends SIGTERM while routers still send the pod traffic. Exit or stop listening at once and requests fail. |
-| 78 | [GitOps Reconcile](https://dbritto-dev.github.io/systems-workbench/lessons/gitops/) | Delivery | Blueprint office | A reconciler keeps the cluster matching git. Hotfix around it and your change is undone, overwritten later, or left behind. |
-| 79 | [Password Hashing](https://dbritto-dev.github.io/systems-workbench/lessons/passwords/) | Security | Vault and cracking rig | Leaked hashes get guessed, not reversed. A slow, salted hash makes each guess cost the attacker what a login costs you. |
-| 80 | [Token Revocation](https://dbritto-dev.github.io/systems-workbench/lessons/tokens/) | Security | Festival gate | Logout doesn't revoke a signed token: any copy works until it expires. Revoking early takes a check on every request. |
-| 81 | [Timing Attacks](https://dbritto-dev.github.io/systems-workbench/lessons/timing/) | Security | Combination checker | Stopping at the first wrong byte leaks how close a guess was. Averaging finds it; constant-time compares remove it. |
-| 82 | [CSRF & SameSite](https://dbritto-dev.github.io/systems-workbench/lessons/csrf/) | Security | Bank street | The browser sends a site's cookies whoever asked, so another site can forge a signed-in request. SameSite, tokens and origin checks close it. |
-| 83 | [SQL Injection](https://dbritto-dev.github.io/systems-workbench/lessons/injection/) | Security | Records room | Paste input into SQL and a quote can end the data and start code. Parameters, an allowlist and a narrow account stop it. |
-| 84 | [Backup and Restore](https://dbritto-dev.github.io/systems-workbench/lessons/backups/) | Resilience | Backup room | Replicas copy a bad DELETE in seconds. A snapshot plus the archived log restores to the second before it, and only a tested restore proves it. |
+| 01 | [Cache](https://systems-workbench.pages.dev/lessons/cache/) | Data | Records office | A cache is a small, fast shelf of copies in front of a big, slow store. |
+| 02 | [Pub/Sub](https://systems-workbench.pages.dev/lessons/pubsub/) | Messaging | Dispatch office | Publish/subscribe lets one part of a system announce something without knowing who listens. |
+| 03 | [Load Balancer](https://systems-workbench.pages.dev/lessons/loadbalancing/) | Traffic | Sorting station | A load balancer decides which server gets each request, and that one decision sets how long users wait. |
+| 04 | [Circuit Breaker](https://systems-workbench.pages.dev/lessons/breaker/) | Resilience | Switchboard | When a service you depend on gets slow or fails, the danger is not the failed calls: it is your own workers waiting on them. |
+| 05 | [Rate Limiter](https://systems-workbench.pages.dev/lessons/ratelimit/) | Traffic | Ticket dispenser | A rate limiter hands out permission at a fixed pace and says "not now" (HTTP 429) when it runs out. |
+| 06 | [Retry Storm](https://systems-workbench.pages.dev/lessons/retrystorm/) | Resilience | Ticket office | Retries feel safe, but when many clients retry at once they keep a system overloaded long after the fault is gone. |
+| 07 | [Hash Ring](https://systems-workbench.pages.dev/lessons/hashring/) | Data | Sorting carousel | When data is split across nodes, every key needs a home, and adding or losing a node should move as few keys as possible. |
+| 08 | [Canary Deploy](https://systems-workbench.pages.dev/lessons/canary/) | Delivery | Railway junction | A canary deploy sends a small share of real traffic to the new version, watches it, and either rolls it back or promotes it. |
+| 09 | [Blue-Green](https://systems-workbench.pages.dev/lessons/bluegreen/) | Delivery | Two press lines | Two full copies of production: deploy to the idle one, flip all traffic with one switch, keep the old one ready. |
+| 10 | [Rolling Deploy](https://systems-workbench.pages.dev/lessons/rolling/) | Delivery | Module yard | A rolling deploy replaces a service one piece at a time, so it never has to stop. |
+| 11 | [Index](https://systems-workbench.pages.dev/lessons/indexes/) | Data | Library | An index is a sorted copy of a few columns that points back to the rows: fast lookups, paid for on every write. |
+| 12 | [Pagination](https://systems-workbench.pages.dev/lessons/pagination/) | Data | Filing machine | How a list API remembers where the last page ended decides how fast deep pages are and whether rows repeat or vanish. |
+| 13 | [Concurrency](https://systems-workbench.pages.dev/lessons/concurrency/) | Concurrency | Range and stirring head | Concurrency is one worker juggling many tasks by switching between them. It hides waiting but adds no extra hands. |
+| 14 | [Parallelism](https://systems-workbench.pages.dev/lessons/parallelism/) | Concurrency | Workshop | Parallelism is many pieces of work at the same instant. More workers help only as far as the work can be split. |
+| 15 | [Async](https://systems-workbench.pages.dev/lessons/async/) | Concurrency | Restaurant pass | Async I/O lets one worker start many slow operations and handle each result when it's ready, instead of waiting. |
+| 16 | [Event Loop](https://systems-workbench.pages.dev/lessons/eventloop/) | Concurrency | Event loop | JavaScript runs your code on one thread, one task at a time. Timers, network replies and drawing all wait their turn. |
+| 17 | [Race Condition](https://systems-workbench.pages.dev/lessons/races/) | Concurrency | Bank office | Two requests read the same value, both write, and one quietly undoes the other. Nothing crashes, so it hides. |
+| 18 | [Broadcast](https://systems-workbench.pages.dev/lessons/broadcast/) | Distributed | Signal network | Broadcast means every node learns every value; the topology decides how many messages that costs and how long it takes. |
+| 19 | [Gossip](https://systems-workbench.pages.dev/lessons/gossip/) | Distributed | Gossip village | Every round, whoever knows tells a few random others. Nobody coordinates, nothing is retried, and everyone hears it fast. |
+| 20 | [Kafka Log](https://systems-workbench.pages.dev/lessons/kafkalog/) | Messaging | Rail yard | A log keeps records in arrival order and doesn't delete them on read; each consumer group keeps a bookmark instead. |
+| 21 | [Counter](https://systems-workbench.pages.dev/lessons/counter/) | Distributed | Branch tally | Counting sounds trivial until several machines count at once: lost updates, retries, and counters that never conflict. |
+| 22 | [Feature Flag](https://systems-workbench.pages.dev/lessons/featureflags/) | Delivery | Lighting console | A feature flag ships new code switched off and lets you decide, at run time, who sees it. |
+| 23 | [Health Probe](https://systems-workbench.pages.dev/lessons/probes/) | Resilience | Shopping street | Readiness asks “can you take traffic now?”, liveness asks “do you need a restart?” Mix them up and blips become outages. |
+| 24 | [Outbox](https://systems-workbench.pages.dev/lessons/outbox/) | Messaging | Order office | Save to the database and tell other services in two writes, and a crash between them loses or invents events. |
+| 25 | [Idempotency](https://systems-workbench.pages.dev/lessons/idempotency/) | Resilience | Payment counter | A lost reply makes the client pay again. An idempotency key lets the server spot the retry and replay the result. |
+| 26 | [Saga](https://systems-workbench.pages.dev/lessons/sagas/) | Distributed | Travel agency | Flight, hotel, car, card: no shared transaction, so when a late step fails a saga undoes the earlier ones in reverse. |
+| 27 | [N+1 Query](https://systems-workbench.pages.dev/lessons/nplusone/) | Data | Warehouse picker | One query for the list, then one per row. Each is a round trip, so it's invisible locally and slow in staging. |
+| 28 | [Cache Stampede](https://systems-workbench.pages.dev/lessons/stampede/) | Data | Bakery | When a hot cache entry expires, every request misses at once and the database takes the whole herd. |
+| 29 | [Connection Pool](https://systems-workbench.pages.dev/lessons/connpool/) | Data | Taxi rank | Connections are slow to open and the database holds few. Most pool trouble is sizing, leaks and holding one too long. |
+| 30 | [Cardinality](https://systems-workbench.pages.dev/lessons/cardinality/) | Observability | Tally hall | Every metric label multiplies the series you store, and every trace costs space, so what you record must be chosen. |
+| 31 | [Debounce](https://systems-workbench.pages.dev/lessons/debounce/) | Frontend | Elevator lobby | Wait until events stop, then act once. Every keystroke restarts the wait, so a burst becomes one request. |
+| 32 | [Throttle](https://systems-workbench.pages.dev/lessons/throttle/) | Frontend | Metronome gate | Run the handler at most once per interval while events keep coming: steady updates during a scroll, the rest dropped. |
+| 33 | [Queue](https://systems-workbench.pages.dev/lessons/queues/) | Fundamentals | Parcel office | First in, first out. Between producers and workers a queue soaks up bursts and survives crashes, if you ack right. |
+| 34 | [Stack](https://systems-workbench.pages.dev/lessons/stacks/) | Fundamentals | Plate stacks | Last in, first out: every function call, every undo, and under overload, which users still get an answer in time. |
+| 35 | [BM25](https://systems-workbench.pages.dev/lessons/bm25/) | Search | Assay bench | Rare words weigh more, repeats help less and less, long documents are discounted: why codes match and paraphrases don't. |
+| 36 | [Semantic Search](https://systems-workbench.pages.dev/lessons/semantic/) | Search | Star-map table | Embeddings place text by meaning, so paraphrases match with no shared words, while exact codes and names slip away. |
+| 37 | [Rank Fusion](https://systems-workbench.pages.dev/lessons/rrf/) | Search | Count room | Merge rankings by 1/(k + rank), not raw scores: no normalising, and two judges agreeing beats one judge's favourite. |
+| 38 | [Hybrid Search](https://systems-workbench.pages.dev/lessons/hybrid/) | Search | Sorting plant | Run keyword and meaning search together and merge: each covers the other's misses, if you fuse and size them right. |
+| 39 | [Contextual Retrieval](https://systems-workbench.pages.dev/lessons/contextual/) | Search | Print shop | Chunks lose their context when cut. Stamp each with a short summary before indexing, then rerank: far fewer misses. |
+| 40 | [Hash Table](https://systems-workbench.pages.dev/lessons/hashtable/) | Fundamentals | Pigeonhole rack | A hash table jumps straight to a bucket. It stays fast only while the hash spreads keys and buckets stay uncrowded. |
+| 41 | [Priority Queue](https://systems-workbench.pages.dev/lessons/heap/) | Fundamentals | Triage tree | A priority queue always serves the most important item next. A heap keeps it cheap: O(log n) to add or take the top. |
+| 42 | [Ring Buffer](https://systems-workbench.pages.dev/lessons/ringbuffer/) | Fundamentals | Ring table | A fixed array used as a queue: fast and allocation-free, until the writer catches the reader and something must give. |
+| 43 | [Latency Numbers](https://systems-workbench.pages.dev/lessons/latency/) | Fundamentals | Courier depot | Each step out from the CPU costs a few to 1,000 times more. Where data lives often matters more than the code. |
+| 44 | [Tail Latency](https://systems-workbench.pages.dev/lessons/percentiles/) | Fundamentals | Timing hall | Most requests are fast; users remember the slow ones. Percentiles show the tail, and fan-out multiplies it. |
+| 45 | [Big-O](https://systems-workbench.pages.dev/lessons/bigo/) | Fundamentals | Race track | Big-O is how work grows with input size. Five real algorithms race on the same data: doubling, constants, worst case. |
+| 46 | [Timeouts & Deadlines](https://systems-workbench.pages.dev/lessons/deadlines/) | Traffic | Relay desks | Fixed timeouts leave inner services working after the caller quits. One deadline, passed on, tells each when to stop. |
+| 47 | [Load Shedding](https://systems-workbench.pages.dev/lessons/shedding/) | Traffic | Takeaway kitchen | Past capacity, a server that takes everything stays busy serving clients who left. Saying no early saves goodput. |
+| 48 | [Hedged Requests](https://systems-workbench.pages.dev/lessons/hedging/) | Traffic | Kitchen pass | Slow answer? Send a copy to another replica and keep the first reply. It cuts the tail, as long as copies stay rare. |
+| 49 | [HTTP/1.1 vs HTTP/2](https://systems-workbench.pages.dev/lessons/http2/) | Traffic | Order depot | HTTP/1.1 waits a round trip per request on each connection; HTTP/2 sends all at once, but a lost packet stalls them all. |
+| 50 | [Fair Queueing](https://systems-workbench.pages.dev/lessons/fairqueue/) | Traffic | Dispatch desk | In one shared line a batch job makes everyone wait. A lane per tenant, served in turn, keeps each wait its own. |
+| 51 | [Frame Budget](https://systems-workbench.pages.dev/lessons/frames/) | Frontend | Frame conveyor | At 60 Hz each frame gets 16.7 ms. A long task drops every frame it covers, and a click waits for the next paint. |
+| 52 | [Layout Thrashing](https://systems-workbench.pages.dev/lessons/layout/) | Frontend | Typesetting bench | Read a size after changing a style and the browser lays out the page on the spot. Do it per item and it thrashes. |
+| 53 | [List Virtualization](https://systems-workbench.pages.dev/lessons/virtualization/) | Frontend | Reading window | A 10,000-row list puts 10,000 rows in the DOM. Windowing renders only what is on screen, and loses Ctrl+F. |
+| 54 | [Re-render Cascades](https://systems-workbench.pages.dev/lessons/rerenders/) | Frontend | Component board | A state change re-renders everything below it. Keep state low, subscribe narrowly, and memo only where it pays. |
+| 55 | [Request Waterfalls](https://systems-workbench.pages.dev/lessons/waterfalls/) | Frontend | Relay track | Fetch on render and each request waits for another. Every link costs a round trip, however fast the server is. |
+| 56 | [Critical Rendering Path](https://systems-workbench.pages.dev/lessons/renderpath/) | Frontend | Page-load bench | Nothing paints before the HTML, the head's stylesheets and its classic scripts. Then images and fonts decide LCP and CLS. |
+| 57 | [Stale-While-Revalidate](https://systems-workbench.pages.dev/lessons/swr/) | Frontend | Copy rack | Show the cached copy at once, refetch in the background: instant screens that can show old data for a while. |
+| 58 | [Optimistic UI](https://systems-workbench.pages.dev/lessons/optimistic/) | Frontend | Front counter | Show the like before the server says yes. Instant, until a failure must roll back or a late answer undoes the tap. |
+| 59 | [Quorums](https://systems-workbench.pages.dev/lessons/quorum/) | Distributed | Vault row | N copies, W acks per write, R replies per read. Reads are fresh when R + W > N, not because every node is healthy. |
+| 60 | [Replication Lag](https://systems-workbench.pages.dev/lessons/replicalag/) | Distributed | Copy desks | A leader and two followers: why a save can be missing on the next read, a page can go back in time, and a failover can lose acknowledged writes. |
+| 61 | [Clocks & Last-Write-Wins](https://systems-workbench.pages.dev/lessons/clocks/) | Distributed | Records desk | Last write wins keeps the highest timestamp. With a few ms of clock skew, the later edit loses, silently. |
+| 62 | [Leases & Fencing Tokens](https://systems-workbench.pages.dev/lessons/fencing/) | Distributed | Key office | A lease runs out while its holder is paused, and the holder wakes up writing. Fencing tokens let the storage refuse it. |
+| 63 | [Leader Election](https://systems-workbench.pages.dev/lessons/election/) | Distributed | Signal towers | Nodes elect a leader by majority vote. Without a majority, a network split gives two leaders and loses saved writes. |
+| 64 | [Two-Phase Commit](https://systems-workbench.pages.dev/lessons/twophase/) | Distributed | Commit desk | All or nothing across databases: prepare, vote, commit. Lose the coordinator after a yes vote and rows stay locked. |
+| 65 | [Isolation Levels](https://systems-workbench.pages.dev/lessons/isolation/) | Data | Records office | Transactions don't stop lost updates, and snapshots let write skew through. Stricter levels turn clashes into retries. |
+| 66 | [Write-Ahead Log](https://systems-workbench.pages.dev/lessons/wal/) | Data | Ledger room | A commit is safe once its log record is on disk. Cut the power on a ledger room and see what recovery brings back. |
+| 67 | [LSM Tree vs B-Tree](https://systems-workbench.pages.dev/lessons/lsm/) | Data | Two storage rooms | A B-tree rewrites whole pages in place; an LSM tree batches writes into sorted files. Cheaper writes, paid for later. |
+| 68 | [Bloom Filter](https://systems-workbench.pages.dev/lessons/bloom/) | Fundamentals | Peg board | A few bits per key answer NO for sure or MAYBE by chance. Too many hashes, too many keys or a delete break it. |
+| 69 | [Delivery Guarantees](https://systems-workbench.pages.dev/lessons/guarantees/) | Messaging | Mail-order room | A message can come twice with nothing broken. Exactly-once is at-least-once delivery plus effects that ignore a repeat. |
+| 70 | [Poison Messages](https://systems-workbench.pages.dev/lessons/poison/) | Messaging | Sorting room | One message that always fails stops an ordered line; giving up too soon sends good ones, hit by an outage, to the DLQ. |
+| 71 | [Consumer Groups](https://systems-workbench.pages.dev/lessons/consumers/) | Messaging | Sorting hall | A group shares a topic's partitions among its consumers. Every join, leave or silent crash stops it to rebalance. |
+| 72 | [Burn-Rate Alerts](https://systems-workbench.pages.dev/lessons/burnrate/) | Observability | Error-budget tank | Page on how fast the error budget burns, over a long and a short window, not on a fixed error-rate line. |
+| 73 | [Trace Sampling](https://systems-workbench.pages.dev/lessons/sampling/) | Observability | Trace archive | What a trace sampler keeps: whole traces or fragments, the rare failure or not, and what a count over them means. |
+| 74 | [Merging Percentiles](https://systems-workbench.pages.dev/lessons/histograms/) | Observability | Sorting room | A p99 is a rank, so hosts' p99s don't average into the fleet's. Histogram buckets add up: read the p99 off the sum. |
+| 75 | [Autoscaling](https://systems-workbench.pages.dev/lessons/autoscaling/) | Traffic | Service floor | An autoscaler adds pods after the load arrives, and new pods take time to start: fine for slow waves, late for spikes. |
+| 76 | [Bulkheads](https://systems-workbench.pages.dev/lessons/bulkheads/) | Resilience | Ship's hold | One slow dependency can hold every worker. A cap per dependency keeps the failure inside its own compartment. |
+| 77 | [Graceful Shutdown](https://systems-workbench.pages.dev/lessons/shutdown/) | Delivery | Shop at closing time | Kubernetes sends SIGTERM while routers still send the pod traffic. Exit or stop listening at once and requests fail. |
+| 78 | [GitOps Reconcile](https://systems-workbench.pages.dev/lessons/gitops/) | Delivery | Blueprint office | A reconciler keeps the cluster matching git. Hotfix around it and your change is undone, overwritten later, or left behind. |
+| 79 | [Password Hashing](https://systems-workbench.pages.dev/lessons/passwords/) | Security | Vault and cracking rig | Leaked hashes get guessed, not reversed. A slow, salted hash makes each guess cost the attacker what a login costs you. |
+| 80 | [Token Revocation](https://systems-workbench.pages.dev/lessons/tokens/) | Security | Festival gate | Logout doesn't revoke a signed token: any copy works until it expires. Revoking early takes a check on every request. |
+| 81 | [Timing Attacks](https://systems-workbench.pages.dev/lessons/timing/) | Security | Combination checker | Stopping at the first wrong byte leaks how close a guess was. Averaging finds it; constant-time compares remove it. |
+| 82 | [CSRF & SameSite](https://systems-workbench.pages.dev/lessons/csrf/) | Security | Bank street | The browser sends a site's cookies whoever asked, so another site can forge a signed-in request. SameSite, tokens and origin checks close it. |
+| 83 | [SQL Injection](https://systems-workbench.pages.dev/lessons/injection/) | Security | Records room | Paste input into SQL and a quote can end the data and start code. Parameters, an allowlist and a narrow account stop it. |
+| 84 | [Backup and Restore](https://systems-workbench.pages.dev/lessons/backups/) | Resilience | Backup room | Replicas copy a bad DELETE in seconds. A snapshot plus the archived log restores to the second before it, and only a tested restore proves it. |
 
 The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and
 [astryx-astro](https://dbritto-dev.github.io/astryx-astro/) (Meta's Astryx design system ported to Astro) in our own
 "workbench" theme, and deployed to
-GitHub Pages: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
+Cloudflare Pages: English at `/lessons/<slug>/`, Spanish at `/es/lessons/<slug>/`. Old `lessons/<slug>/*-workbench.html`
 links forward to the new URLs.
 
 ## How the site is put together
@@ -132,7 +134,7 @@ src/
   runtime/                  shared browser code for live code: wb.ts (loop, counters, dials, meters, L/T),
                             dom.ts (show, setText, setD, setLit, playPause); and for components (the UX foundation,
                             src/lessons/README.md): modality.ts (Astryx's keyboard/pointer tracker, started before first
-                            paint), announce.ts (live regions), roving.ts (one Tab stop, arrow keys, the arrow-key hint)
+                            paint), announce.ts (live regions, on Astryx's)
   i18n/                     locales, interface strings (ui.ts), localize() for figures drawn in both languages
   layouts/                  Base (head, language alternates, theme, UX foundation, skip link) and Lesson (top navigation,
                             header, machine, experiments, questions, related lessons, footer)
@@ -178,14 +180,28 @@ The site needs Node 22.23+ (see `.nvmrc`) and [pnpm](https://pnpm.io) (the versi
 ```sh
 pnpm install
 pnpm dev                          # the Astro dev server
-pnpm build                        # build the site into dist/ (what the Pages workflow runs)
-pnpm preview                      # serve dist/ at http://localhost:4321/systems-workbench/
+pnpm build                        # build the site into dist/ (what the deploy workflow runs)
+pnpm preview                      # serve dist/ at http://localhost:4321/
 pnpm check:site                   # with preview running: every lesson in both languages, experiments, 390 px, search
 pnpm previews queues              # with preview running: re-shoot a lesson's card image (light + dark)
 pnpm shot queues shot.png 2000    # with preview running: screenshot a lesson's figure
 ```
 
 Set `CHROMIUM_PATH` if Playwright should use a browser other than its own.
+
+### Deploying
+
+`.github/workflows/deploy.yml` builds the site and deploys `dist/` to the `systems-workbench` Cloudflare Pages
+project with Wrangler (the first run creates the project). It needs two repository secrets: `CLOUDFLARE_API_TOKEN`, an
+API token with the **Cloudflare Pages: Edit** permission, and `CLOUDFLARE_ACCOUNT_ID`. The site's address is the
+`SITE_URL` repository variable (default `https://systems-workbench.pages.dev`): set it when the project's pages.dev
+name differs or a custom domain is added, since canonical links, language alternates and the sitemap are built from
+it. `public/_headers` lets browsers keep the hashed files under `/_astro/` for a year.
+
+The same workflow refreshes the old GitHub Pages address with `tools/github-pages-redirect.mjs`: one small page per
+site page that forwards to the same page on `SITE_URL` (query and `#section` kept) and names it as canonical, plus a
+404 page that maps any other old path. To build the site for a sub-path instead of a domain's root, set `BASE_PATH`
+(e.g. `BASE_PATH=/systems-workbench pnpm build`).
 
 ### Adding a lesson
 

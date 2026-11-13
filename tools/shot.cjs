@@ -1,7 +1,7 @@
 // Screenshot a lesson's figure plate from the built site (serve it first: pnpm preview):
 //   node tools/shot.cjs <slug | url> <out.png> [waitMs]
 const { chromium } = require('playwright');
-const SITE = (process.env.SITE || 'http://localhost:4321/systems-workbench/').replace(/\/?$/, '/');
+const SITE = (process.env.SITE || 'http://localhost:4321/').replace(/\/?$/, '/');
 (async () => {
   const [what, out, wait = 1500] = process.argv.slice(2);
   const url = /^https?:/.test(what) ? what : `${SITE}lessons/${what}/`;

@@ -24,7 +24,7 @@ figure (`figure.ts`) builds on this layer: `import * as k from "../../../workben
 ## Parts
 
 Before drawing something a lesson needs, check `parts.mjs` and the parts gallery (build and serve the site, then
-open `/systems-workbench/workbench/parts-gallery/`). If a part is missing and another lesson could use it, add it here rather than in the lesson,
+open `/workbench/parts-gallery/`). If a part is missing and another lesson could use it, add it here rather than in the lesson,
 with an example in the gallery. Every part takes the projection first and world units, and returns SVG;
 the caller keeps the painter's order. Faces: `"y"` is the face of constant y (text reads along +x), `"x"` the face
 of constant x (reads along -y), `"top"` lies on a top face.
@@ -61,7 +61,7 @@ on small tokens. `litFill(svg)` marks lit solids to fill with the lit colour (bl
 ## Checking a change
 
 Build and serve the site, then `node tools/site-check.cjs` (every lesson in both languages) and look at
-`/systems-workbench/workbench/parts-gallery/` for the parts themselves.
+`/workbench/parts-gallery/` for the parts themselves.
 
 ## The collection page
 

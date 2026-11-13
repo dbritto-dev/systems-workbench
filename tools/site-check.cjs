@@ -7,7 +7,7 @@ const { chromium } = require("playwright");
 const lessons = require("../workbench/collection/lessons.json");
 
 const isUrl = (a) => /^https?:\/\//.test(a);
-const BASE = (process.argv.slice(2).find(isUrl) || "http://localhost:4321/systems-workbench/").replace(/\/?$/, "/");
+const BASE = (process.argv.slice(2).find(isUrl) || "http://localhost:4321/").replace(/\/?$/, "/");
 const only = new Set(process.argv.slice(2).filter((a) => !isUrl(a)).flatMap((a) => a.split(",")).filter(Boolean));
 const unknown = [...only].filter((s) => !lessons.some((l) => l.slug === s));
 if (unknown.length) { console.error(`unknown lesson(s): ${unknown.join(", ")}`); process.exit(1); }
