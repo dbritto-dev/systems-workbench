@@ -12,5 +12,10 @@
     // /lessons/cache serves lessons/cache/index.html and redirects to /lessons/cache/, matching the site's links.
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "none"
+  },
+  // Workers Logs off, as the dashboard has it: with no Worker script there is nothing of ours to log, and requests
+  // for static assets don't run a Worker.
+  "observability": {
+    "enabled": false
   }
 }
