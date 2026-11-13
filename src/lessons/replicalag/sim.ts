@@ -51,7 +51,7 @@ export function makeSim(cfgIn = {}, seed = 1) {
 
   // Follower 0 is A, follower 1 is B.
   const kind = ["healthy", cfg.b === "slow" ? "slow" : "healthy"];
-  const F = [0, 1].map((i) => ({ i, net: NET[kind[i]], apply: APPLY[kind[i]], stalled: i === 1 && cfg.b === "stalled", lastArrive: 0, lastEnd: 0, applied: 0 }));
+  const F = [0, 1].map((i) => ({ i, net: NET[kind[i]], apply: APPLY[kind[i]], stalled: i === 1 && cfg.b === "stalled", lastArrive: 0, lastEnd: 0, applied: 0, received: 0 }));
   const writes = [];            // { lsn, t, user, you, batch, f: [{ arrive, start, end }], ret }
   const log = [];               // what the live figure narrates (your writes and reads, bursts)
   const users = Array.from({ length: USERS }, (_, i) => ({ i, lastLSN: 0, lastRet: -Infinity, seen: 0, waiting: false, gen: 0 }));
@@ -92,6 +92,11 @@ export function makeSim(cfgIn = {}, seed = 1) {
   function appliedAt(f, t) {
     while (f.applied < writes.length && writes[f.applied].f[f.i].end <= t) f.applied++;
     return f.applied;
+  }
+  /** The writes that have reached follower f by time t (it receives them in log order). */
+  function receivedAt(f, t) {
+    while (f.received < writes.length && writes[f.received].f[f.i].arrive <= t) f.received++;
+    return f.received;
   }
   function lagAt(f, t) {
     const a = appliedAt(f, t);
@@ -205,7 +210,7 @@ export function makeSim(cfgIn = {}, seed = 1) {
 
   return {
     cfg, F, writes, users, log, st, bursts,
-    runTo, appliedAt, lagAt,
+    runTo, appliedAt, receivedAt, lagAt,
     /** Sample something every dt seconds of model time (headless runs). */
     every(dt, fn, from = 0, to = Infinity) { for (let t = from; t <= to; t += dt) at(t, "sample", fn); },
     /** You save now (the visitor's button), unless your last save is still waiting for its commit. */
@@ -221,6 +226,23 @@ export function makeSim(cfgIn = {}, seed = 1) {
     get now() { return now; },
     get leaderLSN() { return writes.length; },
   };
+}
+
+// ---------- the leader crashes ----------
+// The leader dies at time T. Whatever hadn't reached a follower by then never will (it was in the dead leader's
+// memory or on the wire). The follower that has received the most of the log is promoted (pick: "best"), or the
+// other one ("other"); before it takes writes it replays everything it received, so its replay backlog isn't lost,
+// only the writes it never received. Those are lost; the ones whose client had already been told "saved" were
+// acknowledged writes. Works on a model that has been run to T or past it: it reads the timeline, so the same run can
+// be crashed at many moments.
+const upTo = (ws, t, key) => { let lo = 0, hi = ws.length; while (lo < hi) { const m = (lo + hi) >> 1; if (key(ws[m]) <= t) lo = m + 1; else hi = m; } return lo; };
+export function failoverAt(m, T, pick = "best") {
+  const ws = m.writes, n = upTo(ws, T, (w) => w.t);
+  const recv = [0, 1].map((i) => Math.min(n, upTo(ws, T, (w) => w.f[i].arrive)));
+  const applied = [0, 1].map((i) => Math.min(recv[i], upTo(ws, T, (w) => w.f[i].end)));
+  const best = recv[1] > recv[0] ? 1 : 0, p = pick === "best" ? best : 1 - best;
+  const lost = ws.slice(recv[p], n), acked = lost.filter((w) => w.ret <= T);
+  return { T, n, recv, applied, p, lost, acked, unacked: lost.length - acked.length };
 }
 
 // ---------- experiments: headless runs, averaged over seeds ----------
@@ -241,20 +263,16 @@ export function moveRun() {
   return { leader: one("leader"), any: one("any") };
 }
 
-// 2. Follower B falls behind: a quick second read that shows less than the read just before it.
-export function monoRun() {
-  const one = (route) => avg((seed) => { const m = run({ route, b: "slow" }, seed); return { quick: quickBack(m), all: monoShare(m), delayA: delay(m, 0).mean, delayB: delay(m, 1).mean }; });
-  return { any: one("any"), sticky: one("sticky") };
-}
-
-// 3. Same slow B: does sticking to one follower help read-backs? And reading from the leader after a write.
+// 2. Follower B falls behind: does sticking each user to one follower help read-backs? And reading from the leader
+// after a write. Also: a quick second read that shows less than the read just before it (went back).
 export function rywRun() {
-  const one = (route) => avg((seed) => { const m = run({ route, b: "slow" }, seed), s = m.st; return { miss: backMiss(m), quick: quickBack(m), leader: leaderShare(m), missA: s.backMissAt[0] / Math.max(1, s.backsAt[0]), missB: s.backMissAt[1] / Math.max(1, s.backsAt[1]) }; });
+  const one = (route) => avg((seed) => { const m = run({ route, b: "slow" }, seed), s = m.st; return { miss: backMiss(m), quick: quickBack(m), all: monoShare(m), leader: leaderShare(m), missA: s.backMissAt[0] / Math.max(1, s.backsAt[0]), missB: s.backMissAt[1] / Math.max(1, s.backsAt[1]), delayA: delay(m, 0).mean, delayB: delay(m, 1).mean }; });
   return { any: one("any"), sticky: one("sticky"), window: one("window"), token: one("token") };
 }
 
-// 4. Same slow B: the commit waits for the followers.
-export function syncRun() {
+// 5. One slow follower (B): the commit waits for nothing, for any one follower to receive the write, or for both to
+// apply it.
+export function slowRun() {
   const one = (commit) => avg((seed) => {
     const m = run({ route: "any", b: "slow", commit }, seed);
     return { miss: backMiss(m), p50: rankQuantile(m.st.commits, 0.5), p99: rankQuantile(m.st.commits, 0.99) };
@@ -262,7 +280,30 @@ export function syncRun() {
   return { async: one("async"), semi: one("semi"), sync: one("sync") };
 }
 
-// 5. A batch job writes 200 extra a second for 2 s, every 60 s: how far follower A falls behind, how long it takes
+// 4. The leader crashes during a write burst (the schedule of experiment 3, below), B slow: CRASHES moments drawn at
+// random inside each burst, and as many between bursts. The same run is crashed at every moment
+// (failoverAt reads the timeline), and the most caught-up follower is promoted, or, for semi-sync, the other one.
+export const CRASHES = 4;
+export function loseRun() {
+  const one = (commit) => avg((seed) => {
+    const m = makeSim({ route: "any", commit, b: "slow", burst: BURSTS }, seed);
+    m.runTo(RUN_SECS);
+    const r = rng(seed * 31 + 5), inB = [], quiet = [];
+    for (const b of BURSTS) for (let k = 0; k < CRASHES; k++) { inB.push(b.at + b.dur * r()); quiet.push(b.at + BURST_EVERY / 2 + 10 * r()); }
+    const best = inB.map((T) => failoverAt(m, T)), other = inB.map((T) => failoverAt(m, T, "other")), calm = quiet.map((T) => failoverAt(m, T));
+    return {
+      acked: mean(best.map((f) => f.acked.length)), unacked: mean(best.map((f) => f.unacked)),
+      ackedOther: mean(other.map((f) => f.acked.length)),
+      calm: mean(calm.map((f) => f.acked.length)),
+      // the replay backlog of the promoted follower at the crash: received, not yet applied (it isn't lost)
+      backlog: mean(best.map((f) => f.recv[f.p] - f.applied[f.p])),
+      p50: rankQuantile(m.st.commits, 0.5),
+    };
+  });
+  return { async: one("async"), semi: one("semi"), sync: one("sync") };
+}
+
+// 3. A batch job writes 200 extra a second for 2 s, every 60 s: how far follower A falls behind, how long it takes
 // to catch up, and the reads that miss the user's own save during it, with the 1 s leader window and with the token.
 export const BURST_EVERY = 60;
 const BURSTS = Array.from({ length: Math.floor((RUN_SECS - 20) / BURST_EVERY) }, (_, i) => ({ at: 20 + i * BURST_EVERY, rate: BURST.rate, dur: BURST.dur }));
