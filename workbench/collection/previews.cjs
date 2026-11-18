@@ -20,6 +20,8 @@ const only = process.argv[2];
       await p.evaluate(() => document.querySelector('.iso-plate').scrollIntoView({ block: 'center' }));
       if (l.slug === 'retrystorm') { await p.waitForTimeout(3000); const rush = await p.$('[data-act="rush"], .btn.primary[data-act]'); if (rush) { await rush.click(); await p.evaluate(() => document.querySelector('.iso-plate').scrollIntoView({ block: 'center' })); } }
       await p.waitForTimeout(l.slug === 'rolling' ? 14000 : 9000);
+      // decisions: the moment a ticket is done at both desks (bars up, the reply on the tray)
+      if (l.slug === 'decisions') await p.waitForFunction(() => /^the parser accepts the reply/.test(document.querySelector('[data-readout]').textContent.trim()), null, { timeout: 30000 }).catch(() => {});
       const png = await (await p.$('.iso-stage svg')).screenshot();
       await (await normalize(png)).toFile(`${OUT}/${l.slug}-${scheme}.webp`);
       await p.context().close();
