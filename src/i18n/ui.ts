@@ -133,7 +133,7 @@ export function useUi(locale: Locale) {
 }
 
 /** Area names: the key is the area as written in lessons.json. */
-export const AREAS = ["Fundamentals", "Data", "Concurrency", "Messaging", "Distributed", "Traffic", "Resilience", "Delivery", "Observability", "Frontend", "Search", "Security"] as const;
+export const AREAS = ["Fundamentals", "Data", "Concurrency", "Messaging", "Distributed", "Traffic", "Resilience", "Delivery", "Observability", "Frontend", "Search", "Security", "AI"] as const;
 export type Area = (typeof AREAS)[number];
 export const AREA_NAMES: Record<Area, { en: string; es: string }> = {
   Fundamentals: { en: "Fundamentals", es: "Fundamentos" },
@@ -148,4 +148,5 @@ export const AREA_NAMES: Record<Area, { en: string; es: string }> = {
   Frontend: { en: "Frontend", es: "Frontend" },
   Search: { en: "Search", es: "Búsqueda" },
   Security: { en: "Security", es: "Seguridad" },
+  AI: { en: "AI", es: "IA" },
 };
