@@ -105,6 +105,7 @@ The figures are drawn with the [Anatomy](https://github.com/wheresryan22/anatomy
 | 82 | [CSRF & SameSite](https://systems-workbench.dbritto-dev.workers.dev/lessons/csrf/) | Security | Bank street | The browser sends a site's cookies whoever asked, so another site can forge a signed-in request. SameSite, tokens and origin checks close it. |
 | 83 | [SQL Injection](https://systems-workbench.dbritto-dev.workers.dev/lessons/injection/) | Security | Records room | Paste input into SQL and a quote can end the data and start code. Parameters, an allowlist and a narrow account stop it. |
 | 84 | [Backup and Restore](https://systems-workbench.dbritto-dev.workers.dev/lessons/backups/) | Resilience | Backup room | Replicas copy a bad DELETE in seconds. A snapshot plus the archived log restores to the second before it, and only a tested restore proves it. |
+| 85 | [Neuron](https://systems-workbench.dbritto-dev.workers.dev/lessons/neuron/) | AI | Weighing station | A neuron is a weighted sum, a bias and an activation: one straight line across its inputs. Training moves the line; it learns AND, never XOR. |
 
 The site is built with [Astro](https://astro.build) (pure `.astro` components, no UI framework) and
 [astryx-astro](https://dbritto-dev.github.io/astryx-astro/) (Meta's Astryx design system ported to Astro) in our own
