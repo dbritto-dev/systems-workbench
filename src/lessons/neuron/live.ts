@@ -1,306 +1,224 @@
 // @ts-nocheck: live code in the style of the other lessons; shared helpers come from src/runtime and src/lib.
-// The weighing station and the decision board in the browser. Training takes one example per tick of the speed
-// control: the riders show its inputs, the beam tilts by the sum, the meter shows the output, and if training nudges
-// the weights, the riders slide and the ruler moves on the board. At slow speeds each example is shown first with the
-// weights it was weighed with, then with the nudged ones; at fast speeds the machine shows the latest state.
-import { translateAlong, depthOf } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+// The rolling board in the browser. By hand (the steppers, the animal set, the lean switch) every animal is sorted
+// again at once: all their paths show faint, the first one sorted wrong in bold. Train sends the animals down the board
+// one at a time with the perceptron rule from sim.ts: an animal rolls down the middle line, each kicker that applies
+// pushes it sideways by its share as it passes (its arm runs out), and it rolls past the divider into a pen. After a
+// wrong sort it lights up in the wrong pen, the signs show the notch each kicker moves and the dashed outline the push
+// it would get now; then the kickers move. A run stops once a whole round is right; one that goes REST_AFTER rounds
+// without that rests and starts over from 0. Watch plays an experiment: its hand settings (one every 2 s), then
+// training, faster. Reduced motion: no rolling, each animal is drawn where it lands.
 import * as WB from "../../runtime/wb";
-import { L, T, still } from "../../runtime/wb";
-import { setText, setD, show, playPause } from "../../runtime/dom";
-import { makeNeuron, makeData, sides, swept, lossOf, lowestLoss, fromBoard, EPOCHS, SCALE_EPOCHS, CLOSE } from "./sim";
-import { beamPaths, tiltOf, riderAt, LANES, PIVOT, BEAM, BX, BY, clip, chord, SQUARE, rulerSvg, onBoard } from "./draw";
+import { L } from "../../runtime/wb";
+import { playPause } from "../../runtime/dom";
+import { localize } from "../../i18n/localize";
+import { easeInOutQuad } from "../../lib/tween";
+import { buildFigure, rollSvg, readState, pushesOf, firesOn, START, NAMES, KIND, sgn, scoreText } from "./board";
+import { makeNeuron, ANIMALS, SETS } from "./sim";
 
-const HOLD = 6000;       // ms the machine rests on a finished run before it starts over
-const BAND = 2.2;        // the sigmoid's band: z = ±2.2, where it says 0.1 and 0.9
+const PACE = { roll: 1.5, hold: 1.4, gap: 0.3, round: 1.2, rest: 3.5 };   // page seconds at Train's own speed
+const REST_AFTER = 12;                                                      // rounds without a clean one before a rest
+const LAYOUTS = ["desk", "phone"];
 
-export default function mount({ P, TOK, RING }, root) {
-  const { stage, svg } = root.figure;
-  const q = (s) => svg.querySelector(s);
-  const stat = (key, value) => root.stat(key, value);
-  const NS = "http://www.w3.org/2000/svg";
-  const layers = Object.fromEntries(["yes", "band", "tokens", "ruler", "front", "ring", "riders"].map((n) => [n, q(`[data-layer="${n}"]`)]));
-  const beamEls = Object.fromEntries([...svg.querySelectorAll("[data-beam] [data-d]")].map((el) => [el.getAttribute("data-d"), el]));
-  const riders = Object.fromEntries(["x1", "x2", "b"].map((n) => { const g = q(`[data-rider="${n}"]`); return [n, { g, value: g.querySelector("[data-rider-value]") }]; }));
-  const C = Object.fromEntries(["right", "epoch", "nudges", "outI", "outF"].map((n) => [n, WB.counter(svg, n, P)]));
-  const needle = WB.meter(svg, "out", P);
-  const actWord = q("[data-act-word]"), ofWord = q("[data-of]");
-  const axes = { logic: q('[data-axes="logic"]'), loans: q('[data-axes="loans"]') };
+export default function mount(data, root) {
+  const lang = WB.lang();
+  const st = structuredClone(START);
+  let n = null, e = null, seed = 1, pace = 1, stage = "idle", clock = 0, oneOnly = false, learned = false, rested = false;
+  let watchTimer = 0;
+  const svgs = () => LAYOUTS.map((l) => [l, root.$(`svg.nr-${l}`)]).filter(([, el]) => el);
+  const dur = (k) => PACE[k] * pace;
 
-  const cfg = { task: "and", act: "step", rule: "perceptron", bias: "on", inputs: "norm", speed: 2 };
-  let n, seed = 3, tokens = [], ring = null, cur = null, slot = 0, acc = 0;
-  let training = !still.matches, ended = null, epochSides = null, lastMoved = null, calm = 0, low = 0, cap = EPOCHS.logic;
-  const disp = { w: [0, 0], b: 0, tilt: 0, out: 0 };
-  const loans = () => cfg.task === "loans";
-  const neuronCfg = () => ({ task: cfg.task, act: cfg.act, rule: cfg.rule, bias: cfg.bias === "on", inputs: cfg.inputs });
-
-  // ---------- numbers in words ----------
-  const sig2 = (v) => { const a = Math.abs(v); const s = a === 0 ? "0" : a >= 100 ? Math.round(a).toLocaleString("en") : a >= 0.01 ? a.toFixed(2) : String(+a.toPrecision(2)); return (v < 0 && s !== "0" ? "−" : "") + s; };
-  const money = (x) => "$" + Math.round(x).toLocaleString("en");
-  /** What a rider shows: the input the neuron multiplies (normalised inputs as the neuron sees them). */
-  function riderText(x, j) {
-    if (!loans()) return String(x[j]);
-    if (cfg.inputs === "raw") return j === 0 ? Math.round(x[0]).toLocaleString("en") : x[1].toFixed(2);
-    const v = n.feed(x)[j];
-    return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1);
+  // ---------- drawing ----------
+  function paint(f = 1) {
+    for (const [layout, el] of svgs()) {
+      const svg = localize(buildFigure(st, layout, f), lang);
+      el.setAttribute("viewBox", svg.match(/viewBox="([^"]*)"/)[1]);
+      el.innerHTML = svg.slice(svg.indexOf(">") + 1, svg.lastIndexOf("</svg>"));
+    }
+    const rd = readState(st);
+    root.stat("right", rd.sorted ? `${rd.right} / ${rd.sorted}` : "–");
+    root.stat("rounds", st.mode === "hand" ? "–" : String(st.round));
+    root.stat("mistakes", st.mode === "hand" ? "–" : String(st.mistakes));
+    say(rd);
   }
-  const inputsText = (x) => (loans()
-    ? T(money(x[0]) + ", debt " + x[1].toFixed(2), money(x[0]) + ", deuda " + x[1].toFixed(2))
-    : T("x1 " + x[0] + ", x2 " + x[1], "x1 " + x[0] + ", x2 " + x[1]));
-  const target = (y) => (loans() ? (y ? T("was approved", "fue aprobado") : T("was declined", "fue rechazado")) : (y ? T("should be yes", "debía ser sí") : T("should be no", "debía ser no")));
-  const yesNo = (y) => (loans() ? (y ? T("approve", "aprobar") : T("decline", "rechazar")) : (y ? T("yes", "sí") : T("no", "no")));
-
-  // ---------- a run ----------
-  function start(newSeed = true) {
-    if (newSeed) seed = (seed * 7 + 3) % 9973 + 1;
-    n = makeNeuron(neuronCfg(), seed, makeData(cfg.task, 11));
-    cap = loans() ? SCALE_EPOCHS : EPOCHS.logic;
-    low = loans() && cfg.act === "sigmoid" && cfg.rule === "gradient" ? lowestLoss(n.data) : 0;
-    disp.w = [...n.w]; disp.b = n.b; disp.tilt = 0; disp.out = 0;
-    cur = null; slot = 0; acc = 0; ended = null; calm = 0; lastMoved = null; moves = [];
-    epochSides = sides(n);
-    buildTokens();
-    show(axes.logic, !loans()); show(axes.loans, loans());
-    setText(actWord, cfg.act === "step" ? L("STEP", "ESCALÓN") : L("SIGMOID", "SIGMOIDE"));
-    setText(ofWord, L("OF " + n.data.pts.length, "DE " + n.data.pts.length));
-    show(riders.b.g, cfg.bias === "on");
-    root.controls.showFor(loans() ? "loans" : "logic");
-    root.relabel("train", training ? L("Stop", "Detener") : L("Train", "Entrenar"));
-    counters();
-    paint(1);
-    root.figure.say(L(startText()));
+  /** Only the moving layer: the kickers' arms, the bold path and the animal rolling, f of its way. */
+  function paintRoll(f) {
+    for (const [layout, el] of svgs()) {
+      const g = el.querySelector('[data-layer="roll"]');
+      if (g) g.innerHTML = localize(rollSvg(st, layout, f), lang);
+    }
   }
-  const TASK = { and: T("AND", "AND"), or: T("OR", "OR"), nand: T("NAND", "NAND"), xor: T("XOR", "XOR"), loans: T("the loans", "los préstamos") };
-  const startText = () => {
-    const task = TASK[cfg.task];
-    if (cfg.rule === "gradient" && cfg.act === "step") return T(task.en + " · gradient training through a step", task.es + " · entrenamiento por gradiente a través de un escalón");
-    return training ? T("training " + task.en + " from random starting weights", "entrenando " + task.es + " desde pesos iniciales al azar")
-      : T(task.en + " · random starting weights · press Train", task.es + " · pesos iniciales al azar · toca Entrenar");
+
+  // ---------- the readout: the picture now ----------
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  // who it is, its kg, and its ears (unless its name already says)
+  const who = (id) => {
+    const [, kg, fl] = ANIMALS[id], en = NAMES[id].en, es = NAMES[id].es;
+    return { en: `${cap(en)}, ${kg} kg${/ear/.test(en) ? "" : `, ${fl ? "floppy" : "pointy"} ears`}`, es: `${cap(es)}, ${kg} kg${/oreja/.test(es) ? "" : `, orejas ${fl ? "caídas" : "paradas"}`}` };
   };
-  function buildTokens() {
-    layers.tokens.replaceChildren(); layers.front.replaceChildren(); layers.ring.replaceChildren();
-    const size = loans() ? "loans" : "logic";
-    tokens = n.data.pts.map((p) => {
-      const g = document.createElementNS(NS, "g");
-      g.innerHTML = TOK[size][p.y ? "yes" : "no"];
-      const at = [BX(p.at[0]), BY(p.at[1]), 0];
-      g.setAttribute("transform", translateAlong(P, at));
-      return { g, p, at, depth: depthOf(at, P), body: g.querySelector(".iso-solid"), lit: null, front: null };
-    }).sort((a, b) => a.depth - b.depth);
-    tokens.forEach((tk) => layers.tokens.appendChild(tk.g));
-    ring = document.createElementNS(NS, "g");
-    ring.innerHTML = RING[size];
-    ring.style.display = "none";
-    layers.ring.appendChild(ring);
+  // a push as the readout writes it: as few decimals as it needs (a 6 kg animal at +1.6: 0.96)
+  const num = (v) => String(Math.abs(Math.round(v * 100) / 100));
+  const sum = (id) => {
+    const p = pushesOf(st.d, id, st.lean).map((v, i) => (firesOn(i, id, st.lean) ? v : 0)).slice(st.lean ? 0 : 1);
+    const total = Math.round(p.reduce((a, b) => a + b, 0) * 100);
+    return `${p[0] < 0 ? "−" : ""}${num(p[0])} ${p.slice(1).map((v) => `${v < 0 ? "−" : "+"} ${num(v)}`).join(" ")} = ${scoreText(total)}`;
+  };
+  function say(rd = readState(st)) {
+    const S = (en, es) => root.figure.say(L(en, es));
+    const zero = (a) => a.s === 0;
+    if (learned) return S(`Learned: a whole round right, after ${st.mistakes} ${st.mistakes === 1 ? "mistake" : "mistakes"}. The kickers stay at ${sgn(st.d.lean)}, ${sgn(st.d.w10 / 10, 1)} and ${sgn(st.d.ears)}.`,
+      `Aprendido: una vuelta entera bien, tras ${st.mistakes} ${st.mistakes === 1 ? "error" : "errores"}. Los empujadores quedan en ${sgn(st.d.lean)}, ${sgn(st.d.w10 / 10, 1)} y ${sgn(st.d.ears)}.`);
+    if (stage === "rest") return S(`${REST_AFTER} rounds, and never one all right: one straight cut can't sort these. Starting over from 0.`,
+      `${REST_AFTER} vueltas y ninguna entera bien: un solo corte recto no separa estos animales. Empieza de nuevo desde 0.`);
+    if (st.mode === "hand") {
+      const a = rd.cur, n8 = rd.all.length;
+      if (!a) return S(`All ${n8} right: every dog ends on the DOG side, every cat on the CAT side.`, `Los ${n8} bien: todos los perros terminan del lado PERRO y todos los gatos del lado GATO.`);
+      return S(`${rd.right} of ${n8} right. In bold, the first one wrong, ${who(a.id).en.toLowerCase()}: ${sum(a.id)}, ${zero(a) ? "on the line (counts as CAT)" : a.got ? "DOG side" : "CAT side"}.`,
+        `${rd.right} de ${n8} bien. En negrita, el primero mal, ${who(a.id).es.toLowerCase()}: ${sum(a.id)}, ${zero(a) ? "sobre la línea (cuenta como GATO)" : a.got ? "lado PERRO" : "lado GATO"}.`);
+    }
+    if (stage === "round") return S(`Round ${st.round} done: ${rd.right} of ${rd.sorted} right. Next round, in a new order.`, `Vuelta ${st.round} terminada: ${rd.right} de ${rd.sorted} bien. Sigue otra vuelta, en otro orden.`);
+    const a = rd.cur;
+    if (!a) return S(`Round ${st.round}: ${rd.right} of ${rd.sorted} right so far.`, `Vuelta ${st.round}: ${rd.right} de ${rd.sorted} bien hasta ahora.`);
+    if (st.phase !== "correct") return S(`Round ${st.round}. ${who(a.id).en}: ${sum(a.id)}, ${zero(a) ? "on the line (counts as CAT)" : a.got ? "DOG side" : "CAT side"}.`,
+      `Vuelta ${st.round}. ${who(a.id).es}: ${sum(a.id)}, ${zero(a) ? "sobre la línea (cuenta como GATO)" : a.got ? "lado PERRO" : "lado GATO"}.`);
+    const moves = [[st.nudge.lean, "lean", "tendencia", 0], [st.nudge.w10 / 10, "10 kg", "10 kg", 1], [st.nudge.ears, "ears", "orejas", 0]].filter(([d]) => d);
+    const list = (k) => moves.map((m) => `${m[k]} ${sgn(m[0], m[3])}`).join(", ");
+    S(`Wrong: it's a ${KIND[a.kind].en.toLowerCase()} in the ${a.got ? "DOG" : "CAT"} pen. The kickers move a notch toward ${KIND[a.kind].en}: ${list(1)}.`,
+      `Error: es un ${KIND[a.kind].es.toLowerCase()} en el corral ${a.got ? "PERRO" : "GATO"}. Los empujadores se mueven hacia ${KIND[a.kind].es}: ${list(2)}.`);
   }
 
-  // ---------- one example ----------
-  function step() {
-    const before = { w: [...n.w], b: n.b };
-    const e = n.step();
-    cur = { ...e, before, after: { w: [...n.w], b: n.b }, p: n.data.pts[e.i] };
-    slot = 0;
-    if (e.epochEnd) endOfEpoch();
-    counters();
-    return e;
+  // ---------- training ----------
+  const upcoming = () => n.order.slice(n.at).map((i) => SETS[st.set][i]);
+  const pressSteppers = () => { root.press("kg", st.d.w10 / 10); root.press("ears", st.d.ears); root.press("lean", st.d.lean); };
+  function begin() {
+    n = makeNeuron({ set: st.set, lean: st.lean }, seed, { ...st.d });
+    seed = (seed * 7 + 3) % 997 + 1;
+    Object.assign(st, { mode: "train", round: 1, mistakes: 0, sorted: [], cur: null, phase: null, nudge: null });
+    learned = false; rested = false;
+    next();
   }
-  // the share of the board the line swept in each recent epoch; the machine shows their average over the last 10
-  let moves = [];
-  const movedAvg = () => moves.reduce((x, y) => x + y, 0) / Math.max(1, moves.length);
-  const movedPct = () => { const m = movedAvg(); return m > 0 && m < 0.01 ? "<1%" : Math.round(100 * m) + "%"; };
-  function endOfEpoch() {
-    const s = sides(n);
-    lastMoved = swept(epochSides, s);
-    epochSides = s;
-    moves.push(lastMoved); if (moves.length > 10) moves.shift();
-    stat("moved", movedPct());
-    const N = n.data.pts.length;
-    if (cfg.rule === "perceptron" && n.settled) return finish(T("settled after " + n.epoch + (n.epoch === 1 ? " epoch" : " epochs") + ": a whole epoch without a mistake", "se asentó tras " + n.epoch + (n.epoch === 1 ? " época" : " épocas") + ": una época entera sin errores"));
-    const flat = cfg.rule === "gradient" && cfg.act === "step";
-    if (flat && n.epoch >= cap) return finish(T(n.epoch + " epochs and not one nudge: the step's slope is 0 · " + rightText().en, n.epoch + " épocas y ni un ajuste: la pendiente del escalón es 0 · " + rightText().es));
-    if (low) {
-      calm = lossOf(n) <= low + CLOSE ? calm + 1 : 0;
-      if (calm >= 10) return finish(T("converged at epoch " + (n.epoch - 9) + ": the error is within " + CLOSE + " of the lowest any line reaches · " + rightText().en, "convergió en la época " + (n.epoch - 9) + ": el error está a menos de " + CLOSE + " del mínimo que alcanza una línea · " + rightText().es));
+  /** The next animal leaves the queue and starts to roll. */
+  function next() {
+    const before = { ...n.d };
+    e = n.step();
+    Object.assign(st, { cur: e.id, d: before, phase: "roll", nudge: e.err ? { ...e.nudge } : null, queue: upcoming() });
+    stage = "roll"; clock = 0;
+    paint(WB.still.matches ? 1 : 0);
+  }
+  /** It reaches its pen. */
+  function land() {
+    if (e.err) {
+      st.phase = "correct"; st.mistakes = n.mistakes; stage = "hold";
+    } else {
+      st.sorted.push([e.id, e.got]); Object.assign(st, { cur: null, phase: null, nudge: null }); stage = "gap";
     }
-    if (cfg.rule === "gradient" && cfg.act === "sigmoid" && !loans() && n.lastEpochMistakes === 0 && lastMoved < 0.01) return finish(T("at rest after " + n.epoch + " epochs: every example right, and the line moved under 1% of the board last epoch", "en reposo tras " + n.epoch + " épocas: todos los ejemplos bien, y la línea movió menos del 1% del tablero en la última época"));
-    if (n.epoch >= cap) {
-      const best = Math.round(n.best * N);
-      const mistakes = n.lastEpochMistakes === 1 ? T("1 mistake", "1 error") : T(n.lastEpochMistakes + " mistakes", n.lastEpochMistakes + " errores");
-      if (cfg.rule === "perceptron" && !loans()) return finish(T(n.epoch + " epochs, never settled · " + mistakes.en + " in the last one · best so far " + best + " of " + N, n.epoch + " épocas, nunca se asentó · " + mistakes.es + " en la última · lo mejor hasta ahora " + best + " de " + N));
-      if (cfg.rule === "perceptron") return finish(T(n.epoch + " epochs, never settled · line moved " + movedPct() + " of the board per epoch · best so far " + best + " of " + N, n.epoch + " épocas, nunca se asentó · la línea movió el " + movedPct() + " del tablero por época · lo mejor: " + best + " de " + N));
-      return finish(T(n.epoch + " epochs, never converged · line moved " + movedPct() + " of the board per epoch · " + rightText().en, n.epoch + " épocas, nunca convergió · la línea movió el " + movedPct() + " del tablero por época · " + rightText().es));
+    clock = 0; paint();
+  }
+  /** After a mistake: the kickers move their notch. */
+  function click() {
+    st.sorted.push([e.id, e.got]);
+    Object.assign(st, { cur: null, phase: null, nudge: null, d: { ...n.d } });
+    pressSteppers();
+    stage = "gap"; clock = 0; paint();
+  }
+  /** After an animal: the next one, the end of a round, a rest, or done. */
+  function after() {
+    if (e.roundEnd) {
+      if (n.settled) { learned = true; st.queue = []; stop(); paint(); return; }
+      stage = "round"; clock = 0; st.queue = upcoming(); paint(); return;
     }
-    if (cfg.speed > 2) {
-      const tail = flat ? T("0 nudges: the step's slope is 0", "0 ajustes: la pendiente del escalón es 0") : T("line moved " + movedPct() + " of the board per epoch", "la línea movió el " + movedPct() + " del tablero por época");
-      root.figure.say(L(T("epoch " + n.epoch + " · " + rightText().en + " · " + tail.en, "época " + n.epoch + " · " + rightText().es + " · " + tail.es)));
-    }
+    if (oneOnly) { stage = "idle"; stop(false); paint(); return; }
+    next();
   }
-  function finish(text) {
-    ended = { text, until: performance.now() + HOLD, auto: training };
-    training = false;
-    root.relabel("train", L("Train", "Entrenar"));
-    root.figure.say(L(text));
+  function newRound() {
+    if (n.round >= REST_AFTER && !rested) { stage = "rest"; clock = 0; rested = true; paint(); return; }
+    st.sorted = []; st.round = n.round + 1;
+    if (oneOnly) { stage = "idle"; stop(false); paint(); return; }
+    next();
   }
-  const rightCount = () => Math.round(n.accuracy() * n.data.pts.length);
-  const rightText = () => { const k = rightCount(), N = n.data.pts.length; return T(k + " of " + N + " right", k + " de " + N + " acertados"); };
-  function counters() {
-    const k = rightCount(), N = n.data.pts.length;
-    C.right.setClamped(k); C.epoch.setClamped(n.epoch); C.nudges.setClamped(n.nudges);
-    stat("right", k + " / " + N + " · " + Math.round((100 * k) / N) + "%");
-    stat("best", Math.round(n.best * N) + " / " + N);
-    stat("epoch", String(n.epoch));
-    stat("nudges", n.nudges.toLocaleString("en"));
-    stat("weights", sig2(n.w[0]) + " · " + sig2(n.w[1]) + (cfg.bias === "on" ? " · " + sig2(n.b) : " · –"));
-    if (lastMoved === null) stat("moved", "–");
+  function restart() {
+    st.d = { w10: 0, ears: 0, lean: 0 }; pressSteppers();
+    begin();
   }
-  function narrateExample() {
-    const e = cur, p = e.p;
-    const says = cfg.act === "sigmoid" ? T(e.out.toFixed(2) + " (" + yesNo(e.yes).en + ")", e.out.toFixed(2) + " (" + yesNo(e.yes).es + ")") : yesNo(e.yes);
-    const head = T(inputsText(p.x).en + " → " + says.en, inputsText(p.x).es + " → " + says.es);
-    let tail;
-    if (cfg.rule === "perceptron") tail = e.mistake ? T(target(p.y).en + " · nudge", target(p.y).es + " · ajuste") : T("right · no change", "bien · sin cambio");
-    else if (cfg.act === "step") tail = e.mistake ? T("wrong, but the step's slope is 0: no nudge", "mal, pero la pendiente del escalón es 0: sin ajuste") : T("right · slope 0, no nudge", "bien · pendiente 0, sin ajuste");
-    else { const g = Math.abs(p.y - e.out); tail = T((e.mistake ? "wrong" : "right") + " · nudge × " + g.toFixed(2), (e.mistake ? "mal" : "bien") + " · ajuste × " + g.toFixed(2)); }
-    root.figure.say(L(head.en + " · " + tail.en, head.es + " · " + tail.es));
+  function step(dt) {
+    if (stage === "idle") return;
+    clock += dt;
+    if (stage === "roll") {
+      const f = Math.min(1, clock / dur("roll"));
+      if (!WB.still.matches) paintRoll(easeInOutQuad(f));
+      if (f >= 1) land();
+    } else if (stage === "hold") { if (clock >= dur("hold")) click(); }
+    else if (stage === "gap") { if (clock >= dur("gap")) after(); }
+    else if (stage === "round") { if (clock >= dur("round")) newRound(); }
+    else if (stage === "rest") { if (clock >= PACE.rest) restart(); }
   }
 
-  // ---------- painting ----------
-  /** z as a function of board coordinates (A u + B v + C) for weights w, b. */
-  function lineOf(w, b) {
-    const z = (u, v) => { const f = n.feed(fromBoard(n.data.bd, [u, v])); return w[0] * f[0] + w[1] * f[1] + b; };
-    const Cc = z(0, 0);
-    return { A: z(1, 0) - Cc, B: z(0, 1) - Cc, C: Cc };
-  }
-  let rulerKey = "", yesKey = "";
-  function paint(f) {
-    // ease the shown weights toward the target: the ones the example was weighed with, then the nudged ones
-    const animated = cfg.speed <= 8 && cur;
-    const tgt = cur ? (animated && slot < 0.5 ? cur.before : cur.after) : { w: n.w, b: n.b };
-    disp.w[0] += (tgt.w[0] - disp.w[0]) * f; disp.w[1] += (tgt.w[1] - disp.w[1]) * f; disp.b += (tgt.b - disp.b) * f;
-    // beam and meter: the example being weighed (with the weights it was weighed with)
-    const zNow = cur ? cur.z : 0, outNow = cur ? cur.out : (cfg.act === "sigmoid" ? 0.5 : 0);
-    disp.tilt += (tiltOf(zNow) - disp.tilt) * f;
-    disp.out = cfg.act === "step" ? outNow : disp.out + (outNow - disp.out) * f;     // a step flips at once
-    const bp = beamPaths(P, disp.tilt);
-    for (const key in beamEls) setD(beamEls[key], bp[key]);
-    needle.set(disp.out);
-    const hundredths = Math.round(disp.out * 100);
-    C.outI.set(Math.floor(hundredths / 100)); C.outF.set(hundredths % 100);
-    // riders: at their weights, on the tilted beam, front ones drawn last
-    const ws = { x1: disp.w[0], x2: disp.w[1], b: disp.b };
-    const placed = Object.keys(riders).map((name) => {
-      const lane = LANES[name], to = riderAt(ws[name], lane, disp.tilt), base = [lane, PIVOT.y, PIVOT.z + BEAM.h];
-      riders[name].g.setAttribute("transform", translateAlong(P, [to[0] - base[0], to[1] - base[1], to[2] - base[2]]));
-      return { name, depth: depthOf(to, P) };
-    }).sort((a, b) => a.depth - b.depth);
-    const kids = [...layers.riders.children];
-    if (placed.some((r, i) => riders[r.name].g !== kids[i])) placed.forEach((r) => layers.riders.appendChild(riders[r.name].g));
-    if (cur) { setText(riders.x1.value, riderText(cur.p.x, 0)); setText(riders.x2.value, riderText(cur.p.x, 1)); }
-    // the board: the yes side, the sigmoid's band, the ruler, mistakes lit
-    const { A, B, C: Cc } = lineOf(disp.w, disp.b);
-    const poly = clip(SQUARE, A, B, Cc, 1);
-    const yk = poly.map((p) => p[0].toFixed(3) + "," + p[1].toFixed(3)).join(" ");
-    if (yk !== yesKey) {
-      yesKey = yk;
-      layers.yes.innerHTML = poly.length >= 3 ? `<path class="nr-yes" d="${onBoard(P, poly, true)}"/>` : "";
-      const bands = cfg.act === "sigmoid" ? [chord(A, B, Cc, BAND), chord(A, B, Cc, -BAND)].filter(Boolean).map((s) => onBoard(P, s)).join("") : "";
-      layers.band.innerHTML = bands ? `<path class="iso-line" data-tone="mid" data-dashed="" d="${bands}"/>` : "";
-      const seg = chord(A, B, Cc, 0);
-      const rk = seg ? seg.flat().map((v) => v.toFixed(3)).join(",") : "";
-      if (rk !== rulerKey) { rulerKey = rk; layers.ruler.innerHTML = rulerSvg(P, seg); }
-      // a token on the viewer's side of the ruler is drawn over it
-      const view = [Math.cos((50 * Math.PI) / 180), Math.sin((50 * Math.PI) / 180)];
-      for (const tk of tokens) {
-        const [u, v] = tk.p.at;
-        // world gradient of the line function: d/dx = A / FIELD.w, d/dy = −B / FIELD.d (v grows toward −y)
-        const facing = A * view[0] - B * view[1];
-        const front = !!seg && (A * u + B * v + Cc) * facing > 0;
-        if (tk.front !== front) { tk.front = front; (front ? layers.front : layers.tokens).appendChild(tk.g); }
-      }
-      for (const lay of [layers.tokens, layers.front]) {
-        const list = tokens.filter((tk) => tk.g.parentNode === lay);
-        const ch = [...lay.children];
-        if (list.some((tk, i) => tk.g !== ch[i])) list.forEach((tk) => lay.appendChild(tk.g));
-      }
-    }
-    for (const tk of tokens) {
-      const [u, v] = tk.p.at;
-      const wrong = ((A * u + B * v + Cc > 0) ? 1 : 0) !== tk.p.y;
-      if (tk.lit !== wrong) { tk.lit = wrong; tk.body.toggleAttribute("data-lit", wrong); tk.body.toggleAttribute("data-lit-fill", wrong); }
-    }
-    if (cur) {
-      ring.style.display = "";
-      ring.setAttribute("transform", translateAlong(P, [BX(cur.p.at[0]), BY(cur.p.at[1]), 0]));
-    } else ring.style.display = "none";
-  }
-
-  // ---------- the loop ----------
+  // ---------- controls ----------
   const pause = playPause(root);
-  const loop = WB.loop({ stage, step: (dt) => {
-    if (ended && ended.auto && performance.now() > ended.until) { training = true; start(); }
-    if (training && !ended) {
-      acc += dt * cfg.speed;
-      let k = 0;
-      while (acc >= 1 && k < 60 && !ended) {
-        acc -= 1; k++;
-        step();
-        if (cfg.speed <= 2) narrateExample();
-      }
-    }
-    slot = Math.min(1, slot + dt * Math.max(1, cfg.speed));
-    const f = still.matches ? 1 : 1 - Math.exp(-dt * (cfg.speed <= 8 ? 12 : 30));
-    paint(f);
-  }, onPause: pause.onPause });
+  const loop = WB.loop({ stage: root.figure.stage, step, onPause: pause.onPause });
   pause.bind(loop);
-
-  function set(name, raw) {
-    root.press(name, raw);
-    cfg[name] = name === "speed" ? Number(raw) : String(raw);
-  }
-  root.on("change", (name, value) => {
-    set(name, value);
-    if (name === "speed") return;
-    start(false);
-  });
   const wake = () => { if (loop.paused) loop.setPaused(false); };
-  const actions = {
-    train: () => {
-      if (ended) start(false);
-      training = !training;
-      if (ended) ended = null;
-      root.relabel("train", training ? L("Stop", "Detener") : L("Train", "Entrenar"));
-      root.figure.say(training ? L("training", "entrenando") : L("stopped · press Train or One example", "detenido · toca Entrenar o Un ejemplo"));
-      wake();
-    },
-    one: () => {
-      if (ended) start(false);
-      training = false; ended = null;
-      root.relabel("train", L("Train", "Entrenar"));
-      step(); narrateExample(); slot = 0;
-      wake();
-    },
-    reset: () => { start(true); wake(); },
-  };
-  root.on("action", (name) => actions[name]?.());
-
-  // ---------- "Watch it on the machine": an experiment's settings ----------
-  // warm: epochs trained at once before the machine shows the run; cap: the epoch the run stops at.
-  root.on("watch", (w) => {
-    for (const key of ["task", "act", "rule", "bias", "inputs", "speed"]) if (w[key] !== undefined) set(key, w[key]);
-    training = true;
-    start(false);
-    if (w.cap) cap = w.cap;
-    for (let e = 0; e < (w.warm || 0); e++) {
-      n.runEpoch();
-      if (e >= w.warm - 11) { const s = sides(n); if (e >= w.warm - 10) { lastMoved = swept(epochSides, s); moves.push(lastMoved); } epochSides = s; }
-    }
-    if (w.warm) {
-      stat("moved", movedPct());
-      disp.w = [...n.w]; disp.b = n.b; counters();
-      root.figure.say(L(T(w.warm + " epochs trained at once · watching the next ones", w.warm + " épocas entrenadas de golpe · mirando las siguientes")));
-    }
+  const running = () => stage !== "idle";
+  /** Stop training (the animal in play finishes where it was going first), or, toHand, leave it for the hand setting. */
+  function stop(toHand = false) {
+    if (!toHand && stage === "roll") land();
+    if (!toHand && stage === "hold") click();
+    stage = "idle"; oneOnly = false;
+    root.relabel("train", L("Train", "Entrenar"));
+    if (toHand) { n = null; e = null; learned = false; Object.assign(st, { mode: "hand", cur: null, phase: null, nudge: null, sorted: [], queue: [], round: 0, mistakes: 0 }); }
+  }
+  /** Go on from where a stopped run is (a new run if there's none, or it has learned). */
+  function resume() {
+    if (st.mode !== "train" || !n || learned) return begin();
+    if (e?.roundEnd && st.sorted.length >= SETS[st.set].length) return newRound();
+    next();
+  }
+  function train(p = 1) {
+    pace = p; oneOnly = false;
+    root.relabel("train", L("Stop", "Detener"));
     wake();
-  });
+    if (stage === "idle") resume();
+  }
+  const endWatch = () => { clearInterval(watchTimer); clearTimeout(watchTimer); watchTimer = 0; };
+  const leanReason = L("The starting lean is taken away", "La tendencia inicial está quitada");
 
-  loop.setPaused(loop.paused);
-  start(false);
+  root.on("change", (name, value) => {
+    endWatch();
+    if (name === "kg") st.d.w10 = Math.round(+value * 10);
+    else if (name === "ears") st.d.ears = +value;
+    else if (name === "lean") st.d.lean = +value;
+    else if (name === "set") st.set = value;
+    else if (name === "use") { st.lean = value === "on"; if (!st.lean) { st.d.lean = 0; root.press("lean", 0); } root.disable("lean", !st.lean, leanReason); }
+    stop(true); paint();
+  });
+  root.on("action", (name) => {
+    if (name === "pause") return;
+    endWatch();
+    if (name === "train") { if (running() && !oneOnly) { stop(); paint(); } else if (!running()) train(); else if (oneOnly) { oneOnly = false; root.relabel("train", L("Stop", "Detener")); } }
+    else if (name === "one") {
+      if (running()) return;
+      wake(); pace = 1; oneOnly = true;
+      resume();
+    } else if (name === "reset") { st.d = { w10: 0, ears: 0, lean: 0 }; pressSteppers(); stop(true); paint(); }
+  });
+  // Watch: an experiment's settings { set, lean: "on" | "off", hand: [[10 kg, ears, lean], …], train, pace, seed, hold }:
+  // the hand settings one every 2 s (a single one for `hold` ms), then training at `pace` (1: Train's own speed).
+  root.on("watch", (w) => {
+    endWatch(); stop(true);
+    st.set = w.set; root.press("set", w.set);
+    st.lean = w.lean !== "off"; root.press("use", st.lean ? "on" : "off"); root.disable("lean", !st.lean, leanReason);
+    const path = w.hand?.length ? w.hand : [[0, 0, 0]];
+    let i = 0;
+    const set = () => { const [kg, ears, lean] = path[i]; st.d = { w10: Math.round(kg * 10), ears, lean: st.lean ? lean : 0 }; pressSteppers(); stop(true); paint(); };
+    set();
+    if (w.seed) seed = w.seed;
+    wake();
+    const go = () => { endWatch(); if (w.train) train(w.pace ?? 1); };
+    if (path.length === 1) { watchTimer = setTimeout(go, w.hold ?? 700); return; }
+    watchTimer = setInterval(() => {
+      if (loop.paused) return;
+      if (++i < path.length) return set();
+      go();
+    }, 2000);
+  });
+  paint();
 }

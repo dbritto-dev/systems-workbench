@@ -20,6 +20,11 @@ export type Control = (
   | { actions: [act: string, label: Bi, opts?: { primary?: boolean }][]; label: Bi }
   /** A text box: <input data-input="name">; live code listens to it with root.$('[data-input="name"]'). */
   | { input: string; label: Bi; placeholder?: Bi; aria?: Bi; maxLength?: number }
+  /** Number steppers, one per value (− / + around a spinbutton): <wb-num name>. `min`, `max`, `step` and `digits` (the
+   *  decimals shown) apply to every stepper in the row; a stepper's own `{ min, max, step, digits }` overrides them. A
+   *  press sends "change" (name, value as text); root.press(name, v) sets one without an event, root.disable(name, on,
+   *  reason) disables it. */
+  | { nums: [name: string, label: Bi, value: number, own?: { min?: number; max?: number; step?: number; digits?: number }][]; label: Bi; min: number; max: number; step: number; digits?: number }
 ) & { for?: string; hidden?: boolean };
 
 export interface Plate {

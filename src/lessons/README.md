@@ -26,7 +26,8 @@ export default function mount({ P, G }, root) {
   root.stat("done", 12);                           // the <wb-stat key="done"> in <wb-stats>
   root.controls.showFor("lookups");                // <wb-controls>: show the rows for one group
   root.on("change", (name, value) => { … });       // a <wb-seg> option was chosen (selected for you)
-  root.press("speed", 3);                          // select an option without an event
+  root.press("speed", 3);                          // select an option (or set a stepper) without an event
+  root.num("kg")?.value;                           // a <wb-num> stepper's value
   root.disable("flip", true, L("Blue is rebuilding", "Azul se está reconstruyendo"));  // never btn.disabled
   root.relabel("flip", L("Flip to blue", "Cambiar a azul"));  // never btn.textContent
   const actions = { burst: () => { … } };
@@ -40,7 +41,9 @@ export default function mount({ P, G }, root) {
 
 The cards (`<wb-experiment>`) run without the lesson's code: their results come from the build. Each control in
 `page.ts` is a `<wb-control>` row: a segment (`seg`; `multiple: true` switches options on and off independently),
-buttons (`actions`) or a text box (`input`, read with `root.$('[data-input="name"]')`). Look up anything else with
+buttons (`actions`), a text box (`input`, read with `root.$('[data-input="name"]')`) or number steppers (`nums`: one
+`<wb-num>` per value, each sending `change` with its name and the new value as text; `root.press(name, v)` sets one
+without an event and `root.disable(name, on, reason)` disables it). Look up anything else with
 `root.$(selector)` / `root.$$(selector)`, never `document`.
 
 What they are and how they behave (Astryx's behaviour, our look):
@@ -52,8 +55,14 @@ What they are and how they behave (Astryx's behaviour, our look):
 | `speed` | SegmentedControl | as `seg` |
 | `actions` | Buttons in `<wb-actions>` (an HStack); `primary: true` is the primary variant | separate Tab stops; `pause` is a ToggleButton that keeps its label |
 | `input` | TextInput (its `<input>` has `data-input`) | the row's label is the field's |
+| `nums` | per value a `<wb-num>`: a − Button, the value (`role="spinbutton"`) and a + Button | the spinbutton is the one Tab stop (↑ ↓ one step, Page Up / Page Down two, Home / End the ends; `aria-valuetext` is the value as shown, sign included); the Buttons are pointer and screen-reader targets (`tabindex="-1"`, as in the APG spinbutton), 36px tall, grown toward 44px on a coarse pointer (`ux-hit`); at an end, that end's Button is disabled the focusable way |
 | experiments | Card; predictions are SelectableCards (radio); Run and Watch are Buttons; result bars are ProgressBars | one Tab stop for the predictions, the whole card clickable, Enter selects; Run is disabled with its reason (Tooltip) until one is picked; the verdict is said through `announce()` |
 | questions | Collapsible (a `<details>` copy in `<noscript>`) | each its own Tab stop |
+
+A `nums` row: `{ nums: [[name, label, value, own?], …], label, min, max, step, digits? }`. `min`, `max`, `step` and
+`digits` (the decimals shown) apply to every stepper in the row; `own` (`{ min?, max?, step?, digits? }`, typed in
+`src/lessons/types.ts`) overrides them for one stepper, e.g. a 10 kg setting in steps of 0.5 beside whole-number ones.
+Values are rounded to `digits` and kept within `min`…`max`.
 
 Disable a control with `root.disable(name, on, reason?)` (aria-disabled: it keeps its Tab stop, and the reason shows
 as an Astryx Tooltip on hover, keyboard focus or a tap), never with the native `disabled`. Relabel a button with

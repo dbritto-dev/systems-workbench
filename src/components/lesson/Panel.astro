@@ -7,7 +7,10 @@
 //   - a toggle group (multiple): a ToggleButtonGroup type="multiple" of ToggleButtons in <wb-seg multiple>;
 //   - a row of action buttons <wb-actions role="group"> (an HStack): Buttons with data-act, one maybe primary;
 //     Pause is a ToggleButton (aria-pressed);
-//   - a text box: a TextInput (its <input> carries data-input), labelled by the row's label.
+//   - a text box: a TextInput (its <input> carries data-input), labelled by the row's label;
+//   - number steppers: per value a <wb-num>: its name, then a − Button, the value (role="spinbutton", the
+//     one Tab stop: ↑ ↓ step, Page Up / Page Down two steps, Home / End the ends) and a + Button. The buttons are
+//     pointer and screen-reader targets (tabindex -1, as in the APG spinbutton) and grow to 44 px on a coarse pointer.
 // Everything that shows is rendered here, state included (selected, pressed), so the first paint is final.
 import Card from "astryx-astro/components/Card/Card.astro";
 import HStack from "astryx-astro/components/Stack/HStack.astro";
@@ -32,6 +35,7 @@ const segs = controls.map((c) =>
 );
 // The panel is once per page, so its row ids only need to be unique within it.
 const id = (i: number, part: string) => `wb-c${i}-${part}`;
+const numText = (v: number, digits = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(digits);
 ---
 <Card class="panel" padding={0}>
   <wb-stats class="stats" data-stats>
@@ -66,6 +70,22 @@ const id = (i: number, part: string) => `wb-c${i}-${part}`;
           )}</HStack>
         </wb-control>
       );
+      if ("nums" in c) return (
+        <wb-control class="control control-num" for={c.for} hidden={c.hidden || undefined}><span id={id(i, "label")}>{L(c.label)}</span>
+          <wb-nums class="nums" role="group" aria-labelledby={id(i, "label")}>
+            {c.nums.map(([name, label, value, own]) => { const o = { min: c.min, max: c.max, step: c.step, digits: c.digits ?? 1, ...(own || {}) }; return (
+              <wb-num name={name} min={o.min} max={o.max} step={o.step} digits={o.digits} value={value}>
+                <span class="num-name" id={id(i, name)}>{L(label)}</span>
+                <span class="num-row">
+                  <Button label={L({ en: "Lower ", es: "Bajar " }) + L(label)} size="lg" variant="secondary" tabindex="-1" data-num="down" class="ux-hit num-btn">−</Button>
+                  <span class="num-value" role="spinbutton" tabindex="0" aria-labelledby={id(i, name)} aria-valuemin={o.min} aria-valuemax={o.max} aria-valuenow={value} aria-valuetext={numText(value, o.digits)}>{numText(value, o.digits)}</span>
+                  <Button label={L({ en: "Raise ", es: "Subir " }) + L(label)} size="lg" variant="secondary" tabindex="-1" data-num="up" class="ux-hit num-btn">+</Button>
+                </span>
+              </wb-num>
+            ); })}
+          </wb-nums>
+        </wb-control>
+      );
       if ("input" in c) return (
         <wb-control class="control" for={c.for} hidden={c.hidden || undefined}>
           <TextInput label={L(c.label)} id={id(i, "input")} data-input={c.input} placeholder={c.placeholder && L(c.placeholder)}
@@ -82,4 +102,21 @@ const id = (i: number, part: string) => `wb-c${i}-${part}`;
   .panel-note { padding: 0 12px 12px; margin: 0; }
   .controls > .control[hidden] { display: none; }
   wb-stat, wb-control, wb-seg { display: block; }
+  /* Number steppers. Three across on a wide panel, one per line on a phone (name left, − value + right). */
+  .controls > .control-num { grid-column: 1 / -1; }
+  wb-nums { display: flex; flex-wrap: wrap; gap: 10px 22px; }
+  wb-num { display: grid; gap: 4px; justify-items: start; --ux-hit-gap-inline: 3px; --ux-hit-gap-block: 4px; }
+  wb-num .num-name { font-family: var(--anatomy-mono); font-size: 12px; letter-spacing: .08em; color: var(--anatomy-muted); }
+  wb-num .num-row { display: inline-flex; align-items: center; gap: 6px; }
+  wb-num .num-btn { min-width: var(--ux-size-lg); padding-inline: 0; font-size: 18px; font-family: var(--anatomy-mono); }
+  wb-num .num-value { min-width: 6ch; height: var(--ux-size-lg); display: inline-grid; place-items: center; padding: 0 6px;
+    font-family: var(--anatomy-mono); font-size: 16px; font-variant-numeric: tabular-nums; color: var(--anatomy-ink, currentColor);
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 6px; cursor: default; user-select: none; }
+  wb-num .num-value[aria-disabled="true"] { opacity: var(--ux-disabled-opacity); }
+  @media (max-width: 560px) {
+    wb-nums { display: grid; gap: 8px; width: 100%; }
+    wb-num { grid-template-columns: 1fr auto; align-items: center; }
+    wb-num .num-name { font-size: 13px; }
+  }
+  @media (pointer: coarse) { wb-num .num-row { gap: 8px; } }
 </style>

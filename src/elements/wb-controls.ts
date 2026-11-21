@@ -180,6 +180,70 @@ export class WbActions extends HTMLElement {
   };
 }
 
+// <wb-num name="w1" min max step digits value>, a number stepper (Panel.astro renders it for a `nums` control): a value set with − / + Buttons around a spinbutton (the one
+// Tab stop: ↑ ↓ one step, Page Up / Page Down two, Home / End the ends; the buttons are tabindex -1 pointer targets, as
+// in the APG spinbutton). A press sends "wb-change" { name, value: the new value as text, num: true }, which the lesson
+// can veto (preventDefault keeps the old value). num.value = 1.5 writes one without an event. Disabled the focusable
+// way: num.disable(on, reason?) puts aria-disabled on the spinbutton and both Buttons; presses and keys are refused.
+export class WbNum extends HTMLElement {
+  get name() { return this.getAttribute("name") ?? ""; }
+  get min() { return Number(this.getAttribute("min") ?? -Infinity); }
+  get max() { return Number(this.getAttribute("max") ?? Infinity); }
+  get step() { return Number(this.getAttribute("step") ?? 1); }
+  get digits() { return Number(this.getAttribute("digits") ?? 1); }
+  get spin() { return this.querySelector<HTMLElement>('[role="spinbutton"]')!; }
+  get buttons() { return [...this.querySelectorAll<HTMLButtonElement>("button[data-num]")]; }
+  get value() { return Number(this.spin.getAttribute("aria-valuenow") ?? 0); }
+  set value(v: number) {
+    const x = Math.round(Math.min(this.max, Math.max(this.min, v)) * 10 ** this.digits) / 10 ** this.digits || 0;
+    const s = this.spin, text = (x > 0 ? "+" : x < 0 ? "\u2212" : "") + Math.abs(x).toFixed(this.digits);
+    s.setAttribute("aria-valuenow", String(x));
+    s.setAttribute("aria-valuetext", text);
+    if (s.textContent !== text) s.textContent = text;
+    // At an end, that end's button is disabled (it keeps its place; the spinbutton keeps the Tab stop).
+    this.buttons.forEach((b) => { if (!this.disabled) setDisabled(b, b.dataset.num === "down" ? x <= this.min : x >= this.max); });
+  }
+  get disabled() { return this.spin.getAttribute("aria-disabled") === "true"; }
+  disable(on: boolean, reason?: string | null) {
+    setDisabled(this.spin, on, reason);
+    this.buttons.forEach((b) => setDisabled(b, on));
+    if (!on) this.value = this.value;
+  }
+  connectedCallback() {
+    this.addEventListener("click", this.#click);
+    this.addEventListener("keydown", this.#key);
+  }
+  disconnectedCallback() {
+    this.removeEventListener("click", this.#click);
+    this.removeEventListener("keydown", this.#key);
+  }
+  #click = (e: Event) => {
+    const b = (e.target as Element).closest<HTMLButtonElement>("button[data-num]");
+    if (!b || isRefused(b)) return;
+    this.#to(this.value + (b.dataset.num === "up" ? 1 : -1) * this.step);
+  };
+  #key = (e: KeyboardEvent) => {
+    if (e.target !== this.spin || e.altKey || e.ctrlKey || e.metaKey) return;
+    const k = { ArrowUp: 1, ArrowDown: -1, PageUp: 2, PageDown: -2 }[e.key];
+    const to = k !== undefined ? this.value + k * this.step : e.key === "Home" ? this.min : e.key === "End" ? this.max : null;
+    if (to === null) return;
+    e.preventDefault();
+    if (!this.disabled) this.#to(to);
+  };
+  #to(v: number) {
+    const before = this.value;
+    this.value = v;
+    const after = this.value;
+    if (after === before) return;
+    const go = this.dispatchEvent(new CustomEvent("wb-change", { bubbles: true, cancelable: true, detail: { name: this.name, value: String(after), num: true } }));
+    if (!go) this.value = before;
+  }
+  /** A press made before the live code had loaded: send it again. */
+  replay(detail: { name: string; value: string }) {
+    this.dispatchEvent(new CustomEvent("wb-change", { bubbles: true, cancelable: true, detail }));
+  }
+}
+
 const define = (name: string, ctor: CustomElementConstructor) => { if (!customElements.get(name)) customElements.define(name, ctor); };
 define("wb-stat", WbStat);
 define("wb-stats", WbStats);
@@ -187,6 +251,7 @@ define("wb-control", WbControl);
 define("wb-controls", WbControls);
 define("wb-seg", WbSeg);
 define("wb-actions", WbActions);
+define("wb-num", WbNum);
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -196,5 +261,6 @@ declare global {
     "wb-controls": WbControls;
     "wb-seg": WbSeg;
     "wb-actions": WbActions;
+    "wb-num": WbNum;
   }
 }
