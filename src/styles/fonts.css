@@ -13,6 +13,6 @@ html body { font-family: var(--font-body); }
 html h1, html h2, html h3 { font-family: var(--font-heading); }
 /* !important because the `font` shorthand, used throughout the site's CSS, resets font-size-adjust to none. */
 body, body * { font-size-adjust: 0.52 !important; }
-h1, h2, h3, .iso-stage, .iso-stage * { font-size-adjust: none !important; }
-html .iso-stage { --anatomy-mono: var(--font-figure-mono); }
-html .iso-stage svg { font-family: var(--font-figure-sans); }
+h1, h2, h3, .iso-stage, .iso-stage *, .iso-lens-overview, .iso-lens-overview * { font-size-adjust: none !important; }
+html .iso-stage, html .iso-lens-overview { --anatomy-mono: var(--font-figure-mono); }
+html .iso-stage svg, html .iso-lens-overview svg { font-family: var(--font-figure-sans); }

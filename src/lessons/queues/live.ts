@@ -20,7 +20,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
   const stamps = [0, 1, 2, 3].map((i) => q('[data-stamp="' + i + '"]'));
   const gate = q("[data-gate]"), gateArm = q("[data-gate-arm] .iso-solid");
   const flagOn = q('[data-flag="on"]'), flagOff = q('[data-flag="off"]');
-  const counters = Object.fromEntries(["inq", "oldest", "redelivered", "dead", "done", "twice", "turned"].map((n) => [n, WB.counter(svg, n, P)]));
+  const counters = Object.fromEntries(["inq", "oldest", "dead", "done", "twice", "turned"].map((n) => [n, WB.counter(svg, n, P)]));
   const meters = G.RACK_X.map((_, i) => WB.meter(svg, "vis" + i, P));
   const KEYS = "ABCD";
 
@@ -43,7 +43,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     if (s.id !== p.id || s.k !== kind) {
       s.id = p.id; s.k = kind;
       const txt = String(p.id);
-      k.num.textContent = txt; k.num.setAttribute("font-size", txt.length <= 2 ? 3.6 : txt.length === 3 ? 2.8 : 2.2);
+      k.num.textContent = txt; k.num.setAttribute("font-size", txt.length <= 3 ? G.NUM : +(G.NUM * 3 / txt.length).toFixed(2));
       k.key.textContent = KEYS[p.key];
       k.bad.style.display = p.poison ? "" : "none";
     }
@@ -163,7 +163,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
 
     // counters and readout
     const st = model.st, oldest = model.oldestWait();
-    counters.inq.set(Q.length); counters.oldest.set(Math.round(oldest)); counters.redelivered.set(st.redelivered); counters.dead.set(st.deadN);
+    counters.inq.set(Q.length); counters.oldest.set(Math.round(oldest)); counters.dead.set(st.deadN);
     counters.done.set(st.done); counters.twice.set(st.harmful); counters.turned.set(st.rejectedN);
     stat("inq", Q.length); stat("oldest", oldest < 10 ? oldest.toFixed(1) + " s" : Math.round(oldest) + " s"); stat("done", st.done);
     stat("redelivered", st.redelivered); stat("twice", st.harmful + (model.cfg.dedupe && st.twice ? L(" (" + st.twice + " ignored)", " (" + st.twice + " ignorados)") : "")); stat("lost", st.lost); stat("dead", st.deadN); stat("turned", st.rejectedN);

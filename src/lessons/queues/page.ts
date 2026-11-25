@@ -4,7 +4,7 @@ import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { one, n0 } from "../../lib/format";
 import { LIT_FILL_CSS } from "../../../workbench/parts.mjs";
-import { buildFigure, parcelSvg, P, GEOMETRY } from "./figure";
+import { buildFigure, parcelSvg, P, GEOMETRY, REGIONS } from "./figure";
 import { overload, burstRun, crashRun, poisonRun, holRun } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs (8 seeds each).
@@ -173,10 +173,11 @@ export default defineLesson({
         "El productor deja paquetes numerados en el muelle; ruedan hasta el frente del carril, así que los números se leen en orden de llegada. Un empleado (el consumidor) toma el paquete del frente, lo procesa en su escritorio y lo sella al carro. Si un empleado se desploma, o un paquete no se puede procesar, el paquete espera en el estante de retención: el indicador debajo baja hasta el momento en que vuelve al frente del carril, con una etiqueta que lleva su número de intentos. Después de 3 intentos va a la jaula de mensajes muertos. Con el sello al recoger, un paquete que se pierde con su empleado cae al piso junto al escritorio. Una banda cruzada marca un paquete malo. Los paquetes que no caben en el carril se apilan en la tarima junto al muelle; con un carril limitado, la barrera los rechaza y van a la bandeja.",
       ),
       stage: { "data-office": "" },
+      regions: REGIONS,
       label: t("Work queue simulation. Space pauses or resumes.", "Simulación de una cola de trabajo. Espacio pausa o reanuda."),
     },
     svg: buildFigure(),
-    stats: [["inq", t("In queue", "En cola")], ["oldest", t("Oldest wait", "Espera más larga")], ["done", t("Done", "Hechos")], ["redelivered", t("Redelivered", "Reentregados")], ["twice", t("Done twice", "Hechos dos veces")], ["lost", t("Lost", "Perdidos")], ["dead", t("Dead letters", "Mensajes muertos")], ["turned", t("Turned away", "Rechazados")]],
+    stats: [["inq", t("In queue", "En cola")], ["oldest", t("Oldest wait", "Mayor espera")], ["done", t("Done", "Hechos")], ["redelivered", t("Redelivered", "Reentregados")], ["twice", t("Done twice", "Hechos dos veces")], ["lost", t("Lost", "Perdidos")], ["dead", t("Dead letters", "Mensajes muertos")], ["turned", t("Turned away", "Rechazados")]],
     controls: [
       { seg: "rate", label: t("Arrivals", "Llegadas"), options: [[0.3, "0.3/s"], [0.8, "0.8/s"], [1.2, "1.2/s"]], value: 0.8 },
       { seg: "clerks", label: t("Clerks", "Empleados"), options: [[1, "1"], [2, "2"], [3, "3"], [4, "4"]], value: 3 },
@@ -196,6 +197,7 @@ export default defineLesson({
   css: `
 [data-desk][data-off],[data-clerk][data-off]{display:none}
 .iso-stage [data-layer] text{pointer-events:none}
+[data-num]{letter-spacing:0}
 ${LIT_FILL_CSS}
 `,
   data: {

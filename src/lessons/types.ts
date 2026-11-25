@@ -9,8 +9,9 @@
 //
 // Text is bilingual: { en, es } pairs (or a plain string when both read the same). Pages show one language.
 import type { Bi } from "../i18n";
+import type { LensRegion } from "../lib/lens";
 
-export type { Bi };
+export type { Bi, LensRegion };
 
 /** A control under the figure: a <wb-control> row. `for` puts it in a group, so the live code can show one group at a
  *  time (root.controls.showFor(group)); `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (an Astryx Button, variant "primary"); "pause" is a ToggleButton. */
@@ -39,6 +40,12 @@ export interface Plate {
   stage: Record<string, string>;
   /** What the figure is, for screen readers. */
   label: Bi;
+  /** Parts of the figure the phone lens can show (src/lib/lens.ts): each an id, a short label for the lens control
+   *  and a box in viewBox units (screenBox() in workbench/kit.mjs). Two to four; live code moves the close-up with
+   *  root.focusOn(id) and back to following what is lit with root.focusOn(null). */
+  regions?: LensRegion[];
+  /** false: no phone lens (the lesson draws its own phone figure, as neuron does). */
+  lens?: boolean;
 }
 
 export interface Experiment {

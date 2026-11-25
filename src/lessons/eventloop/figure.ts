@@ -88,6 +88,8 @@ export const P = k.fitProjection(
 );
 
 const { S, L, top } = shorthand(P);
+// Words on the machine come out at 11 px or more on a desktop (workbench/kit.mjs textSize; tools/text-size.cjs).
+const TOP = k.textSize(P, 11.2, { width: WIDTH, face: "top" });
 
 // ---------- a pawn: one person ----------
 function pawn(x, y, z, s, tone = "mid") {
@@ -257,7 +259,7 @@ function dial() {
   const t = k.radialTicks(x, y, DIAL_R - 2.6, 100, 10, DIAL_TOP, [0.9, 2.2], P);
   out.push(L(t.minor, { tone: "faint" }), L(t.major, { tone: "mid" }));
   out.push(L(k.ring(x, y, 1.2, DIAL_TOP, P, 16), { tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([x, y + 6], DIAL_TOP, P, "x"), "ms", { size: 2.4, tone: "lo", anchor: "middle" }));
+  out.push(k.faceTextSvg(k.topMatrix([x, y + 8.2], DIAL_TOP, P, "x"), "ms", { size: TOP, tone: "lo", anchor: "middle" }));
   // due marks: where on the dial each armed timer comes due (placed by the live code)
   out.push(`<g class="iso-dots" data-tone="lo">${Array.from({ length: 3 }, (_, i) => `<circle data-due="${i}" r="2.3" cx="0" cy="0" style="display:none"/>`).join("")}</g>`);
   return out.join("");
@@ -312,6 +314,15 @@ export function buildFigure() {
     ],
   });
 }
+
+// The phone lens's regions (src/lib/lens.ts), each small enough for the close-up: the operator's desk with the tray,
+// spindle and lamp, and the worker bench beside it; the conveyor with the hopper, the timer cabinet and the dial; the
+// thread pool behind the partition.
+export const REGIONS = [
+  { id: "desk", label: t("Desk", "Escritorio"), box: k.screenBox(P, [...k.boxCorners(DESK, 0, DESK_TOP + 4), [OPERATOR[0], OPERATOR[1], 56], [SPINDLE[0], SPINDLE[1], DESK_TOP + DEPTH_MAX * DISC.h + 10], [LAMP[0], LAMP[1], SHADE_Z + SHADE_H + 2], [LAMP[0] - 11, LAMP[1] + 11, 0], ...k.boxCorners(WORKER, 0, WORKER_TOP + 3)], 2) },
+  { id: "conveyor", label: t("Conveyor", "Cinta"), box: k.screenBox(P, [...k.boxCorners({ x: GATE_X - 3, y: BELT.y - 3, w: HOPPER.x + HOPPER.w - GATE_X + 3, d: BELT.d + 6 }, 0, 20), ...k.boxCorners(CAB, 0, CAB_TOP + 6), [DIAL[0] + DIAL_R + 2.5, DIAL[1], 0], [DIAL[0], DIAL[1] + DIAL_R + 2.5, 0]]) },
+  { id: "pool", label: t("Pool", "Hilos"), box: k.screenBox(P, [...k.boxCorners({ x: benchPlan(0).x - 2, y: benchPlan(0).y - 12, w: DROP.x + DROP.w - benchPlan(0).x + 4, d: WALL.y + WALL.d - benchPlan(0).y + 12 }, 0, 24)]) },
+];
 
 const helperBar = (i) => { const p = benchPlan(i); return { x0: p.x + 3, x1: p.x + p.w - 3, y: p.y + p.d, z0: 3, z1: 5.6 }; };
 export const GEOMETRY = {

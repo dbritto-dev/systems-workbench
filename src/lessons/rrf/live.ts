@@ -25,13 +25,12 @@ export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG }, root) {
   flight.innerHTML = FLIGHT_SVG;
   q('[data-layer="flight"]').appendChild(flight);
 
-  const counters = Object.fromEntries(G.DOC_IDS.map((id) => [id, WB.counter(svg, "pts-" + id, P)]));
   const stacks = Object.fromEntries(G.DOC_IDS.map((id) => [id, q('[data-stack="' + id + '"]')]));
   const caps = Object.fromEntries(G.DOC_IDS.map((id) => [id, q('[data-cap="' + id + '"]')]));
   const kDial = WB.dial(svg, "k", P);
   const judgeEl = Object.fromEntries(JUDGES.map((j) => [j, q('[data-judge="' + j + '"]')]));
   const weightText = Object.fromEntries(JUDGES.map((j) => [j, q('[data-weight="' + j + '"]')]));
-  const modeSolid = q("[data-mode] .iso-solid"), modeText = q("[data-mode-text]");
+  const modeSolid = q("[data-mode] .iso-solid"), modeText = q("[data-mode-text]"), kText = q("[data-k-text]");
   const places = [1, 2, 3, 4, 5].map((p) => ({ solid: q('[data-place="' + p + '"] .iso-solid'), id: q('[data-place-id="' + p + '"]'), pts: q('[data-place-pts="' + p + '"]') }));
   const cardEl = (j, r) => q('[data-card="' + j + "-" + r + '"]');
   const cardSolid = (j, r) => q('[data-card="' + j + "-" + r + '"] .iso-solid');
@@ -77,6 +76,7 @@ export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG }, root) {
   function plaques() {
     for (const j of JUDGES) weightText[j].textContent = use().includes(j) ? "×" + weightOf(j) : tr("off", "fuera");
     modeText.textContent = cfg.mode === "raw" ? tr("raw scores added", "puntajes sumados") : tr("1 / (k + rank)", "1 / (k + puesto)");
+    kText.textContent = "k = " + cfg.k;
   }
 
   const fmtScore = (x) => cfg.mode === "raw" ? x.toFixed(1) : x.toFixed(5);
@@ -134,7 +134,6 @@ export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG }, root) {
       });
       stacks[id].innerHTML = html;
       caps[id].style.display = over ? "" : "none";
-      counters[id].set(Math.round(vs.reduce((a, v) => a + v.pts, 0)));
     }
 
     // standings over what has been counted so far
@@ -142,7 +141,7 @@ export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG }, root) {
     for (const v of done) { const e = tally.get(v.id) || { id: v.id, score: 0, pts: 0, best: 99 }; e.score += v.add; e.pts += v.pts; e.best = Math.min(e.best, v.rank); tally.set(v.id, e); }
     const order = [...tally.values()].sort((a, b) => b.score - a.score || a.best - b.best || Number(a.id.slice(1)) - Number(b.id.slice(1)));
     places.forEach((p, i) => {
-      const e = order[i], txt = e ? e.id : "–", pts = e ? Math.round(e.pts) + " pts" : "";
+      const e = order[i], txt = e ? e.id : "–", pts = e ? String(Math.round(e.pts)) : "";
       if (p.id.textContent !== txt) p.id.textContent = txt;
       if (p.pts.textContent !== pts) p.pts.textContent = pts;
       p.solid.toggleAttribute("data-lit", i === 0 && !!e);
@@ -158,7 +157,7 @@ export default function mount({ P, G, CLERK_SVG, FLIGHT_SVG }, root) {
     if (cur && t >= cur.t1) {
       const name = tr(cur.list.toUpperCase(), NAME_ES[cur.list]);
       const rawShown = cur.list === "meaning" ? cur.raw.toFixed(2) : cur.raw;
-      // The share in the counters' unit (points, a first place = 100), with the fraction it comes from.
+      // The share in the standings' unit (points, a first place = 100), with the fraction it comes from.
       const share = "+" + Math.round(cur.pts) + " pts (" + (cur.w !== 1 ? cur.w + " × " : "") + "1/" + (cfg.k + cur.rank) + ")";
       const worth = cfg.mode === "raw" ? tr("+" + rawShown + " raw", "+" + rawShown + " crudo") : share;
       say(name + " #" + cur.rank + " · " + cur.id + " · " + worth);

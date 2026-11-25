@@ -22,8 +22,8 @@ const BED = { x: -102, y: -56, w: 150, d: 14, r: 1 };
 const BED_H = 9;
 export const LANE_Y = BED.y + BED.d / 2;
 export const LANE_Z = BED_H + 0.4;
-export const SLOTS = 16;
-export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => 42 - 9 * i);
+export const SLOTS = 13;
+export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => 42 - 11 * i);
 export const CAP = 10;
 const GATE_X = (SLOT_X[CAP - 1] + SLOT_X[CAP]) / 2;
 
@@ -32,23 +32,24 @@ const PROD_H = 10;
 export const PROD_SPOT = [PROD.x + PROD.w / 2, PROD.y + PROD.d / 2, PROD_H + 0.3];
 
 export const PALLET = { x: -124, y: -44, w: 22, d: 22, r: 1 };
-export const PILE = { xs: [-118, -108], ys: [-38, -28], z: 2.8, step: 6.4, layers: 4 };
+export const PILE = { xs: [-118, -107.5], ys: [-38.5, -27.5], z: 2.8, step: 6.4, layers: 4 };
 
 export const TRAY = { x: -124, y: -16, w: 24, d: 16, r: 1.2 };
 const TRAY_H = 9;
-export const TRAY_SPOTS = [[-118, -8, TRAY_H - 2.2], [-108, -8, TRAY_H - 2.2]];
+export const TRAY_SPOTS = [[-118, -8, TRAY_H - 2.2], [-106, -8, TRAY_H - 2.2]];
 
 const RACK = { x: 40, y: -33, w: 72, d: 14, r: 1 };
 const RACK_H = 9;
-export const RACK_X = [47, 56, 65, 74, 83, 92];
+export const RACK_X = [47, 58, 69, 80, 91, 102];
 export const RACK_Y = RACK.y + RACK.d / 2;
 export const RACK_Z = RACK_H + 0.3;
 
-const PLINTH = { x: 74, y: -84, w: 44, d: 28, r: 1.5 };
-const PLINTH_H = 10, CAGE_H = 24;
+// The plinth is tall enough for its label in two lines; the cage on it is lower, so the machine keeps its height.
+const PLINTH = { x: 70, y: -84, w: 52, d: 28, r: 1.5 };
+const PLINTH_H = 14, CAGE_H = 20;
 export const CAGE_SPOTS = (() => {
   const out = [];
-  for (let layer = 0; layer < 2; layer++) for (const y of [-76, -64]) for (const x of [82, 92, 102, 112]) out.push([x, y, PLINTH_H + 0.3 + layer * 6.4]);
+  for (let layer = 0; layer < 2; layer++) for (const y of [-76, -64]) for (const x of [78.5, 90, 101.5, 113]) out.push([x, y, PLINTH_H + 0.3 + layer * 6.4]);
   return out;
 })();
 
@@ -57,11 +58,11 @@ const DESK_Y = 6, DESK_D = 13, DESK_H = 10;
 export const DESK_SPOT = XS.map((cx) => [cx - 2, DESK_Y + 6.2, DESK_H + 0.3]);
 const CLERK_Y = -3;
 
-const CART = { x: 64, y: 12, w: 48, d: 28, r: 2 };
+const CART = { x: 58, y: 12, w: 66, d: 28, r: 2 };
 const CART_H = 14;
 export const CART_SPOT = [CART.x + CART.w / 2, CART.y + CART.d / 2, CART_H - 3];
 
-export const BOX = { w: 8, d: 8, h: 6, tall: 12 };
+export const BOX = { w: 10, d: 10, h: 6, tall: 12 };
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [PLINTH.x, PLINTH.y, PLINTH_H + CAGE_H + 12], [PROD.x, PROD.y - 8, 26], [PLINTH.x + PLINTH.w, PLINTH.y, PLINTH_H + CAGE_H + 4]],
@@ -71,10 +72,17 @@ export const P = k.fitProjection(
 );
 
 const { S, L, D, at, seg } = shorthand(P);
-const label = (x, y, z, text, size = 2.6) => faceText(P, [x, y, z], text, { size, tone: "mid" });
+// Words on the machine come out at 11 px or more on a desktop (workbench/kit.mjs textSize; tools/text-size.cjs), and
+// counters' digits as large (wheelHeight). TXT: on a face of constant y; TOP: lying on a top face, reading along x.
+export const TXT = k.textSize(P, 11.2, { width: WIDTH });
+export const TOP = k.textSize(P, 11.2, { width: WIDTH, face: "top" });
+const WH = k.wheelHeight(P, 11.2, { width: WIDTH }), WW = +(WH * 0.8).toFixed(2);
+const label = (x, y, z, text, size = TXT) => faceText(P, [x, y, z], text, { size, tone: "mid" });
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
+    // the returns tray's name, lying on the plate in front of it (its face is too small for the words)
+    + faceText(P, [TRAY.x + 1, TRAY.y + TRAY.d + 24, 0], t("TURNED AWAY", "RECHAZADOS"), { face: "top", size: TOP, tone: "mid" })
     + rulerStrip(P, { x: -112, y: 38, w: 80, d: 6, r: 1 })
     + labelPlate(P, { x: -18, y: 32, w: 48, d: 13, r: 1.5 }, [[-13, 36.5, 30], [-13, 40.5, 36]]);
 }
@@ -101,17 +109,18 @@ function lane() {
   out.push(S(k.slabOf({ x: BED.x + BED.w - 2.4, y: BED.y + 0.8, w: 2.4, d: BED.d - 1.6, r: 0.4 }, BED_H, 6, P, 2), { tone: "hi", crease: "lo" }));
   // counters on the cabinet front: how many are waiting (at the tail) and how long the oldest has waited (at the head)
   const front = BED.y + BED.d;
-  out.push(digitCounter(P, { x: -96, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "inq" }));
-  out.push(label(-79, front, 2.6, t("IN QUEUE", "EN COLA")));
-  out.push(digitCounter(P, { x: -24, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "oldest" }));
-  out.push(label(-5, front, 2.6, t("OLDEST WAIT S", "ESPERA MÁS LARGA S")));
+  out.push(digitCounter(P, { x: -97, y: front, z: 1.6, count: 3, w: WW, h: WH, gap: 0.8, pad: 1.2, name: "inq" }));
+  out.push(label(-78.5, front, 2.4, t("IN QUEUE", "EN COLA")));
+  out.push(digitCounter(P, { x: -46, y: front, z: 1.6, count: 3, w: WW, h: WH, gap: 0.8, pad: 1.2, name: "oldest" }));
+  out.push(label(-27.5, front, 2.4, t("OLDEST WAIT S", "MAYOR ESPERA S")));
   return out.join("");
 }
 
-// The capacity gate across the lane: shown only for a bounded lane; lit while the lane is full.
+// The capacity gate across the lane: shown only for a bounded lane; lit while the lane is full. One post, behind the
+// lane, so nothing stands in front of the words on the lane's face.
 function gate() {
   const out = [`<g data-gate style="display:none">`];
-  for (const y of [BED.y - 1.6, BED.y + BED.d + 1.6]) out.push(S(k.cylinder(GATE_X, y, 0.9, 0, BED_H + 13, P, 12), { tone: "mid", crease: "none" }));
+  out.push(S(k.cylinder(GATE_X, BED.y - 1.6, 1.1, 0, BED_H + 14, P, 12), { tone: "mid", crease: "none" }));
   out.push(`<g data-gate-arm>${S(k.slabOf({ x: GATE_X - 0.8, y: BED.y - 2.4, w: 1.6, d: BED.d + 4.8, r: 0.4 }, BED_H + 12, 2, P, 2), { tone: "hi", crease: "lo" })}</g>`);
   out.push(`</g>`);
   return out.join("");
@@ -126,8 +135,7 @@ function pallet() {
 function tray() {
   const out = [S(k.slabOf(TRAY, 0, TRAY_H, P, 3, 0.4), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TRAY, 1.6), TRAY_H, P), { tone: "lo" }) })];
   const front = TRAY.y + TRAY.d;
-  out.push(digitCounter(P, { x: TRAY.x + 2, y: front, z: 1.4, count: 3, w: 3.6, h: 4.6, gap: 0.6, pad: 1, name: "turned" }));
-  out.push(faceText(P, [TRAY.x + 16.4, front, 4.4], t("TURNED", "SIN"), { size: 2.1, tone: "mid" }), faceText(P, [TRAY.x + 16.4, front, 1.8], t("AWAY", "LUGAR"), { size: 2.1, tone: "mid" }));
+  out.push(digitCounter(P, { x: TRAY.x + 3.5, y: front, z: 1.4, count: 3, w: WW, h: WH, gap: 0.6, pad: 1, name: "turned" }));
   return out.join("");
 }
 
@@ -138,9 +146,7 @@ function rack() {
   const out = [S(k.slabOf(RACK, 0, RACK_H, P, 3, 0.5), { tone: "mid" })];
   out.push(L(RACK_X.map((x) => k.planOutline({ x: x - 4.3, y: RACK.y + 1.8, w: 8.6, d: 8.6, r: 0.6 }, RACK_H, P)).join(""), { tone: "faint" }));
   RACK_X.forEach((x, i) => out.push(meter(P, { x, y: front, z: 1.6, r: 3.6, ticks: 6, name: "vis" + i, value: 0 })));
-  const end = RACK.x + RACK.w;
-  out.push(digitCounter(P, { x: end, y: RACK.y + RACK.d - 1.6, z: 2.4, count: 3, w: 3.4, h: 4.6, gap: 0.5, pad: 0.8, face: "x", name: "redelivered" }));
-  out.push(faceText(P, [97.6, front, 3.4], t("REDELIVERED", "REENTREGADOS"), { size: 1.8, tone: "mid" }));
+  // (Redelivered is in the stats strip: its counter and label left the rack, whose end has no room for words at 11 px.)
   return out.join("");
 }
 
@@ -150,8 +156,8 @@ const cageBar = (x, y) => seg([x, y, PLINTH_H], [x, y, PLINTH_H + CAGE_H]);
 function cageBack() {
   const out = [S(k.slabOf(PLINTH, 0, PLINTH_H, P, 3, 0.5), { tone: "mid" })];
   const front = PLINTH.y + PLINTH.d;
-  out.push(digitCounter(P, { x: PLINTH.x + 4, y: front, z: 2.4, count: 3, w: 4.2, h: 5.4, gap: 0.8, pad: 1.4, name: "dead" }));
-  out.push(label(PLINTH.x + 21, front, 4.8, t("DEAD", "MENSAJES")), label(PLINTH.x + 21, front, 1.6, t("LETTERS", "MUERTOS")));
+  out.push(digitCounter(P, { x: PLINTH.x + 3, y: front, z: 3.6, count: 3, w: WW, h: WH, gap: 0.8, pad: 1.2, name: "dead" }));
+  out.push(label(PLINTH.x + 22, front, 7.8, t("DEAD", "MENSAJES")), label(PLINTH.x + 22, front, 1.6, t("LETTERS", "MUERTOS")));
   // back and left walls of bars, then the back posts
   const bars = [];
   for (let x = CAGE.x + 3.5; x < CAGE.x + CAGE.w; x += 3.5) bars.push(cageBar(x, CAGE.y));
@@ -203,10 +209,10 @@ function cart() {
   const front = CART.y + CART.d;
   const out = [S(k.slabOf(CART, 0, CART_H, P, 3, 0.6), { tone: "mid", inner: L(k.planOutline(k.insetPlan(CART, 2.4), CART_H, P), { tone: "lo" }) })];
     // side by side, each with its label printed above its wheels
-  out.push(digitCounter(P, { x: CART.x + 3, y: front, z: 2.2, count: 4, w: 4.2, h: 5.8, gap: 0.6, pad: 1, name: "done" }));
-  out.push(label(CART.x + 2, front, 10.2, t("DONE", "HECHOS"), 2.6));
-  out.push(digitCounter(P, { x: CART.x + 28, y: front, z: 2.2, count: 3, w: 4.2, h: 5.8, gap: 0.6, pad: 1, name: "twice" }));
-  out.push(label(CART.x + 27, front, 10.2, t("DONE TWICE", "DOS VECES"), 2.6));
+  out.push(digitCounter(P, { x: CART.x + 3, y: front, z: 1.6, count: 4, w: WW, h: WH, gap: 0.6, pad: 1, name: "done" }));
+  out.push(label(CART.x + 2, front, 9.3, t("DONE", "HECHOS")));
+  out.push(digitCounter(P, { x: CART.x + 30, y: front, z: 1.6, count: 3, w: WW, h: WH, gap: 0.6, pad: 1, name: "twice" }));
+  out.push(label(CART.x + 29, front, 9.3, t("DONE TWICE", "DOS VECES")));
   for (const [x, y] of [[CART.x + 6, front - 3], [CART.x + CART.w - 6, front - 3], [CART.x + 6, CART.y + 3], [CART.x + CART.w - 6, CART.y + 3]]) out.push(D([at([x, y, 0])], { size: 0.5, tone: "lo" }));
   return out.join("");
 }
@@ -222,11 +228,11 @@ export function parcelSvg() {
     // the band: a line around the parcel's middle, and a cross on its right face for a bad parcel
     out.push(L(k.lineOnTop([b.x + 3, b.y], [b.x + 3, b.y + b.d], h, P), { tone: "faint" }));
     out.push(`<g data-bad style="display:none">${L(seg([BOX.w / 2, -3, 0.8], [BOX.w / 2, 3, h - 0.8]) + seg([BOX.w / 2, 3, 0.8], [BOX.w / 2, -3, h - 0.8]), { tone: "hi" })}</g>`);
-    out.push(faceText(P, [0.8, 0.9, h], "0", { face: "top", size: 3.6, tone: "hi", anchor: "middle", attr: "data-num" }));
-    out.push(faceText(P, [0, BOX.d / 2, 1.2], "A", { size: 3.4, tone: "hi", anchor: "middle", attr: "data-key" }));
+    out.push(faceText(P, [0.6, 1.6, h], "0", { face: "top", size: TOP, tone: "hi", anchor: "middle", attr: "data-num" }));
+    out.push(faceText(P, [0, BOX.d / 2, 0.9], "A", { size: TXT, tone: "hi", anchor: "middle", attr: "data-key" }));
     out.push(`<g data-tag style="display:none">`);
-    out.push(S(k.slabOf({ x: -3.6, y: -3.4, w: 4.4, d: 0.5, r: 0.1 }, h, 5, P, 1, 0.1), { tone: "hi", crease: "none", lit: true }).replace("data-lit", "data-lit data-lit-fill"));
-    out.push(faceText(P, [-1.4, -2.9, h + 1.2], "2", { size: 3.2, tone: "on-lit", anchor: "middle", attr: "data-tries" }));
+    out.push(S(k.slabOf({ x: -4.6, y: -4.4, w: 5.6, d: 0.5, r: 0.1 }, h, 7, P, 1, 0.1), { tone: "hi", crease: "none", lit: true }).replace("data-lit", "data-lit data-lit-fill"));
+    out.push(faceText(P, [-1.8, -3.9, h + 1.4], "2", { size: TXT, tone: "on-lit", anchor: "middle", attr: "data-tries" }));
     out.push(`</g></g>`);
     return out.join("");
   };
@@ -264,4 +270,12 @@ export function buildFigure() {
   return svg.replace(/aria-label="([^"]*)"/, (m, en) => `${m} data-aria-en="${en}" data-aria-es="${escAttr(FIGURE_LABEL_ES)}"`);
 }
 
-export const GEOMETRY = { SLOT_X, LANE_Y, LANE_Z, SLOTS, CAP, PROD_SPOT, PILE, TRAY_SPOTS, RACK_X, RACK_Y, RACK_Z, CAGE_SPOTS, DESK_SPOT, CART_SPOT, XS, BOX };
+export const GEOMETRY = { SLOT_X, LANE_Y, LANE_Z, SLOTS, CAP, PROD_SPOT, PILE, TRAY_SPOTS, RACK_X, RACK_Y, RACK_Z, CAGE_SPOTS, DESK_SPOT, CART_SPOT, XS, BOX, NUM: TOP };
+
+// The phone lens's regions (src/lib/lens.ts), each small enough for the close-up: the lane with its counters, the
+// desks, and the retries (hold rack and dead-letter cage). (A fourth, the cart, would wrap the lens control in Spanish.)
+export const REGIONS = [
+  { id: "lane", label: t("Lane", "Carril"), box: k.screenBox(P, k.boxCorners({ x: BED.x + 5, y: BED.y, w: BED.w - 5, d: BED.d }, 0, BED_H + 8), 2) },
+  { id: "desks", label: t("Desks", "Escritorios"), box: k.screenBox(P, k.boxCorners({ x: XS[0] - 13, y: CLERK_Y - 4, w: XS[3] - XS[0] + 26, d: DESK_Y + DESK_D + 9 - CLERK_Y }, 0, 26)) },
+  { id: "retries", label: t("Retries", "Reintentos"), box: k.screenBox(P, [...k.boxCorners(RACK, 0, RACK_H + 7), ...k.boxCorners(PLINTH, 0, PLINTH_H + CAGE_H + 11)]) },
+];

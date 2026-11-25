@@ -33,6 +33,7 @@ export default function mount({ P, G }, root) {
   const actions = { burst: () => { … } };
   root.on("action", (name) => actions[name]?.());  // a <wb-actions> button
   root.on("watch", (settings, id) => { … });       // an experiment's "Watch it on the machine"
+  root.focusOn("retries");                         // phone lens: show a region in the close-up (null: follow what is lit)
   const pause = playPause(root);                   // Pause toggle (aria-pressed) and Space on the stage
   const loop = WB.loop({ stage, step, onPause: pause.onPause });
   pause.bind(loop);
@@ -70,6 +71,50 @@ as an Astryx Tooltip on hover, keyboard focus or a tap), never with the native `
 `button.textContent = …` would wipe them. A press before the live code has loaded is kept and sent again after
 `mount()`; the action button shows Astryx's loading state (`aria-busy`, a spinner after 310 ms) until then.
 
+## The phone lens
+
+At 560 px and below (a phone) a figure would be the desktop drawing shrunk to under half, its words 2 to 3 px tall. So
+there the plate shows, in reading order, the whole machine small (the **overview**, with a thin frame over what the
+close-up shows), the regions' control if the lesson has regions, and the **close-up**: the stage itself, cropping the
+machine 2 to 3 times larger, at the scale where the smallest word on it reads at 12 px or more (`src/lib/lens.ts`).
+Every lesson gets it from `components/lesson/FigurePlate.astro`, `src/elements/wb-figure.ts` and `LENS_CSS` in
+`workbench/styles.mjs`; the desktop is unchanged.
+
+- **One machine.** The close-up is the machine's own `<svg>` (the stage keeps its label, focus and Space-to-pause),
+  drawn wider and shifted inside the stage, which crops it. The live code draws one machine and needs no change. The
+  overview is a still copy (`aria-hidden`, no ids), taken again every 5 s and shortly after a control, an action or a
+  Watch, when the browser is idle: a map that catches up, never copied per frame. (A `<use>` of the machine was tried
+  first: Chromium re-copies the whole machine into it after every change the live code makes, about 2.4 ms a frame on
+  the parcel office, with frames of 75 ms at 4× CPU slowdown.)
+- **Where it looks.** By default it follows what is lit (`[data-lit]`, drawn): all of it if it fits, else what lit up
+  most recently, until it goes out. It moves only when that leaves the middle of the view, at most once every 1.2 s,
+  and eases there over `--ux-duration-medium` (jumps under reduced motion): one `left`/`top` write per frame, only
+  while it moves (a `transform` on the `<svg>` made Chromium repaint all of it on every frame).
+- **Regions.** A lesson may name parts of its figure in `plate.regions` (two to four):
+  `{ id, label: t(en, es), box: [x, y, w, h] }`, the box in viewBox units; `screenBox(P, points, pad)` from
+  `workbench/kit.mjs` makes one from world points, e.g. `k.screenBox(P, k.boxCorners(DESK, 0, 30))`. They show as an
+  Astryx SegmentedControl above the close-up, "Follow" first (one Tab stop, ← →); choosing one centres the close-up on
+  it until "Follow" is chosen again. A region must fit the close-up, about 285 × 285 units on a 700-wide figure whose
+  words are 11 px on the desktop (`tools/text-size.cjs` says when one doesn't), and the labels must fit one line at
+  390 px in Spanish (three regions of one word, or four short ones). Live code moves the close-up with
+  `root.focusOn(id)` (the control follows) and back to following what is lit with `root.focusOn(null)`; on a desktop
+  the call only sets what the lens will show.
+- **Opting out.** `plate.lens: false`, for a lesson that draws its own phone figure (neuron).
+- **Cost** (Chromium, 390 px, the live code running): 20 to 45 ms of main thread a second more than the shrunk figure
+  on the parcel office and the count room, none on the event loop; frames stay at 60 fps at 4× CPU slowdown. It
+  stops while the plate is off screen.
+
+## Text on the machine
+
+Words and digits painted on a machine come out at **11 px or more on a desktop** (the 732 px stage) and so at 12 px or
+more in the phone close-up. Size them with `workbench/kit.mjs`: `textSize(P, 11.2, { width: WIDTH })` (face `"y"`;
+`face: "x"`, `face: "top"`, `along: "y"` as for `faceText`) and `wheelHeight(P, 11.2, { width: WIDTH })` for a
+digit counter's wheels; they follow the figure's scale, so a layout change keeps them right. When the words don't fit,
+move them (onto the plate in front of the part), shorten them, or drop a label that repeats a stat in the stats strip.
+`node tools/text-size.cjs [base-url] [slug…]` reports each lesson's smallest and median text at 1100 px and in the
+close-up, and fails for the lessons it lists as migrated (`MIGRATED`); `tools/site-check.cjs` runs it too, as a
+problem for migrated lessons and a warning for the others. Add a lesson to `MIGRATED` once it passes.
+
 ## Shared code: import it, don't copy it
 
 | Need | Import |
@@ -88,6 +133,7 @@ as an Astryx Tooltip on hover, keyboard focus or a tap), never with the native `
 | Readout, stats, segments, buttons, experiment cards | the elements, through `root` (above) |
 | Experiment results | `withResults(EXPERIMENTS, RUNS)` from `src/lessons/types` (in `page.ts`) |
 | The panel's primary button | `{ actions: [["go", t("Go", "Ir"), { primary: true }], …] }` in `page.ts` (an Astryx Button, variant `primary`) |
+| Face-text size and counter-wheel height for 11 px on a desktop, a lens region's box (build) | `textSize`, `wheelHeight`, `screenBox` from `workbench/kit.mjs` |
 | Kit geometry in the browser (`iso`, `pathOf`, `translateAlong`, `depthOf`, …) | `workbench/vendor-anatomy/kit/iso-kit.mjs` (tree-shaken) |
 | Bilingual text | `t(en, es)` from `src/i18n` |
 | Focus ring, motion timings, target sizes, disabled look (CSS) | the `--ux-*` tokens and rules in `src/styles/ux.css` (on every page; see "UX foundation") |

@@ -1,10 +1,18 @@
 ---
 // The figure card: corners (figure number, machine name, hint, live readout), the stage holding the machine's SVG,
 // and the legend. Same markup as the Anatomy kit's plateHtml(), so the kit's CSS applies.
+// The phone lens (src/lib/lens.ts), unless plate.lens is false. At LENS_MAX px and below the stage becomes the
+// close-up (CSS crops and scales the machine's own <svg>; src/elements/wb-figure.ts pans it), and above it, in reading
+// order, come the overview (a box the browser fills with a still copy of the machine, with a frame over what the
+// close-up shows) and, when the plate declares regions, their SegmentedControl ("Follow" first). Above LENS_MAX px
+// none of it shows. This first frame is drawn for a 390 px phone.
+import SegmentedControl from "astryx-astro/components/SegmentedControl/SegmentedControl.astro";
+import SegmentedControlItem from "astryx-astro/components/SegmentedControl/SegmentedControlItem.astro";
 import { plateHtml } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { pick, type Locale } from "../../i18n";
 import { localize } from "../../i18n/localize";
 import type { Plate } from "../../lessons/types";
+import { PHONE_CLOSEUP_PX, lensHeight, lensScale, lensVars, minTextOf, viewBoxOf, viewOn } from "../../lib/lens";
 
 interface Props { plate: Plate; svg: string; locale: Locale }
 const { plate, svg, locale } = Astro.props;
@@ -13,17 +21,49 @@ const swatchSvg = (mark: string) => plateHtml({ fig: "", keys: [{ mark, label: "
 const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const hint = plate.hint ?? { en: "Space pauses", es: "Espacio: pausa" };
 const readout = plate.readout ?? { en: "starting", es: "iniciando" };
+
+const localized = localize(svg, locale);
+const lens = plate.lens !== false;
+const regions = plate.regions ?? [];
+let lensData = "", stageStyle: string | undefined, frame = "", overviewStyle = "";
+if (lens) {
+  const vb = viewBoxOf(localized);
+  const minText = minTextOf(localized);
+  const scale = lensScale(PHONE_CLOSEUP_PX, vb[2], minText);
+  const height = lensHeight(PHONE_CLOSEUP_PX, scale, regions);
+  const view = viewOn(regions[0]?.box ?? vb, [PHONE_CLOSEUP_PX / scale, height / scale], vb);
+  const pct = (v: number, of: number) => `${+((v / of) * 100).toFixed(3)}%`;
+  frame = `left:${pct(view[0] - vb[0], vb[2])};top:${pct(view[1] - vb[1], vb[3])};width:${pct(view[2], vb[2])};height:${pct(view[3], vb[3])}`;
+  stageStyle = lensVars(vb, view, scale, PHONE_CLOSEUP_PX, height);
+  overviewStyle = `aspect-ratio:${vb[2]}/${vb[3]}`;
+  lensData = JSON.stringify({ minText, regions: regions.map((r) => ({ id: r.id, box: r.box })) });
+}
+const FOLLOW = { en: "Follow", es: "Seguir" };
+const CONTROL = { en: "Close-up shows", es: "El acercamiento muestra" };
 ---
 <wb-figure>
 <figure class="iso-figure">
-  <div class="iso-plate">
+  <div class="iso-plate" data-lens={lens ? lensData : undefined}>
     <div class="iso-plate-corners" aria-hidden="true">
       <span class="iso-plate-corner" data-corner="fig">{L(plate.fig ?? "Fig 1")}</span>
       <span class="iso-plate-corner" data-corner="title">{L(plate.title)}</span>
       <span class="iso-plate-corner" data-corner="hint">{L(hint)}</span>
       <span class="iso-plate-corner" data-corner="readout" data-readout>{L(readout)}</span>
     </div>
-    <div class="iso-stage" {...plate.stage} role="img" aria-label={L(plate.label)} tabindex="0" set:html={localize(svg, locale)} />
+    {lens && (
+      <div class="iso-lens">
+        <div class="iso-lens-overview" aria-hidden="true" style={overviewStyle}><span class="iso-lens-frame" style={frame}></span></div>
+        {regions.length > 0 && (
+          <div class="iso-lens-regions">
+            <SegmentedControl label={L(CONTROL)} value="follow" size="sm" locale={locale}>
+              <SegmentedControlItem value="follow" label={L(FOLLOW)} />
+              {regions.map((r) => <SegmentedControlItem value={r.id} label={L(r.label)} />)}
+            </SegmentedControl>
+          </div>
+        )}
+      </div>
+    )}
+    <div class="iso-stage" {...plate.stage} style={stageStyle} role="img" aria-label={L(plate.label)} tabindex="0" set:html={localized} />
   </div>
   {(plate.keys?.length || plate.caption) && (
     <figcaption class="iso-legend">

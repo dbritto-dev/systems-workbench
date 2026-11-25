@@ -53,3 +53,29 @@ export function faceTextSvg(matrix, text, opts) {
   if (!isBi(text)) return kitFaceTextSvg(matrix, text, opts);
   return `<g data-l="en">${kitFaceTextSvg(matrix, text.en, opts)}</g><g data-l="es">${kitFaceTextSvg(matrix, text.es, opts)}</g>`;
 }
+
+// ---------- sizes on a desktop, and boxes for the phone lens ----------
+// A figure's stage is 732 px wide on a desktop (src/lib/lens.ts, DESK_STAGE_PX), so a figure `width` viewBox units
+// wide draws 732 / width px per unit. tools/text-size.cjs measures face text as font-size × the scale of its transform
+// along the baseline, and a counter's digits by their height over 0.72 (a mono face's digits stand about 0.72 em).
+export const DESK_STAGE_PX = 732;
+export const DIGIT_EM = 0.72;
+const unitLen = (P, d) => { const a = iso([0, 0, 0], P), b = iso(d, P); return Math.hypot(b[0] - a[0], b[1] - a[1]); };
+const BASELINE = { y: [1, 0, 0], x: [0, -1, 0], top: [1, 0, 0], topY: [0, -1, 0] };
+
+// The face-text size (world units) that comes out at `px` on a desktop: faceText(P, at, text, { size: textSize(P, 11, { width: WIDTH }) }).
+// face: "y" | "x" | "top" as for faceText; along: "y" for top text that reads along y.
+export const textSize = (P, px, { width = 700, face = "y", along = "x" } = {}) =>
+  +(px / (DESK_STAGE_PX / width) / unitLen(P, BASELINE[face === "top" && along === "y" ? "topY" : face])).toFixed(2);
+
+// A digit counter's wheel height h (world units) whose digits come out at `px` on a desktop (the glyph is 0.68 h).
+export const wheelHeight = (P, px, { width = 700 } = {}) => +((px * DIGIT_EM) / (0.68 * unitLen(P, [0, 0, 1]) * (DESK_STAGE_PX / width))).toFixed(2);
+
+// The box [x, y, w, h] (viewBox units) around world points, padded: a lens region (plate.regions in page.ts).
+//   screenBox(P, k.boxCorners(DESK, 0, 30))
+export function screenBox(P, points, pad = 6) {
+  const s = points.map((p) => iso(p, P));
+  const x0 = Math.min(...s.map((p) => p[0])) - pad, y0 = Math.min(...s.map((p) => p[1])) - pad;
+  const x1 = Math.max(...s.map((p) => p[0])) + pad, y1 = Math.max(...s.map((p) => p[1])) + pad;
+  return [x0, y0, x1 - x0, y1 - y0].map((v) => +v.toFixed(1));
+}

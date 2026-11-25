@@ -4,7 +4,7 @@ Shared pieces for the systems lessons, on top of the Anatomy isometric kit (vend
 
 ```
 workbench/
-  kit.mjs        Anatomy iso-kit re-exported + sphereOf + faceRectY, faceRectX
+  kit.mjs        Anatomy iso-kit re-exported + sphereOf + faceRectY, faceRectX, textSize, wheelHeight, screenBox
   parts.mjs      basePlate, rulerStrip, labelPlate, and the shared machine parts (below)
   digits.mjs     the stroke font for counter wheels (used by parts.mjs and by src/runtime/wb.ts)
   styles.mjs     the lesson page stylesheet (served to the site as virtual:workbench.css)
@@ -53,6 +53,11 @@ const balance = WB.counter(svg, "balance", P); balance.set(41);   // redraws onl
 WB.dial(svg, "watch", P).set(0.5);  WB.meter(svg, "load", P).set(0.9);
 WB.pose(svg, "waiter-2", "carry");
 ```
+
+**Sizes.** Words on a machine come out at 11 px or more on a desktop: `k.textSize(P, 11.2, { width: WIDTH })` gives
+the `size` for `faceText`, `card`, `plaque`, `sign` (`face`/`along` as for `faceText`), and
+`k.wheelHeight(P, 11.2, { width: WIDTH })` the `h` for a `digitCounter`. `k.screenBox(P, points)` is the box around
+world points in viewBox units, for a phone-lens region (`src/lessons/README.md`, "The phone lens").
 
 **Lit fill (opt-in).** In light theme the kit's lit accent is a white top with a darker outline, which is easy to miss
 on small tokens. `litFill(svg)` marks lit solids to fill with the lit colour (black in light, white in dark); add

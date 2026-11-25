@@ -3,7 +3,10 @@
 // For every lesson in English and Spanish: no console errors, the live code loads and animates the figure,
 // every one-of-N control (the theme switch too) has one selected option holding the Tab stop, all five experiments run (a prediction card,
 // then Run) and show a verdict, nothing from the other language is left on the page, and the page fits a 390 px phone. Also checks the collection pages and a redirect from an old lesson URL. Exits 1 on problems.
+// Text size on the machine (tools/text-size.cjs, English pages): a problem for the lessons it lists as migrated, a
+// warning line (⚠) for the others.
 const { chromium } = require("playwright");
+const textSize = require("./text-size.cjs");
 const lessons = require("../workbench/collection/lessons.json");
 
 const isUrl = (a) => /^https?:\/\//.test(a);
@@ -12,6 +15,7 @@ const only = new Set(process.argv.slice(2).filter((a) => !isUrl(a)).flatMap((a) 
 const unknown = [...only].filter((s) => !lessons.some((l) => l.slug === s));
 if (unknown.length) { console.error(`unknown lesson(s): ${unknown.join(", ")}`); process.exit(1); }
 const problems = [];
+let warnings = 0;
 // The site chrome (in the page): the top navigation is a TopNav (lessons), the language links mark this page, and the
 // theme switch (a SegmentedControl) shows one selected segment holding the group's one Tab stop. "" when all is well.
 const chromeState = () => {
@@ -42,6 +46,7 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       if (!res || res.status() !== 200) { fail(where, `HTTP ${res && res.status()}`); await page.close(); continue; }
       const before = await page.$eval(".iso-stage svg", (s) => s.innerHTML.length);
       await page.waitForTimeout(1500);
+      const deskText = lang === "en" ? await textSize.measureDesk(page) : null;
       // The live code writes the readout as soon as it runs; the static page says "starting" / "iniciando".
       const loaded = await page.waitForFunction(() => !/^(starting|iniciando)$/.test(document.querySelector("[data-readout]").textContent.trim()), null, { timeout: 6000 }).then(() => true, () => false);
       if (!loaded) fail(where, "live code never ran (readout still at its initial text)");
@@ -76,6 +81,11 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       await page.waitForTimeout(400);
       const sw = await page.evaluate(() => document.documentElement.scrollWidth);
       if (sw > 391) fail(where, `scrollWidth ${sw} at 390 px`);
+      if (deskText) {
+        const small = textSize.verdict(deskText, await textSize.measureClose(page));
+        if (small && textSize.MIGRATED.includes(l.slug)) fail(where, `text size: ${small}`);
+        else if (small) { warnings++; console.log(`  ⚠ text size: ${small}`); }
+      }
       console.log(`${errors.length || empty || other ? "✗" : "✓"} ${where} (still frame ${before} chars)`);
       await page.close();
     }
@@ -124,6 +134,7 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
     await page.close();
   }
   await browser.close();
+  if (warnings) console.log(`\n${warnings} lesson(s) with face text under ${textSize.MIN.desk} px (desktop) or ${textSize.MIN.close} px (close-up): a warning until they're migrated (tools/text-size.cjs)`);
   console.log(problems.length ? `\n${problems.length} problem(s)` : "\nall checks passed");
   process.exit(problems.length ? 1 : 0);
 })();

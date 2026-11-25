@@ -6,26 +6,27 @@
 //   each tube has a counter and the standings board shows the current top five.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, digitCounter, person, card, plaque, dial, pennant, faceText } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, person, card, plaque, dial, pennant, faceText } from "../../../workbench/parts.mjs";
 import { QUERY, JUDGES } from "./sim";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 720;
-export const HEIGHT = 470;
+export const HEIGHT = 540;
 
 const PLATE = { x: -150, y: -86, w: 300, d: 140, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 
-// Ballot boards along the back. Their front face is at BOARD_Y; rank 1 at the top.
-export const BOARD_Y = -58;
-export const BOARD_X = { keyword: -110, meaning: -40, clicks: 30 };
-const BOARD = { w: 30, z0: 4, h: 56, d: 4 };
+// Ballot boards along the back. Their front face is at BOARD_Y; rank 1 at the top. Sized for words at 11 px on a
+// desktop (TXT, below): rank, card (the document) and the judge's score side by side in each row.
+export const BOARD_Y = -66;
+export const BOARD_X = { keyword: -112, meaning: -48, clicks: 16 };
+const BOARD = { w: 46, z0: 9, h: 76, d: 4 };
 export const SLOTS = 8;
-export const CARD = { w: 15, h: 4.8, pitch: 5.6 };
-export const slotZ = (rank) => BOARD.z0 + BOARD.h - 9 - CARD.h - (rank - 1) * CARD.pitch;
-export const CARD_X = (cx) => cx - 8;
-const STAND_X = 112;
+export const CARD = { w: 15, h: 7.2, pitch: 8 };
+export const slotZ = (rank) => BOARD.z0 + BOARD.h - 10.5 - CARD.h - (rank - 1) * CARD.pitch;
+export const CARD_X = (cx) => cx - BOARD.w / 2 + 7;
+const STAND_X = 104, STAND = { w: 46, h: 58, pitch: 8.6 };
 export const JUDGE_NAME = { keyword: t("KEYWORD", "PALABRAS"), meaning: t("MEANING", "SIGNIFICADO"), clicks: t("CLICKS", "CLICS") };
 export const JUDGE_TONE = { keyword: "hi", meaning: "mid", clicks: "lo" };
 
@@ -51,63 +52,71 @@ export const P = k.fitProjection(
 );
 
 const { S, L, seg } = shorthand(P);
+// Words on the machine come out at 11 px or more on a desktop (workbench/kit.mjs textSize; tools/text-size.cjs).
+// TXT: on a face of constant y; TOP: lying on a top face (the plaques).
+export const TXT = k.textSize(P, 11.2, { width: WIDTH });
+export const TOP = k.textSize(P, 11.2, { width: WIDTH, face: "top" });
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
-    + rulerStrip(P, { x: -40, y: 36, w: 96, d: 6, r: 1 })
-    + labelPlate(P, { x: 70, y: 31, w: 52, d: 14, r: 1.5 }, [[75, 35.5, 34], [75, 39.5, 40]]);
+    + rulerStrip(P, { x: 6, y: 36, w: 60, d: 6, r: 1 })
+    + labelPlate(P, { x: 74, y: 31, w: 48, d: 14, r: 1.5 }, [[79, 35.5, 30], [79, 39.5, 36]]);
 }
 
 // A ballot board on a low pedestal: the judge's name at the top, rank numbers down the left,
 // a card per document in rank order, and the score the judge gave on the right.
 function ballot(judge) {
-  const cx = BOARD_X[judge];
+  const cx = BOARD_X[judge], left = cx - BOARD.w / 2, right = cx + BOARD.w / 2;
   const out = [`<g data-judge="${judge}">`];
-  out.push(S(k.slabOf({ x: cx - 18, y: BOARD_Y - 8, w: 36, d: 11, r: 1 }, 0, BOARD.z0, P, 3, 0.4), { tone: "mid" }));
-  out.push(person(P, [cx - 23, BOARD_Y - 4, 0], { scale: 0.74, hat: "brim" }));
-  const board = { x: cx - BOARD.w / 2, y: BOARD_Y - BOARD.d, w: BOARD.w, d: BOARD.d, r: 0.6 };
+  out.push(S(k.slabOf({ x: left - 2, y: BOARD_Y - 8, w: BOARD.w + 4, d: 11, r: 1 }, 0, BOARD.z0, P, 3, 0.4), { tone: "mid" }));
+  out.push(person(P, [left - 6, BOARD_Y - 4, 0], { scale: 0.74, hat: "brim" }));
+  const board = { x: left, y: BOARD_Y - BOARD.d, w: BOARD.w, d: BOARD.d, r: 0.6 };
   out.push(S(k.slabOf(board, BOARD.z0, BOARD.h, P, 2, 0.4), { tone: "mid", crease: "lo" }));
   const top = BOARD.z0 + BOARD.h;
-  out.push(faceText(P, [cx, BOARD_Y, top - 6.4], JUDGE_NAME[judge], { size: 3.4, tone: "hi", anchor: "middle" }));
-  out.push(L(seg([cx - BOARD.w / 2 + 1.5, BOARD_Y, top - 8.2], [cx + BOARD.w / 2 - 1.5, BOARD_Y, top - 8.2]), { tone: "lo" }));
+  out.push(faceText(P, [cx, BOARD_Y, top - 7.6], JUDGE_NAME[judge], { size: TXT, tone: "hi", anchor: "middle" }));
+  out.push(L(seg([left + 1.5, BOARD_Y, top - 9.4], [right - 1.5, BOARD_Y, top - 9.4]), { tone: "lo" }));
   const list = QUERY.lists[judge];
   for (let r = 1; r <= SLOTS; r++) {
     const z = slotZ(r);
     const [id, raw] = list[r - 1];
     out.push(`<g data-slot="${judge}-${r}">`);
-    out.push(faceText(P, [cx - 12.2, BOARD_Y, z + 1.2], String(r), { size: 2.9, tone: "mid", anchor: "middle" }));
+    out.push(faceText(P, [left + 3.6, BOARD_Y, z + 1.6], String(r), { size: TXT, tone: "mid", anchor: "middle" }));
     out.push(`<g class="wb-lit-group" data-card="${judge}-${r}">`);
-    out.push(card(P, { x: CARD_X(cx), y: BOARD_Y + 0.6, z, w: CARD.w, h: CARD.h, text: id, size: 3, tone: JUDGE_TONE[judge] }));
+    out.push(card(P, { x: CARD_X(cx), y: BOARD_Y + 0.6, z, w: CARD.w, h: CARD.h, text: id, size: TXT, tone: JUDGE_TONE[judge] }));
     out.push(`</g>`);
-    out.push(faceText(P, [cx + 11.6, BOARD_Y, z + 1.4], judge === "clicks" ? String(raw) : judge === "meaning" ? raw.toFixed(2) : raw.toFixed(1), { size: 2, tone: "mid", anchor: "middle" }));
+    out.push(faceText(P, [right - 1.4, BOARD_Y, z + 1.6], judge === "clicks" ? String(raw) : judge === "meaning" ? raw.toFixed(2) : raw.toFixed(1), { size: TXT, tone: "mid", anchor: "end" }));
     out.push(`</g>`);
   }
   // the judge's weight, on a plaque in front of the pedestal
-  out.push(plaque(P, { x: cx - 6, y: BOARD_Y + 4.4, z: 0, w: 12, d: 6, text: "×1", attr: `data-weight="${judge}"` }));
+  out.push(plaque(P, { x: cx - 12, y: BOARD_Y + 4.4, z: 0, w: 24, d: 9, text: "×1", size: TOP, attr: `data-weight="${judge}"` }));
   out.push(`</g>`);
   return out.join("");
 }
 
 // The standings board: the current top five, place numbers down the left.
+// The standings board: the current top five, place numbers down the left; each card the document and its points.
 function standings() {
-  const cx = STAND_X;
+  const cx = STAND_X, left = cx - STAND.w / 2, right = cx + STAND.w / 2;
   const out = [];
-  out.push(S(k.slabOf({ x: cx - 18, y: BOARD_Y - 8, w: 36, d: 11, r: 1 }, 0, BOARD.z0, P, 3, 0.4), { tone: "mid" }));
-  out.push(S(k.slabOf({ x: cx - 17, y: BOARD_Y - BOARD.d, w: 34, d: BOARD.d, r: 0.6 }, BOARD.z0, BOARD.h, P, 2, 0.4), { tone: "mid", crease: "lo" }));
-  const top = BOARD.z0 + BOARD.h;
-  out.push(faceText(P, [cx, BOARD_Y, top - 6.4], t("STANDINGS", "POSICIONES"), { size: 3.2, tone: "hi", anchor: "middle" }));
-  out.push(L(seg([cx - 15.5, BOARD_Y, top - 8.2], [cx + 15.5, BOARD_Y, top - 8.2]), { tone: "lo" }));
+  out.push(S(k.slabOf({ x: left - 2, y: BOARD_Y - 8, w: STAND.w + 4, d: 11, r: 1 }, 0, BOARD.z0, P, 3, 0.4), { tone: "mid" }));
+  out.push(S(k.slabOf({ x: left, y: BOARD_Y - BOARD.d, w: STAND.w, d: BOARD.d, r: 0.6 }, BOARD.z0, STAND.h, P, 2, 0.4), { tone: "mid", crease: "lo" }));
+  const top = BOARD.z0 + STAND.h;
+  out.push(faceText(P, [cx, BOARD_Y, top - 7.6], t("STANDINGS", "POSICIONES"), { size: TXT, tone: "hi", anchor: "middle" }));
+  out.push(L(seg([left + 1.5, BOARD_Y, top - 9.4], [right - 1.5, BOARD_Y, top - 9.4]), { tone: "lo" }));
   for (let p = 1; p <= 5; p++) {
-    const z = top - 9 - 7.4 - (p - 1) * 8.6;
-    out.push(faceText(P, [cx - 12.6, BOARD_Y, z + 2], String(p), { size: 4.2, tone: "hi", anchor: "middle" }));
+    const z = top - 10.5 - CARD.h - (p - 1) * STAND.pitch;
+    out.push(faceText(P, [left + 3.6, BOARD_Y, z + 1.6], String(p), { size: TXT, tone: "hi", anchor: "middle" }));
     out.push(`<g class="wb-lit-group" data-place="${p}">`);
-    out.push(card(P, { x: cx - 8.4, y: BOARD_Y + 0.6, z, w: 22, h: 7.4, text: "–", sub: "0 pts", size: 3.6, subSize: 2.3, attr: `data-place-id="${p}"`, subAttr: `data-place-pts="${p}"` }));
+    out.push(card(P, { x: left + 7, y: BOARD_Y + 0.6, z, w: STAND.w - 8.5, h: CARD.h }));
+    out.push(faceText(P, [left + 8.6, BOARD_Y + 1.2, z + 1.6], "–", { size: TXT, tone: "hi", attr: `data-place-id="${p}"` }));
+    out.push(faceText(P, [right - 3, BOARD_Y + 1.2, z + 1.6], "", { size: TXT, tone: "hi", anchor: "end", attr: `data-place-pts="${p}"` }));
     out.push(`</g>`);
   }
   return out.join("");
 }
 
-// A tube: a socket with the document's id and a points counter, a back plate with a tick every 50 points,
+// A tube: a socket with the document's id (its points are on the standings board for the top five, and in its height),
+// a back plate with a tick every 50 points,
 // a token stack (filled live) between the back plate and two front posts, and a pennant if the document
 // really answers the question.
 function tubeBack(i) {
@@ -115,8 +124,7 @@ function tubeBack(i) {
   const out = [`<g data-tube="${id}">`];
   out.push(S(k.slabOf({ x: tx - 6.5, y: SOCKET.y, w: 13, d: SOCKET.d, r: 1 }, 0, SOCKET.h, P, 3, 0.4), { tone: "mid" }));
   const front = SOCKET.y + SOCKET.d;
-  out.push(faceText(P, [tx, front, 5.4], id, { size: 2.8, tone: "hi", anchor: "middle" }));
-  out.push(digitCounter(P, { x: tx - 5.1, y: front, z: 0.9, count: 4, w: 2.3, h: 3.5, gap: 0.3, pad: 0.4, proud: 0.6, name: "pts-" + id }));
+  out.push(faceText(P, [tx, front, 2.2], id, { size: TXT, tone: "hi", anchor: "middle", attr: "data-tube-id" }));
   const back = { x: tx - 5.6, y: SOCKET.y + 0.6, w: 11.2, d: 1, r: 0.2 };
   out.push(S(k.slabOf(back, COL.z0, COL.top - COL.z0, P, 1, 0.2), { tone: "hi", crease: "lo" }));
   const ticks = [];
@@ -140,15 +148,13 @@ function tubeFront(i) {
   return out.join("");
 }
 
-// The k dial (needle on a log scale, 1 to 1000) and the fusion-mode plaque, low on the front strip.
+// The k dial (needle on a log scale, 1 to 1000; a tick every power of ten) with its value on a plaque beside it, and
+// the fusion-mode plaque, low on the front strip.
 function frontStrip() {
   const out = [];
-  out.push(dial(P, { x: -122, y: 38, r: 8.5, h: 4.5, ticks: 30, every: 10, from: -Math.PI * 0.75, span: Math.PI * 1.5, name: "k", value: Math.log10(60) / 3, label: "k" }));
-  for (const [v, a] of [["1", 0], ["10", 1 / 3], ["100", 2 / 3], ["1000", 1]]) {
-    const ang = -Math.PI * 0.75 + a * Math.PI * 1.5;
-    out.push(faceText(P, [-122 + Math.sin(ang) * 12.6, 38 - Math.cos(ang) * 12.6 + 1, 0], v, { face: "top", size: 2.4, tone: "mid", anchor: "middle" }));
-  }
-  out.push(`<g class="wb-lit-group" data-mode>${plaque(P, { x: -100, y: 32, z: 0, w: 46, d: 10, text: "1 / (k + rank)", size: 4, attr: "data-mode-text" })}</g>`);
+  out.push(dial(P, { x: -126, y: 38, r: 8.5, h: 4.5, ticks: 30, every: 10, from: -Math.PI * 0.75, span: Math.PI * 1.5, name: "k", value: Math.log10(60) / 3 }));
+  out.push(plaque(P, { x: -114, y: 32, z: 0, w: 37, d: 11, text: "k = 60", size: TOP, attr: "data-k-text" }));
+  out.push(`<g class="wb-lit-group" data-mode>${plaque(P, { x: -74, y: 32, z: 0, w: 72, d: 11, text: "1 / (k + rank)", size: TOP, attr: "data-mode-text" })}</g>`);
   return out.join("");
 }
 
@@ -167,11 +173,23 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A count room on a base plate. Along the back stand three ballot boards, one per judge (keyword, meaning, clicks), each a column of document cards in rank order with the judge's score beside each card, and a standings board showing the top five. A counting clerk walks along the ballots rank by rank; for each card a token flies into that document's tube in a row of fourteen tubes along the front. A token's height is that vote's share of the fused score, 1 / (k + rank), so later ranks give shorter tokens. Each tube has a points counter and a tick every 50 points; a pennant marks the documents that really answer the query. A dial on the front sets k, and a plaque shows whether ranks or raw scores are being added.",
-      "Una sala de conteo sobre una placa base. Al fondo hay tres tableros de boletas, uno por juez (palabras clave, significado, clics), cada uno con una columna de tarjetas de documentos en orden de puesto y el puntaje del juez al lado de cada tarjeta, y un tablero de posiciones con los cinco primeros. Un escrutador recorre las boletas puesto por puesto; por cada tarjeta, una ficha vuela al tubo de ese documento, en una fila de catorce tubos al frente. La altura de una ficha es la parte de ese voto en el puntaje fusionado, 1 / (k + puesto), así que los puestos más bajos dan fichas más cortas. Cada tubo tiene un contador de puntos y una marca cada 50 puntos; un banderín marca los documentos que de verdad responden la consulta. Un dial al frente fija k, y una placa muestra si se suman puestos o puntajes crudos.",
+      "A count room on a base plate. Along the back stand three ballot boards, one per judge (keyword, meaning, clicks), each a column of document cards in rank order with the judge's score beside each card, and a standings board showing the top five. A counting clerk walks along the ballots rank by rank; for each card a token flies into that document's tube in a row of fourteen tubes along the front. A token's height is that vote's share of the fused score, 1 / (k + rank), so later ranks give shorter tokens. Each tube has a tick every 50 points; a pennant marks the documents that really answer the query. A dial on the front sets k, with its value on a plaque, and a plaque shows whether ranks or raw scores are being added.",
+      "Una sala de conteo sobre una placa base. Al fondo hay tres tableros de boletas, uno por juez (palabras clave, significado, clics), cada uno con una columna de tarjetas de documentos en orden de puesto y el puntaje del juez al lado de cada tarjeta, y un tablero de posiciones con los cinco primeros. Un escrutador recorre las boletas puesto por puesto; por cada tarjeta, una ficha vuela al tubo de ese documento, en una fila de catorce tubos al frente. La altura de una ficha es la parte de ese voto en el puntaje fusionado, 1 / (k + puesto), así que los puestos más bajos dan fichas más cortas. Cada tubo tiene una marca cada 50 puntos; un banderín marca los documentos que de verdad responden la consulta. Un dial al frente fija k, con su valor en una placa, y una placa muestra si se suman puestos o puntajes crudos.",
     ),
     body: [plate(), back, `<g data-layer="clerk"></g>`, DOC_IDS.map((_, i) => tubeBack(i) + tubeFront(i)).join(""), frontStrip(), `<g data-layer="flight"></g>`],
   });
 }
+
+// The phone lens's regions (src/lib/lens.ts), each small enough for the close-up: the first two ballots (keyword and
+// meaning), the clicks ballot with the standings (the top five; "Posiciones" would wrap the lens control in
+// Spanish), and the tubes in two halves.
+const backBox = (x0, x1, h) => k.boxCorners({ x: x0, y: BOARD_Y - 10, w: x1 - x0, d: 24 }, 0, BOARD.z0 + h + 2);
+const tubes = (i0, i1) => k.boxCorners({ x: TUBE_X[i0] - 8, y: SOCKET.y, w: TUBE_X[i1] - TUBE_X[i0] + 16, d: SOCKET.d }, 0, COL.top + 9);
+export const REGIONS = [
+  { id: "ballots", label: t("Ballots", "Boletas"), box: k.screenBox(P, backBox(BOARD_X.keyword - BOARD.w / 2 - 9, BOARD_X.meaning + BOARD.w / 2 + 2, BOARD.h)) },
+  { id: "standings", label: "Top 5", box: k.screenBox(P, backBox(BOARD_X.clicks - BOARD.w / 2 - 7, STAND_X + STAND.w / 2 + 2, BOARD.h)) },
+  { id: "tubes-a", label: "D1–D7", box: k.screenBox(P, tubes(0, 6)) },
+  { id: "tubes-b", label: "D8–D14", box: k.screenBox(P, tubes(7, 13)) },
+];
 
 export const GEOMETRY = { BOARD_X, BOARD_Y, TUBE_X, TUBE_Y, DOC_IDS, COL, SCALE, SLOTS, CLERK_SCALE, JUDGE_TONE, AT: { ballot: Object.fromEntries(JUDGES.map((j) => [j, AT_BALLOT(j)])), home: HOME }, CARD_AT: Object.fromEntries(JUDGES.flatMap((j) => Array.from({ length: SLOTS }, (_, r) => [j + (r + 1), cardAt(j, r + 1)]))) };

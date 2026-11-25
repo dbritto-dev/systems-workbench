@@ -2,7 +2,7 @@
 // Systems lesson 37 · Reciprocal rank fusion: a count room for ranked ballots.
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
-import { buildFigure, clerkSvg, flightSvg, P, GEOMETRY } from "./figure";
+import { buildFigure, clerkSvg, flightSvg, P, GEOMETRY, REGIONS } from "./figure";
 import { QUERY, expScales, expAgreement, expK, expNoisy, expDepth } from "./sim";
 
 // Experiment results, computed at build time from the same model the page runs.
@@ -129,10 +129,11 @@ export default defineLesson({
         { mark: "flat", label: t("Ballots: each judge's documents in rank order, with the score it gave on the right", "Boletas: los documentos de cada juez en orden de puesto, con el puntaje que les dio a la derecha") },
       ],
       caption: t(
-        "Each judge ranks the same documents for the query: keyword (BM25-style word matching), meaning (embedding similarity) and clicks (popularity). The clerk counts rank by rank: for every card on a ballot, a token goes into that document's tube, as tall as 1 / (k + rank). The counters show points, where a first place is worth 100 (the RRF score × 100 (k + 1)), so the order is the RRF order. Pennants mark the documents that really answer the question: a tall one for a full answer, a short one for a partial one. Switch to raw scores to see what adding the judges' own numbers does; turn k on the dial to see the tokens grow or shrink.",
-        "Cada juez ordena los mismos documentos para la consulta: palabras clave (coincidencia de palabras al estilo BM25), significado (similitud de embeddings) y clics (popularidad). El escrutador cuenta puesto por puesto: por cada tarjeta de una boleta, cae una ficha en el tubo de ese documento, tan alta como 1 / (k + puesto). Los contadores muestran puntos, donde un primer lugar vale 100 (el puntaje RRF × 100 (k + 1)), así que el orden es el de RRF. Los banderines marcan los documentos que de verdad responden la pregunta: uno alto para una respuesta completa, uno bajo para una parcial. Cambia a puntajes crudos para ver qué pasa al sumar los números de los propios jueces; gira k en el dial para ver cómo crecen o se achican las fichas.",
+        "Each judge ranks the same documents for the query: keyword (BM25-style word matching), meaning (embedding similarity) and clicks (popularity). The clerk counts rank by rank: for every card on a ballot, a token goes into that document's tube, as tall as 1 / (k + rank). The standings show points, where a first place is worth 100 (the RRF score × 100 (k + 1)), so the order is the RRF order; a tick on a tube marks every 50. Pennants mark the documents that really answer the question: a tall one for a full answer, a short one for a partial one. Switch to raw scores to see what adding the judges' own numbers does; turn k on the dial to see the tokens grow or shrink.",
+        "Cada juez ordena los mismos documentos para la consulta: palabras clave (coincidencia de palabras al estilo BM25), significado (similitud de embeddings) y clics (popularidad). El escrutador cuenta puesto por puesto: por cada tarjeta de una boleta, cae una ficha en el tubo de ese documento, tan alta como 1 / (k + puesto). Las posiciones muestran puntos, donde un primer lugar vale 100 (el puntaje RRF × 100 (k + 1)), así que el orden es el de RRF; una marca en un tubo señala cada 50. Los banderines marcan los documentos que de verdad responden la pregunta: uno alto para una respuesta completa, uno bajo para una parcial. Cambia a puntajes crudos para ver qué pasa al sumar los números de los propios jueces; gira k en el dial para ver cómo crecen o se achican las fichas.",
       ),
       stage: { "data-count": "" },
+      regions: REGIONS,
       label: t("Rank fusion simulation. Space pauses or resumes.", "Simulación de fusión de rankings. Espacio pausa o reanuda."),
     },
     svg: buildFigure(),
@@ -157,6 +158,7 @@ export default defineLesson({
 [data-slot][data-hidden]{display:none}
 [data-card][data-counted]{opacity:.35}
 .iso-stage [data-layer] text{pointer-events:none}
+[data-tube-id]{letter-spacing:0}
 `,
   data: {
     P,

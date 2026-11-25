@@ -196,6 +196,8 @@ export default defineLesson({
       caption: t("The signs show how much each clue counts: STARTING LEAN (every animal), EVERY 10 KG (times the animal's tens of kg: a 5 kg animal gets half) and FLOPPY EARS (only floppy ears). The faint lanes are one point apart. The tag on the animal in play shows its kg. A score of exactly 0 ends on the line, which counts as CAT. Each pen counts its animals. RIGHT counts this round's animals in the right pen; while it learns, ROUND counts its trips through all the animals (in a shuffled order) and MISTAKES the wrong sorts so far.",
         "Los letreros muestran cuánto cuenta cada pista: TENDENCIA INICIAL (todo animal), CADA 10 KG (por las decenas de kilos del animal: uno de 5 kg recibe la mitad) y OREJAS CAÍDAS (solo orejas caídas). Los carriles tenues están a un punto de distancia. La etiqueta del animal en juego muestra sus kilos. Un puntaje de exactamente 0 termina sobre la línea, que cuenta como GATO. Cada corral cuenta sus animales. BIEN cuenta los animales de esta vuelta en el corral correcto; mientras aprende, VUELTA cuenta sus pasadas por todos los animales (en orden mezclado) y ERRORES los errores hasta ahora."),
       stage: { "data-neuron": "" },
+      // its own phone drawing (board.ts), so no phone lens
+      lens: false,
       label: t("A board that sorts cats from dogs, run by one neuron. Space pauses or resumes.", "Un tablero que separa gatos de perros, manejado por una neurona. Espacio pausa o reanuda."),
     },
     svg: figures(),

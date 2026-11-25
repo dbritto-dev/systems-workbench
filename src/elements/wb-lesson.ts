@@ -5,6 +5,9 @@
 //
 // What live code gets from root:
 //   root.figure                  <wb-figure>: .stage, .svg, .say(text)
+//   root.focusOn(id)             on a phone, point the lens's close-up at one of the plate's regions (its lens control
+//                                follows), or back to following what is lit with null (src/lib/lens.ts); on a
+//                                desktop it only sets what the lens will show
 //   root.stat(key, value)        a stat in the strip under the figure (<wb-stat key>)
 //   root.controls                <wb-controls>: .showFor(group) for rows that belong to a group
 //   root.seg(name)               a <wb-seg>: .value to read or press an option
@@ -60,6 +63,8 @@ export class WbLesson extends HTMLElement {
   $<E extends Element = HTMLElement>(sel: string) { return this.querySelector<E>(sel); }
   $$<E extends Element = HTMLElement>(sel: string) { return [...this.querySelectorAll<E>(sel)]; }
   stat(key: string, value: unknown) { this.stats?.set(key, value); }
+  /** The phone lens's close-up: a region of the plate (plate.regions) by id, or null to follow what is lit. */
+  focusOn(id: string | null) { this.figure.focusOn(id); }
   seg(name: string) { return this.querySelector<WbSeg>(`wb-seg[name="${name}"]`); }
   press(name: string, value: string | number | boolean | string[]) {
     this.querySelectorAll<WbSeg>(`wb-seg[name="${name}"]`).forEach((s) => { s.value = Array.isArray(value) ? value : String(value); });

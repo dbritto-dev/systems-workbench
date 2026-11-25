@@ -2,7 +2,7 @@
 // Systems lesson 16 · The event loop: one operator, one desk, a conveyor of macrotasks and a tray of microtasks.
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
-import { buildFigure, P, GEOMETRY, BELT_SLOTS, MICRO_SLOTS, TIMER_SLOTS, HELPERS, DEPTH_MAX } from "./figure";
+import { buildFigure, P, GEOMETRY, BELT_SLOTS, MICRO_SLOTS, TIMER_SLOTS, HELPERS, DEPTH_MAX, REGIONS } from "./figure";
 import { measure, orderPuzzle, LABEL_ES } from "./sim";
 import { millis } from "../../lib/format";
 
@@ -152,6 +152,7 @@ export default defineLesson({
         "Un solo operador ejecuta todo, una tarea a la vez. Después de cada tarea, el operador vacía la bandeja junto a su mano (la barrera sobre la cinta queda baja mientras la bandeja tenga algo), dibuja un cuadro si toca uno (cada 16 ms, y la lámpara parpadea) y luego toma el siguiente elemento de la cinta. Los temporizadores esperan en el gabinete y pasan a la cinta cuando vencen; los puntos del dial marcan cuándo. Detrás de la mampara, cuatro ayudantes leen archivos (el pool de hilos de Node) y mandan las lecturas por el canal hasta la tolva; las respuestas de red llegan directo del sistema operativo. El banco del extremo izquierdo es un hilo de trabajo (worker thread) con su propio ayudante. La máquina combina los cuadros de un navegador con el pool de hilos de Node. El dial da una vuelta cada 100 ms de tiempo del bucle; a ×1, un segundo en pantalla equivale a 40 ms de tiempo del bucle.",
       ),
       stage: { "data-loop": "" },
+      regions: REGIONS,
       label: t("Event loop simulation. Space pauses or resumes.", "Simulación del bucle de eventos. Espacio pausa o reanuda."),
     },
     svg: buildFigure(),

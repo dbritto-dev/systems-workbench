@@ -133,8 +133,29 @@ details[open] summary{border-bottom:1px solid var(--anatomy-faint)}
 `;
 
 
+// The phone lens (src/lib/lens.ts; markup in components/lesson/FigurePlate.astro). Above 560 px nothing changes. At
+// 560 px and below, with JavaScript (without it, or in a browser that can't tell, the figure stays whole), in reading
+// order: the overview (a still copy of the machine, smaller and centred, with a frame
+// over what the close-up shows), the regions' SegmentedControl, and the stage as the close-up: it crops the machine's
+// <svg>, drawn --lens-w wide and shifted by --lens-x / --lens-y (wb-figure.ts eases it). The shift is left/top, not a
+// transform: a transform on the machine's <svg> made Chromium repaint all of it on every frame the live code draws
+// (about 40 ms a second more on the count room).
+export const LENS_CSS = `
+.iso-lens{display:none}
+@media (max-width:560px) and (scripting:enabled){
+.iso-plate[data-lens] .iso-lens{display:grid;gap:12px;margin-bottom:14px}
+.iso-lens-overview{position:relative;width:min(64%,240px);margin-inline:auto}
+.iso-lens-overview>svg{display:block;width:100%;height:auto}
+.iso-lens-overview *{animation:none!important}
+.iso-lens-frame{position:absolute;pointer-events:none;box-shadow:0 0 0 1px var(--anatomy-hi);border-radius:1px}
+.iso-lens-regions .astryx-segmented-control{max-width:100%;flex-wrap:wrap}
+.iso-plate[data-lens] .iso-stage{position:relative;overflow:hidden;aspect-ratio:var(--lens-ar);box-shadow:0 0 0 1px var(--anatomy-faint)}
+.iso-plate[data-lens] .iso-stage>svg{width:var(--lens-w);max-width:none;margin:0;position:relative;left:var(--lens-x);top:var(--lens-y)}
+}
+`;
+
 /** Everything a lesson page needs, in order. */
-export const LESSON_CSS = () => `${k.ISO_CSS}${THEME_CSS}${PAGE_CSS}${PARTS_CSS}${LIT_FILL_PAGE_CSS}${LANG_CSS}`;
+export const LESSON_CSS = () => `${k.ISO_CSS}${THEME_CSS}${PAGE_CSS}${PARTS_CSS}${LIT_FILL_PAGE_CSS}${LENS_CSS}${LANG_CSS}`;
 
 /** The kit's light and dark palettes on :root, for pages outside the lesson template (the collection). */
 export const TOKENS_CSS = () => `:root{${light};color-scheme:light}
