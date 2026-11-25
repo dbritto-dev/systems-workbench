@@ -8,7 +8,7 @@
 // desktop only when drawn; in the close-up every text the figure holds counts, since the lens can show any of it.
 // Exits 1 if a MIGRATED lesson's smallest text or digit is under DESK px on the desktop or CLOSE px in the close-up.
 // tools/site-check.cjs runs the same measurement: a problem for a migrated lesson, a warning for the others.
-const MIGRATED = ["queues", "eventloop", "rrf"];
+const MIGRATED = ["queues", "eventloop", "rrf", "hybrid"];
 const MIN = { desk: 11, close: 12 };
 const DIGIT_EM = 0.72;
 

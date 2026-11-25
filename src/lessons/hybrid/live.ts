@@ -22,8 +22,8 @@ export default function mount({ P, G }, root) {
   const tiles = { a: [], b: [], f: [] };
   for (let i = 0; i < G.SLOTS; i++) for (const k of ["a", "b", "f"]) tiles[k].push(slot(k + i));
   const reading = (() => { const g = q("[data-reading]"); return { g, body: g.querySelector("[data-body]"), num: g.querySelector("[data-num]") }; })();
-  const querySign = q("[data-query]"), sieveText = q("[data-sieve]"), fuseText = q("[data-fuse]"), closed = q("[data-closed]");
-  const counters = Object.fromEntries(["ranka", "rankb", "reread", "rexact", "rparaphrase", "rmixed", "ms"].map((n) => [n, WB.counter(svg, n, P)]));
+  const querySign = q("[data-query]"), offWord = { a: q('[data-off-word="a"]'), b: q('[data-off-word="b"]') }, fuseText = q("[data-fuse]"), closed = q("[data-closed]");
+  const counters = Object.fromEntries(["reread", "rexact", "rparaphrase", "rmixed"].map((n) => [n, WB.counter(svg, n, P)]));
   const latDial = WB.dial(svg, "lat", P);
   const stat = (key, value) => root.stat(key, value);
 
@@ -76,7 +76,8 @@ export default function mount({ P, G }, root) {
 
   // the words on the sieve and the hopper
   function words() {
-    setText(sieveText, cur.lexOff ? tr("lane off", "carril apagado") : cur.terms.join(" · "));
+    setText(offWord.a, cur.lexOff ? tr("OFF", "APAGADO") : "");
+    setText(offWord.b, cur.semOff ? tr("OFF", "APAGADO") : "");
     setText(fuseText, cur.lexOff || cur.semOff ? tr("ONE LANE", "UN CARRIL") : cfg.fusion === "rrf" ? "RRF" : (cfg.fusion === "raw" ? tr("RAW ", "CRUDO ") : "α ") + cfg.alpha);
   }
 
@@ -108,7 +109,6 @@ export default function mount({ P, G }, root) {
       });
     }
     const laneDone = t >= fillAt(9) + 0.25;
-    counters.ranka.set(laneDone ? Math.min(999, c.rankA) : 0); counters.rankb.set(laneDone ? Math.min(999, c.rankB) : 0);
     // reranking: the inspector re-reads the head of the merged list
     const rrK = c.rr ? (t - 3) / c.rr : -1;
     const reading_ = c.rr && rrK >= 0 && rrK < 1;
@@ -130,7 +130,6 @@ export default function mount({ P, G }, root) {
       if (id !== null) drop(tile, k);
     });
     const done = t >= c.shelf0 + 0.14 * 9 + 0.25;
-    counters.ms.set(done ? Math.round(r.ms) : 0);
     const show = (x) => (x ? "#" + x : tr("not found", "no encontrado")), off = tr("off", "apagado");
     stat("query", tr(c.query.type, KIND_ES[c.query.type]) + ": " + c.query.text);
     stat("ra", c.lexOff ? off : laneDone ? show(c.rankA) : "…");
