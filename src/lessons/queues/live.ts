@@ -42,8 +42,8 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     const k = el.kinds[kind];
     if (s.id !== p.id || s.k !== kind) {
       s.id = p.id; s.k = kind;
-      const txt = String(p.id);
-      k.num.textContent = txt; k.num.setAttribute("font-size", txt.length <= 3 ? G.NUM : +(G.NUM * 3 / txt.length).toFixed(2));
+      // three digits, like a ticket roll (999 is followed by 0), so the number stays at 11 px
+      k.num.textContent = String(p.id % 1000); k.num.setAttribute("font-size", G.NUM);
       k.key.textContent = KEYS[p.key];
       k.bad.style.display = p.poison ? "" : "none";
     }

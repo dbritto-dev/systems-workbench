@@ -38,7 +38,8 @@ export const TRAY = { x: -124, y: -16, w: 24, d: 16, r: 1.2 };
 const TRAY_H = 9;
 export const TRAY_SPOTS = [[-118, -8, TRAY_H - 2.2], [-106, -8, TRAY_H - 2.2]];
 
-const RACK = { x: 40, y: -33, w: 72, d: 14, r: 1 };
+// Far enough in front of the lane that the tries tags on held parcels don't cover the lane's front parcels.
+const RACK = { x: 40, y: -27, w: 72, d: 14, r: 1 };
 const RACK_H = 9;
 export const RACK_X = [47, 58, 69, 80, 91, 102];
 export const RACK_Y = RACK.y + RACK.d / 2;
@@ -63,6 +64,7 @@ const CART_H = 14;
 export const CART_SPOT = [CART.x + CART.w / 2, CART.y + CART.d / 2, CART_H - 3];
 
 export const BOX = { w: 10, d: 10, h: 6, tall: 12 };
+const TAG_LIFT = 3.5;   // the tries tag's post: lifts the tag above the parcel's number
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [PLINTH.x, PLINTH.y, PLINTH_H + CAGE_H + 12], [PROD.x, PROD.y - 8, 26], [PLINTH.x + PLINTH.w, PLINTH.y, PLINTH_H + CAGE_H + 4]],
@@ -226,14 +228,17 @@ export function parcelSvg() {
     const out = [`<g data-kind="${kind}"${kind === "tall" ? ' style="display:none"' : ""}>`];
     out.push(litFill(S(k.slabOf(b, 0, h, P, 2, 0.3), { tone: "hi", crease: "lo" })).replace('class="iso-solid"', 'class="iso-solid" data-body'));
     // the band: a line around the parcel's middle, and a cross on its right face for a bad parcel
-    out.push(L(k.lineOnTop([b.x + 3, b.y], [b.x + 3, b.y + b.d], h, P), { tone: "faint" }));
+    out.push(L(k.lineOnTop([b.x + 1.4, b.y], [b.x + 1.4, b.y + b.d], h, P), { tone: "faint" }));
     out.push(`<g data-bad style="display:none">${L(seg([BOX.w / 2, -3, 0.8], [BOX.w / 2, 3, h - 0.8]) + seg([BOX.w / 2, 3, 0.8], [BOX.w / 2, -3, h - 0.8]), { tone: "hi" })}</g>`);
+    // the tries tag stands at the back on a short post, clear of the number (drawn first: it is behind it)
+    out.push(`<g data-tag style="display:none">`);
+    out.push(L(seg([-1.8, -4.15, h], [-1.8, -4.15, h + TAG_LIFT]), { tone: "hi" }));
+    out.push(S(k.slabOf({ x: -4.6, y: -4.4, w: 5.6, d: 0.5, r: 0.1 }, h + TAG_LIFT, 7, P, 1, 0.1), { tone: "hi", crease: "none", lit: true }).replace("data-lit", "data-lit data-lit-fill"));
+    out.push(faceText(P, [-1.8, -3.9, h + TAG_LIFT + 1.4], "2", { size: TXT, tone: "on-lit", anchor: "middle", attr: "data-tries" }));
+    out.push(`</g>`);
     out.push(faceText(P, [0.6, 1.6, h], "0", { face: "top", size: TOP, tone: "hi", anchor: "middle", attr: "data-num" }));
     out.push(faceText(P, [0, BOX.d / 2, 0.9], "A", { size: TXT, tone: "hi", anchor: "middle", attr: "data-key" }));
-    out.push(`<g data-tag style="display:none">`);
-    out.push(S(k.slabOf({ x: -4.6, y: -4.4, w: 5.6, d: 0.5, r: 0.1 }, h, 7, P, 1, 0.1), { tone: "hi", crease: "none", lit: true }).replace("data-lit", "data-lit data-lit-fill"));
-    out.push(faceText(P, [-1.8, -3.9, h + 1.4], "2", { size: TXT, tone: "on-lit", anchor: "middle", attr: "data-tries" }));
-    out.push(`</g></g>`);
+    out.push(`</g>`);
     return out.join("");
   };
   return one(BOX.h, "box") + one(BOX.tall, "tall");
