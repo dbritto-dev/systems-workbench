@@ -14,12 +14,13 @@ import { shorthand } from "../../lib/draw";
 export const WIDTH = 700;
 export const HEIGHT = 400;
 
-const PLATE = { x: -176, y: -100, w: 300, d: 122, r: 8 };
+const PLATE = { x: -176, y: -100, w: 306, d: 122, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 
 // Four columns: the cache's holders (keys) in front, the server's drawers (resources) behind, the network between.
 export const COLS = 4;
-const COL_W = 34, COL_GAP = 4, X0 = -34;
+// Columns wide enough for a query key like ['user', 1] at 9 px.
+const COL_W = 40, COL_GAP = 3, X0 = -46;
 export const colX = (i) => X0 + i * (COL_W + COL_GAP);          // left edge
 export const colMid = (i) => colX(i) + COL_W / 2;
 const X1 = colX(COLS - 1) + COL_W;                              // 114
@@ -35,23 +36,24 @@ export const GATE_Y = -47;
 // The cache: a low plinth with a card holder per key; each card is the last copy of that key's data.
 export const RACK = { y: -24, d: 16 };
 export const RACK_FACE = RACK.y + RACK.d;                       // -8
-const BASE_H = 7;
-export const CARD = { y: -17.5, dx: 5, z: BASE_H, w: 18, h: 13.5 };
-export const GAUGE = { dx: -10, y: -17.6, z: BASE_H, r: 5, h: 2.4 };
+const BASE_H = 10.6;   // the lip holds two lines at 9 px: the key, then IN USE and its counter
+export const CARD = { y: -17.5, dx: 6, z: BASE_H, w: 24, h: 13.5 };
+export const GAUGE = { dx: -13, y: -17.6, z: BASE_H, r: 5, h: 2.4 };
 // The screen at the front left, its face toward the viewer.
 const STAND = { x: -170, y: -4, w: 118, d: 18, r: 2 };
 const PANEL = { x: -166, y: 1, w: 110, d: 3, r: 0.6 };
-export const PANEL_Z = [2, 52];
+export const PANEL_Z = [2, 56];
 export const SCREEN_FACE = PANEL.y + PANEL.d;                   // 4
 const INNER = { x0: PANEL.x + 3, x1: PANEL.x + PANEL.w - 3 };
-export const TILE = { cols: 4, rows: 3, w: (INNER.x1 - INNER.x0 - 3 * 2.5) / 4, h: 11.6, gapX: 2.5, gapZ: 2, z0: 4 };
+// Three tiles a row, four rows: each wide enough for a resource name and a tag at 9 px.
+export const TILE = { cols: 3, rows: 4, w: (INNER.x1 - INNER.x0 - 2 * 2.5) / 3, h: 9.6, gapX: 2.5, gapZ: 1.4, z0: 3.6 };
 export const tileAt = (slot) => {
   const c = slot % TILE.cols, r = Math.floor(slot / TILE.cols);
   const x0 = INNER.x0 + c * (TILE.w + TILE.gapX), z1 = TILE.z0 + (TILE.rows - r) * TILE.h + (TILE.rows - r - 1) * TILE.gapZ;
   return { x0, x1: x0 + TILE.w, z0: z1 - TILE.h, z1 };
 };
-const HEAD_Z = [TILE.z0 + 3 * TILE.h + 2 * TILE.gapZ + 2.6, PANEL_Z[1] - 1.6];
-export const LAMPS = { away: [PANEL.x + PANEL.w - 26, PANEL.y + 1.5, PANEL_Z[1]], offline: [PANEL.x + PANEL.w - 9, PANEL.y + 1.5, PANEL_Z[1]] };
+const HEAD_Z = [TILE.z0 + TILE.rows * TILE.h + (TILE.rows - 1) * TILE.gapZ + 2.6, PANEL_Z[1] - 1.6];
+export const LAMPS = { away: [PANEL.x + PANEL.w - 31, PANEL.y + 1.5, PANEL_Z[1]], offline: [PANEL.x + PANEL.w - 9, PANEL.y + 1.5, PANEL_Z[1]] };
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [PANEL.x, PANEL.y, PANEL_Z[1] + 6], [SERVER.x, SERVER.y, SERVER_H + 14]],
@@ -141,11 +143,11 @@ function cache() {
     out.push(D([at([gx, GAUGE.y, GAUGE.z + GAUGE.h])], { size: 0.5, tone: "hi" }));
     out.push(text(gx - GAUGE.r - 0.6, RACK_FACE - 0.9, BASE_H, t("FRESH", "FRESCO"), 2, { face: "top" }));
     // the lip: the query key, and how many tiles use it
-    out.push(faceText(P, [x + 1.6, RACK_FACE, 3.9], "", { size: 2.5, tone: "hi", attr: `data-key="${i}"` }));
-    out.push(`<g data-inuse="${i}">${text(x + 1.6, RACK_FACE, 0.9, t("IN USE", "EN USO"), 2)}</g>`);
+    out.push(faceText(P, [x + 1.6, RACK_FACE, 6.4], "", { size: 2.5, tone: "hi", attr: `data-key="${i}"` }));
+    out.push(`<g data-inuse="${i}">${text(x + 1.6, RACK_FACE, 1.2, t("IN USE", "EN USO"), 2)}</g>`);
     // the gc countdown: printed in its place while nobody uses the key
-    out.push(faceText(P, [x + 1.6, RACK_FACE, 0.9], "", { size: 2, tone: "hi", attr: `data-gc="${i}"` }));
-    out.push(digitCounter(P, { x: x + COL_W - 9.4, y: RACK_FACE, z: 1.2, count: 2, w: 3.4, h: 4.6, gap: 0.5, pad: 0.8, name: "use" + i }));
+    out.push(faceText(P, [x + 1.6, RACK_FACE, 1.2], "", { size: 2, tone: "hi", attr: `data-gc="${i}"` }));
+    out.push(digitCounter(P, { x: x + COL_W - 10.6, y: RACK_FACE, z: 0.9, count: 2, w: 3.9, h: 5.2, gap: 0.5, pad: 0.6, name: "use" + i }));
   }
   out.push(L(k.lineOnTop([X0 - COL_GAP / 2, RACK.y + 1.6], [X0 - COL_GAP / 2, RACK_FACE - 1.6], BASE_H, P), { tone: "lo" }));
   out.push(text(CACHE_X + 2.6, RACK.y + 5, BASE_H, t("CACHE", "CACHÉ"), 3, { face: "top", tone: "hi" }));
@@ -174,12 +176,12 @@ function screen() {
     const b = tileAt(slot);
     out.push(`<g data-tile="${slot}">`);
     out.push(`<path class="tile" d="${k.faceRectY(P, b.x0, b.x1, f, b.z0, b.z1)}"/>`);
-    out.push(faceText(P, [b.x0 + 1.4, f, b.z1 - 3.4], "", { size: 2.4, tone: "mid", attr: "data-want" }));
-    out.push(faceText(P, [b.x0 + 1.4, f, b.z0 + 1.8], "", { size: 3.4, tone: "hi", attr: "data-show" }));
-    // the tag: OLD (behind the server) or WRONG (another resource's data)
-    const tw = 8.8, tx = b.x1 - tw - 0.8;
-    out.push(`<g data-tag="old" style="display:none"><path class="tag" d="${k.faceRectY(P, tx, tx + tw, f, b.z1 - 4.4, b.z1 - 1)}"/>${faceText(P, [tx + tw / 2, f, b.z1 - 3.6], t("OLD", "VIEJO"), { size: 2.1, tone: "hi", anchor: "middle" })}</g>`);
-    out.push(`<g data-tag="wrong" style="display:none"><path class="tag" d="${k.faceRectY(P, tx, tx + tw, f, b.z1 - 4.4, b.z1 - 1)}"/>${faceText(P, [tx + tw / 2, f, b.z1 - 3.6], t("WRONG", "AJENO"), { size: 2.1, tone: "hi", anchor: "middle" })}</g>`);
+    out.push(faceText(P, [b.x0 + 1.4, f, b.z1 - 4], "", { size: 2.4, tone: "mid", attr: "data-want" }));
+    out.push(faceText(P, [b.x0 + 1.4, f, b.z0 + 1.1], "", { size: 3.4, tone: "hi", attr: "data-show" }));
+    // the tag, bottom right beside the version shown: OLD (behind the server) or WRONG (another resource's data)
+    const tw = 18, tx = b.x1 - tw - 0.8;
+    out.push(`<g data-tag="old" style="display:none"><path class="tag" d="${k.faceRectY(P, tx, tx + tw, f, b.z0 + 0.5, b.z0 + 4.6)}"/>${faceText(P, [tx + tw / 2, f, b.z0 + 1.1], t("OLD", "VIEJO"), { size: 2.1, tone: "hi", anchor: "middle" })}</g>`);
+    out.push(`<g data-tag="wrong" style="display:none"><path class="tag" d="${k.faceRectY(P, tx, tx + tw, f, b.z0 + 0.5, b.z0 + 4.6)}"/>${faceText(P, [tx + tw / 2, f, b.z0 + 1.1], t("WRONG", "AJENO"), { size: 2.1, tone: "hi", anchor: "middle" })}</g>`);
     out.push(`</g>`);
   }
   // the lamps on top of the panel: away from the tab, offline
@@ -191,7 +193,7 @@ function screen() {
 }
 // The curtain that drops over the screen while the user is in another tab.
 function curtain() {
-  const f = SCREEN_FACE + 0.2, b0 = tileAt(8), b1 = tileAt(3);
+  const f = SCREEN_FACE + 0.2, b0 = tileAt(TILE.cols * (TILE.rows - 1)), b1 = tileAt(TILE.cols - 1);
   const plan = { x: INNER.x0 - 1, y: f, w: INNER.x1 - INNER.x0 + 2, d: 1, r: 0.3 };
   return `<g data-curtain style="display:none">${S(k.slabOf(plan, b0.z0 - 1, b1.z1 - b0.z0 + 2, P, 2, 0.2), { tone: "mid", crease: "none" })}`
     + faceText(P, [(INNER.x0 + INNER.x1) / 2, f + 1, (b0.z0 + b1.z1) / 2 - 1.5], t("TAB HIDDEN", "PESTAÑA OCULTA"), { size: 4, tone: "mid", anchor: "middle" })

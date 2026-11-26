@@ -166,7 +166,7 @@ export default function mount({ P, G, RES_LABEL, CARD_SVG, CAPSULE_SVG, ENVELOPE
       if (el.state !== state) { el.state = state; el.box.setAttribute("data-state", state); show(el.old, state === "old"); show(el.wrong, state === "wrong"); }
       setText(el.want, want); setText(el.show, text);
       const size = state === "wrong" ? "2.8" : "3.4";
-      if (el.show.getAttribute("font-size") !== size) el.show.setAttribute("font-size", size);
+      if (el.showSize !== size) { el.showSize = size; WB.fontSize(el.show, size); }
     }
     setText(route, m.page ? PAGES[m.page].path : "");
     show(curtain, !m.focused); show(lamps.away.on, !m.focused); show(lamps.away.off, m.focused);

@@ -25,10 +25,10 @@ export const FIELD = { x: MAP.x + 4, y: MAP.y + 4, w: MAP.w - 8, d: MAP.d - 8, p
 
 const CONSOLE = { x: -114, y: 28, w: 92, d: 22, r: 2 };
 const CONSOLE_H = 8;
-const BOARD = { x: CONSOLE.x + 4, y: CONSOLE.y + 6, w: 84, h: 11 };
+const BOARD = { x: CONSOLE.x + 4, y: CONSOLE.y + 6, w: 84, h: 17 };
 
 const RACK = { x: -14, y: 28, w: 126, d: 22, r: 2 };
-const RACK_H = 6;
+const RACK_H = 7.5;
 export const SLOTS = 5;
 export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => RACK.x + 4 + i * 24.4);
 const CARD = { w: 14, h: 12, y: RACK.y + 9 };
@@ -64,16 +64,14 @@ function table() {
 function consoleDesk() {
   const out = [S(k.slabOf(CONSOLE, 0, CONSOLE_H, P, 3, 0.5), { tone: "mid" })];
   const front = CONSOLE.y + CONSOLE.d;
-  out.push(digitCounter(P, { x: CONSOLE.x + 4, y: front, z: 1.4, count: 2, w: 4.4, h: 5.2, gap: 0.6, pad: 1.1, name: "compared" }));
-  out.push(label(CONSOLE.x + 17, front, 4.4, t("COMPARED", "FRAGMENTOS"), 2.3), label(CONSOLE.x + 17, front, 1.6, t("CHUNKS", "COMPARADOS"), 2.3));
-  out.push(label(CONSOLE.x + 50, front, 3, t("OF", "DE"), 2.6));
-  out.push(digitCounter(P, { x: CONSOLE.x + 57, y: front, z: 1.4, count: 2, w: 4.4, h: 5.2, gap: 0.6, pad: 1.1, name: "total" }));
+  // (how many chunks the search compared is in the stats strip)
   // the board: two legs and a panel; the query reads across its face
   const by = BOARD.y, z0 = CONSOLE_H + 1.4;
   for (const x of [BOARD.x + 6, BOARD.x + BOARD.w - 6]) out.push(S(k.slabOf({ x: x - 1, y: by - 1, w: 2, d: 2, r: 0.3 }, CONSOLE_H, 1.6, P, 2), { tone: "mid", crease: "none" }));
   out.push(S(k.slabOf({ x: BOARD.x, y: by - 1.2, w: BOARD.w, d: 1.2, r: 0.2 }, z0, BOARD.h, P, 2), { tone: "hi", crease: "lo" }));
-  out.push(faceText(P, [BOARD.x + 3, by, z0 + BOARD.h - 3.4], t("QUERY", "CONSULTA"), { size: 2.2, tone: "mid" }));
-  out.push(faceText(P, [BOARD.x + 3, by, z0 + 2.6], "", { size: 3.9, tone: "hi", attr: "data-query" }));
+  out.push(faceText(P, [BOARD.x + 3, by, z0 + BOARD.h - 5], t("QUERY", "CONSULTA"), { size: 2.2, tone: "mid" }));
+  out.push(faceText(P, [BOARD.x + 3, by, z0 + 6.6], "", { size: 3.9, tone: "hi", attr: "data-query" }));
+  out.push(faceText(P, [BOARD.x + 3, by, z0 + 1.8], "", { size: 3.9, tone: "hi", attr: "data-query2" }));
   return out.join("");
 }
 
@@ -87,9 +85,9 @@ function rack() {
     out.push(faceText(P, [x + 1.2, RACK.y + 17.6, RACK_H], String(i + 1), { face: "top", size: 3.4, tone: "mid", attr: `data-rank="${i}"` }));
     out.push(`<g data-slot="${i}">`);
     out.push(`<g class="wb-lit-group" data-card="${i}">${card(P, { x: x + 4.5, y: CARD.y, z: RACK_H, w: CARD.w, h: CARD.h, text: "A1.1", size: 3.8, attr: `data-card-text="${i}"` })}</g>`);
-    out.push(`<g data-cut="${i}" style="display:none">${L(k.lineOnTop([x + 2, RACK.y + 14], [x + 19, RACK.y + 14], RACK_H, P), { tone: "hi" })}${faceText(P, [x + 10.5, RACK.y + 10.8, RACK_H], t("BELOW CUTOFF", "BAJO UMBRAL"), { face: "top", size: 2.4, tone: "hi", anchor: "middle" })}</g>`);
+    out.push(`<g data-cut="${i}" style="display:none">${L(k.lineOnTop([x + 2, RACK.y + 14], [x + 19, RACK.y + 14], RACK_H, P), { tone: "hi" })}${faceText(P, [x + 10.5, RACK.y + 10.8, RACK_H], t("CUT", "CORTE"), { face: "top", size: 2.4, tone: "hi", anchor: "middle" })}</g>`);
     out.push(`</g>`);
-    out.push(`<g data-simbox="${i}">${faceText(P, [x - 0.4, front, 1.9], "0.", { size: 4.6, tone: "mid" })}${digitCounter(P, { x: x + 5.4, y: front, z: 1.2, count: 2, w: 4.2, h: 5, gap: 0.5, pad: 1, name: "sim" + i })}</g>`);
+    out.push(`<g data-simbox="${i}">${faceText(P, [x - 0.6, front, 1.6], "0.", { size: 4.6, tone: "mid" })}${digitCounter(P, { x: x + 6.6, y: front, z: 1, count: 2, w: 4.2, h: 5.4, gap: 0.5, pad: 0.6, name: "sim" + i })}</g>`);
     out.push(`<g data-lid="${i}" style="display:none">${S(k.slabOf({ x: x - 1, y: RACK.y + 3, w: 22, d: 16, r: 1 }, RACK_H, 1, P, 3, 0.2), { tone: "lo", crease: "none" })}</g>`);
   });
   return out.join("");
@@ -126,8 +124,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A star-map table for semantic search. A dark map lies on a base plate, ruled like a star chart; every chunk of a small help centre is a round stud on it, placed so that chunks with similar meaning sit together in named constellations. A lamp on a post stands among the studs closest to the query, with strings running from the lamp to the nearest studs, which light and carry their rank. For an exact search an arm sweeps across every stud; with the index, a bead hops along links between studs instead. In front, a console shows the query on a standing board and counts how many chunks were compared; a rack holds the results as cards in rank order, each with its similarity on counters.",
-      "Una mesa con un mapa estelar para la búsqueda semántica. Un mapa oscuro sobre una placa base, cuadriculado como una carta estelar; cada fragmento de un pequeño centro de ayuda es un perno redondo sobre él, ubicado de modo que los fragmentos con significado parecido queden juntos en constelaciones con nombre. Una lámpara sobre un poste se para entre los pernos más cercanos a la consulta, con hilos que van de la lámpara a los pernos más cercanos, que se encienden y muestran su puesto. En una búsqueda exacta, un brazo barre todos los pernos; con el índice, en cambio, una bolita salta por los enlaces entre pernos. Adelante, una consola muestra la consulta en un tablero y cuenta cuántos fragmentos se compararon; un estante tiene los resultados como tarjetas en orden de puesto, cada una con su similitud en contadores.",
+      "A star-map table for semantic search. A dark map lies on a base plate, ruled like a star chart; every chunk of a small help centre is a round stud on it, placed so that chunks with similar meaning sit together in named constellations. A lamp on a post stands among the studs closest to the query, with strings running from the lamp to the nearest studs, which light and carry their rank. For an exact search an arm sweeps across every stud; with the index, a bead hops along links between studs instead. In front, a console shows the query on a standing board; a rack holds the results as cards in rank order, each with its similarity on counters.",
+      "Una mesa con un mapa estelar para la búsqueda semántica. Un mapa oscuro sobre una placa base, cuadriculado como una carta estelar; cada fragmento de un pequeño centro de ayuda es un perno redondo sobre él, ubicado de modo que los fragmentos con significado parecido queden juntos en constelaciones con nombre. Una lámpara sobre un poste se para entre los pernos más cercanos a la consulta, con hilos que van de la lámpara a los pernos más cercanos, que se encienden y muestran su puesto. En una búsqueda exacta, un brazo barre todos los pernos; con el índice, en cambio, una bolita salta por los enlaces entre pernos. Adelante, una consola muestra la consulta en un tablero; un estante tiene los resultados como tarjetas en orden de puesto, cada una con su similitud en contadores.",
     ),
     body: [
       table(),
@@ -144,5 +142,7 @@ export function buildFigure() {
 }
 
 export const LABEL_SIZE = 3.1;
-export const GEOMETRY = { MAP, MAP_H, FIELD, SLOT_X, SLOTS, PIN, LAMP_TOP, LABEL_SIZE };
+// How many characters of the query fit a line of the board at the text floor (live.ts wraps it in two lines).
+const QUERY_CHARS = Math.floor((BOARD.w - 6) / (0.66 * k.textSize(P, k.TEXT_FLOOR_PX, { width: WIDTH })));
+export const GEOMETRY = { MAP, MAP_H, FIELD, SLOT_X, SLOTS, PIN, LAMP_TOP, LABEL_SIZE, QUERY_CHARS };
 export const labelSvg = () => faceText(P, [0, 0, MAP_H], "", { face: "top", size: LABEL_SIZE, tone: "mid", anchor: "middle", attr: "data-label" });

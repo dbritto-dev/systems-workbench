@@ -138,10 +138,10 @@ export default function mount({ P, G, TOKENS }, root) {
       show(c.plain, !retrying); show(c.lit, retrying);
       if (showOutcome) {
         setText(c.top, o.outcome === "paid" ? L("PAID", "PAGADO") : o.outcome === "rejected" ? "422" : L("GAVE UP", "SE FUE"));
-        setText(c.note, label(o.key) + (o.charges > 1 ? L(" · charged " + o.charges + "×", " · " + o.charges + " cobros") : " · $" + o.amount));
+        setText(c.note, label(o.key) + (o.charges > 1 ? " ×" + o.charges : ""));   // short enough for 9 px on the slip
       } else {
         setText(c.top, label(p.key));
-        setText(c.note, L("try ", "vez ") + p.tries + " · $" + p.amount);
+        setText(c.note, L("try ", "vez ") + p.tries);
       }
     });
 

@@ -159,7 +159,7 @@ function shaftFront() {
     out.push(`<g data-mark="${name}" style="display:none">${L(k.pathOf([at([c[0], c[1], c[2] + DIALS.r * 0.55]), at([c[0], c[1], c[2] + DIALS.r * 1.02])]), { tone: "hi" })}</g>`);
     out.push(`<path class="pie" data-pie="${name}" d=""/>`);
     out.push(D([at(c)], { size: 0.7, tone: "hi" }));
-    out.push(rawText(c[0], c[1], CROSS_Z[0] + 1.1, name === "quiet" ? t("DOOR TIMER", "TEMPORIZADOR") : t("FIRST WAITING", "ESPERA DEL 1.º"), { size: 2.1, tone: "mid", anchor: "middle" }));
+    out.push(rawText(c[0], c[1], CROSS_Z[0] + 1.1, name === "quiet" ? t("DOOR", "PUERTA") : t("FIRST", "PRIMERO"), { size: 2.1, tone: "mid", anchor: "middle" }));
   }
   return out.join("");
 }
@@ -209,7 +209,7 @@ function mezz() {
   out.push(S(k.slabOf(DESK, TOP, DESK_H, P, 3, 0.4), { tone: "hi", crease: "lo" }));
   out.push(L(SLOTS.map(([sx, sy]) => k.lineOnTop([sx - TICKET.w / 2 - 0.4, sy + TICKET.d / 2 + 0.6], [sx + TICKET.w / 2 + 0.4, sy + TICKET.d / 2 + 0.6], TOP + DESK_H, P)).join(""), { tone: "lo" }));
   out.push(counter(COUNTERS.sent, "sent", 0));
-  out.push(rawText(DESK.x + 18, DESK_FRONT, TOP + 2.2, t("REQUESTS SENT", "SOLICITUDES ENVIADAS"), { size: 2.4, tone: "mid" }));
+  out.push(rawText(DESK.x + 18, DESK_FRONT, TOP + 2.2, t("REQUESTS SENT", "ENVIADAS"), { size: 2.4, tone: "mid" }));
   return out.join("");
 }
 function server() {
@@ -272,7 +272,7 @@ function screen() {
   out.push(rawText(FIELDS.typed.x0 + 1.8, f, FIELDS.typed.z0 + 2, "", { size: 4, tone: "hi", attr: "data-text=\"typed\"" }));
   out.push(rawText(FIELDS.shown.x0 + 1.8, f, FIELDS.shown.z0 + 2, "", { size: 4, tone: "hi", attr: "data-text=\"shown\"" }));
   out.push(counter(COUNTERS.stale, "stale", 0));
-  out.push(rawText(82.4, f, 6.4, t("OLDER ANSWER SHOWN", "RESPUESTA ANTERIOR MOSTRADA"), { size: 2.4, tone: "mid", anchor: "end" }));
+  out.push(rawText(82.4, f, 6.4, t("OLD ANSWER SHOWN", "RESPUESTA VIEJA"), { size: 2.4, tone: "mid", anchor: "end" }));
   // The stale lamp on top of the panel.
   out.push(S(k.cylinder(LAMP.x, LAMP.y, 2.2, LAMP.z, 0.8, P, 18), { tone: "mid" }));
   out.push(`<g data-lamp="off">${S(k.cylinder(LAMP.x, LAMP.y, 1.6, LAMP.z + 0.8, 2.4, P, 16, 0.4), { tone: "hi", crease: "lo" })}</g>`);

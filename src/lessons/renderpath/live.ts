@@ -62,13 +62,13 @@ export default function mount({ P, G }, root) {
 
   // ---------- one load ----------
   let m, clock, seed = 11, realNow = 0, endAt = null;
-  let logAt, workAt, frameAt, shiftUntil, shutterZ, walkerX, said, pending, blockedFrom, cssReadyAt, tokenSlot, shifts;
+  let logAt, workAt, frameAt, shiftUntil, shutterZ, walkerX, walkerY, said, pending, blockedFrom, cssReadyAt, tokenSlot, shifts;
 
   function restart(startAt = 0) {
     m = makeLoad(modelCfg(), seed);
     seed = (Date.now() % 1e6) + 1;
     clock = startAt; endAt = null;
-    logAt = 0; workAt = 0; frameAt = -1; shiftUntil = -1; shutterZ = BOTTOM; walkerX = G.slotXs.css; said = { prio: -1, at: -9 }; pending = null;
+    logAt = 0; workAt = 0; frameAt = -1; shiftUntil = -1; shutterZ = BOTTOM; walkerX = G.slotXs.css; walkerY = G.slotYs.css; said = { prio: -1, at: -9 }; pending = null;
     const blocked = m.log.find((e) => e.type === "parserBlocked");
     blockedFrom = blocked ? blocked.t : null;
     const ready = m.log.find((e) => e.type === "cssReady");
@@ -95,7 +95,7 @@ export default function mount({ P, G }, root) {
       img2: lazyBelow ? "LAZY" : "IMG", img3: lazyBelow ? "LAZY" : "IMG", img4: lazyBelow ? "LAZY" : "IMG",
     };
     for (const [n, tg] of Object.entries(tags)) {
-      const w = words[n], size = w.length <= 4 ? 2.8 : w.length <= 6 ? 2.4 : 2;
+      const w = words[n], size = 2.8;
       for (const el of [tg.text, tg.litText]) { el.textContent = w; WB.fontSize(el, size); }
     }
   }
@@ -155,9 +155,12 @@ export default function mount({ P, G }, root) {
     }
     let at = Math.min(parsedN, m.tokens.length - 1);
     while (at > 0 && !tokenSlot[at]) at--;
-    const target = G.slotXs[tokenSlot[at] || "css"];
-    walkerX = snap ? target : walkerX + (target - walkerX) * (1 - Math.exp(-dt * 10));
-    walker.setAttribute("transform", translateAlong(P, [walkerX - G.slotXs.css, 0, 0]));
+    // the parser walks along the first row, then steps down to the second (the tags are laid out like lines of text)
+    const slot = tokenSlot[at] || "css", target = G.slotXs[slot], targetY = G.slotYs[slot];
+    const newRow = walkerY !== targetY;
+    walkerY = targetY;
+    walkerX = snap || newRow ? target : walkerX + (target - walkerX) * (1 - Math.exp(-dt * 10));
+    walker.setAttribute("transform", translateAlong(P, [walkerX - G.slotXs.css, walkerY - G.slotYs.css, 0]));
     show(walkerOn, blocked); show(walkerOff, !blocked);
 
     // the main thread

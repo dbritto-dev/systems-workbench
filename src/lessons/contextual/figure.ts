@@ -23,7 +23,7 @@ const PLATE_H = 12, FOOT_H = 5;
 // ---------- back row: the indexing line ----------
 const STACK = { x: -128, y: -86, w: 24, d: 20, r: 1.4 };
 const STACK_H = 9;
-export const BOOK = { w: 16, d: 12, h: 1.8 };
+export const BOOK = { w: 18, d: 12, h: 1.8 };
 export const STACK_TOP = [STACK.x + STACK.w / 2, STACK.y + STACK.d / 2, STACK_H];
 
 const GUIL = { x: -100, y: -88, w: 24, d: 28, r: 1.2 };
@@ -66,10 +66,10 @@ const TRAY_H = 7;
 export const SLOTS = 20;
 export const SLOT = Array.from({ length: SLOTS }, (_, i) => [TRAY.x + 6 + (i % 10) * 6.1, TRAY.y + 6.2 + Math.floor(i / 10) * 11, TRAY_H + 0.2]);
 
-const BOARD = { x: -132, y: 2, z: 13, w: 50, h: 8 };
+const BOARD = { x: -132, y: 12, z: 10, w: 82, h: 8 };   // wide enough for the longest question at 9 px; in front, clear of the rack
 const ASKER = [-116, -14];
 
-const SCORE = { x: -58, y: 12, w: 96, d: 22, r: 1.6 };
+const SCORE = { x: -40, y: 12, w: 60, d: 22, r: 1.6 };
 const SCORE_H = 16;
 
 export const CARD = { w: 4.8, d: 7.2, h: 0.6, strip: 2.6 };
@@ -96,7 +96,7 @@ export function bookletSvg(attr = "data-cover", lit = false) {
   const b = { x: -BOOK.w / 2, y: -BOOK.d / 2, w: BOOK.w, d: BOOK.d, r: 0.6 };
   return S(k.slabOf(b, 0, BOOK.h, P, 2, 0.2), { tone: "hi", crease: "lo", lit })
     + L(k.lineOnTop([b.x + 1.6, b.y + 0.6], [b.x + 1.6, b.y + b.d - 0.6], BOOK.h, P), { tone: "lo" })
-    + faceText(P, [1, 1.2, BOOK.h], "ACME Q2", { face: "top", size: 2.5, tone: "hi", anchor: "middle", attr });
+    + faceText(P, [1, 1.2, BOOK.h], "ACME", { face: "top", size: 2.5, tone: "hi", anchor: "middle", attr });
 }
 
 // A chunk card lying flat at the origin: a white card with two lines of text and, once stamped, the
@@ -157,8 +157,7 @@ function pressFront() {
   const left = { x: PRESS_X - 7.4, y: OPEN_BOOK[1] - 6, w: 7.2, d: 12, r: 0.4 }, right = { ...left, x: PRESS_X + 0.2 };
   out.push(`<g data-reading>${S(k.slabOf(left, HEAD_Z + HEAD_H, 0.8, P, 2), { tone: "hi", crease: "lo" })}${S(k.slabOf(right, HEAD_Z + HEAD_H, 0.8, P, 2), { tone: "hi", crease: "lo" })}`
     + L([1, 2.6, 4.2, 5.8, 7.4, 9].map((dy) => k.lineOnTop([right.x + 1, right.y + dy + 0.6], [right.x + right.w - 1, right.y + dy + 0.6], HEAD_Z + HEAD_H + 0.8, P)).join(""), { tone: "faint" })
-    + faceText(P, [left.x + left.w / 2, left.y + 7, HEAD_Z + HEAD_H + 0.8], "ACME", { face: "top", size: 2.2, tone: "hi", anchor: "middle", attr: "data-cover-read" })
-    + faceText(P, [left.x + left.w / 2, left.y + 10, HEAD_Z + HEAD_H + 0.8], "Q2 2023", { face: "top", size: 1.7, tone: "mid", anchor: "middle", attr: "data-cover-read2" })
+    + faceText(P, [left.x + left.w / 2 + 1.4, left.y + left.d / 2, HEAD_Z + HEAD_H + 0.8], "ACME", { face: "top", along: "y", size: 2.2, tone: "hi", anchor: "middle", attr: "data-cover-read" })
     + `</g>`);
   const front = PRESS_HEAD.y + PRESS_HEAD.d;
   out.push(meter(P, { x: PRESS_X, y: front, z: HEAD_Z + 1.4, r: 4.6, ticks: 8, name: "cost", value: 0.25 }));
@@ -168,8 +167,7 @@ function pressFront() {
 // labels for the press and its meter, printed on the plate in front of it
 function pressLabels() {
   // two lines on the belt's front face, left of the press's front leg
-  return faceText(P, [BELT.x + 10, BELT.y + BELT.d, 4.4], t("CONTEXT PRESS", "PRENSA DE CONTEXTO"), { size: 2.1, tone: "mid" })
-    + faceText(P, [BELT.x + 10, BELT.y + BELT.d, 1.6], t("DIAL: $ PER M TOKENS", "DIAL: $ POR M TOKENS"), { size: 2.1, tone: "mid" });
+  return faceText(P, [BELT.x + 10, BELT.y + BELT.d, 2.2], t("CONTEXT PRESS", "PRENSA DE CONTEXTO"), { size: 2.1, tone: "mid" });
 }
 
 // The two cabinets the cards are filed in. Each has a lamp on top that lights while it is searched,
@@ -217,9 +215,8 @@ function rack() {
     out.push(`</g>`);
   });
   out.push(digitCounter(P, { x: RACK.x + 4, y: front, z: 1.6, count: 3, w: 4, h: 5.2, gap: 0.6, pad: 1.1, name: "pooled" }));
-  out.push(label(RACK.x + 20, front, 4.4, t("CANDIDATES", "CANDIDATOS"), 2.2), label(RACK.x + 20, front, 1.6, t("FIRST 150, BEST ON THE LEFT", "PRIMEROS 150, MEJOR A LA IZQ."), 1.8));
-  out.push(digitCounter(P, { x: RACK.x + RACK.w - 36, y: front, z: 1.6, count: 4, w: 4, h: 5.2, gap: 0.6, pad: 1.1, name: "rank" }));
-  out.push(label(RACK.x + RACK.w - 16, front, 4.4, t("ANSWER'S", "PUESTO DE"), 2.2), label(RACK.x + RACK.w - 16, front, 1.6, t("RANK", "RESPUESTA"), 2.2));
+  out.push(label(RACK.x + 20, front, 2.4, t("CANDIDATES · BEST LEFT", "CANDIDATOS · MEJOR IZQ."), 2.2));
+  // (the answer's rank is in the stats strip)
   return out.join("");
 }
 
@@ -240,8 +237,7 @@ function tray() {
   const front = TRAY.y + TRAY.d;
   const out = [S(k.slabOf(TRAY, 0, TRAY_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TRAY, 1.6), TRAY_H, P), { tone: "lo" }) })];
   out.push(L(SLOT.map(([x, y, z]) => k.planOutline({ x: x - 2.6, y: y - 3.8, w: 5.2, d: 7.6, r: 0.4 }, TRAY_H, P)).join(""), { tone: "faint" }));
-  out.push(digitCounter(P, { x: TRAY.x + 3, y: front, z: 1.2, count: 2, w: 3.6, h: 4.6, gap: 0.5, pad: 0.9, name: "k" }));
-  out.push(label(TRAY.x + 13, front, 1.8, t("PASSED TO THE MODEL", "PASADOS AL MODELO"), 2.2));
+  out.push(label(TRAY.x + 3, front, 1.6, t("TO THE MODEL", "AL MODELO"), 2.2));   // how many: the stats strip
   return out.join("");
 }
 
@@ -250,12 +246,9 @@ function tray() {
 function scoreboard() {
   const front = SCORE.y + SCORE.d;
   const out = [S(k.slabOf(SCORE, 0, SCORE_H, P, 3, 0.6), { tone: "mid" })];
-  out.push(digitCounter(P, { x: SCORE.x + 5, y: front, z: 3, count: 3, w: 5.2, h: 7, gap: 0.8, pad: 1.4, name: "asked" }));
-  out.push(label(SCORE.x + 5, front, 13, t("ASKED", "PREGUNTAS"), 2.6));
-  out.push(digitCounter(P, { x: SCORE.x + 30, y: front, z: 3, count: 3, w: 5.2, h: 7, gap: 0.8, pad: 1.4, name: "missed" }));
-  out.push(label(SCORE.x + 30, front, 13, t("MISSED", "SIN ENCONTRAR"), 2.6));
-  out.push(meter(P, { x: SCORE.x + 70, y: front, z: 3.6, r: 7.4, ticks: 8, zone: 0.5, name: "failrate", value: 0.2 }));
-  out.push(label(SCORE.x + 61, front, 13, t("FAILED  0-40%", "FALLAS  0-40%"), 2.4));
+  // (questions asked and answers missed are in the stats strip; the meter shows the share missed)
+  out.push(meter(P, { x: SCORE.x + 22, y: front, z: 2.6, r: 7.4, ticks: 8, zone: 0.5, name: "failrate", value: 0.2 }));
+  out.push(label(SCORE.x + 36, front, 7.6, t("MISSED", "FALLAS"), 2.4), label(SCORE.x + 36, front, 2.6, "0–40%", 2.4));
   out.push(`<g data-miss-lamp>${variants("miss", { off: lamp(P, [SCORE.x + SCORE.w - 6, SCORE.y + 6, SCORE_H], { r: 2.6 }), on: lamp(P, [SCORE.x + SCORE.w - 6, SCORE.y + 6, SCORE_H], { r: 2.6, lit: true }) }, "off")}</g>`);
   out.push(faceText(P, [SCORE.x + SCORE.w - 16, SCORE.y + 8, SCORE_H], t("MISS", "FALLA"), { face: "top", size: 2.4, tone: "mid", anchor: "middle" }));
   return out.join("");

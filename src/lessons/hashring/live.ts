@@ -37,7 +37,7 @@ export default function mount({ P, G, CARD_SVG }, root) {
     const letters = points.length <= 6 ? points.map((p) => {
       const [x, y] = onRing(p.angle, RING.groove[0] - 7);
       const lit = litAngle !== null && Math.abs(p.angle - litAngle) < 1e-6;
-      return k.faceTextSvg(k.topMatrix([x, y + 2.3], RING.top, P, "x"), p.node, { size: 6.5, tone: lit ? "lit" : "hi", anchor: "middle" });
+      return k.faceTextSvg(k.topMatrix([x, y + 2.3], RING.top, P, "x"), p.node, { size: 6.8, tone: lit ? "lit" : "hi", anchor: "middle" });
     }).join("") : "";
     return letters + sorted.map((p) => {
       const [x, y] = onRing(p.angle, RING.peg);
@@ -74,7 +74,7 @@ export default function mount({ P, G, CARD_SVG }, root) {
     out += S(slabOf(tray, 0, TRAY_H, P, 3, 0.5), { tone: "mid" });
     out += L(planOutline(insetPlan(tray, 2.5), TRAY_H, P, 3), { tone: "lo" });
     // The node's letter, engraved on the tray's front face.
-    const letter = k.faceTextSvg(k.sideMatrix([b.cx, tray.y + tray.d + 0.05], 1.4, P, "left"), NODE_IDS[index], { size: 6.6, tone: lit ? "lit" : "hi", anchor: "middle" });
+    const letter = k.faceTextSvg(k.sideMatrix([b.cx, tray.y + tray.d + 0.05], 1.4, P, "left"), NODE_IDS[index], { size: 6.9, tone: lit ? "lit" : "hi", anchor: "middle" });
     if (state === "down") {
       out += S(slabOf(insetPlan(tray, 1), TRAY_H, 2.5, P, 3, 0.4), { tone: "lo" });
       out += L(lineOnTop([tray.x + 5, tray.y + 5], [tray.x + tray.w - 5, tray.y + tray.d - 5], TRAY_H + 2.5, P) + lineOnTop([tray.x + tray.w - 5, tray.y + 5], [tray.x + 5, tray.y + tray.d - 5], TRAY_H + 2.5, P), { tone: "mid" });

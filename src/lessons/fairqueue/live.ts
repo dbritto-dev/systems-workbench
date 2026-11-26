@@ -42,8 +42,8 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     const k = el.kinds[kind];
     if (s.id !== j.id) {
       s.id = j.id;
-      const txt = String(j.id % 1000);
-      k.num.textContent = txt; WB.fontSize(k.num, txt.length <= 2 ? 3.4 : 2.6);
+      // two digits fit the box's top at 9 px: the ticket number's last two, like a ticket roll
+      k.num.textContent = String(j.id % 100); WB.fontSize(k.num, 3.4);
       k.key.textContent = NAMES[j.tenant];
     }
     if (s.lit !== lit) { s.lit = lit; k.body.toggleAttribute("data-lit", lit); k.body.toggleAttribute("data-lit-fill", lit); for (const x of [k.num, k.key]) x.setAttribute("data-tone", lit ? "on-lit" : "hi"); }
@@ -156,7 +156,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
         pressDz = -(G.HEAD.rest - top - 0.3) * Math.pow(Math.sin(Math.PI * f), 2);
       }
       want(j, pos, layer, true, true);
-      counters.serving.set(j.id % 1000);
+      counters.serving.set(j.id % 100);   // the same two digits as on the box
     } else if (c && c.idle !== undefined) {
       sy = lerp(shuttleY, G.LANE_YS[c.idle], ease(clamp((clock - c.start) / 0.3)));
       idleLit = c.waiting;

@@ -23,7 +23,7 @@ const PLATE_H = 12, FOOT_H = 5;
 // ---------- the chart recorder (back left) ----------
 const CHART = { x: -122, y: -84, w: 62, d: 6, r: 1 };
 const CHART_H = 46;
-export const PLOT = { x0: -114, x1: -66, y: CHART.y + CHART.d, z0: 17, z1: 39, max: 120, span: 60 };
+export const PLOT = { x0: -110, x1: -66, y: CHART.y + CHART.d, z0: 17, z1: 39, max: 120, span: 60 };
 
 // ---------- the order desk, just inside the door ----------
 const DESK = { x: -94, y: -26, w: 32, d: 18, r: 1.5 };
@@ -102,14 +102,13 @@ function chart() {
   out.push(L(grid.join(""), { tone: "faint" }));
   out.push(L(seg([PLOT.x0, y, PLOT.z0], [PLOT.x1, y, PLOT.z0]) + seg([PLOT.x0, y, PLOT.z0], [PLOT.x0, y, PLOT.z1]), { tone: "lo" }));
   for (const v of [0, 60, 120]) out.push(word(PLOT.x0 - 1.2, y, PLOT.z0 + ((PLOT.z1 - PLOT.z0) * v) / PLOT.max - 0.9, String(v), 2.2, { anchor: "end", tone: "lo" }));
-  out.push(word(PLOT.x1 + 2, y, PLOT.z1 + 2.8, t("PER MINUTE · LAST 60 S", "POR MINUTO · ÚLTIMOS 60 S"), 2.6, { anchor: "end", tone: "lo" }));
+  out.push(word(PLOT.x1 + 2, y, PLOT.z1 + 2.8, t("PER MIN, LAST 60 s", "POR MIN, ÚLT. 60 s"), 2.6, { anchor: "end", tone: "lo" }));
   out.push(`<path class="sh-pen" data-pen="cooked" d=""/>`, `<path class="sh-pen" data-pen="good" d=""/>`);
-  // the legend: each counter with a sample of its pen and its name above it
-  const cz = 2.2, lz = 10.2;
-  [["cooked", "cookedMin", CHART.x + 4, t("COOKED", "COCINADOS")], ["good", "goodMin", CHART.x + 33, t("IN TIME", "A TIEMPO")]].forEach(([key, name, x, label]) => {
-    out.push(digitCounter(P, { x: x + 1, y, z: cz, count: 3, w: 3.8, h: 5.2, gap: 0.5, pad: 1, name }));
-    out.push(`<path class="sh-pen" data-key="${key}" d="${k.pathOf([at([x, y, lz + 0.9]), at([x + 5, y, lz + 0.9])])}"/>`);
-    out.push(word(x + 6.4, y, lz, label, 2.9));
+  // the legend: a sample of each pen and its name, one under the other (the numbers are in the stats strip)
+  [["cooked", 9.2, t("COOKED", "COCINADOS")], ["good", 3.4, t("IN TIME", "A TIEMPO")]].forEach(([key, lz, label]) => {
+    const x = CHART.x + 6;
+    out.push(`<path class="sh-pen" data-key="${key}" d="${k.pathOf([at([x, y, lz + 1.2]), at([x + 6, y, lz + 1.2])])}"/>`);
+    out.push(word(x + 8, y, lz, label, 2.9));
   });
   return out.join("");
 }
@@ -120,7 +119,7 @@ function desk() {
   const out = [S(k.slabOf(DESK, 0, DESK_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(DESK, 1.8), DESK_H, P), { tone: "faint" }) })];
   const front = DESK.y + DESK.d;
   out.push(digitCounter(P, { x: DESK.x + 3, y: front, z: 1.4, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "desk" }));
-  out.push(word(DESK.x + 2, front, 9, t("ON THE DESK", "EN EL MOSTRADOR"), 2.6));
+  out.push(word(DESK.x + 2, front, 9, t("DESK", "MOSTRADOR"), 2.6));
   return out.join("");
 }
 
@@ -144,11 +143,11 @@ function railFront() {
   const front = RAILBOX.y + RAILBOX.d;
   // each counter with its name printed above it; the right end is left clear (the pass stands in front of it)
   const cnt = (x, name, label) => digitCounter(P, { x, y: front, z: 1.8, count: 3, w: 4.2, h: 5.6, gap: 0.6, pad: 1, name }) + word(x - 1, front, 10.6, label, 2.7);
-  out.push(cnt(RAILBOX.x + 4, "rail", t("ON THE RAIL", "EN EL RIEL")));
-  out.push(cnt(RAILBOX.x + 31, "oldest", t("OLDEST WAIT, S", "ESPERA MÁX., S")));
-  out.push(cnt(RAILBOX.x + 60, "dropped", t("DROPPED", "DESCARTADAS")));
-  out.push(meter(P, { x: RAILBOX.x + 90, y: front, z: 2.6, r: 5, ticks: 8, zone: 0.5, name: "standing", value: 0 }));
-  out.push(word(RAILBOX.x + 90, front, 10.6, t("NOT EMPTIED", "SIN VACIAR"), 2.6, { anchor: "middle" }));
+  out.push(cnt(RAILBOX.x + 4, "rail", t("ON RAIL", "EN RIEL")));
+  out.push(cnt(RAILBOX.x + 34, "oldest", t("OLDEST, s", "MÁX., s")));
+  // (how many were dropped is in the stats strip)
+  out.push(meter(P, { x: RAILBOX.x + 86, y: front, z: 2.6, r: 5, ticks: 8, zone: 0.5, name: "standing", value: 0 }));
+  out.push(word(RAILBOX.x + 86, front, 10.6, t("NOT EMPTIED", "SIN VACIAR"), 2.6, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -186,8 +185,7 @@ function pass() {
 function bin() {
   const out = [S(k.slabOf(BIN, 0, BIN_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(BIN, 1.6), BIN_H, P), { tone: "lo" }) })];
   const front = BIN.y + BIN.d;
-  out.push(digitCounter(P, { x: BIN.x + 2.4, y: front, z: 2, count: 3, w: 3.4, h: 4.8, gap: 0.5, pad: 0.8, name: "late" }));
-  out.push(word(BIN.x + BIN.w / 2, front, 9.4, t("TOO LATE", "TARDE"), 2.8, { anchor: "middle" }));
+  out.push(word(BIN.x + BIN.w / 2, front, 4, t("LATE", "TARDE"), 2.8, { anchor: "middle" }));   // how many: the stats strip
   return out.join("");
 }
 
@@ -210,8 +208,6 @@ function doorFront() {
   out.push(person(P, [-111, 34, 0], { scale: 0.72, hat: "cap" }));
   out.push(S(k.slabOf(PODIUM, 0, PODIUM_H, P, 3, 0.5), { tone: "mid" }));
   const front = PODIUM.y + PODIUM.d;
-  out.push(digitCounter(P, { x: PODIUM.x + 3.4, y: front, z: 1.6, count: 3, w: 4, h: 5.4, gap: 0.5, pad: 0.9, name: "turned" }));
-  out.push(word(PODIUM.x + PODIUM.w / 2, front, 9.4, t("TURNED AWAY", "SIN LUGAR"), 2.8, { anchor: "middle" }));
   return out.join("");
 }
 

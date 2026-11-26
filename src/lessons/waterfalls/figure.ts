@@ -26,7 +26,7 @@ export const RUN = { server: -97, start: 33 };          // where a runner stands
 const SERVER = { x: -144, y: -64, w: 38, d: 60, r: 2 };
 const SERVER_H = 20;
 export const SERVICES = ["cdn", "user", "posts", "notifs", "comments"];
-const SVC = { x: -140, w: 16, d: 10.6, h: 7, y0: -62.5, dy: 11.6 };
+const SVC = { x: -142, w: 34, d: 10.6, h: 7, y0: -62.5, dy: 11.6 };   // wide enough for its name on top at 9 px
 const svcPlan = (i) => ({ x: SVC.x, y: SVC.y0 + i * SVC.dy, w: SVC.w, d: SVC.d, r: 1 });
 
 // The browser's inbox bench at the near end: a slot per lane, where the crates land.
@@ -38,7 +38,7 @@ export const CRATE_X = 78;
 const WALL_Y = -84, WALL_D = 4;
 export const FACE_Y = WALL_Y + WALL_D;
 const BOARD = { x0: -106, x1: 38, z0: 8, z1: 64 };
-export const CHART = { x0: -78, x1: 34, top: 60, rowH: 4.8, axis: 14.8, label: 10.8, labelX: -102 };
+export const CHART = { x0: -71, x1: 34, top: 60, rowH: 5, axis: 14.8, label: 10.8, labelX: -102 };   // rows 9 px tall, names left of x0
 export const ROWS = [...LANES, "cpu"];
 const SCREEN = { x0: 44, x1: 122, z0: 8, z1: 64 };
 
@@ -81,7 +81,7 @@ function board() {
   ROWS.forEach((name, i) => {
     const z = rowZ(i);
     rules.push(k.pathOf([at([CHART.x0, FACE_Y + 0.05, z]), at([CHART.x1, FACE_Y + 0.05, z])]));
-    const label = name === "cpu" ? t("MAIN THREAD", "HILO PRINCIPAL") : NAMES[name];
+    const label = name === "cpu" ? t("MAIN THREAD", "HILO PRINC.") : NAMES[name];
     out.push(faceText(P, [CHART.x0 - 1.6, FACE_Y + 0.05, z + 1.3], label, { size: 2.3, tone: name === "cpu" ? "mid" : "hi", anchor: "end" }));
   });
   out.push(L(rules.join(""), { tone: "faint" }));
@@ -127,7 +127,7 @@ function server() {
   out.push(text(SERVER.x + SERVER.w / 2, SERVER.y + SERVER.d, 8, t("SERVER", "SERVIDOR"), 3.4, { anchor: "middle" }));
   SERVICES.forEach((name, i) => {
     const plan = svcPlan(i);
-    const word = (lit) => faceText(P, [plan.x + plan.w, plan.y + plan.d - 0.5, SERVER_H + 2.4], name === "cdn" ? "CDN" : name, { face: "x", size: 2, tone: lit ? "on-lit" : "hi" });
+    const word = (lit) => faceText(P, [plan.x + plan.w / 2, plan.y + plan.d / 2 + 1.7, SERVER_H + SVC.h], name === "cdn" ? "CDN" : name, { face: "top", size: 2, tone: lit ? "on-lit" : "hi", anchor: "middle" });
     const block = (lit) => S(k.slabOf(plan, SERVER_H, SVC.h, P, 3, 0.4), { tone: "hi", crease: "lo", lit }) + word(lit);
     out.push(`<g data-svc="${name}"><g data-v="off">${block(false)}</g><g data-v="on" style="display:none">${litFill(block(true))}</g></g>`);
   });
@@ -194,8 +194,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A relay track on a base plate. At the far end stands the server, with a block on top for each service: CDN, user, posts, notifs and comments. At the near end is the browser's inbox bench, with a labelled slot for each request the page can make: HTML, main.js, comments.js, /user, /posts, /notifs, /comments and /page. Between them, one lane per request. A request is a small runner: it waits at the start line until the page asks for it, runs to the server, waits while its service works, and runs back carrying a crate of data that lands on its slot. A lamp on the bench lights while the main thread runs JavaScript. Behind the track, a chart board draws every request as a bar against time, the waterfall, with a row for the main thread; beside it, a page screen whose header, posts, comments and notifications fill in as their data lands. A console in front counts the milliseconds, the round trips in a row so far, the requests in flight and the ones that have landed.",
-      "Una pista de relevos sobre una placa base. En el extremo lejano está el servidor, con un bloque encima por cada servicio: CDN, user, posts, notifs y comments. En el extremo cercano está la mesa de entrada del navegador, con una ranura con nombre por cada solicitud que la página puede hacer: HTML, main.js, comments.js, /user, /posts, /notifs, /comments y /page. Entre ambos, un carril por solicitud. Una solicitud es un pequeño corredor: espera en la línea de salida hasta que la página la pide, corre al servidor, espera mientras su servicio trabaja y vuelve con una caja de datos que cae en su ranura. Una lámpara en la mesa se enciende mientras el hilo principal ejecuta JavaScript. Detrás de la pista, un tablero dibuja cada solicitud como una barra en el tiempo, la cascada, con una fila para el hilo principal; al lado, una pantalla de la página cuyo encabezado, publicaciones, comentarios y notificaciones se completan a medida que llegan sus datos. Una consola al frente cuenta los milisegundos, los viajes de ida y vuelta en cadena hasta ahora, las solicitudes en vuelo y las que ya llegaron.",
+      "A relay track on a base plate. At the far end stands the server, with a block on top for each service: CDN, user, posts, notifs and comments. At the near end is the browser's inbox bench, with a labelled slot for each request the page can make: HTML, main.js, comments.js, /user, /posts, /notifs, /comments and /page. Between them, one lane per request. A request is a small runner: it waits at the start line until the page asks for it, runs to the server, waits while its service works, and runs back carrying a crate of data that lands on its slot. A lamp on the bench lights while the main thread runs JavaScript. Behind the track, a chart board draws every request as a bar against time, the waterfall, with a row for the main thread; beside it, a page screen whose header, posts, comments and notifications fill in as their data lands.",
+      "Una pista de relevos sobre una placa base. En el extremo lejano está el servidor, con un bloque encima por cada servicio: CDN, user, posts, notifs y comments. En el extremo cercano está la mesa de entrada del navegador, con una ranura con nombre por cada solicitud que la página puede hacer: HTML, main.js, comments.js, /user, /posts, /notifs, /comments y /page. Entre ambos, un carril por solicitud. Una solicitud es un pequeño corredor: espera en la línea de salida hasta que la página la pide, corre al servidor, espera mientras su servicio trabaja y vuelve con una caja de datos que cae en su ranura. Una lámpara en la mesa se enciende mientras el hilo principal ejecuta JavaScript. Detrás de la pista, un tablero dibuja cada solicitud como una barra en el tiempo, la cascada, con una fila para el hilo principal; al lado, una pantalla de la página cuyo encabezado, publicaciones, comentarios y notificaciones se completan a medida que llegan sus datos.",
     ),
     body: [
       plate(),
@@ -205,7 +205,6 @@ export function buildFigure() {
       lanes(),
       `<g data-layer="runners">${runners()}</g>`,
       bench(),
-      console_(),
     ],
   });
 }

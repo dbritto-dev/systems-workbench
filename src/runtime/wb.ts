@@ -44,7 +44,8 @@ export function floorText(svg: string, width: number): string {
   return svg.replace(/<text\b[^>]*>/g, (tag) => {
     const fs = +(tag.match(/font-size="([\d.]+)"/)?.[1] ?? NaN);
     const m = tag.match(/transform="matrix\(([^)]*)\)"/)?.[1].split(/[\s,]+/).map(Number);
-    const scale = m ? Math.hypot(m[0], m[1]) : 1;
+    if (!m) return tag;   // in a transformed group: its scale isn't known here
+    const scale = Math.hypot(m[0], m[1]);
     return !(fs > 0) || fs * scale >= min ? tag : tag.replace(/font-size="[\d.]+"/, `font-size="${+(min / scale).toFixed(3)}"`);
   });
 }
@@ -54,6 +55,8 @@ export const place = (el: Element, P: Projection, p: Point3) => el.setAttribute(
  *  wheels can show (0 to 99…9) instead of wrapping. */
 export function counter(root: ParentNode, name: string, P: Projection) {
   const el = root.querySelector(`[data-counter="${name}"]`)!;
+  // A counter the figure no longer draws (its number is in the stats strip): a no-op, so live code needn't change.
+  if (!el) return { el, set: (_v: number) => {}, setClamped: (_v: number) => {} };
   const g = geoOf(el), wheels = [...el.querySelectorAll("[data-wheel]")], shown: number[] = [];
   const set = (v: number) => {
     digitsOf(v, g.cells.length).forEach((d: number, j: number) => {

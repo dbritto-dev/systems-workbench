@@ -122,7 +122,8 @@ function mergedFace() {
   for (const [layout, edges] of Object.entries(LAYOUTS)) {
     const xs = tubeXs(3, edges.length + 1);
     out.push(`<g data-labels="${layout}"${layout === "fine" ? "" : ' style="display:none"'}>`);
-    [...edges.map(String), "+INF"].forEach((label, j) => {
+    // thousands as "1k", "2.5k" and the last as "∞": short enough for neighbouring sockets at 9 px
+    [...edges.map((e) => (e >= 1000 ? e / 1000 + "k" : String(e))), "∞"].forEach((label, j) => {
       if (edges[j] === SLO) out.push(L(k.planOutline({ x: xs[j] - 4.4, y: y - 3.4, w: 8.8, d: 4.4, r: 0.5 }, CAB_H, P), { tone: "hi" }));
       out.push(word(xs[j], y, CAB_H, label, { face: "top", anchor: "middle", tone: "hi" }));
     });

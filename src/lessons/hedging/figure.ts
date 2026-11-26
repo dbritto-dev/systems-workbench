@@ -45,7 +45,7 @@ export const COUNTERS = {
   p50: { x: -99, count: 4 },
   p99: { x: -66, count: 4 },
   copies: { x: -33, count: 3 },
-  extra: { x: -6, count: 3 },
+  extra: { x: 0, count: 3 },
 };
 
 export const P = k.fitProjection(
@@ -105,7 +105,7 @@ function lane(i) {
 function consoleDesk() {
   const out = [S(k.slabOf(CONSOLE, 0, CONSOLE_H, P, 4, 0.5), { tone: "mid" })];
   const fy = CONSOLE.y + CONSOLE.d;
-  const labels = { p50: "P50, ms", p99: "P99, ms", copies: t("COPIES, %", "COPIAS, %"), extra: t("EXTRA WORK, %", "TRABAJO EXTRA, %") };
+  const labels = { p50: "P50, ms", p99: "P99, ms", copies: t("COPIES, %", "COPIAS, %"), extra: t("EXTRA, %", "EXTRA, %") };
   for (const key of Object.keys(COUNTERS)) {
     const c = COUNTERS[key];
     out.push(text(c.x, fy, 8.2, labels[key], { size: 3, tone: "mid" }));

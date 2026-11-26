@@ -76,10 +76,8 @@ export const COUNTERS = {
   depth: { x: -104, y: PED.y + PED.d, z: 1.6, w: 5.2, h: 6, gap: 0.8, count: 2, size: "m" },
   deepest: { x: -83, y: PED.y + PED.d, z: 1.6, w: 5.2, h: 6, gap: 0.8, count: 2, size: "m" },
   waiting: { x: COL.x - 1.4, y: COL.front + 2, z: 1.2, w: 4.2, h: 4.8, gap: 0.6, count: 3, size: "s" },
-  onTime: { x: TRAYS[0].x + 3, y: TRAYS[0].y + TRAYS[0].d, z: 0.7, w: 4.2, h: 4.6, gap: 0.6, count: 3, size: "s" },
-  late: { x: TRAYS[1].x + 3, y: TRAYS[1].y + TRAYS[1].d, z: 0.7, w: 4.2, h: 4.6, gap: 0.6, count: 3, size: "s" },
-  oldest: { x: DESK.x + 3, y: DESK.y + DESK.d, z: 2.4, w: 4.4, h: 5.4, gap: 0.6, count: 2, size: "s" },
 };
+// (Finished in time, gave up and the oldest wait are in the stats strip; the trays show the piles.)
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H })
@@ -97,8 +95,8 @@ function callStack(initial) {
   const out = [];
   // Pedestal with the two counters on its front.
   out.push(S(k.slabOf(PED, 0, PED_H, P, 4, 0.6), { tone: "mid" }));
-  out.push(text(-93, PED.y + PED.d, 3.2, bi("DEPTH", "PROF."), { size: 2.1, tone: "mid" }));
-  out.push(text(-72, PED.y + PED.d, 3.2, bi("DEEPEST", "MÁXIMA"), { size: 2.1, tone: "mid" }));
+  // their names lie on the pedestal top in front of the tower, above each counter
+  for (const [x, words] of [[COUNTERS.depth.x, bi("DEPTH", "PROF.")], [COUNTERS.deepest.x, bi("DEEPEST", "MÁXIMA")]]) out.push(k.faceTextSvg(k.topMatrix([x, PED.y + PED.d - 2.4], PED_H, P, "x"), words, { size: 2.1, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.depth, housing: false, name: "depth", value: initial.length }));
   out.push(digitCounter(P, { ...COUNTERS.deepest, housing: false, name: "deepest", value: initial.length }));
   // Backboard with a ruler of frame levels beside the stack, the limit marked.
@@ -122,7 +120,7 @@ function callStack(initial) {
   const shelf = { x: CS.x - 1.6, y: BACK.y + BACK.d, w: CS.w + 3.2, d: CS.front + 1.6 - (BACK.y + BACK.d), r: 1.2 };
   out.push(S(k.slabOf(shelf, CEIL_Z, 1.6, P, 3, 0.3), { tone: "mid" }));
   out.push(L(k.faceRectY(P, shelf.x + 2, shelf.x + shelf.w - 2, shelf.y + shelf.d, CEIL_Z + 0.4, CEIL_Z + 1.2), { tone: "faint" }));
-  out.push(text(shelf.x + shelf.w / 2, shelf.y + shelf.d, CEIL_Z + 0.35, bi("LIMIT", "LÍMITE"), { size: 1.3, tone: "lo", anchor: "middle" }));
+  out.push(text(BACK.x + 3, BACK.y + BACK.d, CEIL_Z + 3.2, bi("LIMIT", "LÍMITE"), { size: 1.3, tone: "lo" }));
   out.push(`<g data-cs-posts>${[shelf.x + 0.9, shelf.x + shelf.w - 0.9].map((x) => S(k.cylinder(x, shelf.y + shelf.d - 0.9, 0.75, PED_H, CEIL_Z - PED_H, P, 12), { tone: "mid", crease: "none" })).join("")}</g>`);
   // The top-of-stack marker: a lit collar riding the front-right post, level with the top plate.
   const postX = shelf.x + shelf.w - 0.9, postY = shelf.y + shelf.d - 0.9;
@@ -187,7 +185,7 @@ function server(state) {
   // Column: base with WAITING and OLDEST counters, three corner posts (front corner open).
   const base = { x: COL.x - 3, y: COL.y - 3, w: COL.w + 6, d: COL.d + 5, r: 1.4 };
   out.push(S(k.slabOf(base, 0, COL_BASE_H, P, 3, 0.4), { tone: "mid" }));
-  out.push(text(COUNTERS.waiting.x, base.y + base.d, 7.1, bi("WAITING", "EN ESPERA"), { size: 1.9, tone: "mid" }));
+  out.push(text(COUNTERS.waiting.x, base.y + base.d, 7.1, bi("WAITING", "EN COLA"), { size: 1.9, tone: "mid" }));
   const top = tkZ(TK_SHOW) + 2;
   for (const [x, y] of [[COL.x - 0.6, COL.y - 0.6], [COL.x + COL.w + 0.6, COL.y - 0.6], [COL.x - 0.6, COL.y + COL.d + 0.6]]) {
     out.push(S(k.cylinder(x, y, 0.7, COL_BASE_H, top - COL_BASE_H, P, 10), { tone: "mid", crease: "none" }));
@@ -199,8 +197,6 @@ function server(state) {
   out.push(digitCounter(P, { ...COUNTERS.waiting, housing: false, name: "waiting", value: state.tickets.length }));
   // Desk, the request in hand, and the grabber arm reaching from the desk to the column.
   out.push(S(k.slabOf(DESK, 0, DESK_H, P, 4, 0.6), { tone: "mid" }));
-  out.push(text(COUNTERS.oldest.x + 11, DESK.y + DESK.d, 4.2, bi("OLDEST WAIT, s", "ESPERA MÁX., s"), { size: 1.9, tone: "mid" }));
-  out.push(digitCounter(P, { ...COUNTERS.oldest, housing: false, name: "oldest", value: 3 }));
   out.push(`<g data-work${hidden(state.working)}>${S(k.slabOf(WORK, DESK_H, TK_TH, P, 2, 0.2), { tone: "hi", crease: "lo", lit: true })}</g>`);
   out.push(`<g data-work-stale style="display:none">${S(k.slabOf(WORK, DESK_H, TK_TH, P, 2, 0.2), { tone: "hi", crease: "lo" })}</g>`);
   const arm = S(k.slabOf({ x: COL.x + COL.w - 4, y: COL.cy - 1.2, w: DESK.x + 1.4 - (COL.x + COL.w - 4), d: 2.4, r: 0.5 }, 0, 1.4, P, 2), { tone: "hi", crease: "lo", lit: true })
@@ -213,8 +209,7 @@ function server(state) {
     out.push(S(k.slabOf(t, 0, TRAY_H, P, 3, 0.4), { tone: "mid" }));
     out.push(L(k.planOutline(k.insetPlan(t, 1.4), TRAY_H, P), { tone: "lo" }));
     for (let s = 0; s < TRAY_SHOW; s++) out.push(`<g data-tray="${i}-${s}"${hidden(s < state.trays[i])}${i ? " data-stale" : ""}>${S(k.slabOf({ x: t.x + 4.5, y: t.y + 2.4, w: 13, d: 10, r: 0.6 }, TRAY_H + s * 1.3, 1.1, P, 2), { tone: "hi", crease: "lo" })}</g>`);
-    out.push(digitCounter(P, { ...(i ? COUNTERS.late : COUNTERS.onTime), housing: false, name: (i ? "late" : "onTime"), value: state.trays[i] * 7 }));
-    out.push(text(t.x + 3, t.y + t.d, 6.5, i ? bi("TOO LATE", "TARDE") : bi("IN TIME", "A TIEMPO"), { size: 1.9, tone: "mid" }));
+    out.push(text(t.x + t.w / 2, t.y + t.d, 2.4, i ? bi("TOO LATE", "TARDE") : bi("IN TIME", "A TIEMPO"), { size: 1.9, tone: "mid", anchor: "middle" }));
   });
   return out.join("");
 }

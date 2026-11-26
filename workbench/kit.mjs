@@ -81,8 +81,10 @@ export function textFloor(svg, width, px = TEXT_FLOOR_PX) {
   return svg.replace(/<text\b[^>]*>/g, (tag) => {
     const fs = +(tag.match(/font-size="([\d.]+)"/)?.[1] ?? NaN);
     if (!(fs > 0)) return tag;
+    // a text without its own matrix sits in a transformed group whose scale isn't known here: leave it to its lesson
     const m = tag.match(/transform="matrix\(([^)]*)\)"/)?.[1].split(/[\s,]+/).map(Number);
-    const scale = m ? Math.hypot(m[0], m[1]) : 1;
+    if (!m) return tag;
+    const scale = Math.hypot(m[0], m[1]);
     return fs * scale >= min ? tag : tag.replace(/font-size="[\d.]+"/, `font-size="${+(min / scale).toFixed(3)}"`);
   });
 }

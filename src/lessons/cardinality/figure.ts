@@ -70,6 +70,7 @@ const { S, L, at } = shorthand(P);
 // Counters: printed wheels on a front face (constant y), on a thin housing plate.
 const PROUD = 1.2;
 export const COUNTERS = {
+  // (requests, traces kept and errors are in the stats strip)
   requests: { x: APP.x + 3.4, y: APP.y + APP.d + PROUD, z: 13, w: 3.4, h: 5.4, gap: 0.5, count: 5, size: "s", housing: { x: APP.x + 2.2, z0: 11.8, z1: 19.6 } },
   series: { x: BOARD.x + 5.5, y: BOARD.y + BOARD.d + PROUD, z: 7, w: 5, h: 8, gap: 0.8, count: 6, size: "m", housing: { x: BOARD.x + 3.5, z0: 5, z1: 17 } },
   kept: { x: ARCH.x + 36.8, y: ARCH.y + ARCH.d + PROUD, z: 11.5, w: 3.8, h: 5.4, gap: 0.5, count: 4, size: "s", housing: { x: ARCH.x + 35.4, z0: 10.3, z1: 18.1 } },
@@ -109,8 +110,6 @@ function service() {
   for (let i = 0; i < 9; i++) { const y = APP.y + 10 + i * 4; vents.push(k.pathOf([at([OUT_X, y, 15]), at([OUT_X, y, 22])])); }
   out.push(L(vents.join(""), { tone: "lo" }));
   for (const y of [MBELT.y, TBELT.y]) out.push(L(k.pathOf([[OUT_X, y - 5, 1], [OUT_X, y + 5, 1], [OUT_X, y + 5, 9], [OUT_X, y - 5, 9]].map(at), true), { tone: "lo" }));
-  out.push(counter(COUNTERS.requests, "requests"));
-  out.push(printed(APP.x + 2.4, fy, 8.2, t("REQUESTS", "SOLICITUDES"), 2.6, "mid"));
   out.push(k.dotsSvg([at([APP.x + 4, fy, 23]), at([APP.x + 7, fy, 23])], { size: 0.6, tone: "lo" }));
   return out.join("");
 }
@@ -211,14 +210,8 @@ function archive() {
     out.push(`<g data-card="${s}" style="display:none">${S(k.slabOf({ x: x - 1.9, y: y - 0.6, w: 3.8, d: 1.2, r: 0.2 }, z, 6.5, P, 1), { tone: "hi", crease: "lo" })}</g>`);
   }
   const fy = ARCH.y + ARCH.d;
-  out.push(printed(ARCH.x + 4, fy, 13, t("TRACES KEPT", "TRAZAS GUARDADAS"), 2.6, "mid"));
-  out.push(counter(COUNTERS.kept, "kept"));
-  // The Spanish words are longer than the gaps between the counters: start them further left, and print the
-  // second one a size down (no shorter word for "kept" fits there).
-  out.push(`<g data-l="en">${printed(ARCH.x + 4, fy, 4, "ERRORS", 2.6, "mid")}</g><g data-l="es">${printed(ARCH.x + 2.4, fy, 4, "ERRORES", 2.6, "mid")}</g>`);
-  out.push(`<g data-l="en">${printed(ARCH.x + 31, fy, 4, "KEPT", 2.6, "mid")}</g><g data-l="es">${printed(ARCH.x + 29.9, fy, 4.4, "QUEDAN", 2, "mid")}</g>`);
-  out.push(counter(COUNTERS.errors, "errors"));
-  out.push(counter(COUNTERS.errorsKept, "errorsKept"));
+  // the drawer's name on its front (the stats strip counts the traces and errors kept)
+  out.push(printed(ARCH.x + 2.4, fy, 7, t("TRACES KEPT", "TRAZAS GUARDADAS"), 2.6, "mid"));
   return out.join("");
 }
 
@@ -237,8 +230,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A tally hall on a base plate. A service cabinet on the left sends a tally card up a belt at the back for every request; each distinct combination of label values owns one pigeonhole in a 12 by 8 tally wall, a series counter and a memory dial stand beside it, and cards with no hole left fall into an overflow bin. Along the front, each request's trace rides a second belt through a head gate, a buffer rack and a tail gate, each gate with a drop bin; traces that are kept stand as cards in an archive drawer whose front counts traces kept, errors and errors kept. Error traces are lit.",
-      "Una sala de conteo sobre una placa base. A la izquierda, un gabinete de servicio manda por cada solicitud una tarjeta de conteo por una cinta al fondo; cada combinación distinta de valores de etiquetas tiene un casillero en una pared de conteo de 12 por 8, junto a ella hay un contador de series y un dial de memoria, y las tarjetas que ya no tienen casillero caen a un contenedor de desborde. Por delante, la traza de cada solicitud viaja en una segunda cinta por una compuerta head, un estante búfer y una compuerta tail, cada compuerta con un contenedor de descarte; las trazas guardadas quedan de pie como tarjetas en un cajón de archivo, cuyo frente cuenta las trazas guardadas, los errores y los errores que quedan. Las trazas de error están iluminadas.",
+      "A tally hall on a base plate. A service cabinet on the left sends a tally card up a belt at the back for every request; each distinct combination of label values owns one pigeonhole in a 12 by 8 tally wall, a series counter and a memory dial stand beside it, and cards with no hole left fall into an overflow bin. Along the front, each request's trace rides a second belt through a head gate, a buffer rack and a tail gate, each gate with a drop bin; traces that are kept stand as cards in an archive drawer. Error traces are lit.",
+      "Una sala de conteo sobre una placa base. A la izquierda, un gabinete de servicio manda por cada solicitud una tarjeta de conteo por una cinta al fondo; cada combinación distinta de valores de etiquetas tiene un casillero en una pared de conteo de 12 por 8, junto a ella hay un contador de series y un dial de memoria, y las tarjetas que ya no tienen casillero caen a un contenedor de desborde. Por delante, la traza de cada solicitud viaja en una segunda cinta por una compuerta head, un estante búfer y una compuerta tail, cada compuerta con un contenedor de descarte; las trazas guardadas quedan de pie como tarjetas en un cajón de archivo,. Las trazas de error están iluminadas.",
     ),
     body: [
       plate(),

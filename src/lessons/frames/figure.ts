@@ -27,8 +27,9 @@ export const BLOCK = { y0: -18.5, y1: -9 };
 export const HEIGHTS = { task: 8, input: 6.4, js: 5, style: 3, layout: 4, paint: 2.2 };
 export const CARD = { y: -3, w: 3.6, h: 6.4 };
 export const DRUM = { x: 71, y: -10, r: 8 };
-const BENCH = { x: -46, y: -53, w: 82, d: 11, r: 1.2, h: 11 };
-export const LAMP_X = [0, 1, 2, 3, 4, 5].map((i) => -39 + 13.2 * i);
+// Wide enough for the stage names at 9 px (ENTRADA, PINTADO) under lamps 18 apart.
+const BENCH = { x: -66, y: -53, w: 110, d: 11, r: 1.2, h: 11 };
+export const LAMP_X = [0, 1, 2, 3, 4, 5].map((i) => -56 + 18.4 * i);
 const WORKER = [67, -33];
 const CABINET = { x: 82, y: -58, w: 44, d: 24, r: 1.5, h: 13 };
 const SCREEN = { x: 85, y: -60, w: 38, d: 4, r: 0.8, z0: 13, z1: 42 };
@@ -102,7 +103,7 @@ function gantry() {
 // The vsync drum that drives the belt: a dial whose needle turns once per frame, and a plaque with the rate.
 function drum() {
   const out = [dial(P, { x: DRUM.x, y: DRUM.y, z: 0, r: DRUM.r, h: BELT.z + 1, ticks: 40, every: 5, name: "vsync", label: "VSYNC" })];
-  const hz = (n, ms) => plaque(P, { x: DRUM.x - 9, y: 4, z: 0, w: 31, d: 7, text: n + " Hz · " + ms + " ms", size: 2.7 });
+  const hz = (n, ms) => plaque(P, { x: DRUM.x - 18, y: 4, z: 0, w: 40, d: 7, text: n + " Hz · " + ms + " ms", size: 2.7 });
   out.push(variants("hz", { "60": hz(60, "16.7"), "120": hz(120, "8.3") }, "60"));
   return out.join("");
 }
@@ -152,7 +153,7 @@ function clickCorner() {
   const g = GAUGE, front = g.y + g.d;
   out.push(S(slab({ x: g.x, y: g.y, w: g.w, d: g.d, r: 1 }, 0, g.h, 3, 0.4), { tone: "mid" }));
   out.push(meter(P, { x: g.x + g.w / 2, y: front, z: 4.6, r: 7, ticks: 10, zone: 0.4, name: "click" }));
-  out.push(text(g.x + g.w / 2, front, 1.4, "0 – 500 ms", 2.4, { anchor: "middle", tone: "lo" }));
+  out.push(text(g.x + g.w / 2, front, 1.4, "0–500 ms", 2.4, { anchor: "middle", tone: "lo" }));
   out.push(faceText(P, [g.x + g.w / 2, g.y + 6.4, g.h], t("LAST CLICK", "ÚLTIMO CLIC"), { face: "top", size: 2.6, tone: "mid", anchor: "middle" }));
   return out.join("");
 }

@@ -131,8 +131,7 @@ function rig(first) {
   // The front desk: one user request, waiting on its calls.
   out.push(S(k.slabOf(DISP, 0, DISP_H, P, 4, 0.5), { tone: "mid" }));
   const fy = DISP.y + DISP.d;
-  out.push(text(DISP.x + 3, fy, 8.4, t("REQUEST", "SOLICITUD"), { size: 2.6, tone: "mid" }));
-  out.push(text(DISP.x + 19.5, fy, 3, t("CALLS OUT", "PENDIENTES"), { size: 2, tone: "mid" }));
+  out.push(text(DISP.x + 3, fy, 8.4, t("CALLS OUT", "PENDIENTES"), { size: 2.6, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.out, housing: false, name: "out", value: first.out }));
   out.push(`<g class="wb-lit-group" data-token transform="${k.translateAlong(P, TOKEN_SPOT)}"${first.token ? "" : ' style="display:none"'}>${chipSvg(false)}</g>`);
   return out.join("");
@@ -166,7 +165,7 @@ function histogram(first) {
 function readouts(first) {
   const out = [S(k.slabOf(DESK, 0, DESK_H, P, 4, 0.5), { tone: "mid" })];
   const fy = DESK.y + DESK.d;
-  const labels = { mean: t("MEAN, ms", "MEDIA, ms"), p50: "P50, ms", p99: "P99, ms", slow: t("> 100 ms, %", "> 100 ms, %") };
+  const labels = { mean: t("MEAN, ms", "MEDIA, ms"), p50: "P50, ms", p99: "P99, ms", slow: t("SLOW, %", "LENTAS, %") };
   for (const key of ["mean", "p50", "p99", "slow"]) {
     const c = COUNTERS[key];
     out.push(text(c.x, fy, 9, labels[key], { size: 2.3, tone: "mid" }));

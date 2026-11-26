@@ -126,10 +126,10 @@ function vault() {
   out.push(plaque(P, { x: CAB.x + 4, y: CAB_FRONT + 6, z: PLINTH_H, w: CAB.w - 8, d: 12, text: t("VAULT · 1,000 ROWS", "BÓVEDA · 1,000 FILAS"), size: 4.2 }));
   // counters on the plinth's front: rows cracked, and rows whose hash is the same as another row's
   const y = PLINTH_FRONT, z = 2;
-  const c1 = PLINTH.x + 5, c2 = PLINTH.x + 50;
+  const c1 = PLINTH.x + 5, c2 = PLINTH.x + 57;
   out.push(housing(c1 - 1.2, c1 + span(4) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c1, y, z, 4, "cracked"), cap(c1 - 1.2, y, CAP_Z(z), t("CRACKED", "ADIVINADAS")));
   out.push(cap(c1 + span(4) + 2.6, y, z + 1.4, t("OF 1,000", "DE 1,000")));
-  out.push(housing(c2 - 1.2, c2 + span(3) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c2, y, z, 3, "same"), cap(c2 - 1.2, y, CAP_Z(z), t("SAME HASH", "MISMO HASH")));
+  out.push(housing(c2 - 1.2, c2 + span(3) + 1.2, y, z - 1.2, z + WH.h + 1.2), wheels(c2, y, z, 3, "same"), cap(c2 - 1.2, y, CAP_Z(z), t("SAME HASH", "IGUALES")));
   out.push(S(k.slabOf(CAB, PLINTH_H, CAB_H, P, 3, 0.5), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(CAB, 2), PLINTH_H + CAB_H, P), { tone: "faint" }));
   return out.join("");
@@ -141,9 +141,10 @@ function drawer(i) {
   const out = [`<g class="wb-lit-group" data-drawer="${i}">`];
   out.push(S(k.slabOf(plan, z, DRAWER.h, P, 2, 0.3), { tone: "hi", crease: "lo" }));
   const fy = CAB_FRONT + 1;
-  out.push(faceText(P, [x + 1.4, fy, z + 8], "A", { size: CAP * 1.25, tone: "hi", attr: "data-letter" }));
-  out.push(faceText(P, [x + DRAWER.w - 1.4, fy, z + 8], "0000", { size: CAP, tone: "hi", anchor: "end", attr: "data-hash" }));
-  out.push(faceText(P, [x + DRAWER.w / 2, fy, z + 2.4], "SALT 00", { size: CAP, tone: "hi", anchor: "middle", attr: "data-salt" }));
+  // two lines at 9 px: the letter and the salt (top right), then the stored hash
+  out.push(faceText(P, [x + 1.4, fy, z + 8.4], "A", { size: CAP * 1.25, tone: "hi", attr: "data-letter" }));
+  out.push(faceText(P, [x + DRAWER.w - 1.4, fy, z + 8.4], "00", { size: CAP, tone: "mid", anchor: "end", attr: "data-salt" }));
+  out.push(faceText(P, [x + DRAWER.w / 2, fy, z + 2.4], "0000", { size: CAP, tone: "hi", anchor: "middle", attr: "data-hash" }));
   out.push(`</g>`);
   return out.join("");
 }

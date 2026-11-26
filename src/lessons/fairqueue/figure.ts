@@ -146,8 +146,7 @@ function arm() {
 function bin() {
   const out = [S(k.slabOf(BIN, 0, BIN_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(BIN, 2.2), BIN_H, P), { tone: "lo" }) })];
   const front = BIN.y + BIN.d;
-  out.push(digitCounter(P, { x: BIN.x + 3, y: front, z: 1.4, count: 3, w: 3.8, h: 4.8, gap: 0.6, pad: 0.9, name: "done" }));
-  out.push(text(BIN.x + 18.2, front, 2.6, t("DONE", "HECHOS"), 2.8));
+  out.push(text(BIN.x + BIN.w / 2, front, 2.6, t("DONE", "HECHOS"), 2.8, { anchor: "middle" }));   // how many: the stats strip
   return out.join("");
 }
 
@@ -159,7 +158,7 @@ export function parcelSvg() {
     const b = { x: -BOX.w / 2, y: -BOX.d / 2, w: BOX.w, d: BOX.d, r: 0.5 };
     const out = [`<g data-kind="${kind}"${kind === "tall" ? ' style="display:none"' : ""}>`];
     out.push(litFill(S(k.slabOf(b, 0, h, P, 2, 0.3), { tone: "hi", crease: "lo" })).replace('class="iso-solid"', 'class="iso-solid" data-body'));
-    out.push(L(k.lineOnTop([b.x + 3, b.y], [b.x + 3, b.y + b.d], h, P), { tone: "faint" }));
+    out.push(L(k.lineOnTop([b.x + 1.2, b.y], [b.x + 1.2, b.y + b.d], h, P), { tone: "faint" }));
     out.push(faceText(P, [0.8, 0.9, h], "0", { face: "top", size: 3.4, tone: "hi", anchor: "middle", attr: "data-num" }));
     out.push(faceText(P, [0, BOX.d / 2, 1.2], "A", { size: 3.4, tone: "hi", anchor: "middle", attr: "data-key" }));
     out.push(`</g>`);

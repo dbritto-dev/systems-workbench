@@ -32,7 +32,7 @@ export const CABIN = { w: 20, d: 12, h: 10, y: 64 };
 export const CABIN_X = [-40, -10, 20, 50, 80, 110];
 // Bookmark gantry: two posts either side of the track, a cross beam, and two boards over the next car to read:
 // the committed offset (lower) and the track's lag, the cars from here to the newest one (upper).
-export const GANTRY = { half: 8.5, h: 25, board: { x0: 1.2, w: 16, z: 13, h: 5 }, lag: { z: 18.6, h: 4.8 } };
+export const GANTRY = { half: 8.5, h: 27, board: { x0: -4, w: 26, z: 13, h: 6 }, lag: { z: 19.6, h: 6 } };   // boards wide enough for "LAG 120" at 9 px
 export const MAST = { dx: -6, dy: 3, top: 22 };   // the cabin's wire mast
 
 export const P = k.fitProjection(

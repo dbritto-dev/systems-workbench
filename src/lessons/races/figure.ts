@@ -19,7 +19,7 @@ const PLINTH_H = 8;
 const CARD = { x: -50, y: -42.5, w: 62, d: 3, r: 0.6 };
 const CARD_Z = [PLINTH_H, 62];
 const FACE = CARD.y + CARD.d;           // y of the card's front face
-const COUNTER = { x0: -21, w: 29 };     // housing span on the face
+const COUNTER = { x0: -15, w: 25 };     // housing span on the face: right of the longest label (DEBERÍA SER) at 9 px
 const ROWS = { balance: 40, expected: 27 }; // housing bottom z for each counter
 const HOUSING_H = 9.5;
 const WHEELS = 4;
@@ -79,7 +79,7 @@ function ledger() {
   out.push(`<g data-card-lit style="display:none">${S(card, { tone: "hi", crease: "lo", lit: true }).replace('class="iso-solid"', 'class="iso-solid" data-lit-outline')}</g>`);
   const x0 = CARD.x + 3, x1 = CARD.x + CARD.w - 3;
   // Header: title, a rule, and the version stamp at the top right.
-  out.push(rawText(x0, FACE, 55.6, t("LEDGER · ACCOUNT 7", "LIBRO · CUENTA 7"), { size: 2.8, tone: "mid" }));
+  out.push(rawText(x0, FACE, 55.6, t("ACCOUNT 7", "CUENTA 7"), { size: 2.8, tone: "mid" }));
   out.push(L(seg([x0, FACE, 52.6], [x1, FACE, 52.6]), { tone: "faint", free: true }));
   out.push(S(k.slabOf({ x: -2, y: FACE, w: 11, d: 1, r: 0.3 }, 53.6, 6.6, P, 2, 0.2), { tone: "mid", crease: "none" }));
   out.push(L(faceY(-1.2, 8.2, FACE + 1, 54.4, 59.4), { tone: "lo" }));
@@ -152,8 +152,8 @@ function desk(cx) {
 }
 
 // A clerk: base, body, collar and head; a slip held in front showing what they read; the key at the side.
-const SLIP = { x: -5.2, y: 5.2, w: 10.4, d: 1, r: 0.3 };
-const SLIP_Z = [8.5, 17];
+const SLIP = { x: -7.4, y: 5.2, w: 14.8, d: 1, r: 0.3 };
+const SLIP_Z = [7.6, 18];
 export function clerkSvg() {
   const out = [];
   out.push(S(k.cylinder(0, 0, 6, 0, 1.6, P, 26, 0.3), { tone: "mid" }));
@@ -168,8 +168,8 @@ export function clerkSvg() {
   out.push(`<g data-slip style="display:none">`
     + S(slip, { tone: "hi", crease: "lo" })
     + `<g data-slip-lit style="display:none">${S(slip, { tone: "hi", crease: "lo", lit: true })}</g>`
-    + rawText(0, front, 12.6, "0", { size: 4, tone: "hi", anchor: "middle", attr: "data-slip-value" })
-    + rawText(0, front, 9.4, "", { size: 2.4, tone: "mid", anchor: "middle", attr: "data-slip-note" })
+    + rawText(0, front, 13.4, "0", { size: 4, tone: "hi", anchor: "middle", attr: "data-slip-value" })
+    + rawText(0, front, 8.6, "", { size: 2.4, tone: "mid", anchor: "middle", attr: "data-slip-note" })
     + `</g>`);
   return out.join("");
 }

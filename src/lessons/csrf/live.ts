@@ -97,7 +97,7 @@ export default function mount({ P, G, COURIER_SVG, CARD_SVG }, root) {
 
   // ---------- static readouts that follow the controls ----------
   function paintStatic() {
-    setText(modeText, "SAMESITE=" + cfg.samesite.toUpperCase());
+    setText(modeText, cfg.samesite.toUpperCase());
     show(getpay.on, cfg.getpay === "on"); show(getpay.off, cfg.getpay !== "on");
     for (const gate of ["origin", "token"]) stateGroup(gate).forEach((el) => show(el, el.getAttribute(`data-state-${gate}`) === cfg[gate]));
   }

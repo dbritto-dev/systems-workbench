@@ -53,7 +53,7 @@ const DESK_FRONT = DESK.y + DESK.d;
 const PERSON_Y = 13;
 
 // The tally box at the front right.
-const BOX = { x: 12, y: 22, w: 78, d: 18, r: 2 };
+const BOX = { x: 11, y: 22, w: 82, d: 18, r: 2 };   // three columns 27 apart: each word fits above its counter at 9 px
 const BOX_H = 16;
 const BOX_FRONT = BOX.y + BOX.d;
 
@@ -78,7 +78,7 @@ function cabinet() {
   out.push(L(k.planOutline(k.insetPlan(CAB, 2.4), CAB_H, P), { tone: "faint" }));
   // the isolation level, on the cabinet front: one text the live code sets (SQL names read the same in both languages)
   out.push(text(CAB.x + 4, CAB_FRONT, 3, t("ISOLATION", "AISLAMIENTO"), 2.8));
-  out.push(faceText(P, [CAB.x + 26, CAB_FRONT, 2.8], "READ COMMITTED", { size: 3.6, tone: "hi", attr: "data-level" }));
+  out.push(faceText(P, [CAB.x + 36, CAB_FRONT, 2.8], "READ COMMITTED", { size: 3.6, tone: "hi", attr: "data-level" }));
   out.push(S(k.slabOf(BOARD, BOARD_Z, BOARD_H, P, 3, 0.4), { tone: "mid", crease: "lo" }));
   out.push(L(k.faceRectY(P, BOARD.x + 2, BOARD.x + BOARD.w - 2, FACE, BOARD_Z + 2, TOP - 2), { tone: "faint" }));
   out.push(text(BOARD.x + 4, FACE, TOP - 7.4, t("DATABASE", "BASE DE DATOS"), 4));
@@ -199,7 +199,7 @@ function desk(i) {
   out.push(faceText(P, [plan.x + 2, DESK_FRONT, 2.2], "ABCD"[i], { size: 5, tone: "hi" }));
   out.push(faceText(P, [plan.x + 7.6, DESK_FRONT, 3], "", { size: 3.1, tone: "hi", attr: `data-status="${i}"` }));
   // the slip: what this transaction read
-  out.push(`<g data-slip="${i}" style="display:none">${card(P, { x: cx - 6.5, y: DESK.y + 5, z: DESK.h, w: 13, h: 10, text: "0", sub: t("READ", "LEYÓ"), size: 4.2, subSize: 2.5, attr: `data-slip-text="${i}"` })}</g>`);
+  out.push(`<g data-slip="${i}" style="display:none">${card(P, { x: cx - 6.5, y: DESK.y + 5, z: DESK.h, w: 13, h: 12.5, text: "0", sub: t("READ", "LEYÓ"), size: 4.2, subSize: 2.5, attr: `data-slip-text="${i}"` })}</g>`);
   out.push(`</g>`);
   return out.join("");
 }
@@ -212,7 +212,7 @@ function box() {
   const z = 11;
   const both = (x, dep, rot) => `<g data-scene="deposits">${text(x, BOX_FRONT, z, dep, 3)}</g><g data-scene="rota" style="display:none">${text(x, BOX_FRONT, z, rot, 3)}</g>`;
   out.push(col(BOX.x + 5, "done", both(BOX.x + 4, t("DEPOSITS", "DEPÓSITOS"), t("NIGHTS", "NOCHES"))));
-  out.push(col(BOX.x + 32, "aborts", text(BOX.x + 30, BOX_FRONT, z, "ROLLBACKS", 3)));
+  out.push(col(BOX.x + 32, "aborts", text(BOX.x + 31, BOX_FRONT, z, "ROLLBACKS", 3)));
   out.push(col(BOX.x + 59, "bad", both(BOX.x + 58, t("LOST", "PERDIDOS"), t("NOBODY", "NADIE")), true));
   return out.join("");
 }

@@ -161,7 +161,7 @@ export default defineLesson({
       title: t("Order office", "Oficina de pedidos"),
       keys: [
         { mark: "lit", label: t("A letter on its way: in a hand, on the rail, or the relay's bundle; the newest card or number", "Una carta en camino: en una mano, en el riel o en el paquete del reenviador; la tarjeta o el número más reciente") },
-        { mark: "raised", label: t("Counter wheels: in the ledger, shipped, and twice (shipped twice) or caught (repeats dropped)", "Ruedas contadoras: en el libro, enviados, y dos veces (enviados dos veces) o detectadas (repeticiones descartadas)") },
+        { mark: "raised", label: t("Counter wheels: in the ledger, shipped, and twice (shipped twice) or caught (repeats dropped)", "Ruedas contadoras: en el libro, enviados, y dos veces (enviados dos veces) o atajados (repeticiones descartadas)") },
         { mark: "flat", label: t("The rail from the postbox to the warehouse intake", "El riel del buzón a la recepción del almacén") },
       ],
       caption: t(

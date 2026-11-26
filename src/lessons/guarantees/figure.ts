@@ -94,9 +94,7 @@ function sender() {
   const out = [person(P, SENDER_PERSON, { scale: 1.05, hat: "cap" })];
   out.push(S(k.slabOf(SB, 0, SB_H, P, 3, 0.5), { tone: "mid" }));
   out.push(L(k.planOutline(k.insetPlan(SB, 2), SB_H, P), { tone: "faint" }));
-  out.push(text(SB.x + 2.6, SB_FRONT, 8.6, t("SENDER", "REMITENTE"), 3.2));
-  out.push(counter({ x: SB.x + 2.6, y: SB_FRONT, z: 1.4, count: 2, w: 4.2, h: 4.8, pad: 0.9, name: "resent" }));
-  out.push(text(SB.x + 13.6, SB_FRONT, 2.2, t("RESENT", "REENVÍOS"), LABEL));
+  out.push(text(SB.x + 2.6, SB_FRONT, 3, t("SENDER", "REMITENTE"), 3.2));   // resends: the stats strip
   return out.join("");
 }
 
@@ -111,13 +109,7 @@ function queue() {
   const z1 = 9.4, z2 = 19.4;
   out.push(text(QD.x + 4, QD_FRONT, z2, t("QUEUE", "COLA"), TITLE));
   out.push(text(QD.x + QD.w - 4, QD_FRONT, z2, t("FRONT OF THE LINE →", "FRENTE DE LA FILA →"), LABEL, { anchor: "end" }));
-  out.push(counter({ x: QD.x + 4, y: QD_FRONT, z: z1, count: 2, name: "waiting" }));
-  out.push(text(QD.x + 17.2, QD_FRONT, z1 + 1.6, t("WAITING", "EN ESPERA"), LABEL));
-  out.push(counter({ x: QD.x + 37.4, y: QD_FRONT, z: z1, count: 3, name: "again" }));
-  out.push(text(QD.x + 56, QD_FRONT, z1 + 3.6, t("ORDERS", "PEDIDOS"), LABEL));
-  out.push(text(QD.x + 56, QD_FRONT, z1 - 0.4, t("DELIVERED AGAIN", "REENTREGADOS"), LABEL));
-  out.push(counter({ x: QD.x + 90, y: QD_FRONT, z: z1, count: 2, name: "lost" }));
-  out.push(text(QD.x + 103.2, QD_FRONT, z1 + 1.6, t("LOST", "PERDIDOS"), LABEL));
+  // (waiting, delivered again and lost are in the stats strip)
   return out.join("");
 }
 
@@ -138,7 +130,7 @@ function ledger() {
   out.push(counter({ x: LG.x + 4, y: LG_FRONT, z: z1, count: 3, name: "orders" }));
   out.push(text(LG.x + 22.6, LG_FRONT, z1 + 1.6, t("ORDERS", "PEDIDOS"), LABEL));
   out.push(`<g class="wb-lit-group" data-twice-ledger>${counter({ x: LG.x + 44, y: LG_FRONT, z: z1, count: 2, name: "ledger2" })}</g>`);
-  out.push(text(LG.x + 57.2, LG_FRONT, z1 + 1.6, t("TWICE", "DOS VECES"), LABEL));
+  out.push(text(LG.x + 57.2, LG_FRONT, z1 + 1.6, t("TWICE", "DOBLES"), LABEL));
   out.push(`<g data-flash-ledger="off">${lamp(P, LAMP_LEDGER, { r: 3.2 })}</g><g data-flash-ledger="on" style="display:none">${litFill(lamp(P, LAMP_LEDGER, { r: 3.2, lit: true }))}</g>`);
   return out.join("");
 }
@@ -211,12 +203,13 @@ function mail() {
   // the tray where repeats with a known key are dropped
   out.push(S(k.slabOf(TRAY, PO_H, TRAY_H, P, 3, 0.3), { tone: "mid", inner: L(k.planOutline(k.insetPlan(TRAY, 1.4), PO_H + TRAY_H, P), { tone: "lo" }) }));
   out.push(text(PO.x + 4, PO_FRONT, 10.6, t("MAIL SERVICE", "SERVICIO DE CORREO"), 3.4));
-  out.push(counter({ x: PO.x + 4, y: PO_FRONT, z: 1.4, count: 3, h: 5.4, name: "letters" }));
-  out.push(text(PO.x + 22.6, PO_FRONT, 2.6, t("LETTERS", "CARTAS"), LABEL));
-  out.push(`<g class="wb-lit-group" data-twice-mail>${counter({ x: PO.x + 40, y: PO_FRONT, z: 1.4, count: 2, h: 5.4, name: "letters2" })}</g>`);
-  out.push(text(PO.x + 53.2, PO_FRONT, 2.6, t("TWICE", "DOS VECES"), LABEL));
-  out.push(counter({ x: PO.x + 73, y: PO_FRONT, z: 1.4, count: 2, h: 5.4, name: "dropped" }));
-  out.push(text(PO.x + 86.2, PO_FRONT, 2.6, t("DROPPED", "DESCARTE"), LABEL));
+  out.push(counter({ x: PO.x + 3, y: PO_FRONT, z: 1.4, count: 3, h: 5.4, name: "letters" }));
+  out.push(text(PO.x + 22, PO_FRONT, 2.6, t("LETTERS", "CARTAS"), LABEL));
+  out.push(`<g class="wb-lit-group" data-twice-mail>${counter({ x: PO.x + 44, y: PO_FRONT, z: 1.4, count: 2, h: 5.4, name: "letters2" })}</g>`);
+  out.push(text(PO.x + 57.6, PO_FRONT, 2.6, t("TWICE", "DOBLES"), LABEL));
+  // the last one's word above it: there's no room after it
+  out.push(counter({ x: PO.x + 84, y: PO_FRONT, z: 1.4, count: 2, h: 5.4, name: "dropped" }));
+  out.push(text(PO.x + 83, PO_FRONT, 10.6, t("DROPPED", "TIRADAS"), LABEL));
   out.push(`<g data-flash-mail="off">${lamp(P, LAMP_MAIL, { r: 3 })}</g><g data-flash-mail="on" style="display:none">${litFill(lamp(P, LAMP_MAIL, { r: 3, lit: true }))}</g>`);
   return out.join("");
 }
@@ -225,7 +218,7 @@ function mail() {
 // An envelope: order number on top, message id below. Lit when its visibility timeout ran out while a worker still has it;
 // dimmed (the live code) while it waits in the hidden row.
 export function envelopeSvg() {
-  return `<g class="wb-lit-group" data-env>${card(P, { x: -5.5, y: 0.3, z: 0, w: 11, h: 8.8, text: "#0", sub: "m0", size: 3.4, subSize: 3, attr: "data-env-o", subAttr: "data-env-m" })}</g>`;
+  return `<g class="wb-lit-group" data-env>${card(P, { x: -5.5, y: 0.3, z: 0, w: 11, h: 11, text: "#0", sub: "m0", size: 3.4, subSize: 3, attr: "data-env-o", subAttr: "data-env-m" })}</g>`;
 }
 // A letter to a customer, with its order number. Lit when it's the second one for that order.
 export function letterSvg() {
@@ -241,8 +234,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A mail-order room on a base plate. At the back left, the sender sends each order as an envelope to the queue; a counter on the sender's booth shows how many it sent again because the queue's reply never came. At the back middle, the queue's rack holds the envelopes waiting in line, the front of the line on the right; counters show how many wait, how many orders were delivered again and how many were lost. Behind the line, a hidden row holds, dimmed, the envelopes of workers that crashed. At the front left, workers A, B and C take the envelope at the front of the line to their desks, and a plaque on the base in front of the desks says when they ack. A dial on each desk shows how much of that envelope's visibility timeout is left; the envelope lights when the timeout has run out while the worker still has it, because the queue then hands it to someone else too. A plate on each desk says what the worker is doing. At the back right, the ledger, an open book, counts the orders written in it and those written twice; an index box on it holds the dedupe table. At the front right, the mail service keeps the latest letters sent to customers on its rack, the second copy of a letter lit, and counts letters sent, letters sent twice and repeats it dropped by their idempotency key.",
-      "Una sala de pedidos por correo sobre una placa base. Al fondo a la izquierda, el remitente envía cada pedido como un sobre a la cola; un contador en su puesto muestra cuántos reenvió porque nunca llegó la respuesta de la cola. Al fondo en el medio, el estante de la cola tiene los sobres esperando en fila, con el frente de la fila a la derecha; unos contadores muestran cuántos esperan, cuántos pedidos se entregaron de nuevo y cuántos se perdieron. Detrás de la fila, una hilera oculta guarda, atenuados, los sobres de los trabajadores que se cayeron. Adelante a la izquierda, los trabajadores A, B y C llevan el sobre del frente de la fila a sus escritorios, y una placa sobre la base delante de los escritorios dice cuándo hacen el ack. Un dial en cada escritorio muestra cuánto le queda al tiempo de invisibilidad de ese sobre; el sobre se enciende cuando ese tiempo venció y el trabajador todavía lo tiene, porque entonces la cola también se lo da a otro. Una placa en cada escritorio dice qué hace el trabajador. Al fondo a la derecha, el libro, un libro abierto, cuenta los pedidos escritos y los escritos dos veces; una caja de fichas encima guarda la tabla de deduplicación. Adelante a la derecha, el servicio de correo tiene en su estante las últimas cartas enviadas a los clientes, con la segunda copia de una carta encendida, y cuenta las cartas enviadas, las enviadas dos veces y las repeticiones que descartó por su clave de idempotencia.",
+      "A mail-order room on a base plate. At the back left, the sender sends each order as an envelope to the queue; a counter on the sender's booth shows how many it sent again because the queue's reply never came. At the back middle, the queue's rack holds the envelopes waiting in line, the front of the line on the right. Behind the line, a hidden row holds, dimmed, the envelopes of workers that crashed. At the front left, workers A, B and C take the envelope at the front of the line to their desks, and a plaque on the base in front of the desks says when they ack. A dial on each desk shows how much of that envelope's visibility timeout is left; the envelope lights when the timeout has run out while the worker still has it, because the queue then hands it to someone else too. A plate on each desk says what the worker is doing. At the back right, the ledger, an open book, counts the orders written in it and those written twice; an index box on it holds the dedupe table. At the front right, the mail service keeps the latest letters sent to customers on its rack, the second copy of a letter lit, and counts letters sent, letters sent twice and repeats it dropped by their idempotency key.",
+      "Una sala de pedidos por correo sobre una placa base. Al fondo a la izquierda, el remitente envía cada pedido como un sobre a la cola; un contador en su puesto muestra cuántos reenvió porque nunca llegó la respuesta de la cola. Al fondo en el medio, el estante de la cola tiene los sobres esperando en fila, con el frente de la fila a la derecha. Detrás de la fila, una hilera oculta guarda, atenuados, los sobres de los trabajadores que se cayeron. Adelante a la izquierda, los trabajadores A, B y C llevan el sobre del frente de la fila a sus escritorios, y una placa sobre la base delante de los escritorios dice cuándo hacen el ack. Un dial en cada escritorio muestra cuánto le queda al tiempo de invisibilidad de ese sobre; el sobre se enciende cuando ese tiempo venció y el trabajador todavía lo tiene, porque entonces la cola también se lo da a otro. Una placa en cada escritorio dice qué hace el trabajador. Al fondo a la derecha, el libro, un libro abierto, cuenta los pedidos escritos y los escritos dos veces; una caja de fichas encima guarda la tabla de deduplicación. Adelante a la derecha, el servicio de correo tiene en su estante las últimas cartas enviadas a los clientes, con la segunda copia de una carta encendida, y cuenta las cartas enviadas, las enviadas dos veces y las repeticiones que descartó por su clave de idempotencia.",
     ),
     body: [
       plate(),

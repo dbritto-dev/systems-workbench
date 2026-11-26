@@ -41,7 +41,7 @@ export const SLIP = { x: TRAY.x + 1.4, y: TRAY.y + 1.6, w: TRAY.w - 2.8, d: TRAY
 
 // The pipeline console and the frame strip, in front.
 const CONSOLE = { x: -150, y: 9, w: 226, d: 12, r: 1.4 };
-const CONSOLE_H = 10;
+const CONSOLE_H = 13;
 export const STAGES = ["js", "style", "layout", "paint", "composite"];
 const STAGE_W = CONSOLE.w / STAGES.length;
 export const stageX = (i) => CONSOLE.x + STAGE_W * (i + 0.5);
@@ -96,12 +96,9 @@ function rails() {
 function galley() {
   const out = [S(k.slabOf(GALLEY, 0, TRAY_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(GALLEY, 2), TRAY_H, P), { tone: "lo" }) })];
   const front = GALLEY.y + GALLEY.d;
-  out.push(digitCounter(P, { x: GALLEY.x + 6, y: front, z: 1.4, count: 3, w: 3.6, h: 4.4, gap: 0.5, pad: 0.8, name: "layouts" }));
-  out.push(text(GALLEY.x + 20.6, front, 2.2, t("LAYOUTS", "LAYOUTS"), 2.8));
-  out.push(digitCounter(P, { x: GALLEY.x + 52, y: front, z: 1.4, count: 3, w: 3.6, h: 4.4, gap: 0.5, pad: 0.8, name: "forced" }));
-  out.push(text(GALLEY.x + 66.6, front, 2.2, t("FORCED", "FORZADOS"), 2.8));
-  out.push(digitCounter(P, { x: GALLEY.x + 104, y: front, z: 1.4, count: 4, w: 3.6, h: 4.4, gap: 0.5, pad: 0.8, name: "boxes" }));
-  out.push(text(GALLEY.x + 123, front, 2.2, t("BOXES", "CAJAS"), 2.8));
+  // (layouts and forced layouts are in the stats strip)
+  out.push(digitCounter(P, { x: GALLEY.x + 6, y: front, z: 1, count: 4, w: 4.2, h: 5.2, gap: 0.5, pad: 0.5, name: "boxes" }));
+  out.push(text(GALLEY.x + 28, front, 2, t("BOXES", "CAJAS"), 2.8));
   return out.join("");
 }
 export function nodeAt(n) {
@@ -172,9 +169,9 @@ function console_() {
   STAGES.forEach((name, i) => {
     const x = stageX(i), p = [x - 14, CONSOLE.y + 5, CONSOLE_H];   // the lamp at the left of its station, clear of the words
     out.push(`<g data-stage="${name}">${lamp(P, p, { r: 2.4 })}</g><g data-stage-on="${name}" style="display:none">${litFill(lamp(P, p, { r: 2.4, lit: true }))}</g>`);
-    out.push(text(x + 3, front, 6.9, LABELS[name], 2.8, { anchor: "middle" }));
-    out.push(digitCounter(P, { x: x - 4.6, y: front, z: 1, count: 4, w: 3.2, h: 3.4, gap: 0.4, pad: [0.7, 0.6, 0.4], name: "ms-" + name }));
-    out.push(text(x + 11.8, front, 1.4, "ms", 2.4));
+    out.push(text(x + 3, front, 8.4, LABELS[name], 2.8, { anchor: "middle" }));
+    out.push(digitCounter(P, { x: x - 6, y: front, z: 1.2, count: 3, w: 4.2, h: 5.2, gap: 0.5, pad: [0.7, 0.6, 0.4], name: "ms-" + name }));
+    out.push(text(x + 9.8, front, 1.6, "ms", 2.4));
   });
   return out.join("");
 }
@@ -184,8 +181,7 @@ function strip() {
   const out = [S(k.slabOf(STRIP, 0, STRIP_H, P, 3, 0.5), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(STRIP, 2), STRIP_H, P), { tone: "faint" }));
   const side = STRIP.x + STRIP.w;
-  out.push(digitCounter(P, { x: side, y: STRIP.y + STRIP.d - 6, z: 2.2, count: 4, face: "x", w: 3.8, h: 4.8, gap: 0.5, pad: 0.9, name: "frame" }));
-  out.push(faceText(P, [side, STRIP.y + STRIP.d - 25.6, 3.2], t("LAST FRAME, ms", "ÚLTIMO CUADRO, ms"), { face: "x", size: 2.8, tone: "mid" }));
+  // (the last frame's time is in the stats strip)
   return out.join("");
 }
 function bars() {
@@ -208,8 +204,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A typesetting bench on a base plate. In the middle, a galley tray of type blocks stands for the page; its front rows, which a low fence can close off, are the list a handler works on, one block per item. A measuring gantry rides on rails over the galley: each pass is one layout, measuring every block it crosses, and it lights when a read forced it to run in the middle of the script. Counters on the galley count the layouts and forced layouts of the current frame, and the boxes on the page. At the back left, the script's desk: a clerk, a card with the item in hand, a READ and a WRITE lamp, and the tray where requestAnimationFrame callbacks wait. In front, a console with one lamp and one millisecond counter for each step of a frame (JavaScript, style, layout, paint, composite), and a strip of bars, one per frame, against a line at 16.7 ms.",
-      "Un banco de tipografía sobre una placa base. En el medio, una bandeja de bloques de tipos representa la página; sus filas delanteras, que una cerca baja puede aislar, son la lista que recorre un handler, un bloque por ítem. Un pórtico de medición corre sobre rieles por encima de la bandeja: cada pasada es un layout que mide cada bloque que cruza, y se ilumina cuando una lectura lo obligó a correr en medio del script. Contadores en la bandeja cuentan los layouts y los layouts forzados del cuadro actual, y las cajas de la página. Atrás a la izquierda, el escritorio del script: un empleado, una tarjeta con el ítem en mano, una lámpara LECTURA y otra ESCRITURA, y la bandeja donde esperan los callbacks de requestAnimationFrame. Adelante, una consola con una lámpara y un contador de milisegundos por cada paso de un cuadro (JavaScript, estilo, layout, pintado, composición) y una tira de barras, una por cuadro, contra una línea en 16.7 ms.",
+      "A typesetting bench on a base plate. In the middle, a galley tray of type blocks stands for the page; its front rows, which a low fence can close off, are the list a handler works on, one block per item. A measuring gantry rides on rails over the galley: each pass is one layout, measuring every block it crosses, and it lights when a read forced it to run in the middle of the script. A counter on the galley counts the boxes on the page. At the back left, the script's desk: a clerk, a card with the item in hand, a READ and a WRITE lamp, and the tray where requestAnimationFrame callbacks wait. In front, a console with one lamp and one millisecond counter for each step of a frame (JavaScript, style, layout, paint, composite), and a strip of bars, one per frame, against a line at 16.7 ms.",
+      "Un banco de tipografía sobre una placa base. En el medio, una bandeja de bloques de tipos representa la página; sus filas delanteras, que una cerca baja puede aislar, son la lista que recorre un handler, un bloque por ítem. Un pórtico de medición corre sobre rieles por encima de la bandeja: cada pasada es un layout que mide cada bloque que cruza, y se ilumina cuando una lectura lo obligó a correr en medio del script. Un contador en la bandeja cuenta las cajas de la página. Atrás a la izquierda, el escritorio del script: un empleado, una tarjeta con el ítem en mano, una lámpara LECTURA y otra ESCRITURA, y la bandeja donde esperan los callbacks de requestAnimationFrame. Adelante, una consola con una lámpara y un contador de milisegundos por cada paso de un cuadro (JavaScript, estilo, layout, pintado, composición) y una tira de barras, una por cuadro, contra una línea en 16.7 ms.",
     ),
     body: [
       plate(),

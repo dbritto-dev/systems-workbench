@@ -6,7 +6,7 @@ import { litFill } from "../../../workbench/parts.mjs";
 
 // The download rack at the back: one tube per resource, a plinth with its name under each.
 export const TUBES = ["html", "css", "app", "font", "hero", "imgs", "ad"];
-export const RACK = { x0: -160, dx: 22, y: -110, w: 18, d: 13, h: 6 };
+export const RACK = { x0: -162, dx: 24, y: -110, w: 21, d: 13, h: 6 };   // plinths wide enough for their names at 9 px
 export const GLASS = { w: 10, d: 6, h: 24 };
 export const tubeAt = (i) => [RACK.x0 + i * RACK.dx + RACK.w / 2, RACK.y + RACK.d / 2 - 1];
 

@@ -31,8 +31,10 @@ function inPage(digitEm) {
     for (const t of svgEl.querySelectorAll("text")) {
       const txt = (t.textContent || "").trim();
       if (!txt) continue;
-      // getCTM is null for an element under display:none: take its own transform then.
-      const s = scaleOf(t) ?? (() => { const m = t.transform.baseVal.consolidate()?.matrix; return m ? Math.hypot(m.a, m.b) : 1; })();
+      // A text that isn't drawn (display:none on it or above it): Chromium's CTM for it is null or leaves out its own
+      // transform, so take its own transform times its parent's scale (1 when the parent isn't drawn either).
+      const own = () => { const m = t.transform.baseVal.consolidate()?.matrix; return m ? Math.hypot(m.a, m.b) : 1; };
+      const s = shown(t) ? scaleOf(t) : own() * (shown(t.parentElement) ? scaleOf(t.parentElement) ?? 1 : 1);
       const vb = parseFloat(getComputedStyle(t).fontSize) * s;
       texts.push({ txt, vb, px, shown: shown(t) });
     }

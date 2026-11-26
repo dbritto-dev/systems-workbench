@@ -19,8 +19,8 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
   const layer = (n) => q('[data-layer="' + n + '"]');
   const L = { links: layer("links"), labels: layer("labels"), rings: layer("rings"), pins: layer("pins"), probe: layer("probe"), strings: layer("strings") };
   const make = (html) => { const g = document.createElementNS(NS, "g"); g.innerHTML = html; return g; };
-  const counters = { compared: WB.counter(svg, "compared", P), total: WB.counter(svg, "total", P), sims: [0, 1, 2, 3, 4].map((i) => WB.counter(svg, "sim" + i, P)) };
-  const queryText = q("[data-query]");
+  const counters = { sims: [0, 1, 2, 3, 4].map((i) => WB.counter(svg, "sim" + i, P)) };
+  const queryText = q("[data-query]"), queryText2 = q("[data-query2]");
   const slots = [0, 1, 2, 3, 4].map((i) => ({ card: q('[data-card="' + i + '"]'), body: q('[data-card="' + i + '"] .iso-solid'), text: q('[data-card-text="' + i + '"]'), cut: q('[data-cut="' + i + '"]'), lid: q('[data-lid="' + i + '"]'), simbox: q('[data-simbox="' + i + '"]'), rank: q('[data-rank="' + i + '"]') }));
 
   // ---------- the collection at each chunk size: chunks, map positions, graph ----------
@@ -49,7 +49,6 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
     COL.links.forEach((ls, i) => ls.forEach((j) => { const key = i < j ? i + "-" + j : j + "-" + i; if (seen.has(key)) return; seen.add(key); d.push(segment([COL.pos[i][0], COL.pos[i][1], G.MAP_H], [COL.pos[j][0], COL.pos[j][1], G.MAP_H], P)); }));
     L.links.innerHTML = lineSvg(d.join(""), { tone: "lo", dotted: true });
     placeLabels();
-    counters.total.set(COL.ch.length);
   }
 
   // constellation names, placed for the page's language
@@ -110,9 +109,10 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
   function start(fresh) {
     if (fresh) build(cfg.size);
     run = plan();
-    queryText.textContent = run.query.text;
-    // A long query shrinks to fit the board (78 units of face; a character is about 0.64 of the font size).
-    WB.fontSize(queryText, Math.min(3.9, 78 / (run.query.text.length * 0.64)).toFixed(2));
+    // The query on the board at 9 px: two lines when it doesn't fit one (QUERY_CHARS a line).
+    const words = run.query.text.split(" "), lines = [""];
+    for (const w of words) { const cur = lines[lines.length - 1]; if (cur && (cur + " " + w).length > G.QUERY_CHARS && lines.length < 2) lines.push(w); else lines[lines.length - 1] = cur ? cur + " " + w : w; }
+    queryText.textContent = lines.length > 1 ? lines[0] : ""; queryText2.textContent = lines[lines.length - 1];
     L.strings.innerHTML = ""; L.rings.innerHTML = ""; L.probe.innerHTML = "";
     pathEl.innerHTML = ""; L.links.appendChild(pathEl);
     if (cfg.search === "exact") L.probe.appendChild(arm); else L.probe.appendChild(bead);
@@ -150,7 +150,6 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
         if (run.drawn !== upto) { run.drawn = upto; pathEl.innerHTML = lineSvg(run.hops.slice(0, upto).map(([a2, b2]) => segment([COL.pos[a2][0], COL.pos[a2][1], G.MAP_H + 0.1], [COL.pos[b2][0], COL.pos[b2][1], G.MAP_H + 0.1], P)).join(""), { tone: "hi" }); }
       }
     } else { arm.style.display = "none"; bead.style.display = "none"; }
-    counters.compared.set(t < MOVE ? 0 : done);
 
     // results once the search is over
     const kept = finished ? run.res.filter((h) => h.s >= cfg.cut) : [];

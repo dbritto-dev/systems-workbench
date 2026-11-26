@@ -79,10 +79,6 @@ function office() {
   out.push(L(k.planOutline(k.insetPlan(OFFICE, 2.4), OFFICE_H, P), { tone: "faint" }));
   // the window: a counter ledge on the front face where couriers wait
   out.push(S(k.slabOf({ x: SLOT_X[0] - 6, y: OFFICE_FRONT, w: SLOT_X[5] - SLOT_X[0] + 12, d: 3, r: 0.5 }, 7, 1.6, P, 2), { tone: "hi", crease: "lo" }));
-  // the writes counter on the right face
-  const side = OFFICE.x + OFFICE.w;
-  out.push(digitCounter(P, { x: side, y: OFFICE_FRONT - 4, z: 3.4, count: 3, face: "x", w: 4, h: 5.2, gap: 0.5, pad: 1, name: "writes" }));
-  out.push(faceText(P, [side, OFFICE_FRONT - 19.4, 4.6], t("WRITES", "ESCRITURAS"), { face: "x", size: 2.4, tone: "mid" }));
   return out.join("");
 }
 function board() {
@@ -124,8 +120,7 @@ function syncPost() {
 function bin() {
   const out = [S(k.slabOf(BIN, 0, BIN_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(BIN, 2), BIN_H, P), { tone: "lo" }) })];
   const front = BIN.y + BIN.d;
-  out.push(digitCounter(P, { x: BIN.x + 3, y: front, z: 1.2, count: 2, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "ignored" }));
-  out.push(text(BIN.x + 13.4, front, 2.2, t("IGNORED", "IGNORADAS"), 2.6));
+  out.push(text(BIN.x + BIN.w / 2, front, 2.2, t("IGNORED", "IGNORADAS"), 2.6, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -133,16 +128,7 @@ function bin() {
 function counter() {
   const out = [S(k.slabOf(COUNTER, 0, COUNTER_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(COUNTER, 2.4), COUNTER_H, P), { tone: "faint" }));
-  // counters on the front face, each followed by its word
-  const col = (x, name, count, words) => digitCounter(P, { x, y: COUNTER_FRONT, z: 3.4, count, w: 4, h: 5.2, gap: 0.5, pad: 1, name })
-    + text(x + count * 4.5 + 1.6, COUNTER_FRONT, 4.6, words, 2.8);
-  out.push(col(-36, "taps", 3, t("TAPS", "TOQUES")));
-  out.push(col(-2, "notSaved", 2, t("NOT SAVED", "NO GUARDADOS")));
-  out.push(col(38, "late", 2, t("TOO LATE", "TARDE")));
-  // on the right face: how often a late answer or read put the old value back on the screen
-  const side = COUNTER.x + COUNTER.w;
-  out.push(digitCounter(P, { x: side, y: COUNTER_FRONT - 4, z: 3.4, count: 3, face: "x", w: 4, h: 5.2, gap: 0.5, pad: 1, name: "stale" }));
-  out.push(faceText(P, [side, COUNTER_FRONT - 20.4, 4.6], t("OLD VALUE", "VALOR VIEJO"), { face: "x", size: 2.4, tone: "mid" }));
+  // (taps, not saved, too late, writes and old values shown are counted in the stats strip)
   return out.join("");
 }
 // The like button the user taps: lit when their last tap asked for a like.
@@ -200,8 +186,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A front counter and a records office on a base plate. At the front, a person stands at the counter with a like button in front of them; it lights when their last tap asked for a like. On the counter, a monitor, the screen, shows a LIKE pill, lit when the app shows the post as liked, a SAVING lamp and a NOT SAVED notice. At the back, the records office, the server, has a board with the same pill, lit when the server has stored a like, and a counter of writes. Between them runs a walkway: small couriers carry each save out on the left lane to the server window, wait there while the server works, and come back on the right lane with the answer; a slip they carry lights when it sets the like. Answers the app ignores go into the IGNORED bin. A lamp lights when nothing is in flight and the screen and the server disagree. Counters on the front of the counter show taps, failures the user was told about, and failures they had already moved on from; one on its right side counts the times the screen went back to an old value.",
-      "Un mostrador y una oficina de registros sobre una placa base. Adelante, una persona está frente al mostrador con un botón de like; se enciende cuando su último toque pidió un like. Sobre el mostrador, un monitor, la pantalla, muestra una pastilla LIKE, encendida cuando la app muestra la publicación con like, una lámpara GUARDANDO y un aviso NO SE GUARDÓ. Al fondo, la oficina de registros, el servidor, tiene un tablero con la misma pastilla, encendida cuando el servidor guardó un like, y un contador de escrituras. Entre ambos corre un pasillo: pequeños mensajeros llevan cada guardado por el carril izquierdo hasta la ventanilla del servidor, esperan ahí mientras el servidor trabaja y vuelven por el carril derecho con la respuesta; el papel que llevan se enciende cuando pone el like. Las respuestas que la app ignora caen en el cajón IGNORADAS. Una lámpara se enciende cuando no hay nada en vuelo y la pantalla y el servidor no coinciden. Contadores al frente del mostrador muestran los toques, los fallos que se le avisaron al usuario y los fallos de los que ya había seguido de largo; uno en su lado derecho cuenta las veces que la pantalla volvió a un valor viejo.",
+      "A front counter and a records office on a base plate. At the front, a person stands at the counter with a like button in front of them; it lights when their last tap asked for a like. On the counter, a monitor, the screen, shows a LIKE pill, lit when the app shows the post as liked, a SAVING lamp and a NOT SAVED notice. At the back, the records office, the server, has a board with the same pill, lit when the server has stored a like. Between them runs a walkway: small couriers carry each save out on the left lane to the server window, wait there while the server works, and come back on the right lane with the answer; a slip they carry lights when it sets the like. Answers the app ignores go into the IGNORED bin. A lamp lights when nothing is in flight and the screen and the server disagree.",
+      "Un mostrador y una oficina de registros sobre una placa base. Adelante, una persona está frente al mostrador con un botón de like; se enciende cuando su último toque pidió un like. Sobre el mostrador, un monitor, la pantalla, muestra una pastilla LIKE, encendida cuando la app muestra la publicación con like, una lámpara GUARDANDO y un aviso NO SE GUARDÓ. Al fondo, la oficina de registros, el servidor, tiene un tablero con la misma pastilla, encendida cuando el servidor guardó un like. Entre ambos corre un pasillo: pequeños mensajeros llevan cada guardado por el carril izquierdo hasta la ventanilla del servidor, esperan ahí mientras el servidor trabaja y vuelven por el carril derecho con la respuesta; el papel que llevan se enciende cuando pone el like. Las respuestas que la app ignora caen en el cajón IGNORADAS. Una lámpara se enciende cuando no hay nada en vuelo y la pantalla y el servidor no coinciden.",
     ),
     body: [
       plate(),

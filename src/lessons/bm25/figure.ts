@@ -30,7 +30,7 @@ export const ASSAYER_Y = SHELF.y - 8;
 
 // the query board (back right)
 const BOARD = { x: 22, y: -72, w: 104, d: 2, r: 0.4 };
-const BOARD_Z = 7, BOARD_H = 19;
+const BOARD_Z = 7, BOARD_H = 24;
 
 // the scales (front row), best first from the left
 export const BASE_X = [-128, -76, -24, 28, 80];
@@ -76,9 +76,11 @@ function board() {
   out.push(S(k.slabOf(BOARD, BOARD_Z, BOARD_H, P, 2, 0.3), { tone: "hi", crease: "lo" }));
   const fy = BOARD.y + BOARD.d;
   out.push(L(k.pathOf([[BOARD.x + 3, BOARD_Z + 3], [BOARD.x + BOARD.w - 3, BOARD_Z + 3], [BOARD.x + BOARD.w - 3, BOARD_Z + BOARD_H - 3], [BOARD.x + 3, BOARD_Z + BOARD_H - 3]].map(([x, z]) => k.iso([x, fy, z], P)), true), { tone: "faint" }));
-  out.push(label(BOARD.x + 6, fy, BOARD_Z + BOARD_H - 7.6, t("QUERY", "CONSULTA"), 2.4));
-  out.push(faceText(P, [BOARD.x + 6, fy, BOARD_Z + 7.4], "", { size: 4.4, tone: "hi", attr: "data-query" }));
-  out.push(faceText(P, [BOARD.x + 6, fy, BOARD_Z + 3.8], "", { size: 2, tone: "mid", attr: "data-corpus" }));
+  // four lines at 9 px: the word QUERY, the query, the corpus, the BM25 settings
+  out.push(label(BOARD.x + 6, fy, BOARD_Z + 16.8, t("QUERY", "CONSULTA"), 2.4));
+  out.push(faceText(P, [BOARD.x + 6, fy, BOARD_Z + 11.8], "", { size: 4.4, tone: "hi", attr: "data-query" }));
+  out.push(faceText(P, [BOARD.x + 6, fy, BOARD_Z + 7.6], "", { size: 2, tone: "mid", attr: "data-corpus" }));
+  out.push(faceText(P, [BOARD.x + 6, fy, BOARD_Z + 3.6], "", { size: 2, tone: "mid", attr: "data-params" }));
   return out.join("");
 }
 

@@ -20,7 +20,7 @@ export default function mount({ P, G }, root) {
   resultsEl.setAttribute("aria-live", "polite");
   root.$(".panel").append(resultsEl);
   const weightsEl = q("[data-weights]"), assayer = q("[data-assayer]");
-  const queryEl = q("[data-query]"), corpusEl = q("[data-corpus]");
+  const queryEl = q("[data-query]"), corpusEl = q("[data-corpus]"), paramsEl = q("[data-params]");
   const stacks = [0, 1, 2, 3, 4].map((i) => q('[data-stack="' + i + '"]'));
   const pans = [0, 1, 2, 3, 4].map((i) => q('[data-pan="' + i + '"] .iso-solid'));
   const docEls = [0, 1, 2, 3, 4].map((i) => q('[data-doc="' + i + '"]'));
@@ -59,7 +59,7 @@ export default function mount({ P, G }, root) {
     total = T_CLEAR + n * T_TERM + T_HOLD;
     t = at;
     queryEl.textContent = cfg.q;
-    WB.fontSize(queryEl, cfg.q.length > 34 ? 3 : cfg.q.length > 26 ? 3.6 : 4.4);
+    WB.fontSize(queryEl, cfg.q.length > 26 ? 3.6 : 4.4);
     drawRack(-1);
     for (let i = 0; i < 5; i++) {
       const row = plan.top[i];
@@ -72,8 +72,8 @@ export default function mount({ P, G }, root) {
 
   // everything printed in words
   function words() {
-    corpusEl.textContent = tr(ix.N + " documents · average " + ix.avg.toFixed(1) + " words · k1 " + cfg.k1 + " · b " + cfg.b + (cfg.stuff ? " · D16 stuffed" : ""),
-      ix.N + " documentos · promedio " + ix.avg.toFixed(1) + " palabras · k1 " + cfg.k1 + " · b " + cfg.b + (cfg.stuff ? " · D16 rellenado" : ""));
+    corpusEl.textContent = tr(ix.N + " docs · avg " + ix.avg.toFixed(1) + " words", ix.N + " docs · prom. " + ix.avg.toFixed(1) + " palabras");
+    paramsEl.textContent = "k1 " + cfg.k1 + " · b " + cfg.b + (cfg.stuff ? tr(" · D16 stuffed", " · D16 rellenado") : "");
     drawResults();
     const matched = plan.rows.filter((r) => r.score > 0).length;
     stat("terms", plan.terms.length);

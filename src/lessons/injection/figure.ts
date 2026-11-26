@@ -7,8 +7,8 @@
 //   words lit, the app's own value ($1, the shop) not. The cabinet at the back left is the orders table, a drawer per
 //   row, in three shops; the rows a statement returns slide out and are laid in the result tray in the order the
 //   database gave them, each card showing the value the list was sorted by (a lit card: another shop's row). With the
-//   row policy on, shutters close over the other shops' drawers. The database, right of the tray, counts errors and
-//   requests whose words became code; the tally bench, front right, counts what came back to the window.
+//   row policy on, shutters close over the other shops' drawers. The database, right of the tray, counts the
+//   requests whose words became code.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, labelPlate, digitCounter, person, plaque, faceText } from "../../../workbench/parts.mjs";
@@ -34,12 +34,12 @@ export const DRAWER_AT = Array.from({ length: 18 }, (_, i) => {
 });
 
 // ---------- the statement board and the values board, back right ----------
-const BOARD = { x: -20, y: -94, w: 86, d: 4, r: 0.6 };
+const BOARD = { x: -24, y: -94, w: 94, d: 4, r: 0.6 };   // wide enough for the escaped name line at 9 px
 const BOARD_H = 40;
 export const BOARD_FACE = BOARD.y + BOARD.d;
 export const LINE_X = BOARD.x + 4;
 export const LINE_Z = [26.2, 20.4, 14.6, 8.8];
-export const LINE_SIZE = 3.6;
+export const LINE_SIZE = 4.4;   // 9 px on a desktop (the lines sit in a group, which the text floor can't see into)
 const VALS = { x: 74, y: -94, w: 44, d: 4, r: 0.6 };
 const VALS_H = 34;
 export const VALS_FACE = VALS.y + VALS.d;
@@ -70,10 +70,6 @@ export const EXIT = [-122, -11];
 const DB = { x: 38, y: -68, w: 80, d: 36, r: 1.6 };
 const DB_H = 14;
 
-// ---------- the tally bench, front right ----------
-// to the right of the queue, so the one at the window and the line stay in view
-const BENCH = { x: -68, y: 3, w: 186, d: 13, r: 1.4 };
-const BENCH_H = 14;
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [BOARD.x, BOARD.y, BOARD_H + 2], [VALS.x + VALS.w, VALS.y, VALS_H + 2], [CAB.x, CAB.y, CAB_H + 3]],
@@ -166,7 +162,7 @@ function desk() {
   out.push(S(k.slabOf(plan, DESK_H + 1, STAND.h, P, 2, 0.2), { tone: "hi", crease: "lo" }));
   const z0 = DESK_H + 1, f = STAND_FACE;
   // the shop comes from the visitor's session; a rule sets it apart from the two boxes they typed in
-  out.push(text(STAND.x + 2.4, f, z0 + 12.6, t("SIGNED IN AS", "SESIÓN DE"), CAP));
+  out.push(text(STAND.x + 2.4, f, z0 + 12.6, t("SHOP", "TIENDA"), CAP));
   out.push(L(k.faceRectY(P, STAND.x + 2, STAND.x + STAND.w - 2, f, z0 + 11, z0 + 11.01), { tone: "lo" }));
   out.push(text(STAND.x + 2.4, f, z0 + 6.6, t("NAME", "NOMBRE"), CAP));
   out.push(text(STAND.x + 2.4, f, z0 + 1.8, t("SORT", "ORDEN"), CAP));
@@ -183,8 +179,7 @@ function database() {
   const out = [S(k.slabOf(DB, 0, DB_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(DB, 2.4), DB_H, P), { tone: "faint" }));
   const front = DB.y + DB.d;
-  out.push(counterWithWord(DB.x + 4, front, "errors", t("ERRORS", "ERRORES")));
-  out.push(counterWithWord(DB.x + 40, front, "asCode", t("AS CODE", "COMO CÓDIGO")));
+  out.push(counterWithWord(DB.x + 4, front, "asCode", t("RAN AS CODE", "COMO CÓDIGO")));   // errors: the stats strip
   out.push(plaque(P, { x: DB.x + 4, y: DB.y + 16, z: DB_H, w: 34, d: 10, text: t("DATABASE", "BASE DE DATOS"), size: 3.2 }));
   out.push(`<g data-reach="full">${plaque(P, { x: DB.x + 42, y: DB.y + 16, z: DB_H, w: 34, d: 10, text: t("ALL SHOPS", "TODAS"), size: 3.2 })}</g>`);
   out.push(`<g data-reach="rls" style="display:none">${plaque(P, { x: DB.x + 42, y: DB.y + 16, z: DB_H, w: 34, d: 10, text: t("OWN SHOP", "SU TIENDA"), size: 3.2 })}</g>`);
@@ -198,22 +193,6 @@ function counterWithWord(x, front, name, words) {
     + text(x, front, 10.6, words, CAP);
 }
 
-// The tally bench at the front: what came back to the window.
-export const TALLY = [
-  ["requests", t("REQUESTS", "SOLICITUDES")],
-  ["leaked", t("OTHER SHOPS' ROWS", "FILAS DE OTRAS TIENDAS")],
-  ["unsorted", t("UNSORTED", "SIN ORDEN")],
-  ["rejected", t("REJECTED", "RECHAZADOS")],
-];
-function bench() {
-  const out = [S(k.slabOf(BENCH, 0, BENCH_H, P, 3, 0.5), { tone: "mid" })];
-  out.push(L(k.planOutline(k.insetPlan(BENCH, 2), BENCH_H, P), { tone: "faint" }));
-  const front = BENCH.y + BENCH.d;
-  const xs = [BENCH.x + 8, BENCH.x + 56, BENCH.x + 108, BENCH.x + 152];
-  TALLY.forEach(([name, words], i) => out.push(counterWithWord(xs[i], front, name, words)));
-  return out.join("");
-}
-
 // A visitor: a small figure, drawn at the origin and moved by the live code.
 export const VISITOR = { scale: 0.6 };
 export function visitorSvg() { return person(P, [0, 0, 0], { scale: VISITOR.scale }); }
@@ -223,8 +202,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A records room on a base plate. At the back left, a cabinet of eighteen drawers is the orders table, six rows for each of three shops, A, B and C. At the back in the middle, a tall board shows the SQL statement the app sends, line by line; words a visitor typed are printed on a lit strip. At the back right, a values board holds the parameters $1, $2 and $3 in separate boxes, the visitor's words lit. In the middle, a result tray; the rows the statement returns slide out of the cabinet and appear as cards in it, in the order returned, each showing the value the list was sorted by; cards and drawers from another shop are lit. To the right of the tray, the database: a SYNTAX ERROR placard on its top lights when it refuses a statement, and counters on its front count errors and requests whose words became code. With the row policy on, shutters close over the other shops' drawers. At the front left, staff of the shops queue at a window desk with a clerk behind it; a stand on the desk shows the shop the visitor at the window is signed in as, and the name and sort column they typed. On a bench at the front right, counters count requests, rows from other shops, lists that came back unsorted and sort values rejected.",
-      "Una sala de archivo sobre una placa base. Atrás a la izquierda, un mueble de dieciocho cajones es la tabla de pedidos, seis filas para cada una de tres tiendas, A, B y C. Atrás al medio, un tablero alto muestra la sentencia SQL que envía la app, línea por línea; las palabras que escribió un visitante van impresas sobre una franja encendida. Atrás a la derecha, un tablero de valores tiene los parámetros $1, $2 y $3 en casillas separadas, encendidas las palabras del visitante. En el medio, una bandeja de resultado; las filas que devuelve la sentencia salen del mueble y aparecen en ella como tarjetas, en el orden devuelto, cada una con el valor por el que se ordenó la lista; las tarjetas y los cajones de otra tienda se encienden. A la derecha de la bandeja, la base de datos: un cartel ERROR DE SINTAXIS en su parte de arriba se enciende cuando rechaza una sentencia, y contadores en su frente cuentan los errores y las solicitudes cuyas palabras se volvieron código. Con la política de filas activa, unas persianas cierran los cajones de las otras tiendas. Adelante a la izquierda, empleados de las tiendas hacen fila ante un mostrador con un empleado de la sala detrás; un atril sobre el mostrador muestra la tienda con la que inició sesión el visitante de la ventanilla, y el nombre y la columna de orden que escribió. En un banco adelante a la derecha, contadores cuentan solicitudes, filas de otras tiendas, listas que volvieron sin orden y órdenes rechazados.",
+      "A records room on a base plate. At the back left, a cabinet of eighteen drawers is the orders table, six rows for each of three shops, A, B and C. At the back in the middle, a tall board shows the SQL statement the app sends, line by line; words a visitor typed are printed on a lit strip. At the back right, a values board holds the parameters $1, $2 and $3 in separate boxes, the visitor's words lit. In the middle, a result tray; the rows the statement returns slide out of the cabinet and appear as cards in it, in the order returned, each showing the value the list was sorted by; cards and drawers from another shop are lit. To the right of the tray, the database: a SYNTAX ERROR placard on its top lights when it refuses a statement, and a counter on its front counts the requests whose words became code. With the row policy on, shutters close over the other shops' drawers. At the front left, staff of the shops queue at a window desk with a clerk behind it; a stand on the desk shows the shop the visitor at the window is signed in as, and the name and sort column they typed.",
+      "Una sala de archivo sobre una placa base. Atrás a la izquierda, un mueble de dieciocho cajones es la tabla de pedidos, seis filas para cada una de tres tiendas, A, B y C. Atrás al medio, un tablero alto muestra la sentencia SQL que envía la app, línea por línea; las palabras que escribió un visitante van impresas sobre una franja encendida. Atrás a la derecha, un tablero de valores tiene los parámetros $1, $2 y $3 en casillas separadas, encendidas las palabras del visitante. En el medio, una bandeja de resultado; las filas que devuelve la sentencia salen del mueble y aparecen en ella como tarjetas, en el orden devuelto, cada una con el valor por el que se ordenó la lista; las tarjetas y los cajones de otra tienda se encienden. A la derecha de la bandeja, la base de datos: un cartel ERROR DE SINTAXIS en su parte de arriba se enciende cuando rechaza una sentencia, y un contador en su frente cuenta las solicitudes cuyas palabras se volvieron código. Con la política de filas activa, unas persianas cierran los cajones de las otras tiendas. Adelante a la izquierda, empleados de las tiendas hacen fila ante un mostrador con un empleado de la sala detrás; un atril sobre el mostrador muestra la tienda con la que inició sesión el visitante de la ventanilla, y el nombre y la columna de orden que escribió.",
     ),
     body: [
       plate(),
@@ -239,7 +218,6 @@ export function buildFigure() {
       person(P, CLERK, { scale: 0.78, hat: "cap" }),
       desk(),
       `<g data-layer="visitors"></g>`,
-      bench(),
     ],
   });
 }

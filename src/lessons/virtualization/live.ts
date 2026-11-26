@@ -24,7 +24,7 @@ export default function mount({ P, G, TILES }, root) {
   const rangePath = q("[data-range]"), stops = [q('[data-stop="0"]'), q('[data-stop="1"]')];
   const lampOn = q('[data-lamp="on"]'), lampOff = q('[data-lamp="off"]');
   const thumb = q("[data-thumb]"), foundText = q("[data-found]");
-  foundText.setAttribute("font-size", "2.2");
+  WB.fontSize(foundText, 2.2);
   const counters = { dom: WB.counter(svg, "dom", P), first: WB.counter(svg, "first", P), blank: WB.counter(svg, "blank", P), jumps: WB.counter(svg, "jumps", P) };
   const mainMeter = WB.meter(svg, "main", P);
   const { PX, BELT, TILE, WIN, RAIL } = G;

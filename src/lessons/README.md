@@ -106,14 +106,23 @@ Every lesson gets it from `components/lesson/FigurePlate.astro`, `src/elements/w
 
 ## Text on the machine
 
-Words and digits painted on a machine come out at **11 px or more on a desktop** (the 732 px stage) and so at 12 px or
-more in the phone close-up. Size them with `workbench/kit.mjs`: `textSize(P, 11.2, { width: WIDTH })` (face `"y"`;
-`face: "x"`, `face: "top"`, `along: "y"` as for `faceText`) and `wheelHeight(P, 11.2, { width: WIDTH })` for a
-digit counter's wheels; they follow the figure's scale, so a layout change keeps them right. When the words don't fit,
-move them (onto the plate in front of the part), shorten them, or drop a label that repeats a stat in the stats strip.
-`node tools/text-size.cjs [base-url] [slug…]` reports each lesson's smallest and median text at 1100 px and in the
-close-up, and fails for the lessons it lists as migrated (`MIGRATED`); `tools/site-check.cjs` runs it too, as a
-problem for migrated lessons and a warning for the others. Add a lesson to `MIGRATED` once it passes.
+Words and digits painted on a machine come out at **9 px or more on a desktop** (the 732 px stage), which the phone
+close-up brings to 12 px or more. A new machine aims for **11 px** (queues, eventloop, rrf and hybrid are drawn that
+way): size it with `workbench/kit.mjs`, `textSize(P, 11.2, { width: WIDTH })` (face `"y"`; `face: "x"`, `face: "top"`,
+`along: "y"` as for `faceText`) and `wheelHeight(P, 11.2, { width: WIDTH })` for a digit counter's wheels; they follow
+the figure's scale, so a layout change keeps them right.
+
+- **The floor.** `figureSvg` raises any face text that would come out under 9.2 px (`textFloor`, `TEXT_FLOOR_PX`), and
+  so does the lesson layout for the SVG pieces in `data` the live code inserts (tokens, cards, parcels). Live code that
+  sets a label's size calls `WB.fontSize(el, size)`, and SVG it builds goes through `WB.floorText(svg, width)`. So a
+  word never comes out too small; it can come out too big for its part, which is what to look at.
+- **When words don't fit.** Move them (onto the plate in front of the part, or onto the part's top), shorten them, put
+  them in two lines, or widen the part. A counter whose number is also in the stats strip can go: the strip is right
+  under the machine, and the machine shows the same thing as a pile, a level or a lamp. Keep a counter that is part
+  of the story (the version on a drawer, a timeout on a hop).
+- **The check.** `node tools/text-size.cjs [base-url] [slug…]` reports each lesson's smallest and median text at
+  1100 px and in the close-up, and any lens region bigger than the close-up. It fails a lesson under its floor: 11 px
+  for those in `FULL`, 9 px for the rest; one listed in `PENDING` only warns. `tools/site-check.cjs` runs it too.
 
 ## Shared code: import it, don't copy it
 

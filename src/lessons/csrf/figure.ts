@@ -7,8 +7,7 @@
 // and CSRF TOKEN; each arm is raised while the gate is open and lowered when it refuses, and the lamp on the gate's
 // plaque lights while it refuses. At the window, the teller carries out what got through and holds up a slip for
 // every payment. The pages that send forged errands fly a pennant, and so do their couriers. Each page's host and
-// its relation to the bank are painted on its front; plaques along the front name every gate; the bank's ledger,
-// front right, counts what it paid and refused.
+// its relation to the bank are painted on its front; plaques along the front name every gate.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, digitCounter, person, figurine, lamp, pennant, faceText, faceRect, litFill } from "../../../workbench/parts.mjs";
@@ -26,7 +25,7 @@ const ROAD = { x: -148, y: -45, w: 220, d: 16, r: 1 };
 export const ROAD_Y = ROAD.y + ROAD.d / 2;          // -37
 const ROAD_H = 0.8;
 
-// The front band: the customer, the cookie jar, the gates' plaques and the ledger, in front of the road.
+// The front band: the customer, the cookie jar and the gates' plaques, in front of the road.
 const FRONT = { y: -25, d: 18 };                       // y -25..-7
 const FRONT_FACE = FRONT.y + FRONT.d;
 const PLAQUE_H = 9;
@@ -36,41 +35,38 @@ const PLAQUE_H = 9;
 export const PAGES = [
   { key: "other", x: -148, w: 38, name: t("OTHER SITE", "OTRO SITIO"), host: "OTHER.EXAMPLE", rel: t("CROSS-SITE", "DE OTRO SITIO"), hostile: true },
   { key: "forum", x: -108, w: 38, name: t("FORUM", "FORO"), host: "FORUM.BANK.EXAMPLE", rel: t("SAME SITE", "MISMO SITIO"), hostile: true },
-  { key: "bank", x: -68, w: 38, name: t("BANK PAGE", "PÁGINA DEL BANCO"), host: "WWW.BANK.EXAMPLE", rel: t("SAME ORIGIN", "MISMO ORIGEN") },
+  { key: "bank", x: -68, w: 38, name: t("BANK PAGE", "PÁG. DEL BANCO"), host: "WWW.BANK.EXAMPLE", rel: t("SAME ORIGIN", "MISMO ORIGEN") },
 ];
 const KIOSK = { y: -76, d: 26, h: 29 };
 const KIOSK_FACE = KIOSK.y + KIOSK.d;                 // -50
 export const DOOR = Object.fromEntries(PAGES.map((p) => [p.key, [p.x + p.w / 2, KIOSK_FACE + 1]]));
 
 // The browser's cookie jar, in front of the road.
-const JAR_BOOTH = { x: -56, y: FRONT.y, w: 29.6, d: FRONT.d - 4, r: 1.2 };
+const JAR_BOOTH = { x: -78, y: FRONT.y, w: 34, d: FRONT.d - 4, r: 1.2 };
 const JAR_BOOTH_H = 9;
-export const JAR = { x: -41.2, y: FRONT.y + 6.4, z: JAR_BOOTH_H, r: 5, h: 9 };
+export const JAR = { x: -61, y: FRONT.y + 6.4, z: JAR_BOOTH_H, r: 5, h: 9 };
 export const JAR_X = JAR.x;                            // where a courier passes the jar
 
 // The bank's three gates, across the road, and their plaques.
 export const GATES = [
-  { key: "card", x: -15, name: t("CARD", "TARJETA") },
+  { key: "card", x: -26, name: t("CARD", "TARJETA") },
   { key: "origin", x: 8, name: t("ORIGIN", "ORIGEN") },
-  { key: "token", x: 31, name: t("CSRF TOKEN", "TOKEN CSRF") },
+  { key: "token", x: 42, name: t("CSRF TOKEN", "TOKEN CSRF") },
 ];
-const PLAQUE_W = 21;
+const PLAQUE_W = 32;   // room for SAME ORIGIN, COPIA COOKIE at 9 px
 const POST_H = 12;
 const ARM_Z = 8.4;
 const ARM_LEN = 17.2;
 
-// The bank: a long facade along the back right, the teller at its window, the ledger in front.
+// The bank: a long facade along the back right, the teller at its window.
 const BANK = { x: -26, y: -82 + 4, w: 152, d: 28, r: 1.6 };
 const BANK_H = 34;
 const BANK_FACE = BANK.y + BANK.d;                     // -50
 export const WINDOW_X = 64;
 export const TELLER = [WINDOW_X, BANK_FACE + 4.4, 0];
-// low, so it doesn't hide the window and the couriers standing at it
-const LEDGER = { x: 44, y: FRONT.y, w: 82, d: FRONT.d, r: 1.4 };
-const LEDGER_H = 10;
 // the customer, front left, in front of the pages open in their browser, with a plaque
 export const CUSTOMER = [-138, -16, 0];
-const CUST_PLAQUE = { x: -128, y: FRONT.y + 1, w: 66, d: FRONT.d - 6, r: 1 };
+const CUST_PLAQUE = { x: -128, y: FRONT.y + 1, w: 48, d: FRONT.d - 6, r: 1 };
 
 export const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), ...k.boxCorners(BANK, 0, BANK_H + 2), [PAGES[0].x, KIOSK.y, KIOSK.h + 12.5]],
@@ -105,10 +101,13 @@ function kiosk(p) {
   const roof = { x: plan.x - 1, y: plan.y - 1, w: plan.w + 2, d: plan.d + 2, r: 1.4 };
   out.push(S(k.slabOf(roof, KIOSK.h, 2.4, P, 3, 0.4), { tone: "hi", crease: "lo" }));
   const cx = p.x + p.w / 2;
-  out.push(L(k.faceRectY(P, cx - 5, cx + 5, KIOSK_FACE, 0, 14.6), { tone: "lo" }));
-  out.push(word(cx, KIOSK_FACE, 24.4, p.name, CAP, { anchor: "middle" }));
-  out.push(word(cx, KIOSK_FACE, 20.4, p.host, CAP, { anchor: "middle" }));
-  out.push(word(cx, KIOSK_FACE, 16.4, p.rel, CAP, { anchor: "middle" }));
+  out.push(L(k.faceRectY(P, cx - 5, cx + 5, KIOSK_FACE, 0, 9.6), { tone: "lo" }));
+  // four lines at 9 px: the name, the host in two (split after its first label), the relation to the bank
+  const dot = p.host.indexOf(".") + 1;
+  out.push(word(cx, KIOSK_FACE, 24.8, p.name, CAP, { anchor: "middle" }));
+  out.push(word(cx, KIOSK_FACE, 20.6, p.host.slice(0, dot), CAP, { anchor: "middle" }));
+  out.push(word(cx, KIOSK_FACE, 16.4, p.host.slice(dot), CAP, { anchor: "middle" }));
+  out.push(word(cx, KIOSK_FACE, 11.6, p.rel, CAP, { anchor: "middle" }));
   if (p.hostile) out.push(pennant(P, { x: plan.x + plan.w - 4, y: plan.y + 4, z: KIOSK.h + 2.4, height: 9, length: 7, drop: 4.5 }));
   out.push(`</g>`);
   return out.join("");
@@ -143,7 +142,7 @@ function customer() {
   const face = CUST_PLAQUE.y + CUST_PLAQUE.d, cx = CUST_PLAQUE.x + CUST_PLAQUE.w / 2;
   return person(P, CUSTOMER, { scale: 0.86 })
     + S(k.slabOf(CUST_PLAQUE, 0, PLAQUE_H, P, 3, 0.4), { tone: "mid", inner: L(k.planOutline(k.insetPlan(CUST_PLAQUE, 1.4), PLAQUE_H, P), { tone: "faint" }) })
-    + word(cx, face, 5.3, t("THE CUSTOMER, SIGNED IN AT", "EL CLIENTE, CON SESIÓN EN"), CAP, { anchor: "middle" })
+    + word(cx, face, 5.3, t("SIGNED IN AT", "CON SESIÓN EN"), CAP, { anchor: "middle" })
     + word(cx, face, 1.5, "WWW.BANK.EXAMPLE", CAP, { anchor: "middle" });
 }
 
@@ -196,8 +195,8 @@ function jar() {
   const face = JAR_BOOTH.y + JAR_BOOTH.d;
   const cx = JAR_BOOTH.x + JAR_BOOTH.w / 2;
   const out = [S(k.slabOf(JAR_BOOTH, 0, JAR_BOOTH_H, P, 3, 0.4), { tone: "mid", inner: L(k.planOutline(k.insetPlan(JAR_BOOTH, 1.4), JAR_BOOTH_H, P), { tone: "faint" }) })];
-  out.push(word(cx, face, 5.3, t("COOKIE JAR", "COOKIES"), CAP, { anchor: "middle" }));
-  out.push(faceText(P, [cx, face, 1.5], "SAMESITE=LAX", { size: CAP, tone: "hi", anchor: "middle", attr: "data-mode" }));
+  out.push(word(cx, face, 5.3, "SAMESITE", CAP, { anchor: "middle" }));
+  out.push(faceText(P, [cx, face, 1.5], "LAX", { size: CAP, tone: "hi", anchor: "middle", attr: "data-mode" }));
   // the jar: a base, a glass body (outline only, so the card shows), and a lid
   out.push(S(k.cylinder(JAR.x, JAR.y, JAR.r + 0.8, JAR.z, 1, P, 32), { tone: "mid" }));
   out.push(`<g class="wb-lit-group" data-jar-card>${S(k.slabOf({ x: JAR.x - 3, y: JAR.y - 0.3, w: 6, d: 0.6, r: 0.2 }, JAR.z + 1.4, 4.4, P, 2, 0.15), { tone: "hi", crease: "none", lit: true })}</g>`);
@@ -205,25 +204,6 @@ function jar() {
     + k.segment([JAR.x + JAR.r * Math.cos(-0.7), JAR.y + JAR.r * Math.sin(-0.7), JAR.z + 1], [JAR.x + JAR.r * Math.cos(-0.7), JAR.y + JAR.r * Math.sin(-0.7), JAR.z + JAR.h], P)
     + k.segment([JAR.x + JAR.r * Math.cos(2.45), JAR.y + JAR.r * Math.sin(2.45), JAR.z + 1], [JAR.x + JAR.r * Math.cos(2.45), JAR.y + JAR.r * Math.sin(2.45), JAR.z + JAR.h], P), { tone: "mid" }));
   out.push(S(k.cylinder(JAR.x, JAR.y, JAR.r + 0.4, JAR.z + JAR.h, 1.4, P, 32, 0.3), { tone: "hi", crease: "lo" }));
-  return out.join("");
-}
-
-// The ledger: what the bank paid and refused, each counter on the front with its caption on the top, just behind it.
-export const LEDGER_COUNTERS = [
-  { name: "paid", label: t("FORGED PAID", "FALSAS PAGADAS") },
-  { name: "blocked", label: t("BLOCKED", "BLOQUEADAS") },
-  { name: "signedout", label: t("SIGNED OUT", "SIN SESIÓN") },
-];
-function ledger() {
-  const face = LEDGER.y + LEDGER.d;
-  const out = [S(k.slabOf(LEDGER, 0, LEDGER_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(LEDGER, 1.8), LEDGER_H, P), { tone: "faint" }) })];
-  const colW = LEDGER.w / LEDGER_COUNTERS.length;
-  LEDGER_COUNTERS.forEach((c, i) => {
-    const cx = LEDGER.x + colW * (i + 0.5);
-    const w = 4.6, gap = 0.6, count = 3, span = count * w + (count - 1) * gap;
-    out.push(digitCounter(P, { x: cx - span / 2, y: face, z: 1.6, count, w, h: 6.2, gap, pad: 1, name: c.name }));
-    out.push(faceText(P, [cx, face - 1.6, LEDGER_H], c.label, { face: "top", size: CAP, tone: "hi", anchor: "middle" }));
-  });
   return out.join("");
 }
 
@@ -246,8 +226,8 @@ export function cardSvg() {
 }
 
 const LABEL = t(
-  "A bank street on a base plate. At the back left stand three pages open in the customer's browser, as small shops, each with its name, host and relation to the bank on its front: OTHER SITE (other.example, cross-site), FORUM (forum.bank.example, same site as the bank) and BANK PAGE (www.bank.example, same origin). The first two send forged errands and fly a pennant. The browser is the courier: for each errand a page asks for, a small figure walks out of that page's door with an envelope marked POST or GET and goes down the road to the bank's window at the back right; a courier from a hostile page carries a pennant too. In front of the road, from the left: the customer beside a plaque saying they are signed in at www.bank.example; the browser's cookie jar, which shows the cookie's SameSite setting, where a courier picks up the customer's ID card for the bank, lit, when the rule allows; and the plaques of three gates that cross the road, CARD, ORIGIN and CSRF TOKEN, each with a lamp that lights while its gate refuses. A gate's arm stands raised while it is open and comes down across the road when it refuses. At the window a teller holds up a payment slip for every payment; a sign above the window says whether the old GET /pay link still works. A low ledger at the front right counts forged payments, blocked requests and the customer's visits that arrived signed out.",
-  "Una calle con un banco sobre una placa base. Atrás a la izquierda hay tres páginas abiertas en el navegador del cliente, como tiendas pequeñas, cada una con su nombre, su host y su relación con el banco en el frente: OTRO SITIO (other.example, de otro sitio), FORO (forum.bank.example, del mismo sitio que el banco) y PÁGINA DEL BANCO (www.bank.example, del mismo origen). Las dos primeras envían encargos falsos y tienen un banderín. El navegador es el mensajero: por cada encargo que pide una página, una figura pequeña sale por la puerta de esa página con un sobre marcado POST o GET y va por la calle hasta la ventanilla del banco, atrás a la derecha; un mensajero de una página hostil también lleva un banderín. Delante de la calle, desde la izquierda: el cliente junto a una placa que dice que tiene sesión en www.bank.example; el frasco de cookies del navegador, que muestra el ajuste SameSite de la cookie, donde el mensajero toma la tarjeta de identidad del cliente para el banco, encendida, cuando la regla lo permite; y las placas de tres barreras que cruzan la calle, TARJETA, ORIGEN y TOKEN CSRF, cada una con una lámpara que se enciende mientras su barrera rechaza. El brazo de una barrera queda levantado mientras está abierta y baja a través de la calle cuando rechaza. En la ventanilla, un cajero levanta un comprobante en cada pago; un letrero sobre la ventanilla dice si el viejo enlace GET /pay sigue funcionando. Un libro de cuentas bajo, adelante a la derecha, cuenta los pagos falsos, las solicitudes bloqueadas y las visitas del cliente que llegaron sin sesión.",
+  "A bank street on a base plate. At the back left stand three pages open in the customer's browser, as small shops, each with its name, host and relation to the bank on its front: OTHER SITE (other.example, cross-site), FORUM (forum.bank.example, same site as the bank) and BANK PAGE (www.bank.example, same origin). The first two send forged errands and fly a pennant. The browser is the courier: for each errand a page asks for, a small figure walks out of that page's door with an envelope marked POST or GET and goes down the road to the bank's window at the back right; a courier from a hostile page carries a pennant too. In front of the road, from the left: the customer beside a plaque saying they are signed in at www.bank.example; the browser's cookie jar, which shows the cookie's SameSite setting, where a courier picks up the customer's ID card for the bank, lit, when the rule allows; and the plaques of three gates that cross the road, CARD, ORIGIN and CSRF TOKEN, each with a lamp that lights while its gate refuses. A gate's arm stands raised while it is open and comes down across the road when it refuses. At the window a teller holds up a payment slip for every payment; a sign above the window says whether the old GET /pay link still works.",
+  "Una calle con un banco sobre una placa base. Atrás a la izquierda hay tres páginas abiertas en el navegador del cliente, como tiendas pequeñas, cada una con su nombre, su host y su relación con el banco en el frente: OTRO SITIO (other.example, de otro sitio), FORO (forum.bank.example, del mismo sitio que el banco) y PÁGINA DEL BANCO (www.bank.example, del mismo origen). Las dos primeras envían encargos falsos y tienen un banderín. El navegador es el mensajero: por cada encargo que pide una página, una figura pequeña sale por la puerta de esa página con un sobre marcado POST o GET y va por la calle hasta la ventanilla del banco, atrás a la derecha; un mensajero de una página hostil también lleva un banderín. Delante de la calle, desde la izquierda: el cliente junto a una placa que dice que tiene sesión en www.bank.example; el frasco de cookies del navegador, que muestra el ajuste SameSite de la cookie, donde el mensajero toma la tarjeta de identidad del cliente para el banco, encendida, cuando la regla lo permite; y las placas de tres barreras que cruzan la calle, TARJETA, ORIGEN y TOKEN CSRF, cada una con una lámpara que se enciende mientras su barrera rechaza. El brazo de una barrera queda levantado mientras está abierta y baja a través de la calle cuando rechaza. En la ventanilla, un cajero levanta un comprobante en cada pago; un letrero sobre la ventanilla dice si el viejo enlace GET /pay sigue funcionando.",
 );
 
 export function buildFigure() {
@@ -267,7 +247,6 @@ export function buildFigure() {
       customer(),
       jar(),
       gatePlaques(),
-      ledger(),
       `<g data-layer="fly"></g>`,
     ],
   });

@@ -138,7 +138,7 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG }, root) {
     // Readout and stats.
     say(story());
     stat("orders", st.orders); stat("shipped", st.shipped); stat("lost", st.lost); stat("phantom", st.phantom);
-    stat("dups", cfg.dedupe !== "off" && st.caught ? st.dupShipped + L(" (" + st.caught + " caught)", " (" + st.caught + " detectadas)") : st.dupShipped);
+    stat("dups", cfg.dedupe !== "off" && st.caught ? st.dupShipped + L(" (" + st.caught + " caught)", " (" + st.caught + " atajados)") : st.dupShipped);
     const ds = model.delays.slice(-40).sort((x, y) => x - y);
     stat("delay", ds.length ? rankQuantileSorted(ds, 0.5).toFixed(1) + " s" : "–");
   }

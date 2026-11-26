@@ -110,17 +110,7 @@ function stopwatch() {
   const out = [S(k.slabOf(PED, 0, PED_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(PED, 2.4), PED_H, P), { tone: "faint" }));
   out.push(dial(P, { x: WATCH.x, y: WATCH.y, z: PED_H, r: WATCH.r, h: 5, ticks: 50, every: 5, name: "watch", value: 0 }));
-  // the last reading: three wheels, a decimal point and one wheel, in one housing
-  const x0 = PED.x + 4, z0 = 3.4, span3 = 3 * 5 + 2 * 0.6, tenthX = x0 + span3 + 2;
-  out.push(S(k.slabOf({ x: x0 - 1.2, y: PED_FRONT - 1.4, w: tenthX + 5 - x0 + 2.4, d: 1.4, r: 0.5 }, z0 - 1.2, 6.6 + 2.4, P, 2), { tone: "hi", crease: "lo" }));
-  out.push(counter({ x: x0, y: PED_FRONT, z: z0, count: 3, housing: false, name: "readI" }));
-  out.push(k.dotsSvg([k.iso([x0 + span3 + 1, PED_FRONT + 0.1, z0 + 0.6], P)], { size: 1.1, tone: "hi" }));
-  out.push(counter({ x: tenthX, y: PED_FRONT, z: z0, count: 1, housing: false, name: "readF" }));
-  out.push(text(tenthX + 5 + 3.4, PED_FRONT, 5, t("READING", "LECTURA")));
-  // how many readings so far, on the right face
-  const side = PED.x + PED.w;
-  out.push(counter({ x: side, y: PED_FRONT - 4, z: 2, count: 5, face: "x", name: "readings" }));
-  out.push(faceText(P, [side, PED_FRONT - 4, 12.4], t("READINGS", "LECTURAS"), { face: "x", size: LABEL, tone: "hi" }));
+  // (the last reading and how many readings so far are in the stats strip; the stopwatch shows the reading)
   // the listener, with a clipboard, beside the stopwatch it reads
   out.push(person(P, [PED.x + PED.w - 7, PED.y + 9, PED_H], { scale: 0.62, holding: "clipboard" }));
   return out.join("");
@@ -155,8 +145,7 @@ function tally() {
 function desk() {
   const out = [S(k.slabOf(DESK, 0, DESK_H, P, 3, 0.6), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(DESK, 2.4), DESK_H, P), { tone: "faint" }));
-  out.push(counter({ x: DESK.x + 5, y: DESK_FRONT, z: 1.8, count: 5, name: "brute", value: BRUTE / 2 }));
-  out.push(text(DESK.x + 5 + 5 * CW + 2.4, DESK_FRONT, 3.4, t("BRUTE FORCE, AVERAGE", "FUERZA BRUTA, PROMEDIO")));
+  // (brute force's average is in the stats strip)
   // the pile of guess slips that guessing blind works through: low stacks at the front right of the desk, clear of
   // the checker's wheels behind it
   const slip = { w: 10, d: 8 };

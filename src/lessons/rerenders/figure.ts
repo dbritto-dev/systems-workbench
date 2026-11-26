@@ -3,7 +3,7 @@
 // front. Every component is a block (or a stud on a tray, for the ones that come by the dozen) wired to its parent.
 // A render lights the block; the wave runs down the wires. STATE plaques mark where the state lives, gates on the wires are
 // React.memo, the store stands at the back right, and the page lies at the front: the DOM, where only what changed is
-// redrawn. Counters on the console count renders and DOM changes, a meter shows the work against one frame.
+// redrawn. A meter on the console shows the work against one frame.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { basePlate, digitCounter, meter, plaque, faceText, variants } from "../../../workbench/parts.mjs";
@@ -17,33 +17,34 @@ export const HEIGHT = 372;
 const PLATE = { x: -162, y: -108, w: 268, d: 168, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 
-// Rows of the tree (y of each row's back edge), back to front.
-const ROW = [-96, -72, -52, -31];
-const BUS_Y = -79;
+// Rows of the tree (y of each row's back edge), back to front. Each parent's children sit in one row, under it, and
+// the three groups of edges (Header's, Sidebar's, SearchPanel's) run along the plate without crossing.
+const ROW = [-106, -86, -66, -42, -23];
+const BUS_Y = -91;
 
-// Single components: centre x, row, width, depth, height, label.
+// Single components: centre x, row, width, depth, height, label. Each block is wide enough for its name at 9 px.
 export const BLOCKS = {
   App: { cx: -40, row: 0, w: 40, d: 10, h: 7, label: "APP" },
-  Header: { cx: -128, row: 1, w: 24, d: 8, h: 6, label: "HEADER" },
-  Sidebar: { cx: -75, row: 1, w: 24, d: 8, h: 6, label: "SIDEBAR" },
-  SearchPanel: { cx: -17.5, row: 1, w: 26, d: 8, h: 6, label: "SEARCHPANEL" },
-  Footer: { cx: 44, row: 1, w: 24, d: 8, h: 6, label: "FOOTER" },
-  // Row 2 blocks carry the components' own names, as the text uses them; each is just wide enough for its name.
-  Logo: { cx: -151, row: 2, w: 10, d: 8, h: 5, label: "LOGO" },
-  Nav: { cx: -140, row: 2, w: 8, d: 8, h: 5, label: "NAV" },
-  UserMenu: { cx: -126.5, row: 2, w: 15, d: 8, h: 5, label: "USERMENU" },
-  CartBadge: { cx: -108.5, row: 2, w: 17, d: 8, h: 5, label: "CARTBADGE" },
-  PriceChart: { cx: -85.5, row: 2, w: 19, d: 10, h: 9, label: "PRICECHART" },
-  SearchInput: { cx: -39, row: 2, w: 20, d: 8, h: 5, label: "SEARCHINPUT" },
-  Suggestions: { cx: -17, row: 2, w: 20, d: 8, h: 5, label: "SUGGESTIONS" },
-  ResultList: { cx: 4.5, row: 2, w: 19, d: 8, h: 5, label: "RESULTLIST" },
+  Header: { cx: -120, row: 1, w: 26, d: 8, h: 6, label: "HEADER" },
+  Sidebar: { cx: -66, row: 1, w: 28, d: 8, h: 6, label: "SIDEBAR" },
+  SearchPanel: { cx: -6, row: 1, w: 40, d: 8, h: 6, label: "SEARCHPANEL" },
+  Footer: { cx: 30, row: 1, w: 26, d: 8, h: 6, label: "FOOTER" },
+  // Header's and Sidebar's children in row 2, SearchPanel's in row 3: the components' own names, as the text uses them.
+  Logo: { cx: -152, row: 2, w: 16, d: 8, h: 5, label: "LOGO" },
+  Nav: { cx: -136, row: 2, w: 13, d: 8, h: 5, label: "NAV" },
+  UserMenu: { cx: -114, row: 2, w: 28, d: 8, h: 5, label: "USERMENU" },
+  CartBadge: { cx: -83, row: 2, w: 31, d: 8, h: 5, label: "CARTBADGE" },
+  PriceChart: { cx: -48, row: 2, w: 34, d: 10, h: 6, label: "PRICECHART" },
+  SearchInput: { cx: 1, row: 3, w: 37, d: 8, h: 5, label: "SEARCHINPUT" },
+  Suggestions: { cx: 42, row: 3, w: 37, d: 8, h: 5, label: "SUGGESTIONS" },
+  ResultList: { cx: 78, row: 3, w: 34, d: 8, h: 5, label: "RESULTLIST" },
 };
-// Components that come many at a time: a tray of studs, one stud per component.
+// Components that come many at a time: a tray of studs, one stud per component; `two`: the label in two lines.
 export const BANKS = {
-  NavLink: { cx: -140, row: 3, cols: 3, rows: 2, pitch: 4.2, label: "NAVLINK ×6" },
-  Filter: { cx: -64, row: 2, cols: 4, rows: 3, pitch: 4.2, label: "FILTER ×12" },
-  ResultCard: { cx: 4.5, row: 3, cols: 8, rows: 6, pitch: 4.2, label: "RESULTCARD ×48" },
-  FooterLink: { cx: 44, row: 2, cols: 4, rows: 2, pitch: 4.2, label: "FOOTERLINK ×8" },
+  NavLink: { cx: -136, row: 3, cols: 3, rows: 2, pitch: 4.2, label: "NAVLINK ×6" },
+  Filter: { cx: -16, row: 2, cols: 6, rows: 2, pitch: 4.2, label: "FILTER ×12" },
+  ResultCard: { cx: 78, row: 4, cols: 8, rows: 6, pitch: 4.2, label: "RESULTCARD ×48" },
+  FooterLink: { cx: 30, row: 2, cols: 4, rows: 2, pitch: 4.2, label: "FOOTERLINK ×8" },
 };
 const STUD = 3.1, TRAY_PAD = 1.8, TRAY_H = 1.6, STUD_H = 1.5;
 const trayOf = (b) => {
@@ -60,9 +61,9 @@ const planOf = (b) => ({ x: b.cx - b.w / 2, y: ROW[b.row], w: b.w, d: b.d, r: 1 
 const STORE = { x: 64, y: -102, w: 32, d: 16, r: 1.5 };
 const STORE_H = 8;
 const DRUM = { x: 87, y: -95, r: 6.5, h: 13 };
-const CONSOLE = { x: -156, y: 16, w: 74, d: 16, r: 1.5 };
+const CONSOLE = { x: -150, y: 16, w: 30, d: 16, r: 1.5 };
 const CONSOLE_H = 16;
-export const PAGE = { x: -70, y: 8, w: 160, d: 40 };
+export const PAGE = { x: -70, y: 13, w: 160, d: 40 };
 const PAGE_Z = 0.7;
 
 export const P = k.fitProjection(
@@ -142,7 +143,8 @@ function bank(name) {
     const [x, y] = studAt(b, i);
     out.push(`<g data-stud="${name}-${i}">${S(slab({ x, y, w: STUD, d: STUD, r: 0.4 }, TRAY_H, STUD_H, 2, 0.2), { tone: "hi", crease: "lo" })}</g>`);
   }
-  out.push(faceText(P, [b.cx, tr.y + tr.d + 3.4, 0], b.label, { face: "top", size: 2.6, tone: "mid", anchor: "middle" }));
+  const lines = b.two ? b.label.split(" ") : [b.label];
+  lines.forEach((line, i) => out.push(faceText(P, [b.cx, tr.y + tr.d + 3.4 + i * 4.6, 0], line, { face: "top", size: 2.6, tone: "mid", anchor: "middle" })));
   return out.join("");
 }
 
@@ -150,9 +152,9 @@ function bank(name) {
 // its state changes).
 export const FLAGS = { App: "App", UserMenu: "UserMenu", Sidebar: "Sidebar", SearchPanel: "SearchPanel", ResultList: "ResultList", Store: "Store" };
 function flag(name) {
-  let x, y, z, w = 11;
+  let x, y, z, w = 20;   // room for ESTADO at 9 px
   if (name === "Store") { x = STORE.x + 2; y = STORE.y + 2; z = STORE_H; }
-  else { const b = BLOCKS[name]; x = b.cx - b.w / 2 + 1; y = ROW[b.row] + 1.3; z = b.h; w = Math.min(12, b.w - 2); }
+  else { const b = BLOCKS[name]; x = b.cx - b.w / 2 + 1; y = ROW[b.row] + 1.3; z = b.h; w = Math.min(20, b.w - 2); }
   return `<g class="wb-lit-group" data-flag="${name}"${name === "App" ? "" : ' style="display:none"'}>${plaque(P, { x, y, z, w, d: 4.6, text: t("STATE", "ESTADO"), size: 2.2 })}</g>`;
 }
 
@@ -162,9 +164,8 @@ function store() {
   out.push(S(k.cylinder(DRUM.x, DRUM.y, DRUM.r, STORE_H, DRUM.h, P, 32, 0.6), { tone: "hi", crease: "lo" }));
   out.push(L(k.ring(DRUM.x, DRUM.y, DRUM.r - 1.6, STORE_H + DRUM.h, P, 32), { tone: "lo" }));
   const front = STORE.y + STORE.d;
-  out.push(digitCounter(P, { x: STORE.x + 3, y: front, z: 1.6, count: 2, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name: "selectors" }));
-  out.push(text(STORE.x + 13, front, 4.6, "STORE", 2.6, { tone: "hi" }));
-  out.push(text(STORE.x + 13, front, 1.6, t("SELECTORS", "SELECTORES"), 2.1));
+  // its name on top, clear of the Footer in front of it (selectors run: the stats strip)
+  out.push(faceText(P, [STORE.x + 3, STORE.y + STORE.d - 3, STORE_H], "STORE", { face: "top", size: 2.6, tone: "hi" }));
   out.push(flag("Store"));
   out.push(`</g>`);
   return out.join("");
@@ -173,12 +174,9 @@ function store() {
 function consoleBox() {
   const out = [S(k.slabOf(CONSOLE, 0, CONSOLE_H, P, 3, 0.5), { tone: "mid" })];
   const front = CONSOLE.y + CONSOLE.d;
-  out.push(digitCounter(P, { x: CONSOLE.x + 5, y: front, z: 2.4, count: 2, w: 5, h: 7, gap: 0.6, pad: 1.2, name: "renders" }));
-  out.push(text(CONSOLE.x + 3.8, front, 13, "RENDERS", 2.5));
-  out.push(digitCounter(P, { x: CONSOLE.x + 28, y: front, z: 2.4, count: 2, w: 5, h: 7, gap: 0.6, pad: 1.2, name: "dom" }));
-  out.push(text(CONSOLE.x + 26.8, front, 13, t("DOM CHANGES", "CAMBIOS DOM"), 2.5));
-  out.push(meter(P, { x: CONSOLE.x + 62, y: front, z: 3, r: 7.5, ticks: 10, zone: 0.5, name: "work" }));
-  out.push(text(CONSOLE.x + 62, front, 13, t("WORK", "TRABAJO"), 2.5, { anchor: "middle" }));
+  // (renders and DOM changes are in the stats strip; the meter shows the work)
+  out.push(meter(P, { x: CONSOLE.x + CONSOLE.w / 2, y: front, z: 3, r: 7.5, ticks: 10, zone: 0.5, name: "work" }));
+  out.push(text(CONSOLE.x + CONSOLE.w / 2, front, 12, t("WORK", "TRABAJO"), 2.5, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -224,8 +222,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A component board on a base plate: a shop page's React component tree laid out in rows, App at the back, then Header, Sidebar, SearchPanel and Footer, then their children nearer the front, with trays of small studs for the components that come many at a time: " + links + " nav links, " + filters + " filters, " + cards + " result cards and " + footer + " footer links. Wires run from each component to its children. When a component renders its block lights, and the light runs down the wires to everything it renders. Plaques marked STATE lie on the components that hold state; gates on some wires are React.memo; a store stands at the back right. At the front lies the page itself, where only the parts whose DOM changed flash, and a console counts renders and DOM changes and shows the work of the last update against one frame.",
-      "Un tablero de componentes sobre una placa base: el árbol de componentes de React de la página de una tienda dispuesto en filas, App al fondo, luego Header, Sidebar, SearchPanel y Footer, y sus hijos más adelante, con bandejas de pequeños pernos para los componentes que vienen en grupo: " + links + " enlaces de navegación, " + filters + " filtros, " + cards + " tarjetas de resultados y " + footer + " enlaces del pie. Cables van de cada componente a sus hijos. Cuando un componente se renderiza su bloque se ilumina, y la luz baja por los cables hasta todo lo que renderiza. Placas marcadas ESTADO están sobre los componentes que guardan estado; compuertas en algunos cables son React.memo; un store está al fondo a la derecha. Adelante está la página misma, donde solo destellan las partes cuyo DOM cambió, y una consola cuenta renders y cambios en el DOM y muestra el trabajo de la última actualización frente a un cuadro.",
+      "A component board on a base plate: a shop page's React component tree laid out in rows, App at the back, then Header, Sidebar, SearchPanel and Footer, then their children nearer the front, with trays of small studs for the components that come many at a time: " + links + " nav links, " + filters + " filters, " + cards + " result cards and " + footer + " footer links. Wires run from each component to its children. When a component renders its block lights, and the light runs down the wires to everything it renders. Plaques marked STATE lie on the components that hold state; gates on some wires are React.memo; a store stands at the back right. At the front lies the page itself, where only the parts whose DOM changed flash, and a console's meter shows the work of the last update against one frame.",
+      "Un tablero de componentes sobre una placa base: el árbol de componentes de React de la página de una tienda dispuesto en filas, App al fondo, luego Header, Sidebar, SearchPanel y Footer, y sus hijos más adelante, con bandejas de pequeños pernos para los componentes que vienen en grupo: " + links + " enlaces de navegación, " + filters + " filtros, " + cards + " tarjetas de resultados y " + footer + " enlaces del pie. Cables van de cada componente a sus hijos. Cuando un componente se renderiza su bloque se ilumina, y la luz baja por los cables hasta todo lo que renderiza. Placas marcadas ESTADO están sobre los componentes que guardan estado; compuertas en algunos cables son React.memo; un store está al fondo a la derecha. Adelante está la página misma, donde solo destellan las partes cuyo DOM cambió, y el medidor de una consola muestra el trabajo de la última actualización frente a un cuadro.",
     ),
     body: [
       plate(),

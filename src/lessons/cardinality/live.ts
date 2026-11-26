@@ -27,7 +27,7 @@ export default function mount({ P, G, TOK }, root) {
   const rackCover = q("[data-rack-cover]");
 
   function counter(name, c) { const cells = counterCells(c); return { c, cells, els: cells.map((_, j) => q('[data-digit="' + name + '-' + j + '"]')), shown: [] }; }
-  const dials = Object.fromEntries(["requests", "series", "kept", "errors", "errorsKept"].map((n) => [n, counter(n, G.COUNTERS[n])]));
+  const dials = Object.fromEntries(["series"].map((n) => [n, counter(n, G.COUNTERS[n])]));
   function showCount(dial, v) { digitsOf(v, dial.c.count).forEach((d, j) => { if (dial.shown[j] !== d) { dial.shown[j] = d; dial.els[j].setAttribute("d", digitPath(iso, P, dial.cells[j], d)); } }); }
 
   function makePool(layer, kinds, n) {
@@ -159,7 +159,7 @@ export default function mount({ P, G, TOK }, root) {
     setD(needle, needleOf(turn));
     cardReq.forEach((r, s) => { const c = cards[s]; c.g.style.display = r ? "" : "none"; if (r) c.solid.toggleAttribute("data-lit", r.err); });
 
-    showCount(dials.requests, reqCount); showCount(dials.series, seriesShown); showCount(dials.kept, keptCount); showCount(dials.errors, errSeen); showCount(dials.errorsKept, errKept);
+    showCount(dials.series, seriesShown);
     stat("requests", reqCount); stat("series", seriesShown); stat("memory", fmtBytes(bytes)); stat("kept", keptCount);
     stat("errors", L(errKept + " of " + errSeen, errKept + " de " + errSeen)); stat("buffer", cfg.sampling === "tail" ? buffer : "–");
     say(L(seriesShown + " series · " + fmtBytes(bytes) + (overflow ? " · wall full" : "") + " · errors kept " + errKept + " of " + errSeen,

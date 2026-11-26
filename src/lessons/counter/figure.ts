@@ -37,7 +37,7 @@ export const COUNTERS = {
   main: { x: -15.3, y: CAB_FRONT + PROUD, z: 7.5, w: 9.2, h: 13.5, gap: 1.2, count: 3, size: "l", pad: [4.2, 2.5, 2] },
   slot: XS.map((cx) => ({ x: cx - 10.9, y: CAB_FRONT + PROUD, z: 9, w: 6.6, h: 10, gap: 1.1, count: 3, size: "m", pad: [3.1, 2.5, 2.5] })),
   view: XS.map((cx) => ({ x: cx - 17.4, y: BRANCH_Y + DESK_D + PROUD, z: 2.4, w: 6, h: 7.6, gap: 0.9, count: 3, size: "m", pad: [2.6, 1.2, 1.2] })),
-  tally: XS.map((cx) => ({ x: cx + 8.6, y: 52, z: 14.4, w: 3.7, h: 5.6, gap: 0.5, count: 3, size: "s", housing: false })),
+  tally: XS.map((cx) => ({ x: cx + 8, y: 52, z: 13.6, w: 4.8, h: 7.4, gap: 0.5, count: 3, size: "s", housing: false })),   // digits at 12 px in the close-up
 };
 export const STAMP = { x: 0, y: -68, base: CAB_H };
 export const SPINDLE = { x: 26, y: -66, base: CAB_H };
@@ -120,7 +120,7 @@ function branch(i) {
   out.push(S(k.slabOf(desk, 2, DESK_H - 2, P, 3, 0.5), { tone: "mid" }));
   // The hand tally clicker (behind the display, so drawn first): body, wheels on its face, plunger on top.
   const t = COUNTERS.tally[i];
-  const body = { x: cx + 7, y: 42, w: 14.4, d: 10, r: 2.4 };
+  const body = { x: cx + 6.6, y: 42, w: 17.6, d: 10, r: 2.4 };
   out.push(S(k.slabOf(body, DESK_H, 10, P, 4, 0.8), { tone: "hi", crease: "lo" }));
   out.push(counter(t, "tally" + i, 0));
   out.push(S(k.cylinder(body.x + body.w / 2, body.y + body.d / 2, 1.2, DESK_H + 10, 2.6, P, 14), { tone: "mid", crease: "none" }));

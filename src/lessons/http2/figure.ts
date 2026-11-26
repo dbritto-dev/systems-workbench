@@ -104,7 +104,7 @@ function lanes() {
   return out.join("");
 }
 
-// The warehouse: where every track ends. Its front carries the link meter; its right side the counters.
+// The warehouse: where every track ends. Its front carries the link meter.
 function warehouse() {
   const out = [S(k.slabOf(WH, 0, WH_H, P, 3, 0.6), { tone: "mid", inner: L(k.sideSeam(WH, 5, P, 3), { tone: "faint" }) })];
   out.push(L(k.planOutline(k.insetPlan(WH, 2.4), WH_H, P), { tone: "faint" }));
@@ -121,12 +121,7 @@ function warehouse() {
   // link meter on the front: how busy the shared link has been lately
   out.push(meter(P, { x: 93, y: front, z: 6.4, r: 8.5, ticks: 10, name: "link", value: 0 }));
   out.push(label(93, front, 1.9, t("LINK BUSY", "USO DEL ENLACE"), 2.6, { anchor: "middle" }));
-  // counters on the right side (face x): handshakes made and packets sent again
-  const side = WH.x + WH.w;
-  out.push(digitCounter(P, { x: side, y: 24, z: 4, count: 2, w: 5, h: 6.6, gap: 0.8, pad: 1.3, face: "x", name: "handshakes" }));
-  out.push(faceText(P, [side, 10.6, 5.6], t("HANDSHAKES", "HANDSHAKES"), { face: "x", size: 2.8, tone: "mid" }));
-  out.push(digitCounter(P, { x: side, y: -16, z: 4, count: 2, w: 5, h: 6.6, gap: 0.8, pad: 1.3, face: "x", name: "resent" }));
-  out.push(faceText(P, [side, -29.4, 5.6], t("RESENT", "REENVIADOS"), { face: "x", size: 2.8, tone: "mid" }));
+  // (handshakes and packets resent are in the stats strip)
   return out.join("");
 }
 
@@ -146,12 +141,7 @@ function tray() {
   }
   const front = TRAY.y + TRAY.d;
   out.push(label(TRAY.x + 4, front, 2.8, t("PAGE", "PÁGINA"), 3));
-  out.push(digitCounter(P, { x: TRAY.x + 22, y: front, z: 2, count: 2, w: 4.2, h: 5.4, gap: 0.7, pad: 1.2, name: "loaded" }));
-  out.push(label(TRAY.x + 35.5, front, 3.2, t("LOADED", "CARGADOS"), 2.6));
-  out.push(digitCounter(P, { x: TRAY.x + 56, y: front, z: 2, count: 2, w: 4.2, h: 5.4, gap: 0.7, pad: 1.2, name: "waiting" }));
-  out.push(label(TRAY.x + 69.5, front, 3.2, t("WAITING", "EN ESPERA"), 2.6));
-  out.push(digitCounter(P, { x: TRAY.x + 93, y: front, z: 2, count: 4, w: 4.2, h: 5.4, gap: 0.7, pad: 1.2, name: "ms" }));
-  out.push(label(TRAY.x + 115.5, front, 3.2, "MS", 2.6));
+  // (files loaded, waiting and the load time are in the stats strip)
   return out.join("");
 }
 
@@ -177,8 +167,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "An order depot on a base plate. On the left, a person stands at a desk with a pile of order slips: the browser. On the right is a warehouse: the server. Six conveyor beds run between them, each with three tracks; each track is one connection, and it gets its rail once its handshakes are done. Order slips ride to the warehouse and packets ride back; a packet can fall off, and the packets behind it on the same track wait in a column at the browser's end until it is sent again. A tray in front fills one tile per file of the page, with counters for files loaded, files waiting and milliseconds. The warehouse has a meter for how busy the shared link is, a lamp for a slow response, and counters for handshakes and packets resent.",
-      "Un depósito de pedidos sobre una placa base. A la izquierda, una persona está en un escritorio con una pila de órdenes: el navegador. A la derecha hay un almacén: el servidor. Entre ellos corren seis cintas, cada una con tres pistas; cada pista es una conexión y recibe su riel cuando terminan sus handshakes. Las órdenes viajan al almacén y los paquetes vuelven; un paquete puede caerse, y los que vienen detrás en la misma pista esperan en una columna en el extremo del navegador hasta que se reenvía. Una bandeja al frente llena una casilla por cada archivo de la página, con contadores de archivos cargados, archivos en espera y milisegundos. El almacén tiene un medidor de qué tan ocupado está el enlace compartido, una lámpara para una respuesta lenta y contadores de handshakes y de paquetes reenviados.",
+      "An order depot on a base plate. On the left, a person stands at a desk with a pile of order slips: the browser. On the right is a warehouse: the server. Six conveyor beds run between them, each with three tracks; each track is one connection, and it gets its rail once its handshakes are done. Order slips ride to the warehouse and packets ride back; a packet can fall off, and the packets behind it on the same track wait in a column at the browser's end until it is sent again. A tray in front fills one tile per file of the page. The warehouse has a meter for how busy the shared link is and a lamp for a slow response.",
+      "Un depósito de pedidos sobre una placa base. A la izquierda, una persona está en un escritorio con una pila de órdenes: el navegador. A la derecha hay un almacén: el servidor. Entre ellos corren seis cintas, cada una con tres pistas; cada pista es una conexión y recibe su riel cuando terminan sus handshakes. Las órdenes viajan al almacén y los paquetes vuelven; un paquete puede caerse, y los que vienen detrás en la misma pista esperan en una columna en el extremo del navegador hasta que se reenvía. Una bandeja al frente llena una casilla por cada archivo de la página,. El almacén tiene un medidor de qué tan ocupado está el enlace compartido y una lámpara para una respuesta lenta.",
     ),
     body: [plate(), browser(), lanes(), warehouse(), tray()],
   });

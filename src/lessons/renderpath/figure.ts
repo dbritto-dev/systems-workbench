@@ -19,19 +19,24 @@ const PLATE = { x: -184, y: -116, w: 296, d: 98, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 
 // ---------- the HTML strip ----------
-export const TAPE = { x: -172, y: -84, w: 196, d: 17, h: 6 };
+// Two rows, like lines of text, so each tag is wide enough for its word at 9 px: the head and the start of the body,
+// then the rest of the body.
+export const TAPE = { x: -172, y: -93, w: 196, d: 36, h: 6 };
 // Where each tag lies on the strip: four in the head, a divider, then the body (the long article folded into "…").
 export const SLOTS = { css: 0, pre: 1, app: 2, adjs: 3, h1: 4, hero: 5, p1: 6, ad: 7, p2: 8, p3: 9, more: 10, img2: 11, img3: 12, img4: 13 };
-export const slotX = (s) => TAPE.x + 8 + s * 13.2 + (s >= 4 ? 6 : 0);
-const PLAQUE = { w: 11, d: 8 };
-export const TAG_Y = TAPE.y + 8;
-export const WALKER = { y: TAPE.y + 3, z: TAPE.h };
+const ROW_A = 8;                                          // tags 0–7 on the first row, 8–13 on the second
+export const slotX = (s) => (s < ROW_A ? TAPE.x + 12 + s * 23 + (s >= 4 ? 6 : 0) : TAPE.x + 12 + (s - ROW_A) * 23);
+const PLAQUE = { w: 21, d: 8 };
+const ROW_Y = [TAPE.y + 7, TAPE.y + 25];
+export const tagY = (s) => ROW_Y[s < ROW_A ? 0 : 1];
+export const TAG_Y = ROW_Y[0];
+export const WALKER = { y: TAPE.y + 3, z: TAPE.h };      // the parser stands just behind the tag it reads
 
 // ---------- the console ----------
 const CONSOLE = { x: -172, y: -45, w: 214, d: 15, r: 1.4 };
 const CONSOLE_H = 12.5;
 const FRONT = CONSOLE.y + CONSOLE.d;
-export const STOPWATCH = { x: -158, y: CONSOLE.y + 7.5, z: CONSOLE_H, r: 7.5 };
+export const STOPWATCH = { x: -152, y: CONSOLE.y + 7.5, z: CONSOLE_H, r: 7.5 };
 
 // ---------- the phone ----------
 const PHONE = { x: SCREEN.x0 - 3, y: SCREEN.y - 6, w: SCREEN.x1 - SCREEN.x0 + 6, d: 6, r: 1.6 };
@@ -60,7 +65,7 @@ function plate() {
 
 // ---------- the rack ----------
 const TUBE_WORDS = {
-  html: "HTML", css: "CSS", app: "JS", font: t("FONT", "FUENTE"), hero: "HERO", imgs: t("IMAGES", "IMÁGENES"), ad: t("AD", "ANUNCIO"),
+  html: "HTML", css: "CSS", app: "JS", font: t("FONT", "FUENTE"), hero: "HERO", imgs: t("IMAGES", "FOTOS"), ad: t("AD", "ANUNCIO"),
 };
 function rackBack() {
   const out = [S(k.slabOf({ x: RACK.x0 - 4, y: RACK.y - 4, w: TUBES.length * RACK.dx + 4, d: RACK.d + 6, r: 1.6 }, 0, 1.2, P, 3), { tone: "lo", crease: "none" })];
@@ -95,9 +100,9 @@ function rack() {
 function tape() {
   const out = [S(k.slabOf({ ...TAPE, r: 1.2 }, 0, TAPE.h, P, 3, 0.4), { tone: "mid" })];
   // the paper: the document itself, lying along the bench
-  out.push(S(slab({ x: TAPE.x + 3, y: TAG_Y - 1, w: TAPE.w - 6, d: PLAQUE.d + 2, r: 0.4 }, TAPE.h, 0.4, 2), { tone: "hi", crease: "none" }));
+  for (const y of ROW_Y) out.push(S(slab({ x: TAPE.x + 3, y: y - 1, w: TAPE.w - 6, d: PLAQUE.d + 2, r: 0.4 }, TAPE.h, 0.4, 2), { tone: "hi", crease: "none" }));
   // the head/body divider
-  const dx = slotX(4) - 9.6;
+  const dx = slotX(4) - 14.5;
   out.push(L(k.lineOnTop([dx, TAG_Y - 0.6], [dx, TAG_Y + PLAQUE.d + 0.6], TAPE.h + 0.4, P), { tone: "lo" }));
   const front = TAPE.y + TAPE.d;
   out.push(text(slotX(0) - 2, front, 2.4, "<HEAD>", 2.4));
@@ -106,11 +111,11 @@ function tape() {
 }
 // A tag on the strip: a plaque with one <text> the live code fills in (its words depend on the settings).
 function tag(name, s) {
-  const x = slotX(s) - PLAQUE.w / 2;
-  return `<g data-tag="${name}" style="display:none">${plaque(P, { x, y: TAG_Y, z: TAPE.h + 0.4, w: PLAQUE.w, d: PLAQUE.d })}`
-    + faceText(P, [slotX(s), TAG_Y + PLAQUE.d / 2 + 1.1, TAPE.h + 1.2], "", { face: "top", size: 2.8, tone: "hi", anchor: "middle", attr: `data-tag-text="${name}"` })
-    + `<g data-tag-lit="${name}" style="display:none">${litFill(S(k.slabOf({ x, y: TAG_Y, w: PLAQUE.w, d: PLAQUE.d, r: 0.8 }, TAPE.h + 0.4, 0.8, P, 3, 0.3), { tone: "hi", crease: "lo", lit: true }))}`
-    + faceText(P, [slotX(s), TAG_Y + PLAQUE.d / 2 + 1.1, TAPE.h + 1.2], "", { face: "top", size: 2.8, tone: "on-lit", anchor: "middle", attr: `data-tag-lit-text="${name}"` })
+  const x = slotX(s) - PLAQUE.w / 2, y = tagY(s);
+  return `<g data-tag="${name}" style="display:none">${plaque(P, { x, y, z: TAPE.h + 0.4, w: PLAQUE.w, d: PLAQUE.d })}`
+    + faceText(P, [slotX(s), y + PLAQUE.d / 2 + 1.6, TAPE.h + 1.2], "", { face: "top", size: 2.8, tone: "hi", anchor: "middle", attr: `data-tag-text="${name}"` })
+    + `<g data-tag-lit="${name}" style="display:none">${litFill(S(k.slabOf({ x, y, w: PLAQUE.w, d: PLAQUE.d, r: 0.8 }, TAPE.h + 0.4, 0.8, P, 3, 0.3), { tone: "hi", crease: "lo", lit: true }))}`
+    + faceText(P, [slotX(s), y + PLAQUE.d / 2 + 1.6, TAPE.h + 1.2], "", { face: "top", size: 2.8, tone: "on-lit", anchor: "middle", attr: `data-tag-lit-text="${name}"` })
     + `</g></g>`;
 }
 function tags() {
@@ -206,31 +211,21 @@ function console_() {
   out.push(L(k.planOutline(k.insetPlan(CONSOLE, 2), CONSOLE_H, P), { tone: "faint" }));
   // the stopwatch: a dial on a drum, one turn = 5 s
   out.push(dial(P, { x: STOPWATCH.x, y: STOPWATCH.y, z: CONSOLE_H, r: STOPWATCH.r, h: 3, ticks: 50, every: 10, name: "clock", value: 0 }));
-  out.push(text(STOPWATCH.x, FRONT, 3.4, t("5 s A TURN", "5 s POR VUELTA"), 2.2, { anchor: "middle" }));
-  // the gauges: a counter each, and a meter for the two Core Web Vitals
-  const gauge = (x, name, words, count) => {
-    out.push(digitCounter(P, { x, y: FRONT, z: 1.4, count, w: 3.4, h: 4.4, gap: 0.5, pad: [0.8, 0.7, 0.5], name }));
-    out.push(text(x - 0.6, FRONT, 8.8, words, 2.2));
-  };
-  gauge(-140, "fp", t("FIRST PAINT, ms", "PRIMER PINTADO, ms"), 4);
-  gauge(-110, "text", t("TEXT VISIBLE, ms", "TEXTO VISIBLE, ms"), 4);
-  gauge(-80, "lcp", "LCP, ms", 4);
-  out.push(meter(P, { x: -56, y: FRONT, z: 1.6, r: 5, ticks: 10, zone: 0.5, name: "lcp" }));
-  out.push(text(-56, FRONT, 8.6, "0–5 s", 2, { anchor: "middle" }));
-  // CLS: "0." painted on the face, then three wheels
-  out.push(text(-42.6, FRONT, 1.9, "0.", 3.4, { tone: "hi" }));
-  gauge(-37, "cls", "CLS", 3);
-  out.push(meter(P, { x: -16, y: FRONT, z: 1.6, r: 5, ticks: 10, zone: 0.2, name: "cls" }));
-  out.push(text(-16, FRONT, 8.6, "0–0.5", 2, { anchor: "middle" }));
+  out.push(text(STOPWATCH.x, FRONT, 3.4, t("5 s / TURN", "5 s / VUELTA"), 2.2, { anchor: "middle" }));
+  // the two Core Web Vitals as meters (first paint, text visible, LCP and CLS in numbers: the stats strip)
+  out.push(meter(P, { x: -108, y: FRONT, z: 1.6, r: 5, ticks: 10, zone: 0.5, name: "lcp" }));
+  out.push(text(-108, FRONT, 8.6, "LCP 0–5 s", 2, { anchor: "middle" }));
+  out.push(meter(P, { x: -70, y: FRONT, z: 1.6, r: 5, ticks: 10, zone: 0.2, name: "cls" }));
+  out.push(text(-70, FRONT, 8.6, "CLS 0–0.5", 2, { anchor: "middle" }));
   // the main thread: what it is doing now (lamps near the front edge, words under them)
-  const lampsX = [4, 13, 22, 31];
+  const lampsX = [-36, -20, -4, 12];
   const words = ["HTML", "CSS", "JS", t("PAINT", "PINTADO")];
   ["parse", "css", "script", "render"].forEach((kind, i) => {
     const p = [lampsX[i], FRONT - 3.2, CONSOLE_H];
     out.push(`<g data-thread="${kind}">${lamp(P, p, { r: 1.9 })}</g><g data-thread-on="${kind}" style="display:none">${litFill(lamp(P, p, { r: 1.9, lit: true }))}</g>`);
-    out.push(text(lampsX[i], FRONT, 5.8, words[i], 2, { anchor: "middle" }));
+    out.push(text(lampsX[i], FRONT, 6.2, words[i], 2, { anchor: "middle" }));
   });
-  out.push(text(17.5, FRONT, 1.8, t("MAIN THREAD", "HILO PRINCIPAL"), 2.2, { anchor: "middle" }));
+  out.push(text(-12, FRONT, 1.6, t("MAIN THREAD", "HILO PRINCIPAL"), 2.2, { anchor: "middle" }));
   return out.join("");
 }
 
@@ -239,8 +234,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A page-load bench on a base plate. At the back, a rack of glass tubes, one per resource (the HTML, the stylesheet, the script, the font, the hero image, the images further down the page and the ad); each fills as its bytes arrive, and three pips on its plinth show how urgent the browser made the download. In the middle, the HTML lies on a strip as a row of tags in document order, head then body, appearing as the document's bytes arrive; a small figure, the parser, walks along it and stops, lit, where a classic script holds it. At the right, a phone with a roller shutter over its screen: the shutter stays down until the first paint, then the screen shows the page as each frame lays it out, the headline and paragraphs as lines, invisible until the font allows, the hero image, and the ad slot. A lit LCP tag marks the largest element painted so far, and a lamp flashes when visible content moves. In front, a console with a stopwatch, counters for first paint, text visible, LCP and CLS, meters for LCP and CLS, and four lamps for what the main thread is doing: parsing HTML, applying CSS, running JavaScript or painting.",
-      "Un banco de carga de página sobre una placa base. Atrás, un estante de tubos de vidrio, uno por recurso (el HTML, la hoja de estilos, el script, la fuente, la imagen hero, las imágenes más abajo en la página y el anuncio); cada uno se llena a medida que llegan sus bytes, y tres marcas en su base muestran qué tan urgente hizo el navegador la descarga. En el medio, el HTML yace sobre una tira como una fila de etiquetas en el orden del documento, primero el head y después el body, que aparecen a medida que llegan los bytes del documento; una pequeña figura, el parser, camina por ella y se detiene, iluminada, donde la retiene un script clásico. A la derecha, un teléfono con una cortina enrollable sobre la pantalla: la cortina sigue baja hasta el primer pintado, y luego la pantalla muestra la página tal como la acomoda cada cuadro, el título y los párrafos como líneas, invisibles hasta que la fuente lo permite, la imagen hero y el espacio del anuncio. Una etiqueta LCP iluminada marca el elemento más grande pintado hasta ahora, y una lámpara se enciende cuando se mueve contenido visible. Adelante, una consola con un cronómetro, contadores de primer pintado, texto visible, LCP y CLS, medidores de LCP y CLS, y cuatro lámparas para lo que hace el hilo principal: analizar HTML, aplicar CSS, correr JavaScript o pintar.",
+      "A page-load bench on a base plate. At the back, a rack of glass tubes, one per resource (the HTML, the stylesheet, the script, the font, the hero image, the images further down the page and the ad); each fills as its bytes arrive, and three pips on its plinth show how urgent the browser made the download. In the middle, the HTML lies on a strip as a row of tags in document order, head then body, appearing as the document's bytes arrive; a small figure, the parser, walks along it and stops, lit, where a classic script holds it. At the right, a phone with a roller shutter over its screen: the shutter stays down until the first paint, then the screen shows the page as each frame lays it out, the headline and paragraphs as lines, invisible until the font allows, the hero image, and the ad slot. A lit LCP tag marks the largest element painted so far, and a lamp flashes when visible content moves. In front, a console with a stopwatch, meters for LCP and CLS, and four lamps for what the main thread is doing: parsing HTML, applying CSS, running JavaScript or painting.",
+      "Un banco de carga de página sobre una placa base. Atrás, un estante de tubos de vidrio, uno por recurso (el HTML, la hoja de estilos, el script, la fuente, la imagen hero, las imágenes más abajo en la página y el anuncio); cada uno se llena a medida que llegan sus bytes, y tres marcas en su base muestran qué tan urgente hizo el navegador la descarga. En el medio, el HTML yace sobre una tira como una fila de etiquetas en el orden del documento, primero el head y después el body, que aparecen a medida que llegan los bytes del documento; una pequeña figura, el parser, camina por ella y se detiene, iluminada, donde la retiene un script clásico. A la derecha, un teléfono con una cortina enrollable sobre la pantalla: la cortina sigue baja hasta el primer pintado, y luego la pantalla muestra la página tal como la acomoda cada cuadro, el título y los párrafos como líneas, invisibles hasta que la fuente lo permite, la imagen hero y el espacio del anuncio. Una etiqueta LCP iluminada marca el elemento más grande pintado hasta ahora, y una lámpara se enciende cuando se mueve contenido visible. Adelante, una consola con un cronómetro, medidores de LCP y CLS, y cuatro lámparas para lo que hace el hilo principal: analizar HTML, aplicar CSS, correr JavaScript o pintar.",
     ),
     body: [
       plate(),
@@ -257,7 +252,7 @@ export function buildFigure() {
   });
 }
 
-export const GEOMETRY = { SLOTS, TAPE, WALKER, SCREEN, BOTTOM, TUBES, LCP_TAG, VIEW_H: VIEW.h, slotXs: Object.fromEntries(Object.entries(SLOTS).map(([n, s]) => [n, slotX(s)])) };
+export const GEOMETRY = { SLOTS, TAPE, WALKER, SCREEN, BOTTOM, TUBES, LCP_TAG, VIEW_H: VIEW.h, slotXs: Object.fromEntries(Object.entries(SLOTS).map(([n, s]) => [n, slotX(s)])), slotYs: Object.fromEntries(Object.entries(SLOTS).map(([n, s]) => [n, tagY(s)])) };
 
 // The page drawn on the screen: lines for text (thicker in the web font, dotted while invisible), the hero, the ad.
 export const FIGURE_CSS = `

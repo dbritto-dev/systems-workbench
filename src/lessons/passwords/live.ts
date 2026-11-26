@@ -43,7 +43,7 @@ export default function mount({ P, G, SLIP_SVG, TAG_SVG }, root) {
       const d = drawers[i];
       setText(d.letter, LETTERS[i]);
       setText(d.hash, u.hash);
-      setText(d.salt, cfg.salt === "on" ? L("SALT ", "SAL ") + u.saltText : L("NO SALT", "SIN SAL"));
+      setText(d.salt, cfg.salt === "on" ? u.saltText : "–");   // the salt, top right; a dash when there is none
     });
     C.same.setClamped(table.shared);
     for (const tg of tags.splice(0)) tg.g.remove();

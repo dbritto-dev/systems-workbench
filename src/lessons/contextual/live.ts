@@ -14,12 +14,12 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
   const say = (text) => root.figure.say(text);
   const NS = "http://www.w3.org/2000/svg";
   const layers = { belt: q('[data-layer="belt"]'), rack: q('[data-layer="rack"]'), tray: q('[data-layer="tray"]') };
-  const counters = Object.fromEntries(["pooled", "rank", "k", "asked", "missed"].map((n) => [n, WB.counter(svg, n, P)]));
+  const counters = Object.fromEntries(["pooled"].map((n) => [n, WB.counter(svg, n, P)]));
   const costMeter = WB.meter(svg, "cost", P), failMeter = WB.meter(svg, "failrate", P);
   const blade = q("[data-blade]"), ram = q("[data-ram]"), reading = q("[data-reading]"), pressOff = q("[data-press-off]");
   const bins = qa("[data-bin]");
   const question = q("[data-question]");
-  const cover = { stack: q("[data-cover-stack]"), cut: q("[data-cover-cut]"), read: q("[data-cover-read]"), read2: q("[data-cover-read2]") };
+  const cover = { stack: q("[data-cover-stack]"), cut: q("[data-cover-cut]"), read: q("[data-cover-read]") };
   const wordsBand = q('[data-off-band="words"]'), rerankBand = q('[data-off-band="rerank"]');
 
   function makeCard() {
@@ -64,8 +64,8 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
     if (cfg.ctx === "ctx") for (const c of belt) { const d = Math.abs(c.x - G.PRESS_X); if (d < 2.4) stamp = Math.max(stamp, Math.cos((d / 2.4) * Math.PI / 2)); }
     ram.setAttribute("transform", stamp ? translateAlong(P, [0, 0, -(G.RAM.z1 - G.RAM.z0) * 0.55 * stamp]) : "");
     const cutting = docName(cardNo), next = docName(cardNo + PER_DOC);
-    setText(cover.cut, cutting.split(" ").slice(0, 2).join(" ")); setText(cover.stack, next.split(" ").slice(0, 2).join(" "));
-    const [a, b] = splitName(cutting); setText(cover.read, a); setText(cover.read2, b);
+    setText(cover.cut, cutting.split(" ")[0]); setText(cover.stack, next.split(" ")[0]);   // the company: room for one word at 9 px
+    setText(cover.read, splitName(cutting)[0]);
   }
 
   // ---------- questions ----------
@@ -92,7 +92,6 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
     const ctxOn = cfg.ctx === "ctx";
     reading.style.display = ctxOn ? "" : "none"; pressOff.style.display = ctxOn ? "none" : "";
     for (const c of belt) dress(c, false, ctxOn && c.x > G.PRESS_X + 1);
-    counters.k.set(K());
     paint();
   }
   const ordinal = (n) => n + (n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th");
@@ -101,7 +100,7 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
     const cur = QS[qi % QS.length], o = outcome(qi), k = K();
     const label = cur.label;
     setText(question, label);
-    WB.fontSize(question, label.length <= 18 ? 2.8 : label.length <= 22 ? 2.4 : 2.1);
+    WB.fontSize(question, 2.8);
     const fetching = phase < 0.4;
     WB.pose(svg, "lamp-map", fetching ? "on" : "off");
     WB.pose(svg, "lamp-words", fetching && cfg.search === "both" ? "on" : "off");
@@ -121,11 +120,10 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
     slots.forEach((c, i) => { const on = i < filled; c.g.style.display = on ? "" : "none"; if (on) dress(c, o.found && i === o.finalRank, ctxOn); });
     // the answer's rank: where search put it, then where it ended up
     const shownRank = phase < 0.4 ? o.first : o.finalRank;
-    counters.rank.set(shownRank >= 0 ? Math.min(9999, shownRank + 1) : 9999);
     // the score, counted once the tray is full
     const done = phase >= 0.75;
     const a = asked + (done ? 1 : 0), m = missed + (done && !o.found ? 1 : 0);
-    counters.asked.set(a); counters.missed.set(m);
+    
     failMeter.set(a ? Math.min(1, m / a / 0.4) : 0);
     WB.pose(svg, "miss", (done && !o.found) || (!done && lastMissed && phase < 0.1) ? "on" : "off");
     const cost = cfg.ctx === "ctx" ? COST[cfg.cache] : 0;

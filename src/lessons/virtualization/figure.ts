@@ -141,8 +141,8 @@ function console_() {
   out.push(text(CON.x + 61.5, front, 4.6, t("JUMPS", "SALTOS"), 2.4));
   const side = CON.x + CON.w;
   out.push(meter(P, { x: side, y: CON.y + CON.d - 8, z: 1.6, r: 6, face: "x", ticks: 10, zone: 0.8, name: "main" }));
-  out.push(faceText(P, [side, CON.y + CON.d - 15, 6.2], t("MAIN", "HILO"), { face: "x", size: 2.2, tone: "mid" }));
-  out.push(faceText(P, [side, CON.y + CON.d - 15, 3.2], t("THREAD", "PRINCIPAL"), { face: "x", size: 2.2, tone: "mid" }));
+  out.push(faceText(P, [side, CON.y + CON.d - 15, 7], t("MAIN", "HILO"), { face: "x", size: 2.2, tone: "mid" }));
+  out.push(faceText(P, [side, CON.y + CON.d - 15, 2.6], t("THREAD", "PRINCIPAL"), { face: "x", size: 2.2, tone: "mid" }));
   return out.join("");
 }
 

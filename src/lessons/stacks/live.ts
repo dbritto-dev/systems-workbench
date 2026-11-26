@@ -17,7 +17,7 @@ export default function mount({ P, CSG, URG, COLG, COUNTERS, FIRST }, root) {
 
   // Counters: digit wheels from the shared parts (WB.counter redraws only the wheels that changed).
   const dials = Object.fromEntries(Object.keys(COUNTERS).map((n) => [n, WB.counter(svg, n, P)]));
-  const wheel = (name, v) => dials[name].set(Math.min(v, 10 ** COUNTERS[name].count - 1));
+  const wheel = (name, v) => dials[name]?.set(Math.min(v, 10 ** COUNTERS[name].count - 1));   // the stats strip has the rest
 
   const cfg = { program: "sum", n: 10, order: "lifo", load: 1.2, speed: 1 };
   const stat = (key, value) => root.stat(key, value);

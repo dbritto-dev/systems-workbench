@@ -102,7 +102,7 @@ function cabinet() {
     tone: "mid",
     inner: L(k.faceRectY(P, DRAWER.x0, DRAWER.x1, CAB_FRONT, DRAWER.z0, DRAWER.z1) + k.faceRectY(P, CAB.x + 3, CAB.x + CAB.w - 3, CAB_FRONT, 17.5, CAB_H - 2), { tone: "lo" }),
   }));
-  out.push(text(COUNTERS.orders.housing.x, CAB_FRONT, 35, t("IN THE LEDGER", "EN EL LIBRO"), { size: 3, tone: "hi" }));
+  out.push(text(CAB.x + 4, CAB_FRONT, 35, t("IN THE LEDGER", "EN EL LIBRO"), { size: 3, tone: "hi" }));
   out.push(`<g data-commit>${counter(COUNTERS.orders, "orders", 0)}</g>`);
   // The drawer's handle; in outbox mode the drawer is pulled out into a tray of pending letters.
   out.push(`<g data-drawer="closed">${S(k.slabOf({ x: -63, y: CAB_FRONT, w: 8, d: 1.2, r: 0.4 }, 9, 1.6, P, 2), { tone: "hi", crease: "none" })}</g>`);
@@ -159,12 +159,12 @@ function timer() {
 
 function warehouse() {
   const out = [];
-  const door = k.faceRectY(P, WH.x + 3, WH.x + 14, WH_FRONT, 0, 17);
-  out.push(S(k.slabOf(WH, 0, WH_H, P, 4, 0.6), { tone: "mid", inner: L(door + k.faceRectY(P, WH.x + 4.2, WH.x + 12.8, WH_FRONT, 0, 15.8), { tone: "lo" }) }));
-  out.push(text(WH.x + 4, WH_FRONT, 35, t("WAREHOUSE", "ALMACÉN"), { size: 3, tone: "mid" }));
-  out.push(text(64.5, WH_FRONT, 27, t("SHIPPED", "ENVIADOS"), { size: 3, tone: "hi", anchor: "end" }));
-  out.push(`<g data-extra-label="twice">${text(64.5, WH_FRONT, 12.5, t("TWICE", "DOS VECES"), { size: 3, tone: "hi", anchor: "end" })}</g>`);
-  out.push(`<g data-extra-label="caught" style="display:none">${text(64.5, WH_FRONT, 12.5, t("CAUGHT", "DETECTADAS"), { size: 3, tone: "hi", anchor: "end" })}</g>`);
+  const door = k.faceRectY(P, WH.x + 3, WH.x + 14, WH_FRONT, 0, 9.5);
+  out.push(S(k.slabOf(WH, 0, WH_H, P, 4, 0.6), { tone: "mid", inner: L(door + k.faceRectY(P, WH.x + 4.2, WH.x + 12.8, WH_FRONT, 0, 8.3), { tone: "lo" }) }));
+  out.push(text(WH.x + 4, WH_FRONT, 38.2, t("WAREHOUSE", "ALMACÉN"), { size: 3, tone: "mid" }));
+  out.push(text(65.4, WH_FRONT, 27, t("SHIPPED", "ENVIADOS"), { size: 3, tone: "hi", anchor: "end" }));
+  out.push(`<g data-extra-label="twice">${text(65.4, WH_FRONT, 12.5, t("TWICE", "DOS VECES"), { size: 3, tone: "hi", anchor: "end" })}</g>`);
+  out.push(`<g data-extra-label="caught" style="display:none">${text(65.4, WH_FRONT, 12.5, t("CAUGHT", "ATAJADOS"), { size: 3, tone: "hi", anchor: "end" })}</g>`);
   out.push(`<g data-ship>${counter(COUNTERS.shipped, "shipped", 0)}</g>`);
   out.push(counter(COUNTERS.extra, "extra", 0));
   return out.join("");

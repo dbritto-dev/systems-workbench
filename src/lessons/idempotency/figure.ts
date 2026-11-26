@@ -79,7 +79,7 @@ function rack() {
   out.push(L(HOLES.map((h) => faceY(h.x0, h.x1, f, h.z0, h.z1)).join(""), { tone: "lo" }));
   out.push(L(HOLES.map((h) => k.segment([h.x0 + 1.2, f, h.z0 + 1.2], [h.x1 - 1.2, f, h.z0 + 1.2], P) + k.segment([h.x0 + 1.2, f, h.z0 + 1.2], [h.x0 + 1.2, f, h.z1 - 1.2], P)).join(""), { tone: "faint", free: true }));
   // Replays counter on the plinth below the holes.
-  out.push(rawText(RACK.x + 70, f, 8.6, t("ANSWERED FROM THE RACK", "DESDE EL CASILLERO"), { size: 3, tone: "mid" }));
+  out.push(rawText(RACK.x + 116, f, 7, t("ANSWERED FROM THE RACK", "DESDE EL CASILLERO"), { size: 3, tone: "mid", anchor: "end" }));
   out.push(counter(RACK.x + 118, f, 4.6, 4, "replays", 6));
   return out.join("");
 }
@@ -118,9 +118,9 @@ function till() {
   const out = [];
   out.push(S(k.slabOf(TILL, 0, TILL_H, P, 4, 0.6), { tone: "mid" }));
   const f = TILL_FACE, x0 = TILL.x + 4;
-  out.push(rawText(x0, f, TILL_H - 5.2, t("ORDERS PAID", "PEDIDOS PAGADOS"), { size: 3.2, tone: "mid" }));
+  out.push(rawText(x0, f, TILL_H - 5.2, t("ORDERS PAID", "PAGADOS"), { size: 3.2, tone: "mid" }));
   out.push(counter(x0, f, TILL_H - 19, 4, "orders", 7));
-  out.push(rawText(x0, f, 18.6, t("CARD CHARGES", "COBROS A TARJETA"), { size: 3.2, tone: "mid" }));
+  out.push(rawText(x0, f, 18.6, t("CARD CHARGES", "COBROS"), { size: 3.2, tone: "mid" }));
   out.push(counter(x0, f, 3.4, 4, "charges", 7));
   // A receipt printer slot on top.
   out.push(L(k.planOutline({ x: TILL.x + 6, y: TILL.y + 8, w: 30, d: 6, r: 1 }, TILL_H, P, 2), { tone: "lo" }));
@@ -155,7 +155,6 @@ function lanes() {
   // The trough first (lanes bridge over it).
   out.push(S(k.slabOf(TROUGH, 0, TROUGH_H, P, 3, 0.3), { tone: "lo" }));
   out.push(L(k.planOutline(k.insetPlan(TROUGH, 1.4), TROUGH_H, P, 3), { tone: "mid" }));
-  out.push(rawText(TROUGH.x + 3, TROUGH.y + TROUGH.d, 0.7, t("REPLIES LOST ON THE WAY BACK", "RESPUESTAS PERDIDAS AL VOLVER"), { size: 2.8, tone: "mid" }));
   XS.forEach((cx) => {
     for (const [y0, y1] of [[LANE_FAR, TROUGH.y], [TROUGH.y + TROUGH.d, LANE_NEAR]]) {
       out.push(S(k.slabOf({ x: cx - 7, y: y0, w: 14, d: y1 - y0, r: 0.6 }, 0, 0.6, P, 2), { tone: "lo", crease: "none" }));
@@ -168,7 +167,7 @@ function lanes() {
 }
 
 // ---------- customers ----------
-const SLIP = { x: -9.5, y: 5.4, w: 19, d: 1, r: 0.3 };
+const SLIP = { x: -12, y: 5.4, w: 24, d: 1, r: 0.3 };
 const SLIP_Z = [9, 19.6];
 export function customerSvg(i) {
   const out = [`<g data-customer="${i}">`];
@@ -181,8 +180,8 @@ export function customerSvg(i) {
   out.push(`<g data-slip style="display:none">`
     + `<g data-slip-plain>${S(slip, { tone: "hi", crease: "lo" })}</g>`
     + `<g data-slip-lit style="display:none">${S(slip, { tone: "hi", crease: "lo", lit: true })}</g>`
-    + rawText(0, front, 14.6, "", { size: 4.2, tone: "hi", anchor: "middle", attr: "data-slip-top" })
-    + rawText(0, front, 10.9, "", { size: 2.2, tone: "mid", anchor: "middle", attr: "data-slip-note" })
+    + rawText(0, front, 14.8, "", { size: 4.2, tone: "hi", anchor: "middle", attr: "data-slip-top" })
+    + rawText(0, front, 10.2, "", { size: 2.2, tone: "mid", anchor: "middle", attr: "data-slip-note" })
     + `</g>`);
   out.push(`</g>`);
   return out.join("");

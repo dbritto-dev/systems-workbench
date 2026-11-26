@@ -179,7 +179,7 @@ function board() {
   // one housing per row, its word right after it
   const rows = [["acked", t("ACKED", "CONFIRMADAS"), 19.6], ["failed", t("FAILED", "FALLIDAS"), 12], ["lost", t("LOST", "PERDIDAS"), 4.4]];
   for (const [name, words, z] of rows) {
-    out.push(digitCounter(P, { x: BOARD.x + 4, y: face, z, count: 3, w: 4.4, h: 4.6, gap: 0.5, pad: 0.6, name }));
+    out.push(digitCounter(P, { x: BOARD.x + 4, y: face, z: z - 0.4, count: 3, w: 4.6, h: 5.4, gap: 0.5, pad: 0.6, name }));
     out.push(text([BOARD.x + 22, face, z + 1.2], words, { size: 3.4 }));
   }
   return out.join("");

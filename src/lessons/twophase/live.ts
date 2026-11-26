@@ -176,7 +176,7 @@ export default function mount({ P, G, ENV_SVG, CUSTOMER_SVG }, root) {
       const layer = peer ? railLayer : floor;
       if (e.layer !== layer) { layer.appendChild(e.g); e.layer = layer; }
       const label = L(labelOf(m));
-      if (e.label !== label) { e.label = label; setText(e.text, label); e.text.setAttribute("font-size", label.length > 8 ? 2.4 : label.length > 6 ? 2.6 : 2.9); }
+      if (e.label !== label) { e.label = label; setText(e.text, label); WB.fontSize(e.text, label.length > 8 ? 2.4 : label.length > 6 ? 2.6 : 2.9); }
       const u = clamp((clock - m.sent) / (m.arrive - m.sent));
       e.pos = envPos(m, u);
       e.g.setAttribute("transform", translateAlong(P, e.pos));

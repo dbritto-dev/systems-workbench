@@ -162,11 +162,12 @@ function slotRow(node) {
 // The desk's front face: how far it has got (AT, an LSN) on top, how far behind (ms) below.
 function counters(i) {
   const d = DESKS[i], front = d.y + d.d;
-  return text(d.x + 3, front, 10, t("AT", "VA EN"), 2.8)
-    + digitCounter(P, { x: d.x + 14, y: front, z: 8.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "at" + i })
-    + digitCounter(P, { x: d.x + 14, y: front, z: 1.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "lag" + i })
-    + text(d.x + 33.6, front, 2.9, "ms", 2.6)
-    + text(d.x + 39, front, 2.9, t("LAG", "RETRASO"), 2.8);
+  // each word left of its counter, so both fit the desk at 9 px
+  return text(d.x + 3, front, 9.9, t("AT", "VA EN"), 2.8)
+    + digitCounter(P, { x: d.x + 23, y: front, z: 8.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "at" + i })
+    + text(d.x + 3, front, 2.9, t("LAG", "RETRASO"), 2.8)
+    + digitCounter(P, { x: d.x + 23, y: front, z: 1.8, count: 4, w: 3.8, h: 4.6, gap: 0.5, pad: 0.8, name: "lag" + i })
+    + text(d.x + 42.4, front, 2.9, "ms", 2.6);
 }
 // The lamp that lights once the desk has applied your latest save.
 function yours(i) {
@@ -180,11 +181,7 @@ function board() {
   const out = [S(k.slabOf(BOARD, 0, BOARD_H, P, 3, 0.5), { tone: "mid" })];
   out.push(L(k.planOutline(k.insetPlan(BOARD, 1.8), BOARD_H, P), { tone: "faint" }));
   const front = BOARD.y + BOARD.d;
-  // everyone's shares on the front face, as the panel shows them
-  const share = (x, name, words) => digitCounter(P, { x, y: front, z: 2.2, count: 3, w: 3.8, h: 5, gap: 0.5, pad: 0.9, name })
-    + text(x + 14.4, front, 3.2, "%", 2.8) + text(x + 18.4, front, 3.2, words, 2.8);
-  out.push(share(BOARD.x + 4, "missing", t("MISSING", "FALTA")));
-  out.push(share(BOARD.x + 38, "wentBack", t("WENT BACK", "RETROCEDIÓ")));
+  // (the shares missing and went back are in the stats strip)
   // the screen on top: what you wrote, what your last read saw, and where it was served
   out.push(S(k.slabOf({ x: SCREEN.x + SCREEN.w / 2 - 6, y: SCREEN.y - 3, w: 12, d: 7, r: 1 }, BOARD_H, 1.4, P, 3, 0.3), { tone: "lo" }));
   out.push(S(k.slabOf(SCREEN, BOARD_H + 1.4, SCREEN_H, P, 3, 0.4), { tone: "mid", crease: "lo" }));
@@ -192,7 +189,7 @@ function board() {
   out.push(L(k.faceRectY(P, SCREEN.x + 2, SCREEN.x + SCREEN.w - 2, face, z0 + 2, top - 2), { tone: "faint" }));
   out.push(text(SCREEN.x + 4, face, top - 6.6, t("YOU WROTE", "ESCRIBISTE"), 2.8));
   out.push(digitCounter(P, { x: SCREEN.x + 6, y: face, z: z0 + 7.6, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "wrote" }));
-  out.push(text(SCREEN.x + 40, face, top - 6.6, t("YOUR READ SAW", "TU LECTURA VIO"), 2.8));
+  out.push(text(SCREEN.x + 40, face, top - 6.6, t("YOU READ", "LEÍSTE"), 2.8));
   out.push(digitCounter(P, { x: SCREEN.x + 42, y: face, z: z0 + 7.6, count: 4, w: 4, h: 5.6, gap: 0.5, pad: 0.9, name: "saw" }));
   // one line under them, set live: where your last read went, and whether it had your save
   out.push(faceText(P, [SCREEN.x + SCREEN.w / 2, face, z0 + 2.8], "", { size: 2.6, tone: "hi", anchor: "middle", attr: "data-verdict" }));
@@ -215,8 +212,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A main ledger and two copy desks on a base plate. On the left, the leader: a long block with an open ledger on top, a LEADER sign, and its LSN counter on the front, the number of the last write it took; a few users stand in front of it. Two conveyors run from the leader to two copy desks on the right, follower A in front and follower B at the back, each named on its right side, carrying a slip for every write, in order. On each desk the slips wait on a tray and are copied one at a time into the desk's own ledger; a +N tag at the end of the line counts the slips the tray has no room to show. The desk's front shows how far it has got (AT, an LSN) and how many milliseconds old the oldest write it hasn't copied is (LAG). On the front of the leader's top and of each desk's top lies a row of four slots naming the leader's four newest writes, W followed by the LSN, oldest on the left: a raised block where the node has copied the write, a flat tile where it has arrived and waits on the tray, a dashed slot where it hasn't arrived. When the leader crashes its sign reads DOWN, the follower that has received the most is renamed LEADER, and the blocks only the dead leader held are crossed out, with a +N tag for those the row has no room for. The slip for your own latest save is lit, as are its blocks, and a lamp on each desk lights once that desk has copied it. In front stand you and your board: its screen shows what you wrote, what your last read saw, and a line saying where that read was served and whether it had your save; its front shows, for every user since the run started, the share of read-backs that missed the user's save (MISSING) and of second reads that went back (WENT BACK).",
-      "Un libro mayor y dos mesas de copia sobre una placa base. A la izquierda, el líder: un bloque largo con un libro abierto encima, un letrero LÍDER y su contador LSN al frente, el número de la última escritura que recibió; unos usuarios esperan delante. Dos cintas transportadoras van del líder a dos mesas de copia a la derecha, la réplica A adelante y la réplica B al fondo, cada una con su nombre en el costado derecho, y llevan un papel por cada escritura, en orden. En cada mesa los papeles esperan en una bandeja y se copian uno a la vez en el libro propio de la mesa; una marca +N al final de la fila cuenta los papeles que no caben en la bandeja. El frente de la mesa muestra hasta dónde llegó (VA EN, un LSN) y cuántos milisegundos tiene la escritura más vieja que todavía no copió (RETRASO). Al frente de la parte superior del líder y de cada mesa hay una fila de cuatro casillas con las cuatro escrituras más nuevas del líder, W seguida del LSN, la más vieja a la izquierda: un bloque alto donde el nodo ya copió la escritura, una ficha plana donde llegó y espera en la bandeja, una casilla punteada donde no llegó. Cuando el líder se cae su letrero dice CAÍDO, la réplica que más recibió pasa a llamarse LÍDER, y los bloques que solo tenía el líder caído quedan tachados, con una marca +N para los que no caben en la fila. El papel de tu último guardado está encendido, igual que sus bloques, y una lámpara en cada mesa se enciende cuando esa mesa ya lo copió. Adelante estás tú con tu tablero: su pantalla muestra lo que escribiste, lo que vio tu última lectura y una línea que dice dónde se atendió esa lectura y si tenía tu guardado; su frente muestra, para todos los usuarios desde que empezó la ejecución, la parte de las lecturas tras guardar sin lo guardado (FALTA) y de las segundas lecturas que retrocedieron (RETROCEDIÓ).",
+      "A main ledger and two copy desks on a base plate. On the left, the leader: a long block with an open ledger on top, a LEADER sign, and its LSN counter on the front, the number of the last write it took; a few users stand in front of it. Two conveyors run from the leader to two copy desks on the right, follower A in front and follower B at the back, each named on its right side, carrying a slip for every write, in order. On each desk the slips wait on a tray and are copied one at a time into the desk's own ledger; a +N tag at the end of the line counts the slips the tray has no room to show. The desk's front shows how far it has got (AT, an LSN) and how many milliseconds old the oldest write it hasn't copied is (LAG). On the front of the leader's top and of each desk's top lies a row of four slots naming the leader's four newest writes, W followed by the LSN, oldest on the left: a raised block where the node has copied the write, a flat tile where it has arrived and waits on the tray, a dashed slot where it hasn't arrived. When the leader crashes its sign reads DOWN, the follower that has received the most is renamed LEADER, and the blocks only the dead leader held are crossed out, with a +N tag for those the row has no room for. The slip for your own latest save is lit, as are its blocks, and a lamp on each desk lights once that desk has copied it. In front stand you and your board: its screen shows what you wrote, what your last read saw, and a line saying where that read was served and whether it had your save.",
+      "Un libro mayor y dos mesas de copia sobre una placa base. A la izquierda, el líder: un bloque largo con un libro abierto encima, un letrero LÍDER y su contador LSN al frente, el número de la última escritura que recibió; unos usuarios esperan delante. Dos cintas transportadoras van del líder a dos mesas de copia a la derecha, la réplica A adelante y la réplica B al fondo, cada una con su nombre en el costado derecho, y llevan un papel por cada escritura, en orden. En cada mesa los papeles esperan en una bandeja y se copian uno a la vez en el libro propio de la mesa; una marca +N al final de la fila cuenta los papeles que no caben en la bandeja. El frente de la mesa muestra hasta dónde llegó (VA EN, un LSN) y cuántos milisegundos tiene la escritura más vieja que todavía no copió (RETRASO). Al frente de la parte superior del líder y de cada mesa hay una fila de cuatro casillas con las cuatro escrituras más nuevas del líder, W seguida del LSN, la más vieja a la izquierda: un bloque alto donde el nodo ya copió la escritura, una ficha plana donde llegó y espera en la bandeja, una casilla punteada donde no llegó. Cuando el líder se cae su letrero dice CAÍDO, la réplica que más recibió pasa a llamarse LÍDER, y los bloques que solo tenía el líder caído quedan tachados, con una marca +N para los que no caben en la fila. El papel de tu último guardado está encendido, igual que sus bloques, y una lámpara en cada mesa se enciende cuando esa mesa ya lo copió. Adelante estás tú con tu tablero: su pantalla muestra lo que escribiste, lo que vio tu última lectura y una línea que dice dónde se atendió esa lectura y si tenía tu guardado.",
     ),
     body: [
       plate(),

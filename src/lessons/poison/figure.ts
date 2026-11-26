@@ -107,10 +107,7 @@ function conveyor() {
   out.push(L(SLOT_X.map((x) => k.lineOnTop([x + 4.5, BED.y + BED.d - 1.6], [x + 4.5, BED.y + BED.d - 0.2], BED_H + 1.6, P)).join(""), { tone: "mid" }));
   out.push(S(k.slabOf({ x: BED.x + BED.w - 2.4, y: BED.y + 0.8, w: 2.4, d: BED.d - 1.6, r: 0.4 }, BED_H, 6, P, 2), { tone: "hi", crease: "lo" }));
   const front = BED.y + BED.d;
-  out.push(digitCounter(P, { x: -84, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "lag" }));
-  out.push(word(-65, front, 2.8, "LAG"));
-  out.push(digitCounter(P, { x: -44, y: front, z: 1.8, count: 3, w: 4.4, h: 5.4, gap: 0.8, pad: 1.4, name: "oldest" }));
-  out.push(word(-25, front, 2.8, t("OLDEST WAIT, S", "ESPERA MÁS LARGA, S")));
+  // (lag and the oldest wait are in the stats strip)
   return out.join("");
 }
 
@@ -165,8 +162,7 @@ function cageBack() {
   const out = [S(k.slabOf(PLINTH, 0, PLINTH_H, P, 3, 0.5), { tone: "mid" })];
   // the counter on the plinth's right face (reads along -y), the words after it
   const side = PLINTH.x + PLINTH.w, front = PLINTH.y + PLINTH.d;
-  out.push(digitCounter(P, { x: side, y: front - 5, z: 1.2, count: 3, face: "x", w: 4.2, h: 4.6, gap: 0.8, pad: 1.2, name: "dead" }));
-  out.push(word(side, front - 4.2, 8.7, t("DEAD LETTERS", "MENSAJES MUERTOS"), { face: "x" }));
+  out.push(word(side, front - 2, 3, t("DEAD LETTERS", "MENSAJES MUERTOS"), { face: "x" }));   // how many: the stats strip
   const bars = [];
   for (let x = CAGE.x + 3.5; x < CAGE.x + CAGE.w; x += 3.5) bars.push(cageBar(x, CAGE.y));
   for (let y = CAGE.y + 3.5; y < CAGE.y + CAGE.d; y += 3.5) bars.push(cageBar(CAGE.x, y));
@@ -200,10 +196,7 @@ function ledger() {
     out.push(digitCounter(P, { x: x + 13.4, y: f, z: 2.6, count: 2, w: 4.4, h: 5.4, gap: 0.6, pad: 1.2, name: "rec" + i }));
   });
   const x0 = LEDGER.x + 3 + 28 * 4;
-  out.push(digitCounter(P, { x: x0 + 1.5, y: f, z: 1.4, count: 3, w: 3.8, h: 4.6, gap: 0.6, pad: 1, name: "done" }));
-  out.push(word(x0, f, 8.4, t("DONE", "HECHOS")));
-  out.push(digitCounter(P, { x: x0 + 22, y: f, z: 1.4, count: 3, w: 3.8, h: 4.6, gap: 0.6, pad: 1, name: "stale" }));
-  out.push(word(x0 + 20.5, f, 8.4, t("OUT OF ORDER", "FUERA DE ORDEN")));
+  // (done and out of order are in the stats strip)
   return out.join("");
 }
 
@@ -230,8 +223,8 @@ export function buildFigure() {
     width: WIDTH,
     height: HEIGHT,
     label: t(
-      "A sorting room on a base plate. At the back left a producer stands at a dock that drops numbered parcels onto the tail of one long roller conveyor, the partition; each parcel shows a customer letter, A to D, and that customer's version number. At the head, on the right, a worker takes the parcel at the front onto a desk and calls downstream. Downstream is the records ledger at the front of the room: one drawer per customer showing the version its record holds, a tab that lights when a record goes back to an older version, and counters for updates done and updates that arrived out of order. A status board on the ledger's right end reads OK, FLAKY or DOWN. A parcel that fails waits on the worker's desk while a backoff meter runs down, or goes onto the retry shelf in front of the conveyor, over a timer, where a second worker takes it again. A parcel out of attempts drops into the dead-letter cage at the back right. Counters on the conveyor show the lag and how long the oldest parcel has waited; when the line is longer than the conveyor, a tag at its tail counts the parcels not shown.",
-      "Una sala de clasificación sobre una placa base. Atrás a la izquierda, un productor está en un muelle que deja paquetes numerados al final de una sola cinta de rodillos larga, la partición; cada paquete muestra una letra de cliente, de la A a la D, y el número de versión de ese cliente. En la cabeza, a la derecha, un trabajador toma el paquete del frente, lo pone en su escritorio y llama al servicio de destino. El servicio de destino es el libro de registros al frente de la sala: un cajón por cliente con la versión que guarda su registro, una pestaña que se enciende cuando un registro vuelve a una versión más vieja, y contadores de actualizaciones hechas y de actualizaciones que llegaron fuera de orden. Un tablero en el extremo derecho del libro dice OK, INESTABLE o CAÍDO. Un paquete que falla espera en el escritorio del trabajador mientras baja un medidor de espera, o pasa al estante de reintentos delante de la cinta, sobre un temporizador, donde un segundo trabajador lo vuelve a tomar. Un paquete sin intentos cae en la jaula de mensajes muertos, atrás a la derecha. Contadores en la cinta muestran el lag y cuánto lleva esperando el paquete más antiguo; cuando la fila no cabe en la cinta, una etiqueta en su final cuenta los paquetes que no se ven.",
+      "A sorting room on a base plate. At the back left a producer stands at a dock that drops numbered parcels onto the tail of one long roller conveyor, the partition; each parcel shows a customer letter, A to D, and that customer's version number. At the head, on the right, a worker takes the parcel at the front onto a desk and calls downstream. Downstream is the records ledger at the front of the room: one drawer per customer showing the version its record holds, a tab that lights when a record goes back to an older version. A status board on the ledger's right end reads OK, FLAKY or DOWN. A parcel that fails waits on the worker's desk while a backoff meter runs down, or goes onto the retry shelf in front of the conveyor, over a timer, where a second worker takes it again. A parcel out of attempts drops into the dead-letter cage at the back right. When the line is longer than the conveyor, a tag at its tail counts the parcels not shown.",
+      "Una sala de clasificación sobre una placa base. Atrás a la izquierda, un productor está en un muelle que deja paquetes numerados al final de una sola cinta de rodillos larga, la partición; cada paquete muestra una letra de cliente, de la A a la D, y el número de versión de ese cliente. En la cabeza, a la derecha, un trabajador toma el paquete del frente, lo pone en su escritorio y llama al servicio de destino. El servicio de destino es el libro de registros al frente de la sala: un cajón por cliente con la versión que guarda su registro, una pestaña que se enciende cuando un registro vuelve a una versión más vieja. Un tablero en el extremo derecho del libro dice OK, INESTABLE o CAÍDO. Un paquete que falla espera en el escritorio del trabajador mientras baja un medidor de espera, o pasa al estante de reintentos delante de la cinta, sobre un temporizador, donde un segundo trabajador lo vuelve a tomar. Un paquete sin intentos cae en la jaula de mensajes muertos, atrás a la derecha. Cuando la fila no cabe en la cinta, una etiqueta en su final cuenta los paquetes que no se ven.",
     ),
     body: [
       plate(),
