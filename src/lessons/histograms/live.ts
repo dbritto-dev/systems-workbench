@@ -9,7 +9,7 @@ import { L, T } from "../../runtime/wb";
 import { playPause } from "../../runtime/dom";
 import { lerp, easeInOutCubic } from "../../lib/tween";
 import { makeFleet, LAYOUTS, SHARES, RATE, WINDOW, SLO, bucketOf } from "./sim";
-import { fillSvg, heightOf } from "./fill";
+import { heightOf } from "./fill";
 
 export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
   const { stage, svg } = root.figure;
@@ -22,10 +22,10 @@ export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
   const desk = Object.fromEntries(["avg", "max", "est", "exact", "under", "under-f"].map((n) => [n, WB.counter(svg, n, P)]));
   const NREF = RATE * WINDOW, FLIGHT = 1.6, FALL = 0.55, MAX_CHIPS = 36;
   const spec = (i) => (i === 3 ? G.TUBE.M : G.TUBE.host);
-  // Per layout: the tube groups and the fill group of every tube, rack by rack.
+  // Per layout: the tube groups and every tube (the kit's, WB.tube), rack by rack.
   const layouts = Object.fromEntries(Object.keys(LAYOUTS).map((name) => [name, {
     groups: [0, 1, 2, 3].map((i) => q('[data-tubes="' + i + '"][data-layout="' + name + '"]')),
-    fills: [0, 1, 2, 3].map((i) => G.XS[name][i].map((_, j) => q('[data-tubes="' + i + '"][data-layout="' + name + '"] [data-fill="' + i + "-" + j + '"]'))),
+    tubes: [0, 1, 2, 3].map((i) => G.XS[name][i].map((_, j) => WB.tube(svg, name + "-" + i + "-" + j, P))),   // figure.ts tubeName
     labels: q('[data-labels="' + name + '"]'),
   }]));
 
@@ -47,7 +47,7 @@ export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
       const on = name === cfg.buckets;
       l.groups.forEach((g) => (g.style.display = on ? "" : "none"));
       l.labels.style.display = on ? "" : "none";
-      l.fills.forEach((row) => row.forEach((el) => (el.innerHTML = "")));
+      l.tubes.forEach((row) => row.forEach((tb) => tb.set(0)));
     }
     shown = [0, 1, 2, 3].map(() => ({ h: [], lit: -1 }));
     live = model.summary();
@@ -64,7 +64,7 @@ export default function mount({ P, G, CHIP, SLIP, SCRAPE, CHIP_EVERY }, root) {
       const h = snap || sh.h[j] === undefined ? target : sh.h[j];
       if (sh.h[j] === undefined || Math.abs(target - sh.h[j]) > 0.2 || sh.lit !== lit) {
         sh.h[j] = target;
-        l.fills[i][j].innerHTML = fillSvg(P, G.XS[cfg.buckets][i][j], G.TUBE_Y, G.TUBE_Z, s.r, h, j === lit);
+        l.tubes[i][j].set(h / s.h, { lit: j === lit });
       }
     });
     sh.lit = lit;

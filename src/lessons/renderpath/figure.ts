@@ -6,10 +6,10 @@
 // flashes on a layout shift. In front, the gauges: a stopwatch, first paint, text visible, LCP and CLS.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, labelPlate, digitCounter, dial, meter, lamp, person, plaque, faceText, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, labelPlate, digitCounter, dial, meter, lamp, person, plaque, faceText, litFill, tube } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
-import { TUBES, RACK, GLASS, tubeAt, tubeFill, SCREEN, BOTTOM, FACE_Y, shutterSvg, screenClip } from "./shapes";
+import { TUBES, RACK, GLASS, tubeAt, SCREEN, BOTTOM, FACE_Y, shutterSvg, screenClip } from "./shapes";
 import { FIRST_SCREEN, VIEW } from "./sim";
 
 export const WIDTH = 700;
@@ -85,15 +85,9 @@ function rackBack() {
   });
   return out.join("");
 }
-function tubeGlass(i) {
-  // the glass's outline, drawn over the fill: a box of thin lines
-  const [cx, cy] = tubeAt(i), g = { x: cx - GLASS.w / 2, y: cy - GLASS.d / 2, w: GLASS.w, d: GLASS.d, r: 0.8 };
-  const top = RACK.h + GLASS.h;
-  const edges = [[g.x, g.y + g.d], [g.x + g.w, g.y + g.d], [g.x + g.w, g.y]].map(([x, y]) => k.segment([x, y, RACK.h], [x, y, top], P)).join("");
-  return L(k.planOutline(g, top, P) + edges, { tone: "mid" }) + L(k.lineOnTop([g.x + 1.2, g.y + g.d], [g.x + 1.2, g.y + g.d], top, P), { tone: "faint" });
-}
+// The kit's square tubes, standing straight on their plinths; the live code fills them as bytes arrive.
 function rack() {
-  return TUBES.map((name, i) => `<g data-fill="${name}">${tubeFill(P, i, 0, false)}</g>${tubeGlass(i)}`).join("");
+  return TUBES.map((name, i) => { const [x, y] = tubeAt(i); return tube(P, { x, y, z: RACK.h, shape: "square", w: GLASS.w, d: GLASS.d, h: GLASS.h, socket: 0, name }); }).join("");
 }
 
 // ---------- the HTML strip ----------

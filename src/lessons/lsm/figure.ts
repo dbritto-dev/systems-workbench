@@ -11,7 +11,7 @@
 // used against the data, and a meter for how busy its disk is. Fractions show their decimal point inside one housing.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, meter, person, sign, faceText } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, meter, person, sign, faceText, cabinet as drawerCabinet } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { PER_PAGE, TARGET, runLen } from "./sim";
@@ -28,8 +28,6 @@ export const CAB_H = 36;
 export const CAB_FRONT = CAB.y + CAB.d;
 export const DRAWERS = { cols: 6, rows: 4 };
 const DR = { pad: 3, gap: 1.4 };
-export const DRAWER_W = (CAB.w - 2 * DR.pad - (DRAWERS.cols - 1) * DR.gap) / DRAWERS.cols;
-export const DRAWER_H = (CAB_H - 2 * DR.pad - (DRAWERS.rows - 1) * DR.gap) / DRAWERS.rows;
 // The page table: one leaf page as 40 record tiles; the changed record lights.
 const PTAB = { x: -104, y: -54, w: 76, d: 42, r: 1.6 };
 const PTAB_H = 7;
@@ -76,22 +74,11 @@ function plate() {
 }
 
 // ---------- B-tree ----------
-export const drawerAt = (i) => {
-  const c = i % DRAWERS.cols, r = Math.floor(i / DRAWERS.cols);
-  return { x: CAB.x + DR.pad + c * (DRAWER_W + DR.gap), z: CAB_H - DR.pad - (r + 1) * DRAWER_H - r * DR.gap };
-};
+// The kit's cabinet: 24 drawers, page order from the top left; the drawer of the latest write slides out 2 and lights.
 function cabinet() {
-  const out = [S(k.slabOf(CAB, 0, CAB_H, P, 3, 0.6), { tone: "mid" })];
-  out.push(L(k.planOutline(k.insetPlan(CAB, 2.2), CAB_H, P), { tone: "faint" }));
-  out.push(text(CAB.x + 6, CAB.y + 12, CAB_H, t("B-TREE", "ÁRBOL B"), 6, { face: "top", tone: "hi" }));
-  out.push(text(CAB.x + CAB.w - 5, CAB.y + 12, CAB_H, t("PAGES", "PÁGINAS"), 3.4, { face: "top", anchor: "end" }));
-  for (let i = 0; i < DRAWERS.cols * DRAWERS.rows; i++) {
-    const { x, z } = drawerAt(i);
-    const plan = { x, y: CAB_FRONT, w: DRAWER_W, d: 1.2, r: 0.4 };
-    const handle = L(k.segment([x + DRAWER_W / 2 - 2.4, CAB_FRONT + 1.2, z + DRAWER_H * 0.55], [x + DRAWER_W / 2 + 2.4, CAB_FRONT + 1.2, z + DRAWER_H * 0.55], P), { tone: "mid" });
-    out.push(`<g data-drawer="${i}">${S(k.slabOf(plan, z, DRAWER_H, P, 2, 0.2), { tone: "hi", crease: "lo" })}${handle}</g>`);
-  }
-  return out.join("");
+  return drawerCabinet(P, { ...CAB, h: CAB_H, drawers: { ...DRAWERS, ...DR }, pull: 2, name: "btree" })
+    + text(CAB.x + 6, CAB.y + 12, CAB_H, t("B-TREE", "ÁRBOL B"), 6, { face: "top", tone: "hi" })
+    + text(CAB.x + CAB.w - 5, CAB.y + 12, CAB_H, t("PAGES", "PÁGINAS"), 3.4, { face: "top", anchor: "end" });
 }
 export const tileAt = (i) => {
   const c = i % TILE.cols, r = Math.floor(i / TILE.cols);
@@ -240,4 +227,4 @@ export function buildFigure() {
 }
 
 export const TILE_C = [PTAB.x + PTAB.w / 2, PTAB.y + PTAB.d / 2 - 3, PTAB_H + 3];
-export const GEOMETRY = { TILE_C, CAB_FRONT, DRAWERS, DRAWER_W, DRAWER_H, TILE, MEMT, MEMT_H, DESK, DESK_H, TRAYS, SHELF_Z, SHELF, BOOK, L0_BOOKS, DIAL, PRESS_H, MEM_CARDS, WAIT_SLIPS, WRITER };
+export const GEOMETRY = { TILE_C, CAB_FRONT, DRAWERS, TILE, MEMT, MEMT_H, DESK, DESK_H, TRAYS, SHELF_Z, SHELF, BOOK, L0_BOOKS, DIAL, PRESS_H, MEM_CARDS, WAIT_SLIPS, WRITER };

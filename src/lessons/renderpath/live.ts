@@ -8,7 +8,7 @@ import * as WB from "../../runtime/wb";
 import { L, T } from "../../runtime/wb";
 import { show, setText, playPause } from "../../runtime/dom";
 import { makeLoad, FIRST_SCREEN, IMAGES } from "./sim";
-import { tubeFill, shutterSvg, SCREEN, BOTTOM } from "./shapes";
+import { shutterSvg, SCREEN, BOTTOM } from "./shapes";
 
 const SLOW = 400;           // model ms per second on the page at ×1
 const HOLD = 3.5;           // seconds the finished page stays before it loads again
@@ -35,7 +35,7 @@ export default function mount({ P, G }, root) {
   const stat = (key, value) => root.stat(key, value);
 
   // ---------- the parts ----------
-  const fills = Object.fromEntries(G.TUBES.map((n) => [n, { g: q('[data-fill="' + n + '"]'), key: "" }]));
+  const fills = Object.fromEntries(G.TUBES.map((n) => [n, WB.tube(svg, n, P)]));
   const pips = Object.fromEntries(G.TUBES.map((n) => [n, [0, 1, 2].map((p) => q('[data-pip="' + n + "-" + p + '"]'))]));
   const tags = Object.fromEntries(Object.keys(G.SLOTS).map((n) => [n, { g: q('[data-tag="' + n + '"]'), text: q('[data-tag-text="' + n + '"]'), lit: q('[data-tag-lit="' + n + '"]'), litText: q('[data-tag-lit-text="' + n + '"]') }]));
   const walker = q("[data-walker]"), walkerOn = q("[data-walker-on]"), walkerOff = q("[data-walker-off]");
@@ -80,7 +80,6 @@ export default function mount({ P, G }, root) {
     labelTags();
     shutter.innerHTML = shutterSvg(P, BOTTOM);
     for (const x of els) { x.shown = null; x.top = null; }
-    for (const f of Object.values(fills)) f.key = "";
     paint(true);
   }
 
@@ -132,9 +131,7 @@ export default function mount({ P, G }, root) {
     const t = clock;
     // the rack
     G.TUBES.forEach((name, i) => {
-      const f = fills[name], fr = frac(name, t), lit = awaited(name, t);
-      const key = fr.toFixed(3) + (lit ? "L" : "");
-      if (f.key !== key) { f.key = key; f.g.innerHTML = tubeFill(P, i, fr, lit); }
+      fills[name].set(frac(name, t), { lit: awaited(name, t) });
       const r = resOf(name, t), asked = r.reqAt !== null && t >= r.reqAt && (r.doneAt === null || t < r.doneAt);
       const n = asked ? 3 - prioAt(r, t) : 0;
       pips[name].forEach((p, k) => show(p, k < n));

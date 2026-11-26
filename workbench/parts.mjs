@@ -3,6 +3,8 @@ import { isT } from "./i18n.mjs";
 import * as k from "./kit.mjs";
 import { sphereOf } from "./kit.mjs";
 import { digitPath, counterCells, digitsOf, facePoint } from "./digits.mjs";
+import { tubeFill, tubeFloor } from "./tube-fill.mjs";
+export { tubeFill };
 
 
 const byDepth = (P, points) => [...points].sort((a, b) => k.depthOf([a[0], a[1], 0], P) - k.depthOf([b[0], b[1], 0], P));
@@ -415,6 +417,71 @@ export function bin(P, spec) {
   return `<g class="wb-bin" data-bin="${name}">${out.join("")}</g>`;
 }
 
+// ---------- tube ----------
+// A glass tube on a socket whose fill rises and falls: round (a test tube) or square (a gauge glass). The fill is the
+// only live part (WB.tube(svg, name, P).set(frac, { lit })); the glass is lines, drawn over it. value: the opening
+// level (0–1). headroom: glass left above a full fill. socket: 0 when the tube stands straight on a plinth.
+//   tube(P, { x: 10, y: -40, z: 14, r: 2, h: 21, name: "p99-0", value: 0.4 })
+//   tube(P, { x: 10, y: -40, z: 6, shape: "square", w: 10, d: 6, h: 24, socket: 0, name: "css" })
+export function tube(P, spec) {
+  const { x, y, z = 0, shape = "round", r = 2, w = 6, d = 6, h = 20, socket = 1.2, name = "", value = 0, lit = false } = spec;
+  const floor = tubeFloor(spec), top = floor + h, out = [];
+  if (socket > 0) out.push(shape === "round"
+    ? S(k.cylinder(x, y, r + 0.7, z, socket, P, 18), { tone: "mid", crease: "none" })
+    : S(k.slabOf({ x: x - w / 2 - 0.7, y: y - d / 2 - 0.7, w: w + 1.4, d: d + 1.4, r: 0.8 }, z, socket, P, 2), { tone: "mid", crease: "none" }));
+  const geo = JSON.stringify({ x, y, z, shape, r, w, d, h, socket, headroom: spec.headroom ?? 0.6 });
+  out.push(`<g class="wb-tube-fill" data-tube-fill="${name}" data-tube-geo='${geo}'>${tubeFill(P, spec, value, lit)}</g>`);
+  if (shape === "round") {
+    // the silhouette: the tube's left and right edges on screen, the rim, and the back of the floor
+    const a = (50 * Math.PI) / 180, dx = Math.sin(a) * r, dy = -Math.cos(a) * r;
+    const sides = [1, -1].map((sg) => k.segment([x + sg * dx, y + sg * dy, floor], [x + sg * dx, y + sg * dy, top], P)).join("");
+    out.push(Ln(sides + k.ring(x, y, r, top, P, 20), { tone: "lo" }), Ln(k.sideArc(x, y, r, floor, P, 16), { tone: "faint" }));
+  } else {
+    const g = { x: x - w / 2, y: y - d / 2, w, d, r: 0.8 };
+    const edges = [[g.x, g.y + g.d], [g.x + g.w, g.y + g.d], [g.x + g.w, g.y]].map(([ex, ey]) => k.segment([ex, ey, floor], [ex, ey, top], P)).join("");
+    out.push(Ln(k.planOutline(g, top, P) + edges, { tone: "mid" }), Ln(k.lineOnTop([g.x + 1.2, g.y + g.d], [g.x + 1.2, g.y + g.d], top, P), { tone: "faint" }));
+  }
+  return `<g class="wb-tube" data-tube="${name}">${out.join("")}</g>`;
+}
+
+// ---------- cabinet ----------
+// A cabinet of drawers on its front (the +y face): a body with a lid line, an optional plinth, and a grid of drawers
+// (cols × rows, drawer 0 at the top left). Each drawer is drawn in, and out by `pull` with its sides showing; the
+// live code slides one out and lights it (WB.cabinet(svg, name).pull(i, out, { lit })). labels: a word per drawer,
+// on its left; without them the handle sits in the middle.
+//   cabinet(P, { x: -102, y: -82, w: 94, d: 18, h: 36, drawers: { cols: 6, rows: 4 }, pull: 2, name: "btree" })
+// cabinetDrawer(spec, i): drawer i's left x, bottom z, width, height and the cabinet's front y. drawers.pad is the margin
+// at the sides (and top and bottom unless given), gap between drawers (vgap between rows, if different).
+export function cabinetDrawer({ x, y, w, d, h, z = 0, plinth = 0, drawers: { cols = 1, rows = 1, pad = 3, gap = 1.4, vgap = gap, top = pad, bottom = pad } = {} }, i) {
+  const dw = (w - 2 * pad - (cols - 1) * gap) / cols, z0 = z + plinth + bottom, dh = (h - bottom - top - (rows - 1) * vgap) / rows;
+  const col = i % cols, row = Math.floor(i / cols);
+  return { x: x + pad + col * (dw + gap), z: z0 + (rows - 1 - row) * (dh + vgap), w: dw, h: dh, front: y + d };
+}
+export function cabinet(P, spec) {
+  const { x, y, w, d, h, z = 0, r = 1.4, plinth = 0, drawers = {}, pull = 5, labels = [], labelSize = 3, name = "", lid = true } = spec;
+  const out = [];
+  if (plinth > 0) out.push(S(k.slabOf(k.insetPlan({ x, y, w, d, r }, 1.5), z, plinth, P, 3), { tone: "lo" }));
+  const top = z + plinth + h;
+  out.push(S(k.slabOf({ x, y, w, d, r }, z + plinth, h, P, 3, 0.5), { tone: "mid", inner: lid ? Ln(k.planOutline(k.insetPlan({ x, y, w, d, r }, 2), top, P), { tone: "faint" }) : "" }));
+  const n = (drawers.cols ?? 1) * (drawers.rows ?? 1), shut = [], pulled = [];
+  for (let i = 0; i < n; i++) {
+    const dr = cabinetDrawer(spec, i);
+    const at = (dy) => {
+      const fy = dr.front + dy, parts = [S(k.slabOf({ x: dr.x, y: fy - 1, w: dr.w, d: 1.4 + Math.max(0, dy), r: 0.4 }, dr.z, dr.h, P, 2, 0.2), { tone: "hi", crease: "lo" })];
+      const label = labels[i];
+      const hx = label ? [dr.x + dr.w * 0.55, dr.x + dr.w - 2.4] : [dr.x + dr.w / 2 - 2.4, dr.x + dr.w / 2 + 2.4];
+      if (label) parts.push(faceText(P, [dr.x + 2, fy + 0.4, dr.z + dr.h / 2 - labelSize * 0.36], label, { size: labelSize, tone: "hi" }));
+      parts.push(Ln(k.segment([hx[0], fy + 0.4, dr.z + dr.h * 0.55], [hx[1], fy + 0.4, dr.z + dr.h * 0.55], P), { tone: "mid" }));
+      return parts.join("");
+    };
+    shut.push(`<g data-cab-drawer="${i}" data-drawer-state="in">${at(0)}</g>`);
+    pulled.push([k.depthOf([dr.x + dr.w / 2, dr.front + pull, dr.z + dr.h / 2], P), `<g data-cab-drawer="${i}" data-drawer-state="out" data-off>${at(pull)}</g>`]);
+  }
+  // every drawer shut first, then the pulled-out ones (nearest last): one sticking out covers its neighbours
+  pulled.sort((a, b) => a[0] - b[0]);
+  return `<g class="wb-cabinet" data-cabinet="${name}">${out.join("")}${shut.join("")}${pulled.map((e) => e[1]).join("")}</g>`;
+}
+
 // ---------- variants ----------
 // One object with several drawings (a waiter idle / carrying / waiting): only `current` shows.
 // Switch in the browser with WB.pose(svg, name, key).
@@ -438,6 +505,6 @@ export const PARTS_CSS = `
 .wb-pennant[data-lit]{fill:var(--anatomy-lit);stroke:var(--anatomy-lit)}
 .iso-face-text[data-tone="on-lit"]{fill:var(--anatomy-strong)}
 [data-variant][data-off]{display:none}
-.wb-gate [data-off],.wb-bin [data-off]{display:none}
+.wb-gate [data-off],.wb-bin [data-off],.wb-cabinet [data-off]{display:none}
 .wb-rack [data-rack-slot][data-marked]{stroke:var(--anatomy-lit);stroke-width:1.4}
 `;

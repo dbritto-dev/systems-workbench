@@ -6,11 +6,11 @@
 // merged tubes, the exact p99 of every request, and the share under the 300 ms objective.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, faceText, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, faceText, litFill, tube } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { LAYOUTS, SLO, RATE, WINDOW } from "./sim";
-import { fillSvg, heightOf } from "./fill";
+import { heightOf } from "./fill";
 
 export const WIDTH = 700;
 export const HEIGHT = 450;
@@ -74,16 +74,9 @@ function plate() {
 }
 
 // ---------- tubes ----------
-// The column of requests in one tube, from the tube floor up to height h. Shared with the live code.
-export const fillAt = (cx, r, h, lit) => fillSvg(P, cx, TUBE_Y, TUBE_Z, r, h, lit);
-// The glass of one tube: drawn over the fill, as lines (its two sides and both rims).
-function glassSvg(cx, s) {
-  const { r, h } = s, sides = [];
-  // the silhouette lines: the tube's left and right edges on screen
-  const a = (50 * Math.PI) / 180, dx = Math.sin(a) * r, dy = -Math.cos(a) * r;
-  for (const sgn of [1, -1]) sides.push(k.segment([cx + sgn * dx, TUBE_Y + sgn * dy, TUBE_Z], [cx + sgn * dx, TUBE_Y + sgn * dy, TUBE_Z + h], P));
-  return L(sides.join(""), { tone: "lo" }) + L(k.ring(cx, TUBE_Y, r, TUBE_Z + h, P, 20), { tone: "lo" }) + L(k.sideArc(cx, TUBE_Y, r, TUBE_Z, P, 16), { tone: "faint" });
-}
+// One tube is the kit's (parts.mjs tube): a socket, its fill (the column of requests, filled to the brim at the
+// tube's height, so no headroom) and its glass. tubeName: what the live code finds it by.
+export const tubeName = (layout, i, j) => layout + "-" + i + "-" + j;
 // One layout's tubes on rack i: sockets, an empty fill group per tube (the live code draws into it) and glass.
 // `first`: the opening frame's summary; its counts fill the shown layout's tubes, so the still frame isn't empty.
 function tubeRow(i, layout, shown, first) {
@@ -92,9 +85,8 @@ function tubeRow(i, layout, shown, first) {
   const out = [`<g data-tubes="${i}" data-layout="${layout}"${shown ? "" : ' style="display:none"'}>`];
   const order = xs.map((x, j) => [x, j]).sort((p, q) => k.depthOf([p[0], TUBE_Y, 0], P) - k.depthOf([q[0], TUBE_Y, 0], P));
   for (const [x, j] of order) {
-    out.push(S(k.cylinder(x, TUBE_Y, s.r + 0.7, CAB_H, 1.2, P, 18), { tone: "mid", crease: "none" }));
-    out.push(`<g class="wb-lit-group" data-fill="${i}-${j}">${counts ? fillAt(x, s.r, heightOf(counts[j], RATE * WINDOW, s.h), j === lit) : ""}</g>`);
-    out.push(glassSvg(x, s));
+    const value = counts ? heightOf(counts[j], RATE * WINDOW, s.h) / s.h : 0;
+    out.push(tube(P, { x, y: TUBE_Y, z: CAB_H, r: s.r, h: s.h, socket: TUBE_Z - CAB_H, headroom: 0, name: tubeName(layout, i, j), value, lit: j === lit }));
   }
   out.push(`</g>`);
   return out.join("");

@@ -3,6 +3,7 @@
 import { iso, pathOf, translateAlong } from "../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, digitsOf, facePoint } from "../../workbench/digits.mjs";
 import { TEXT_FLOOR_PX, DESK_STAGE_PX } from "../lib/lens";
+import { tubeFill } from "../../workbench/tube-fill.mjs";
 
 export type Projection = { origin: [number, number]; scale: number; azimuth?: number; elevation?: number };
 type Point3 = [number, number, number];
@@ -97,6 +98,43 @@ export function rack(root: ParentNode, name: string) {
   return {
     mark(i: number, on = true) { slots[i]?.toggleAttribute("data-marked", on); },
     clear() { slots.forEach((s) => s.removeAttribute("data-marked")); },
+  };
+}
+/** A tube (parts.mjs tube): set(frac, { lit }) redraws its fill at frac of its height (0–1); unchanged levels cost
+ *  nothing. */
+export function tube(root: ParentNode, name: string, P: any) {
+  const el = root.querySelector(`[data-tube-fill="${name}"]`) as Element | null;
+  const geo = el ? JSON.parse(el.getAttribute("data-tube-geo") || "{}") : null;
+  let key = "";
+  return {
+    set(frac: number, { lit = false } = {}) {
+      if (!el) return;
+      const k = Math.max(0, Math.min(1, frac)).toFixed(3) + (lit ? "L" : "");
+      if (k === key) return;
+      key = k;
+      el.innerHTML = tubeFill(P, geo, frac, lit);
+    },
+  };
+}
+/** A cabinet (parts.mjs cabinet): pull(i, out, { lit }) slides drawer i out (or back in) and lights it. */
+export function cabinet(root: ParentNode, name: string) {
+  const el = root.querySelector(`[data-cabinet="${name}"]`);
+  const drawers = el ? [...el.querySelectorAll('[data-cab-drawer][data-drawer-state="in"]')].map((inEl) => {
+    const outEl = el.querySelector(`[data-cab-drawer="${inEl.getAttribute("data-cab-drawer")}"][data-drawer-state="out"]`)!;
+    return { inEl, outEl, solids: [...inEl.querySelectorAll(".iso-solid"), ...outEl.querySelectorAll(".iso-solid")], key: "in" };
+  }) : [];
+  return {
+    count: drawers.length,
+    pull(i: number, out: boolean, { lit = false } = {}) {
+      const d = drawers[i];
+      if (!d) return;
+      const key = (out ? "out" : "in") + (lit ? "L" : "");
+      if (key === d.key) return;
+      d.key = key;
+      d.inEl.toggleAttribute("data-off", out);
+      d.outEl.toggleAttribute("data-off", !out);
+      d.solids.forEach((s) => s.toggleAttribute("data-lit", lit));
+    },
   };
 }
 /** A bin (parts.mjs bin): set(n, { lit }) shows the first n tokens of its pile, lights the last `lit` of them, and

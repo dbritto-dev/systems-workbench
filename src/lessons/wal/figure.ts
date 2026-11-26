@@ -9,7 +9,7 @@
 // books.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, digitCounter, person, figurine, dial, plaque, pennant, faceText, variants, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, digitCounter, person, figurine, dial, plaque, pennant, faceText, variants, litFill, cabinet as drawerCabinet } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { PAGES, PAGE_NAMES } from "./sim";
@@ -27,10 +27,7 @@ const PLINTH_FRONT = PLINTH.y + PLINTH.d;            // -46
 // the cabinet of pages on disk, back left
 const CAB = { x: -102, y: -76, w: 78, d: 24, r: 1.4 };
 const CAB_H = 32;
-const CAB_FRONT = CAB.y + CAB.d;                      // -52
 export const DRAWER = { w: 22, h: 12, gap: 3, z0: PLINTH_H + 3 };
-export const drawerX = (i) => CAB.x + 4 + (i % 3) * (DRAWER.w + DRAWER.gap);
-export const drawerZ = (i) => DRAWER.z0 + (i < 3 ? DRAWER.h + 2.5 : 0);
 // the log shelf, back right: a back board, a shelf, and BOOKS books
 const SHELF = { x: -16, y: -76, w: 120, d: 20, r: 1 };
 export const BOOKS = 20;
@@ -81,23 +78,12 @@ function plinth() {
   out.push(L(k.planOutline(k.insetPlan(PLINTH, 2), PLINTH_H, P), { tone: "faint" }));
   return out.join("");
 }
+// The kit's cabinet: drawers A to F, each pulled out 5 units while the checkpoint writes that page.
+const CABINET = { ...CAB, z: PLINTH_H, h: CAB_H, pull: 5, labels: PAGE_NAMES, labelSize: 6, name: "pages",
+  drawers: { cols: 3, rows: 2, pad: (CAB.w - 3 * DRAWER.w - 2 * DRAWER.gap) / 2, gap: DRAWER.gap, vgap: 2.5, bottom: 3, top: CAB_H - 3 - 2 * DRAWER.h - 2.5 } };
 function cabinet() {
-  const out = [S(k.slabOf(CAB, PLINTH_H, CAB_H, P, 3, 0.5), { tone: "mid", inner: L(k.planOutline(k.insetPlan(CAB, 2), PLINTH_H + CAB_H, P), { tone: "faint" }) })];
-  out.push(words(CAB.x + CAB.w / 2, CAB.y + CAB.d - 6, PLINTH_H + CAB_H, t("PAGES ON DISK", "PÁGINAS EN DISCO"), 3.6, { face: "top", tone: "hi", anchor: "middle" }));
-  for (let i = 0; i < PAGES; i++) out.push(drawer(i));
-  return out.join("");
-}
-// a drawer front: "in" flush with the cabinet, "out" pulled 5 units while the checkpoint writes that page
-function drawerAt(i, dy) {
-  const x = drawerX(i), z = drawerZ(i), y = CAB_FRONT + dy;
-  const plan = { x, y: y - 1, w: DRAWER.w, d: 1.4 + (dy > 0 ? dy : 0), r: 0.4 };
-  const out = [S(k.slabOf(plan, z, DRAWER.h, P, 2, 0.2), { tone: "hi", crease: "lo" })];
-  out.push(faceText(P, [x + 6, y + 0.4, z + 3.4], PAGE_NAMES[i], { size: 6, tone: "hi", anchor: "middle" }));
-  out.push(L(k.segment([x + 12, y + 0.4, z + 6], [x + 19, y + 0.4, z + 6], P), { tone: "mid" }));
-  return out.join("");
-}
-function drawer(i) {
-  return variants("drawer-" + i, { in: drawerAt(i, 0), out: drawerAt(i, 5) }, "in");
+  return drawerCabinet(P, CABINET)
+    + words(CAB.x + CAB.w / 2, CAB.y + CAB.d - 6, PLINTH_H + CAB_H, t("PAGES ON DISK", "PÁGINAS EN DISCO"), 3.6, { face: "top", tone: "hi", anchor: "middle" });
 }
 function shelf() {
   const out = [];

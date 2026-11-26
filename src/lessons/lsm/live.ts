@@ -17,7 +17,7 @@ export default function mount({ P, G }, root) {
   const stat = (key, value) => root.stat(key, value);
   const NS = "http://www.w3.org/2000/svg";
   const nDrawers = G.DRAWERS.cols * G.DRAWERS.rows;
-  const drawers = Array.from({ length: nDrawers }, (_, i) => q(`[data-drawer="${i}"]`));
+  const btree = WB.cabinet(svg, "btree");
   const tiles = Array.from({ length: PER_PAGE }, (_, i) => q(`[data-tile="${i}"]`));
   const memCards = Array.from({ length: G.MEM_CARDS }, (_, i) => q(`[data-mem="${i}"]`));
   const waits = [0, 1].map((j) => Array.from({ length: G.WAIT_SLIPS }, (_, i) => q(`[data-wait="${j}-${i}"]`)));
@@ -187,10 +187,7 @@ export default function mount({ P, G }, root) {
     // a cabinet of black); the page table shows the same page
     const fresh = bt.recent.filter((r) => r[1] > clock - 0.25 * cfg.speed - 0.02);
     if (fresh.length) { drawerLit.fill(0); drawerLit[Math.min(nDrawers - 1, Math.floor((fresh[fresh.length - 1][0] / bt.pages) * nDrawers))] = now + 220; }
-    drawers.forEach((d, i) => {
-      const on = drawerLit[i] > now;
-      if (d._on !== on) { d._on = on; setLit(d, on); d.setAttribute("transform", on ? translateAlong(P, [0, 2, 0]) : ""); }
-    });
+    for (let i = 0; i < nDrawers; i++) { const on = drawerLit[i] > now; btree.pull(i, on, { lit: on }); }
     if (bt.recent.length) {
       const [li, , key] = bt.recent[bt.recent.length - 1];
       const leaf = bt.leaves[li], pos = leaf.indexOf(key);

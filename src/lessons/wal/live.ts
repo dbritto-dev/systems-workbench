@@ -106,7 +106,8 @@ export default function mount({ P, G, SLIP_SVG }, root) {
     const k = Math.min(G.BOOKS, Math.ceil(count / perBook()));
     books.forEach((el, i) => show(el, i < k));
   }
-  function drawers(on) { for (let i = 0; i < PAGES; i++) WB.pose(svg, "drawer-" + i, on.includes(i) ? "out" : "in"); }
+  const pagesCab = WB.cabinet(svg, "pages");
+  function drawers(on) { for (let i = 0; i < PAGES; i++) pagesCab.pull(i, on.includes(i)); }
 
   // ---------- slips: a commit flies from its client to the desk ----------
   function slipEl() {

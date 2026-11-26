@@ -30,7 +30,7 @@ the caller keeps the painter's order. Faces: `"y"` is the face of constant y (te
 of constant x (reads along -y), `"top"` lies on a top face.
 
 ```js
-import { digitCounter, person, figurine, dial, meter, card, plaque, sign, pennant, lamp, keyPart, faceText, faceRect, variants, gate, lane, laneSlot, rack, rackSlot, bin, binSlots, litFill, LIT_FILL_CSS } from "../../workbench/parts.mjs";
+import { digitCounter, person, figurine, dial, meter, card, plaque, sign, pennant, lamp, keyPart, faceText, faceRect, variants, gate, lane, laneSlot, rack, rackSlot, bin, binSlots, tube, cabinet, cabinetDrawer, litFill, LIT_FILL_CSS } from "../../workbench/parts.mjs";
 
 digitCounter(P, { x: -15, y: 20, z: 6, count: 4, w: 9, h: 13, name: "balance", value: 40 })  // wheels on a face, in a housing (pad: n or [across, below, above])
 person(P, [x, y, 0], { scale: 0.8, hat: "cap", holding: "slip", slipText: "40", lit })        // hat: cap | brim; holding: tray | clipboard | slip | key
@@ -49,6 +49,8 @@ lane(P, { x, y, w, d: 14, h: 9, slots: 10, head: "+x", name: "q" })             
 laneSlot(spec, i)                                                                              // [x, y, z] of slot i (0 at the head)
 rack(P, { x, y, w, d, h: 8, cols: 6, rows: 1, cell: { w: 8, d: 8 }, title, name: "results" })  // slab with slot outlines; rackSlot(spec, i) gives a centre
 bin(P, { x, y, w, d, h: 6, cap: 12, token: "ball", size: 5, gap: 0.6, name: "done" })        // walled tray that piles up to cap tokens, "+N" on the front
+tube(P, { x, y, z, shape: "round", r: 2, h: 20, socket: 1.2, name: "p99", value: 0.4 })         // glass tube with a live fill; shape "square" takes w, d
+cabinet(P, { x, y, w, d, h, drawers: { cols: 3, rows: 2 }, labels, pull: 5, name: "pages" })   // drawers on the +y face, each drawn in and out; cabinetDrawer(spec, i) gives one's box
 ```
 
 Live (in the lesson script, `svg` is the figure's svg element):
@@ -59,7 +61,10 @@ WB.dial(svg, "watch", P).set(0.5);  WB.meter(svg, "load", P).set(0.9);
 WB.pose(svg, "waiter-2", "carry");
 WB.gate(svg, "cap").set(open, { lit });   WB.lane(svg, "q").more(n);   // "+n" past the last slot, "" at 0
 WB.rack(svg, "results").mark(i, on);      WB.bin(svg, "done").set(n, { lit: 1 });   // shows n tokens, lights the newest
+WB.tube(svg, "p99", P).set(0.7, { lit });  WB.cabinet(svg, "pages").pull(i, true, { lit });
 ```
+
+The tube's fill is drawn by `workbench/tube-fill.mjs`, which uses only the vendored kit, so the browser can redraw it.
 
 **Sizes.** Words on a machine never come out under 9 px on a desktop (`figureSvg` raises them: `k.textFloor`), and a
 new machine aims for 11 px: `k.textSize(P, 11.2, { width: WIDTH })` gives
