@@ -7,7 +7,7 @@
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
 import { sphereOf } from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, pennant, faceText, litFill } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, digitCounter, person, meter, pennant, faceText, litFill, lane as laneBed, laneSlot, gate as boomGate } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -23,7 +23,8 @@ const BED_H = 9;
 export const LANE_Y = BED.y + BED.d / 2;
 export const LANE_Z = BED_H + 0.4;
 export const SLOTS = 13;
-export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => 42 - 11 * i);
+const LANE = { x: BED.x, y: BED.y, w: BED.w, d: BED.d, h: BED_H, slots: SLOTS, stop: 2.4, name: "q", more: false };
+export const SLOT_X = Array.from({ length: SLOTS }, (_, i) => laneSlot(LANE, i)[0]);
 export const CAP = 10;
 const GATE_X = (SLOT_X[CAP - 1] + SLOT_X[CAP]) / 2;
 
@@ -100,15 +101,7 @@ function dock() {
 // The lane: a roller conveyor on a cabinet; rollers across the top, a rail along each side,
 // capacity marks on the front rail and an end stop at the front.
 function lane() {
-  const out = [S(k.slabOf(BED, 0, BED_H, P, 3, 0.5), { tone: "mid" })];
-  const rollers = [];
-  for (let x = BED.x + 3; x < BED.x + BED.w - 2; x += 3) rollers.push(k.lineOnTop([x, BED.y + 2.2], [x, BED.y + BED.d - 2.2], BED_H, P));
-  out.push(L(rollers.join(""), { tone: "lo" }));
-  for (const y of [BED.y + 0.2, BED.y + BED.d - 1.6]) out.push(S(k.slabOf({ x: BED.x + 1, y, w: BED.w - 2, d: 1.4, r: 0.3 }, BED_H, 1.6, P, 2), { tone: "hi", crease: "none" }));
-  // slot marks on the front rail: one per place in the lane, the front of the queue on the right
-  const marks = SLOT_X.map((x) => k.lineOnTop([x + 4.5, BED.y + BED.d - 1.6], [x + 4.5, BED.y + BED.d - 0.2], BED_H + 1.6, P));
-  out.push(L(marks.join(""), { tone: "mid" }));
-  out.push(S(k.slabOf({ x: BED.x + BED.w - 2.4, y: BED.y + 0.8, w: 2.4, d: BED.d - 1.6, r: 0.4 }, BED_H, 6, P, 2), { tone: "hi", crease: "lo" }));
+  const out = [laneBed(P, LANE)];   // the kit's lane: rollers, rails, a mark between slots, the stop at the head (no "+N": the pallet and the counter carry the overflow)
   // counters on the cabinet front: how many are waiting (at the tail) and how long the oldest has waited (at the head)
   const front = BED.y + BED.d;
   out.push(digitCounter(P, { x: -97, y: front, z: 1.6, count: 3, w: WW, h: WH, gap: 0.8, pad: 1.2, name: "inq" }));
@@ -118,15 +111,10 @@ function lane() {
   return out.join("");
 }
 
-// The capacity gate across the lane: shown only for a bounded lane; lit while the lane is full. One post, behind the
-// lane, so nothing stands in front of the words on the lane's face.
-function gate() {
-  const out = [`<g data-gate style="display:none">`];
-  out.push(S(k.cylinder(GATE_X, BED.y - 1.6, 1.1, 0, BED_H + 14, P, 12), { tone: "mid", crease: "none" }));
-  out.push(`<g data-gate-arm>${S(k.slabOf({ x: GATE_X - 0.8, y: BED.y - 2.4, w: 1.6, d: BED.d + 4.8, r: 0.4 }, BED_H + 12, 2, P, 2), { tone: "hi", crease: "lo" })}</g>`);
-  out.push(`</g>`);
-  return out.join("");
-}
+// The capacity gate across the lane (the kit's gate): shown only for a bounded lane; down and lit while the lane is
+// full, up otherwise. No rest post, so nothing stands in front of the words on the lane's face.
+// Two parts: the post behind the lane, the boom lying across over the parcels.
+const gate = (part) => `<g data-capgate style="display:none">${boomGate(P, { x: GATE_X, y0: BED.y, y1: BED.y + BED.d, height: BED_H + 14, rest: false, name: "cap", open: true, part })}</g>`;
 
 // Overflow pallet beside the tail (a queue longer than the lane piles up here) and the returns tray.
 function pallet() {
@@ -260,9 +248,10 @@ export function buildFigure() {
       dock(),
       pallet(),
       tray(),
+      gate("back"),
       lane(),
       `<g data-layer="back"></g>`,
-      gate(),
+      gate("front"),
       cageFront(),
       XS.map((_, i) => clerk(i)).join(""),
       XS.map((_, i) => desk(i)).join(""),

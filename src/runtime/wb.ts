@@ -66,6 +66,60 @@ export function counter(root: ParentNode, name: string, P: Projection) {
   const max = 10 ** g.cells.length - 1;
   return { el, set, setClamped: (v: number) => set(Math.max(0, Math.min(Math.floor(v), max))) };
 }
+/** A gate (parts.mjs gate): set(open, { lit }) shows the boom up or down, lit or not (and its lamp). */
+export function gate(root: ParentNode, name: string) {
+  const parts = [...root.querySelectorAll(`[data-gate="${name}"]`)];
+  const q = (sel: string) => parts.flatMap((p) => [...p.querySelectorAll(sel)]);
+  const closed = q('[data-gate-state="closed"]'), open = q('[data-gate-state="open"]');
+  const lits = q('[data-gate-state] .iso-solid, [data-gate-lamp] .iso-solid:last-child');
+  let shown: string | undefined;
+  return {
+    set(isOpen: boolean, { lit = false } = {}) {
+      const key = (isOpen ? "o" : "c") + (lit ? "l" : "");
+      if (key === shown) return;
+      shown = key;
+      closed.forEach((el) => el.toggleAttribute("data-off", isOpen));
+      open.forEach((el) => el.toggleAttribute("data-off", !isOpen));
+      lits.forEach((el) => el.toggleAttribute("data-lit", lit));
+    },
+  };
+}
+/** A lane (parts.mjs lane): more(n) shows "+n" at its tail, or nothing for 0. */
+export function lane(root: ParentNode, name: string) {
+  const more = root.querySelectorAll(`[data-lane-more="${name}"]`);
+  let shown = -1;
+  return { more(n: number) { if (n === shown) return; shown = n; more.forEach((el) => (el.textContent = n > 0 ? "+" + n : "")); } };
+}
+/** A rack (parts.mjs rack): mark(i, on) draws slot i's outline in the lit colour; clear() unmarks them all. */
+export function rack(root: ParentNode, name: string) {
+  const el = root.querySelector(`[data-rack="${name}"]`)!;
+  const slots = el ? [...el.querySelectorAll("[data-rack-slot]")] : [];
+  return {
+    mark(i: number, on = true) { slots[i]?.toggleAttribute("data-marked", on); },
+    clear() { slots.forEach((s) => s.removeAttribute("data-marked")); },
+  };
+}
+/** A bin (parts.mjs bin): set(n, { lit }) shows the first n tokens of its pile, lights the last `lit` of them, and
+ *  prints "+k" on its front for the k that don't fit. */
+export function bin(root: ParentNode, name: string) {
+  const el = root.querySelector(`[data-bin="${name}"]`)!;
+  const tokens = el ? [...el.querySelectorAll("[data-bin-token]")].map((g) => ({ g, solid: g.firstElementChild!, on: false, lit: false })) : [];
+  const more = el?.querySelector(`[data-bin-more="${name}"]`);
+  let extra = -1;
+  return {
+    cap: tokens.length,
+    set(n: number, { lit = 0 } = {}) {
+      const shown = Math.max(0, Math.min(n, tokens.length));
+      tokens.forEach((t, i) => {
+        const on = i < shown, l = on && i >= shown - lit;
+        if (on !== t.on) { t.on = on; t.g.toggleAttribute("data-off", !on); }
+        if (l !== t.lit) { t.lit = l; t.solid.toggleAttribute("data-lit", l); }
+      });
+      const x = Math.max(0, n - tokens.length);
+      if (more && x !== extra) { extra = x; more.textContent = x ? "+" + x : ""; }
+    },
+  };
+}
 /** The needle of a dial: set(frac) turns it to that share of its sweep. */
 export function dial(root: ParentNode, name: string, P: Projection) {
   const el = root.querySelector(`[data-dial="${name}"]`)!, g = geoOf(el);

@@ -3,7 +3,7 @@
 // five counters (servers), each with its own queue lane. Built with the Anatomy kit (MIT).
 import * as k from "../../../workbench/kit.mjs";
 import { t } from "../../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate, faceText } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, faceText, gate as boomGate } from "../../../workbench/parts.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
@@ -93,13 +93,8 @@ function laneBed(ly) {
   return out.join("");
 }
 
-function gate(ly, index) {
-  const px = LANE.from + 3, py = ly - LANE.half - 2.4;
-  const post = S(k.cylinder(px, py, 1.6, 0, 10, P, 16), { tone: "mid" });
-  const closed = S(k.slabOf({ x: px - 1, y: py, w: 2, d: LANE.half * 2 + 3.5, r: 0.5 }, 8, 2, P, 2), { tone: "hi", crease: "none" });
-  const open = S(k.slabOf({ x: px - 1, y: py - 1, w: 2, d: 2, r: 0.5 }, 10, 18, P, 2), { tone: "hi", crease: "none" });
-  return post + `<g data-gate-open="${index}">${open}</g><g data-gate-closed="${index}" style="display:none">${closed}</g>`;
-}
+// The lane's gate (the kit's gate): up while its server is healthy, down across the lane while it isn't.
+const gateSpec = (ly, index, part) => ({ x: LANE.from + 3, y0: ly - LANE.half, y1: ly + LANE.half, height: 9, name: "lane" + index, open: true, part });
 
 function cover(ly, index) {
   return `<g data-cover="${index}" style="display:none">${S(k.slabOf({ x: LANE.from + 6, y: ly - LANE.half - 1, w: LANE.to - LANE.from - 8, d: LANE.half * 2 + 2, r: 1 }, 6, 1.6, P, 2, 0.4), { tone: "lo" })}</g>`;
@@ -146,8 +141,9 @@ function laneGroup(index) {
   const ly = LANES[index];
   return `<g data-lane="${index}">`
     + laneBed(ly)
-    + gate(ly, index)
+    + boomGate(P, gateSpec(ly, index, "back"))
     + `<g data-parcels="${index}"></g>`
+    + boomGate(P, gateSpec(ly, index, "front"))
     + cover(ly, index)
     + shutter(ly, index)
     + counter(ly, index)

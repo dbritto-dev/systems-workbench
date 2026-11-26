@@ -18,7 +18,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
   const clerkEls = [0, 1, 2, 3].map((i) => q('[data-clerk="' + i + '"]'));
   const fallenEls = [0, 1, 2, 3].map((i) => q('[data-fallen="' + i + '"]'));
   const stamps = [0, 1, 2, 3].map((i) => q('[data-stamp="' + i + '"]'));
-  const gate = q("[data-gate]"), gateArm = q("[data-gate-arm] .iso-solid");
+  const gates = svg.querySelectorAll("[data-capgate]"), capGate = WB.gate(svg, "cap");
   const flagOn = q('[data-flag="on"]'), flagOff = q('[data-flag="off"]');
   const counters = Object.fromEntries(["inq", "oldest", "dead", "done", "twice", "turned"].map((n) => [n, WB.counter(svg, n, P)]));
   const meters = G.RACK_X.map((_, i) => WB.meter(svg, "vis" + i, P));
@@ -70,7 +70,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     scanLog();
     desks.forEach((el, i) => el.toggleAttribute("data-off", i >= cfg.clerks));
     clerkEls.forEach((el, i) => el.toggleAttribute("data-off", i >= cfg.clerks));
-    gate.style.display = cfg.cap === "inf" ? "none" : "";
+    gates.forEach((g) => (g.style.display = cfg.cap === "inf" ? "none" : ""));
     paint(0, true);
   }
 
@@ -155,7 +155,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     model.clerks.forEach((c, i) => { const down = c.downUntil > clock; clerkEls[i].firstElementChild.style.display = down ? "none" : ""; fallenEls[i].style.display = down ? "" : "none"; });
     stamps.forEach((s, i) => { const k = clock - lastStamp[i]; const press = k >= 0 && k < 0.35 ? Math.sin(Math.PI * k / 0.35) : 0; s.setAttribute("transform", press ? translateAlong(P, [0, 0, -2.4 * press]) : ""); });
     const full = model.cfg.cap !== Infinity && Q.length >= model.cfg.cap;
-    gateArm.toggleAttribute("data-lit", full);
+    capGate.set(!full, { lit: full });
     const fresh = clock - lastDead < 3;
     flagOn.style.display = fresh ? "" : "none"; flagOff.style.display = fresh ? "none" : "";
     const holds = [...model.hold].sort((a, b) => a.since - b.since);

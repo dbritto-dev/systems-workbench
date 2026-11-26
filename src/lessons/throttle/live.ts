@@ -29,8 +29,8 @@ export default function mount({ P, G, GAUGE, BALL_SVG }, root) {
   function slots(layer, list) {
     return list.map((p) => { const g = document.createElementNS(NS, "g"); g.innerHTML = BALL_SVG; g.style.display = "none"; WB.place(g, P, p); layer.appendChild(g); return g; });
   }
-  const binLayer = q("[data-bin-balls]"), backLayer = q("[data-balls-back]"), frontLayer = q("[data-balls-front]"), trayLayer = q("[data-tray-balls]");
-  const binPile = slots(binLayer, G.BIN_SLOTS), trayPile = slots(trayLayer, G.TRAY_SLOTS);
+  const binLayer = q("[data-bin-balls]"), backLayer = q("[data-balls-back]"), frontLayer = q("[data-balls-front]");
+  const binPile = slots(binLayer, G.BIN_SLOTS), trayPile = WB.bin(svg, "done");
   const pools = { bin: pool(binLayer, 10), back: pool(backLayer, 40), front: pool(frontLayer, 14) };
   const bladeUp = q("[data-blade-up]"), bladeDown = q("[data-blade-down]"), ram = q("[data-ram]"), rod = q("[data-rod]"), needle = q("[data-needle]"), gap = q("[data-gap]");
   const userEl = q("[data-user]"), screenEl = q("[data-screen]");
@@ -120,7 +120,7 @@ export default function mount({ P, G, GAUGE, BALL_SVG }, root) {
     let trayN = 0; const fin = ROLL + PRESS + HOP;
     for (let i = gate.calls.length - 1; i >= 0 && gate.calls[i].t + fin > clock - PILE_T; i--) if (gate.calls[i].t + fin <= clock) trayN++;
     binPile.forEach((g, i) => { const on = i < binN; if ((g.style.display !== "none") !== on) g.style.display = on ? "" : "none"; });
-    trayPile.forEach((g, i) => { const on = i < trayN; if ((g.style.display !== "none") !== on) g.style.display = on ? "" : "none"; });
+    trayPile.set(trayN);
 
     // The gate blade: down while the metronome swings, up for a moment as a ball goes through.
     const open = !gateShut() || clock - lastCallT() < 0.012;

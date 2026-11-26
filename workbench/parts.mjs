@@ -292,6 +292,129 @@ export function lamp(P, [x, y, z = 0], { r = 3, lit = false, housing = true } = 
   return out.join("");
 }
 
+// ---------- gate ----------
+// A boom barrier across a lane that runs along x: the post stands just behind the lane (y0), the boom crosses to a rest
+// post just in front of it (y1). Both states are drawn (closed: the boom down across the lane; open: standing up on its
+// post); WB.gate(svg, name).set(open, { lit }) switches them, and lit lights the boom (and the lamp, if any).
+// part: "back" draws the post and the boom (before the lane's contents), "front" the rest post and the lamp (after
+// them), "all" both, for a gate nothing passes under. rest: false leaves out the rest post (the boom is cantilevered),
+// for a lane with words on its front face.
+//   gate(P, { x: 40, y0: -50, y1: -36, z: 9, height: 12, name: "cap", lamp: true })
+export function gate(P, { x, y0, y1, z = 0, height = 12, name = "", open = false, lit = false, lamp: withLamp = false, rest = true, part = "all" } = {}) {
+  const py = y0 - 2.2, ry = y1 + 2.2, top = z + height;
+  const back = [], front = [];
+  back.push(S(k.cylinder(x, py, 1.3, z, height + 1.2, P, 14), { tone: "mid", crease: "none" }));
+  // closed: a striped boom from the pivot to the rest post
+  const boom = { x: x - 0.9, y: py - 0.9, w: 1.8, d: ry - py + (rest ? 1.8 : 0), r: 0.4 };
+  const stripes = [];
+  for (let yy = py + 3; yy < ry - 1; yy += 4) stripes.push(k.segment([x + 0.9, yy, top - 0.4], [x + 0.9, yy + 1.6, top + 1.4], P));
+  const down = S(k.slabOf(boom, top - 0.4, 1.8, P, 2), { tone: "hi", crease: "lo", lit }) + Ln(stripes.join(""), { tone: "lo" });
+  // open: the boom standing up on the pivot
+  const up = S(k.slabOf({ x: x - 0.9, y: py - 0.9, w: 1.8, d: 1.8, r: 0.4 }, top + 1.2, ry - py, P, 2), { tone: "hi", crease: "lo", lit });
+  // the post and the boom standing on it are behind whatever crosses the gate; the boom lying across is over it
+  back.push(`<g data-gate-state="open"${open ? "" : " data-off"}>${up}</g>`);
+  back.push(S(k.cylinder(x, py, 1.9, top + 0.2, 1, P, 16), { tone: "hi", crease: "none" }));
+  front.push(`<g data-gate-state="closed"${open ? " data-off" : ""}>${down}</g>`);
+  // the rest post the boom lies on, and the lamp on its own housing beside it
+  if (rest) front.push(S(k.cylinder(x, ry, 1, z, height - 0.6, P, 12), { tone: "mid", crease: "none" }));
+  if (withLamp) front.push(`<g data-gate-lamp>${lamp(P, [x + 3.6, ry, z], { r: 1.6, lit })}</g>`);
+  const g = (parts, which) => `<g class="wb-gate" data-gate="${name}" data-gate-part="${which}">${parts.join("")}</g>`;
+  return part === "back" ? g(back, "back") : part === "front" ? g(front, "front") : g([...back, ...front], "all");
+}
+
+// ---------- lane ----------
+// A roller bed along x that work waits on, one slot per place, the head (the front of the line) at the +x end
+// (head: "-x" for the other way). laneSlot(spec, i) is the top centre of slot i, counted from the head; a tag at the
+// tail's front face shows "+N" when more wait than there are slots (WB.lane(svg, name).more(n)).
+//   const L1 = { x: -100, y: -56, w: 150, d: 14, h: 9, slots: 13, name: "q" };  lane(P, L1);  laneSlot(L1, 0)
+export function laneSlot({ x, y, w, d = 14, h = 9, slots = 10, head = "+x", stop = 3 }, i) {
+  const pitch = (w - stop - 2) / slots, cx = head === "+x" ? x + w - stop - pitch * (i + 0.5) : x + stop + pitch * (i + 0.5);
+  return [cx, y + d / 2, h];
+}
+export function lane(P, spec) {
+  const { x, y, w, d = 14, h = 9, slots = 10, head = "+x", stop = 3, rollers = true, name = "", more = true, moreSize = 3 } = spec;
+  const out = [S(k.slabOf({ x, y, w, d, r: 1 }, 0, h, P, 3, 0.5), { tone: "mid" })];
+  if (rollers) {
+    const r = [];
+    for (let xx = x + 3; xx < x + w - 2; xx += 3) r.push(k.lineOnTop([xx, y + 2.2], [xx, y + d - 2.2], h, P));
+    out.push(Ln(r.join(""), { tone: "lo" }));
+  }
+  for (const yy of [y + 0.2, y + d - 1.6]) out.push(S(k.slabOf({ x: x + 1, y: yy, w: w - 2, d: 1.4, r: 0.3 }, h, 1.6, P, 2), { tone: "hi", crease: "none" }));
+  // a mark on the front rail between slots, and the stop at the head
+  const marks = [];
+  for (let i = 0; i <= slots; i++) {
+    const [cx] = laneSlot(spec, i), pitch = (w - stop - 2) / slots, mx = cx + (head === "+x" ? pitch / 2 : -pitch / 2);
+    marks.push(k.lineOnTop([mx, y + d - 1.6], [mx, y + d - 0.2], h + 1.6, P));
+  }
+  out.push(Ln(marks.join(""), { tone: "mid" }));
+  const sx = head === "+x" ? x + w - stop : x;
+  out.push(S(k.slabOf({ x: sx, y: y + 0.8, w: stop, d: d - 1.6, r: 0.4 }, h, 6, P, 2), { tone: "hi", crease: "lo" }));
+  // "+N" on the front face at the tail (more: false when the machine counts the overflow elsewhere)
+  const tx = head === "+x" ? x + 2 : x + w - 2;
+  if (more) out.push(faceText(P, [tx, y + d, h - moreSize * 1.15], "", { size: moreSize, tone: "hi", anchor: head === "+x" ? "start" : "end", attr: `data-lane-more="${name}"` }));
+  return `<g class="wb-lane" data-lane="${name}">${out.join("")}</g>`;
+}
+
+// ---------- rack ----------
+// A low block with a grid of slot outlines on top (cols × rows, row 0 at the back, slot 0 at the back left), and an
+// optional title on its front face. rackSlot(spec, i) is the top centre of slot i. WB.rack(svg, name).mark(i, on)
+// draws a slot's outline in the lit colour (the slot something is about to land in, or the one being read).
+//   const R = { x: -90, y: -80, w: 150, d: 14, h: 18, cols: 10, cell: { w: 12.6, d: 8 }, name: "a" };  rack(P, R)
+function rackGrid({ x, y, w, d, cols = 10, rows = 1, cell = { w: 8, d: 8 }, gap = 1.6, pad }) {
+  const gw = cols * cell.w + (cols - 1) * gap, gd = rows * cell.d + (rows - 1) * gap;
+  const px = pad ?? (w - gw) / 2, pz = (d - gd) / 2;
+  return { x0: x + px, y0: y + pz, gap };
+}
+export function rackSlot(spec, i) {
+  const { cols = 10, cell = { w: 8, d: 8 }, h = 8 } = spec, g = rackGrid(spec);
+  const c = i % cols, r = Math.floor(i / cols);
+  return [g.x0 + c * (cell.w + g.gap) + cell.w / 2, g.y0 + r * (cell.d + g.gap) + cell.d / 2, h];
+}
+export function rack(P, spec) {
+  const { x, y, w, d, h = 8, cols = 10, rows = 1, cell = { w: 8, d: 8 }, name = "", title, titleSize = 3, tone = "mid" } = spec;
+  const out = [S(k.slabOf({ x, y, w, d, r: 1 }, 0, h, P, 3, 0.5), { tone })];
+  for (let i = 0; i < cols * rows; i++) {
+    const [cx, cy] = rackSlot(spec, i);
+    out.push(Ln(k.planOutline({ x: cx - cell.w / 2 - 0.3, y: cy - cell.d / 2 - 0.3, w: cell.w + 0.6, d: cell.d + 0.6, r: 0.5 }, h, P), { tone: "faint" }).replace("<path ", `<path data-rack-slot="${i}" `));
+  }
+  if (title) out.push(faceText(P, [x + 3, y + d, Math.max(1.6, h / 2 - titleSize * 0.4)], title, { size: titleSize, tone: "mid" }));
+  return `<g class="wb-rack" data-rack="${name}">${out.join("")}</g>`;
+}
+
+// ---------- bin ----------
+// An open box that holds a pile: `cap` tokens (blocks or balls) are drawn into it, hidden, back to front and bottom up;
+// WB.bin(svg, name).set(n, { lit }) shows the first n (lighting the last `lit` of them) and "+N" on its front face for
+// the ones that don't fit. binSlots(spec) gives each token's centre, in the order they fill.
+//   bin(P, { x: 54, y: 20, w: 32, d: 16, h: 5, cap: 12, token: "ball", size: 5.2, name: "dropped" })
+export function binSlots({ x, y, w, d, wall = 1.2, cap = 12, token = "block", size = 4, gap = 0.6 }) {
+  const cols = Math.max(1, Math.floor((w - 2 * wall + gap) / (size + gap))), rows = Math.max(1, Math.floor((d - 2 * wall + gap) / (size + gap)));
+  const x0 = x + wall + (w - 2 * wall - (cols * size + (cols - 1) * gap)) / 2, y0 = y + wall + (d - 2 * wall - (rows * size + (rows - 1) * gap)) / 2;
+  const out = [];
+  for (let layer = 0; out.length < cap; layer++) {
+    // each layer up sits in the hollows of the one below (balls) or straight on it (blocks), one place smaller
+    const off = layer % 2 ? (size + gap) / 2 : 0, lc = cols - (layer % 2), lr = rows - (layer % 2 && token === "ball" ? 1 : 0);
+    if (lc < 1 || lr < 1) break;
+    const z = 1 + layer * (token === "ball" ? size * 0.78 : size * 0.75) + (token === "ball" ? size / 2 : 0);
+    for (let r = 0; r < lr && out.length < cap; r++) for (let c = 0; c < lc && out.length < cap; c++) out.push([x0 + off + c * (size + gap) + size / 2, y0 + (token === "ball" ? off : 0) + r * (size + gap) + size / 2, z]);
+  }
+  return out;
+}
+export function bin(P, spec) {
+  const { x, y, w, d, h = 6, wall = 1.2, cap = 12, token = "block", size = 4, name = "", moreSize = 3 } = spec;
+  const wallSlab = (plan) => S(k.slabOf({ r: 0.3, ...plan }, 0, h, P, 2), { tone: "mid" });
+  const out = [S(k.slabOf({ x, y, w, d, r: 1 }, 0, 1, P, 3), { tone: "lo", crease: "none" })];
+  out.push(wallSlab({ x, y, w, d: wall }), wallSlab({ x, y, w: wall, d }));
+  binSlots(spec).forEach(([cx, cy, cz], i) => {
+    const solid = token === "ball"
+      ? S(sphereOf([cx, cy, cz], size / 2, P, { steps: 20 }), { tone: "hi", crease: "lo" })
+      : S(k.slabOf({ x: cx - size / 2, y: cy - size / 2, w: size, d: size, r: 0.5 }, cz, size * 0.7, P, 2, 0.3), { tone: "hi", crease: "lo" });
+    out.push(`<g data-bin-token="${i}" data-off>${solid}</g>`);
+  });
+  out.push(wallSlab({ x: x + w - wall, y, w: wall, d }), S(k.slabOf({ x, y: y + d - wall, w, d: wall, r: 0.3 }, 0, h, P, 2), { tone: "hi" }));
+  out.push(faceText(P, [x + w / 2, y + d, Math.max(0.8, h / 2 - moreSize * 0.4)], "", { size: moreSize, tone: "hi", anchor: "middle", attr: `data-bin-more="${name}"` }));
+  return `<g class="wb-bin" data-bin="${name}">${out.join("")}</g>`;
+}
+
 // ---------- variants ----------
 // One object with several drawings (a waiter idle / carrying / waiting): only `current` shows.
 // Switch in the browser with WB.pose(svg, name, key).
@@ -315,4 +438,6 @@ export const PARTS_CSS = `
 .wb-pennant[data-lit]{fill:var(--anatomy-lit);stroke:var(--anatomy-lit)}
 .iso-face-text[data-tone="on-lit"]{fill:var(--anatomy-strong)}
 [data-variant][data-off]{display:none}
+.wb-gate [data-off],.wb-bin [data-off]{display:none}
+.wb-rack [data-rack-slot][data-marked]{stroke:var(--anatomy-lit);stroke-width:1.4}
 `;

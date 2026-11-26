@@ -9,7 +9,7 @@
 //   the scoreboard in front shows recall@10 for each kind of query. Words come out at 11 px on a desktop.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, digitCounter, person, dial, sign, plaque, faceText, variants } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, digitCounter, person, dial, sign, plaque, faceText, variants, rack as slotRack } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -72,12 +72,11 @@ function entry() {
 
 // A rack: the lane's bed with ten slot outlines on top (rank 1 at the left), its name on the front, and a word that
 // shows when the lane is switched off.
+// The kit's rack, with this machine's slot grid (tiles TILE wide, STEP apart, from RACK_X0).
+const rackSpec = (plan, h, name, x0) => ({ ...plan, h, cols: SLOTS, cell: { w: TILE.w, d: TILE.d }, gap: STEP - TILE.w, pad: x0 - plan.x, name });
 function rack(lane, H, key, title) {
-  const out = [S(k.slabOf(lane, 0, H, P, 3, 0.5), { tone: "mid" })];
+  const out = [slotRack(P, rackSpec(lane, H, key, RACK_X0))];
   const front = lane.y + lane.d;
-  const slots = [];
-  for (let i = 0; i < SLOTS; i++) slots.push(k.planOutline({ x: RACK_X0 + STEP * i - 0.3, y: lane.y + 2.7, w: TILE.w + 0.6, d: TILE.d + 0.6, r: 0.5 }, H, P));
-  out.push(L(slots.join(""), { tone: "faint" }));
   out.push(label(lane.x + 3, front, H - 6.4, title));
   out.push(label(RACK_X0 + 2, front, H - 6.4, "", { tone: "hi", attr: `data-off-word="${key}"` }));
   return out.join("");
@@ -159,9 +158,8 @@ function desk() {
 
 // The results shelf: the merged top ten, rank 1 at the left.
 function shelf() {
-  const out = [S(k.slabOf(SHELF, 0, SHELF_H, P, 3, 0.5), { tone: "mid" })];
+  const out = [slotRack(P, rackSpec(SHELF, SHELF_H, "results", SHELF_X0))];
   const front = SHELF.y + SHELF.d;
-  out.push(L(Array.from({ length: SLOTS }, (_, i) => k.planOutline({ x: SHELF_X0 + STEP * i - 0.3, y: SHELF.y + 2.7, w: TILE.w + 0.6, d: TILE.d + 0.6, r: 0.5 }, SHELF_H, P)).join(""), { tone: "faint" }));
   out.push(label(SHELF.x + 3, front, 2.2, t("RESULTS", "RESULTADOS")));
   return out.join("");
 }

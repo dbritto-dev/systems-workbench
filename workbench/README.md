@@ -30,7 +30,7 @@ the caller keeps the painter's order. Faces: `"y"` is the face of constant y (te
 of constant x (reads along -y), `"top"` lies on a top face.
 
 ```js
-import { digitCounter, person, figurine, dial, meter, card, plaque, sign, pennant, lamp, keyPart, faceText, faceRect, variants, litFill, LIT_FILL_CSS } from "../../workbench/parts.mjs";
+import { digitCounter, person, figurine, dial, meter, card, plaque, sign, pennant, lamp, keyPart, faceText, faceRect, variants, gate, lane, laneSlot, rack, rackSlot, bin, binSlots, litFill, LIT_FILL_CSS } from "../../workbench/parts.mjs";
 
 digitCounter(P, { x: -15, y: 20, z: 6, count: 4, w: 9, h: 13, name: "balance", value: 40 })  // wheels on a face, in a housing (pad: n or [across, below, above])
 person(P, [x, y, 0], { scale: 0.8, hat: "cap", holding: "slip", slipText: "40", lit })        // hat: cap | brim; holding: tray | clipboard | slip | key
@@ -44,6 +44,11 @@ pennant(P, { x, y, z: 12, height: 10, lit })                                    
 lamp(P, [x, y, z], { r: 3, lit });  keyPart(P, [x, y, z], { scale: 1.5 })
 faceText(P, [x, y, z], "v11", { face: "y", size: 3, anchor: "middle", attr: "data-version" })
 variants("waiter-2", { idle: person(P, at), carry: person(P, at, { holding: "tray" }) }, "idle")
+gate(P, { x, y0, y1, height: 12, name: "cap", open, lamp: true, part: "back" })                // boom barrier across y0..y1; both states drawn; part back|front|all
+lane(P, { x, y, w, d: 14, h: 9, slots: 10, head: "+x", name: "q" })                          // conveyor bed: rollers, rails, slot marks, stop, "+N" at the tail (more: false drops it)
+laneSlot(spec, i)                                                                              // [x, y, z] of slot i (0 at the head)
+rack(P, { x, y, w, d, h: 8, cols: 6, rows: 1, cell: { w: 8, d: 8 }, title, name: "results" })  // slab with slot outlines; rackSlot(spec, i) gives a centre
+bin(P, { x, y, w, d, h: 6, cap: 12, token: "ball", size: 5, gap: 0.6, name: "done" })        // walled tray that piles up to cap tokens, "+N" on the front
 ```
 
 Live (in the lesson script, `svg` is the figure's svg element):
@@ -52,6 +57,8 @@ Live (in the lesson script, `svg` is the figure's svg element):
 const balance = WB.counter(svg, "balance", P); balance.set(41);   // redraws only the wheels that changed
 WB.dial(svg, "watch", P).set(0.5);  WB.meter(svg, "load", P).set(0.9);
 WB.pose(svg, "waiter-2", "carry");
+WB.gate(svg, "cap").set(open, { lit });   WB.lane(svg, "q").more(n);   // "+n" past the last slot, "" at 0
+WB.rack(svg, "results").mark(i, on);      WB.bin(svg, "done").set(n, { lit: 1 });   // shows n tokens, lights the newest
 ```
 
 **Sizes.** Words on a machine never come out under 9 px on a desktop (`figureSvg` raises them: `k.textFloor`), and a

@@ -6,7 +6,7 @@
 // In front, a position rail: the user (a figure) and what the screen shows (a frame) — the gap is staleness.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate } from "../../../workbench/parts.mjs";
+import { basePlate, bin as kitBin } from "../../../workbench/parts.mjs";
 import { sphereOf } from "../../../workbench/vendor-anatomy/kit/lathe.mjs";
 import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
 import { t, isT } from "../../../workbench/i18n.mjs";
@@ -55,7 +55,8 @@ const heap = (x0, yFront, cols, n, layers = true) => {
   return out.slice(cols, 2 * cols).concat(out.slice(0, cols), out.slice(2 * cols)).slice(0, n);
 };
 export const BIN_SLOTS = heap(BIN.x + 4.4, BIN.y + BIN.d - 4.2, 6, 17);
-export const TRAY_SLOTS = heap(TRAY.x + 4.4, TRAY.y + TRAY.d - 4.2, 5, 10, false);
+// The tray is the kit's bin: ten balls, five across and two deep, like the hopper's own heap.
+const TRAY_BIN = { x: TRAY.x, y: TRAY.y, w: TRAY.w, d: TRAY.d, h: TRAY.h, wall: 1, cap: 10, token: "ball", size: BALL_R * 2, gap: -0.7, name: "done" };
 
 // Counters (wheels printed on a front face, y constant).
 export const COUNTERS = {
@@ -204,14 +205,7 @@ function ram() {
   return `<g data-ram>${S(slab({ x: RAM.x, y: RAM.y, w: RAM.w, d: RAM.d, r: 1 }, RAM.up, RAM.h, 3, 0.4), { tone: "hi", crease: "lo" })}</g>`;
 }
 
-function tray() {
-  const t = TRAY, out = [S(slab(t, 0, 1, 3), { tone: "lo", crease: "none" })];
-  out.push(S(slab({ x: t.x, y: t.y, w: t.w, d: 1, r: 0.3 }, 0, t.h, 2), { tone: "mid" }));
-  out.push(S(slab({ x: t.x, y: t.y, w: 1, d: t.d, r: 0.3 }, 0, t.h, 2), { tone: "mid" }));
-  out.push(S(slab({ x: t.x + t.w - 1, y: t.y, w: 1, d: t.d, r: 0.3 }, 0, t.h, 2), { tone: "mid" }));
-  return out.join("");
-}
-const trayFront = () => S(slab({ x: TRAY.x, y: TRAY.y + TRAY.d - 1, w: TRAY.w, d: 1, r: 0.3 }, 0, TRAY.h, 2), { tone: "hi" })
+const tray = () => kitBin(P, TRAY_BIN)
   + topText(TRAY.x + TRAY.w / 2, TRAY.y + TRAY.d + 4.6, 0, t("DONE", "HECHOS"), { size: 2.8, tone: "lo" });
 
 // Calls-per-second gauge: a dial on a pedestal, needle live.
@@ -278,8 +272,6 @@ export function buildFigure() {
       rail(CY + TRACK.half - 1.1, GATE_X + 1.6, TRACK.x1),
       ram(),
       tray(),
-      `<g data-tray-balls></g>`,
-      trayFront(),
       gauge(),
       positionRail(),
       `<g data-screen>${screenSvg()}</g>`,
@@ -288,4 +280,4 @@ export function buildFigure() {
   });
 }
 
-export const GEOMETRY = { CY, TRACK, BALL_R, BALL_Z, FEED_X, LEDGE_X, GATE_X, PRESS_X, QUEUE_GAP, BIN, RAM, TRAY, BLADE, BIN_SLOTS, TRAY_SLOTS, COUNTERS, PIVOT, ARM, RAIL, LANE_USER, LANE_SCREEN, VALUE_MAX };
+export const GEOMETRY = { CY, TRACK, BALL_R, BALL_Z, FEED_X, LEDGE_X, GATE_X, PRESS_X, QUEUE_GAP, BIN, RAM, TRAY, BLADE, BIN_SLOTS, COUNTERS, PIVOT, ARM, RAIL, LANE_USER, LANE_SCREEN, VALUE_MAX };

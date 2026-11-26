@@ -20,7 +20,7 @@ export default function mount({ P, G, PARCEL_SVG, BIG_PARCEL_SVG }, root) {
   const lanes = G.LANES.map((ly, i) => ({
     ly,
     parcels: q('[data-parcels="' + i + '"]'), head: q('[data-head="' + i + '"]'),
-    gateOpen: q('[data-gate-open="' + i + '"]'), gateClosed: q('[data-gate-closed="' + i + '"]'),
+    gate: WB.gate(svg, "lane" + i),
     shutter: q('[data-shutter="' + i + '"]'), cover: q('[data-cover="' + i + '"]'),
     lampOn: q('[data-lamp-on="' + i + '"]'), lampOff: q('[data-lamp-off="' + i + '"]'),
   }));
@@ -142,7 +142,7 @@ export default function mount({ P, G, PARCEL_SVG, BIG_PARCEL_SVG }, root) {
     // counters
     station.st.servers.forEach((s, i) => {
       const lane = lanes[i], present = i < opts.servers;
-      show(lane.gateOpen, present && s.healthy); show(lane.gateClosed, !(present && s.healthy));
+      lane.gate.set(present && s.healthy);
       show(lane.shutter, !present || !s.alive); show(lane.cover, !present);
       show(lane.lampOn, present && s.alive); show(lane.lampOff, !(present && s.alive));
       let dz = 0;

@@ -1,6 +1,6 @@
 ---
 // Every shared part from workbench/parts.mjs, in light and dark, at two sizes, with the live helpers
-// (counter, dial, meter, pose) running. A reference for building figures.
+// (counter, dial, meter, pose, lane, gate, rack, bin) running. A reference for building figures.
 import * as k from "../../../workbench/kit.mjs";
 import * as p from "../../../workbench/parts.mjs";
 
@@ -88,6 +88,32 @@ const SCENES = [
     ].join("")),
   },
   {
+    id: "lanes",
+    name: "lane · gate",
+    api: 'lane(P, { x, y, w, d, h, slots, head: "+x" | "-x", stop, rollers, name })  ·  laneSlot(spec, i)  ·  gate(P, { x, y0, y1, z, height, name, open, lit, lamp, part: "all" | "back" | "front" })',
+    live: "WB.lane(svg, name).more(n)  ·  WB.gate(svg, name).set(open, { lit })",
+    note: "A roller bed that work waits on, slot 0 at the head (the stop), \"+N\" at the tail when more wait than fit; and a boom gate across it, drawn in both states. Here the line fills, the gate drops (lit) when it's full, and opens again as it drains.",
+    ...scene({ x: -70, y: -34, w: 140, d: 68 }, 30, (P) => {
+      const L1 = { x: -62, y: -10, w: 124, d: 14, h: 8, slots: 8, name: "line" };
+      const parcels = Array.from({ length: 8 }, (_, i) => `<g data-parcel="${i}" data-off>${S(k.slabOf({ x: -4, y: -4, w: 8, d: 8, r: 0.8 }, 0, 6, P, 2, 0.3), { tone: "hi", crease: "lo" })}</g>`).join("");
+      return [p.gate(P, { x: -44, y0: L1.y, y1: L1.y + L1.d, z: 0, height: 20, name: "door", lamp: true, part: "back" }),
+        p.lane(P, L1), `<g data-parcels='${JSON.stringify(Array.from({ length: 8 }, (_, i) => p.laneSlot(L1, i)))}'>${parcels}</g>`,
+        p.gate(P, { x: -44, y0: L1.y, y1: L1.y + L1.d, z: 0, height: 20, name: "door", lamp: true, part: "front" })].join("");
+    }),
+  },
+  {
+    id: "racks",
+    name: "rack · bin",
+    api: "rack(P, { x, y, w, d, h, cols, rows, cell: { w, d }, gap, title, name })  ·  rackSlot(spec, i)  ·  bin(P, { x, y, w, d, h, cap, token: \"block\" | \"ball\", size, name })  ·  binSlots(spec)",
+    live: "WB.rack(svg, name).mark(i, on) · clear()  ·  WB.bin(svg, name).set(n, { lit })",
+    note: "A rack of slots (row 0 at the back), one marked in the lit colour; and two bins whose piles grow, the newest token lit, with \"+N\" once the pile is full.",
+    ...scene({ x: -66, y: -40, w: 132, d: 80 }, 24, (P) => [
+      p.rack(P, { x: -56, y: -32, w: 112, d: 26, h: 10, cols: 8, rows: 2, cell: { w: 11, d: 8 }, gap: 2, title: "RACK", name: "shelf" }),
+      p.bin(P, { x: -52, y: 4, w: 40, d: 24, h: 7, cap: 16, size: 5, name: "blocks" }),
+      p.bin(P, { x: 8, y: 4, w: 40, d: 24, h: 7, cap: 18, token: "ball", size: 5.4, name: "balls" }),
+    ].join("")),
+  },
+  {
     id: "variants",
     name: "variants",
     api: 'variants(name, { key: svg, ... }, current)',
@@ -130,6 +156,7 @@ h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;margin:0 0 4px}
 .shot .corner{position:absolute;top:6px;left:10px;font:10px ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--anatomy-muted)}
 .small{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .small .shot{padding:14px 4px 4px}
+[data-parcel][data-off]{display:none}
 @media (max-width:700px){.pair{grid-template-columns:1fr}.small{grid-template-columns:repeat(2,1fr)}}
 `;
 ---
@@ -144,7 +171,7 @@ h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;margin:0 0 4px}
   <body>
     <main data-projections={JSON.stringify(projections)}>
       <h1>Workbench parts</h1>
-      <p class="intro">The shared parts in <code>workbench/parts.mjs</code>, drawn with the Anatomy kit. Each part takes the projection first and world units, and returns SVG. The live ones (counters, dials, meters, variants) are updated here by the browser helpers in <code>src/runtime/wb.ts</code>. Bottom row: every scene again at a quarter of the width, to check the parts still read small.</p>
+      <p class="intro">The shared parts in <code>workbench/parts.mjs</code>, drawn with the Anatomy kit. Each part takes the projection first and world units, and returns SVG. The live ones (counters, dials, meters, variants, lanes, gates, racks, bins) are updated here by the browser helpers in <code>src/runtime/wb.ts</code>. Bottom row: every scene again at a quarter of the width, to check the parts still read small.</p>
       {SCENES.map((s) => (
         <section>
           <h2>{s.name}</h2>
@@ -175,10 +202,25 @@ h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;margin:0 0 4px}
       each("counter", (svg, Pr) => parts.push({ big: WB.counter(svg, "big", Pr), side: WB.counter(svg, "side", Pr) }));
       const dials = []; each("dials", (svg, Pr) => dials.push({ sw: WB.dial(svg, "stopwatch", Pr), sm: WB.dial(svg, "small", Pr), load: WB.meter(svg, "load", Pr) }));
       const waiters = []; each("variants", (svg) => waiters.push(svg));
+      const lanes = []; each("lanes", (svg, Pr) => {
+        const at = JSON.parse(svg.querySelector("[data-parcels]").dataset.parcels);
+        const items = [...svg.querySelectorAll("[data-parcel]")];
+        items.forEach((g, i) => WB.place(g, Pr, at[i]));
+        lanes.push({ items, lane: WB.lane(svg, "line"), gate: WB.gate(svg, "door") });
+      });
+      const racks = []; each("racks", (svg) => racks.push({ rack: WB.rack(svg, "shelf"), blocks: WB.bin(svg, "blocks"), balls: WB.bin(svg, "balls") }));
+      const tick = (q) => {
+        // the line: 0 → 11 waiting and back, the gate down while it's full
+        const n = q % 24 < 12 ? q % 24 : 24 - (q % 24), full = n >= 8;
+        lanes.forEach((l) => { l.items.forEach((g, i) => g.toggleAttribute("data-off", i >= n)); l.lane.more(Math.max(0, n - 8)); l.gate.set(!full, { lit: full }); });
+        racks.forEach((r) => { r.rack.clear(); r.rack.mark(q % 16); r.blocks.set(q % 22, { lit: 1 }); r.balls.set((q * 2) % 26, { lit: 1 }); });
+      };
+      tick(9);
       let t = 0, n = 2047, pose = 0, still = matchMedia("(prefers-reduced-motion: reduce)").matches;
       function frame() {
         t += 1 / 60;
         if (Math.floor(t * 4) !== Math.floor((t - 1 / 60) * 4)) { n++; parts.forEach((c) => { c.big.set(n); c.side.set(n % 1000); }); }
+        if (Math.floor(t * 2) !== Math.floor((t - 1 / 60) * 2)) tick(Math.floor(t * 2) + 9);
         dials.forEach((d) => { d.sw.set((t / 6) % 1); d.sm.set(0.5 + 0.5 * Math.sin(t)); d.load.set(0.55 + 0.4 * Math.sin(t * 0.8)); });
         const pz = Math.floor(t / 1.5) % 3; if (pz !== pose) { pose = pz; waiters.forEach((svg) => WB.pose(svg, "waiter", ["idle", "tray", "clipboard"][pz])); }
         requestAnimationFrame(frame);
