@@ -62,7 +62,7 @@ export default function mount({ P, G, SLIP_SVG, TICKET_SVG }, root) {
     setText(b.label, text);
     b.big ??= Number(b.label.getAttribute("font-size"));
     const size = Math.round(100 * Math.min(b.big, (G.BIN.w - 1) / (0.62 * Math.max(1, text.length)))) / 100;
-    b.label.setAttribute("font-size", String(size));
+    WB.fontSize(b.label, String(size));
   }
   function setBar(b, p, lit) {
     const h = Math.max(0, p) * G.BAR.max, key = h.toFixed(1) + "|" + lit;

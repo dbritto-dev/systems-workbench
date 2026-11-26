@@ -103,7 +103,7 @@ export default function mount({ P, G }, root) {
     setD(ticksEl, d);
     tickLabels.innerHTML = labels;
   }
-  const label = (t, text) => faceTextSvg(sideMatrix([tx(t), Y], C.label, P, "left"), text, { size: 2.2, tone: "mid", anchor: "middle" });
+  const label = (t, text) => WB.floorText(faceTextSvg(sideMatrix([tx(t), Y], C.label, P, "left"), text, { size: 2.2, tone: "mid", anchor: "middle" }), svg.viewBox.baseVal.width);
 
   // ---------- narration: what started, landed or showed last ----------
   function buildEvents(m) {

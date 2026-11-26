@@ -34,7 +34,7 @@ export default function mount({ P, G, COURIER_SVG, SLIP_SVG }, root) {
   }
   function dress(el, lit, label) {
     if (el.lit !== lit) { el.lit = lit; setLit(el.slip, lit); }
-    if (el.label !== label) { el.label = label; setText(el.text, label); el.text.setAttribute("font-size", label.length > 3 ? 2.4 : 3); }
+    if (el.label !== label) { el.label = label; setText(el.text, label); WB.fontSize(el.text, label.length > 3 ? 2.4 : 3); }
   }
   // slips falling into the bin
   const drops = [];

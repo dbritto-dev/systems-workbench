@@ -43,7 +43,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     if (s.id !== p.id || s.k !== kind) {
       s.id = p.id; s.k = kind;
       // three digits, like a ticket roll (999 is followed by 0), so the number stays at 11 px
-      k.num.textContent = String(p.id % 1000); k.num.setAttribute("font-size", G.NUM);
+      k.num.textContent = String(p.id % 1000); WB.fontSize(k.num, G.NUM);
       k.key.textContent = KEYS[p.key];
       k.bad.style.display = p.poison ? "" : "none";
     }

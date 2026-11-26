@@ -33,7 +33,7 @@ export default function mount({ P, G, TOKEN_SVG }, root) {
   function dress(r, lit) {
     const s = r.el.shown, it = r.item;
     const n = it.seq ?? it.claimed, label = n === undefined ? "" : String(n);   // a claimed item shows the slot number it read
-    if (s.label !== label) { s.label = label; r.el.seq.textContent = label; r.el.seq.setAttribute("font-size", label.length <= 2 ? 3 : label.length === 3 ? 2.4 : 1.9); }
+    if (s.label !== label) { s.label = label; r.el.seq.textContent = label; WB.fontSize(r.el.seq, label.length <= 2 ? 3 : label.length === 3 ? 2.4 : 1.9); }
     if (s.lit !== lit) { s.lit = lit; r.el.body.toggleAttribute("data-lit", lit); r.el.seq.setAttribute("data-tone", lit ? "on-lit" : "hi"); }
   }
   function moveTo(r, layer) { if (r.layer !== layer) { r.layer = layer; layers[layer].appendChild(r.el.g); } }

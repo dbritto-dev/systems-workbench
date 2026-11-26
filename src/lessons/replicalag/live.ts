@@ -40,7 +40,7 @@ export default function mount({ P, G, SLIP_SVG }, root) {
     if (el.name !== name) {
       el.name = name;
       const size = String(name.length > 4 ? G.SLOT.small : G.SLOT.size);
-      for (const tx of el.texts) { tx.textContent = name; tx.setAttribute("font-size", size); }
+      for (const tx of el.texts) { tx.textContent = name; WB.fontSize(tx, size); }
     }
     if (el.lit !== lit) { el.lit = lit; setLit(el.block, lit); }
   }

@@ -101,7 +101,7 @@ export default function mount({ P, G, CARD_SVG, RANKS, QS, DOCS, COST, POOL, CHU
     const cur = QS[qi % QS.length], o = outcome(qi), k = K();
     const label = cur.label;
     setText(question, label);
-    question.setAttribute("font-size", label.length <= 18 ? 2.8 : label.length <= 22 ? 2.4 : 2.1);
+    WB.fontSize(question, label.length <= 18 ? 2.8 : label.length <= 22 ? 2.4 : 2.1);
     const fetching = phase < 0.4;
     WB.pose(svg, "lamp-map", fetching ? "on" : "off");
     WB.pose(svg, "lamp-words", fetching && cfg.search === "both" ? "on" : "off");

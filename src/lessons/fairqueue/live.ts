@@ -43,7 +43,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     if (s.id !== j.id) {
       s.id = j.id;
       const txt = String(j.id % 1000);
-      k.num.textContent = txt; k.num.setAttribute("font-size", txt.length <= 2 ? 3.4 : 2.6);
+      k.num.textContent = txt; WB.fontSize(k.num, txt.length <= 2 ? 3.4 : 2.6);
       k.key.textContent = NAMES[j.tenant];
     }
     if (s.lit !== lit) { s.lit = lit; k.body.toggleAttribute("data-lit", lit); k.body.toggleAttribute("data-lit-fill", lit); for (const x of [k.num, k.key]) x.setAttribute("data-tone", lit ? "on-lit" : "hi"); }
@@ -90,7 +90,7 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     tags.forEach((tg, i) => {
       show(tg.plate, cfg.sched !== "fifo"); show(tg.text, cfg.sched !== "fifo");
       tg.text.textContent = cfg.sched === "prio" ? L(i < 3 ? T("HIGH", "ALTA") : T("LOW", "BAJA")) : "×" + w[i];
-      tg.text.setAttribute("font-size", cfg.sched === "prio" ? 3.2 : 4);
+      WB.fontSize(tg.text, cfg.sched === "prio" ? 3.2 : 4);
     });
   }
 

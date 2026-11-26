@@ -40,7 +40,7 @@ export default function mount({ P, G, DOCKET_SVG }, root) {
     }
     const v = Math.max(-99, Math.min(99, left));
     const text = (v < -0.05 ? "−" : "") + Math.abs(v).toFixed(1);
-    if (el.text !== text) { el.text = text; el.num.textContent = text; el.num.setAttribute("font-size", text.length <= 3 ? 2.9 : 2.4); }
+    if (el.text !== text) { el.text = text; el.num.textContent = text; WB.fontSize(el.num, text.length <= 3 ? 2.9 : 2.4); }
   }
 
   const cfg = { mode: "fixed", client: 2, inner: "short", db: "stall", gw: "fast", speed: 0.5 };

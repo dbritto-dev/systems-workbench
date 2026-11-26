@@ -82,8 +82,8 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
       const sw = await page.evaluate(() => document.documentElement.scrollWidth);
       if (sw > 391) fail(where, `scrollWidth ${sw} at 390 px`);
       if (deskText) {
-        const small = textSize.verdict(deskText, await textSize.measureClose(page));
-        if (small && textSize.MIGRATED.includes(l.slug)) fail(where, `text size: ${small}`);
+        const small = textSize.verdict(deskText, await textSize.measureClose(page), l.slug);
+        if (small && textSize.held(l.slug)) fail(where, `text size: ${small}`);
         else if (small) { warnings++; console.log(`  ⚠ text size: ${small}`); }
       }
       console.log(`${errors.length || empty || other ? "✗" : "✓"} ${where} (still frame ${before} chars)`);
@@ -134,7 +134,7 @@ const fail = (where, what) => { problems.push(`${where}: ${what}`); console.log(
     await page.close();
   }
   await browser.close();
-  if (warnings) console.log(`\n${warnings} lesson(s) with face text under ${textSize.MIN.desk} px (desktop) or ${textSize.MIN.close} px (close-up): a warning until they're migrated (tools/text-size.cjs)`);
+  if (warnings) console.log(`\n${warnings} pending lesson(s) with face text under their desktop floor or ${textSize.MIN.close} px in the close-up: a warning until they're through the text pass (tools/text-size.cjs)`);
   console.log(problems.length ? `\n${problems.length} problem(s)` : "\nall checks passed");
   process.exit(problems.length ? 1 : 0);
 })();

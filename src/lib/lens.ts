@@ -15,6 +15,8 @@ export const LENS_MEDIA = `(max-width: ${LENS_MAX}px) and (scripting: enabled)`;
 export const LENS_TEXT_PX = 12;
 /** Face text on a desktop comes out at least this large (px) in a lesson that has been through the text pass. */
 export const DESK_TEXT_PX = 11;
+/** Face text on a desktop comes out at least this large (px) in every figure (workbench/kit.mjs TEXT_FLOOR_PX). */
+export const TEXT_FLOOR_PX = 9.2;
 /** The stage's width (px) on a desktop: the 780 px page less the plate's 24 px padding each side. */
 export const DESK_STAGE_PX = 732;
 /** The close-up's width (px) on a 390 px phone: the build draws the first frame for it. */

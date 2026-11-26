@@ -42,9 +42,11 @@ export const faceRectX = (P, x, y0, y1, z0, z1) => pathOf([[x, y0, z0], [x, y1, 
 import { figureSvg as kitFigureSvg } from "./vendor-anatomy/kit/iso-kit.mjs";
 import { isT as isBi } from "./i18n.mjs";
 const escAttr = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// Every figure's face text is raised to the desktop floor (textFloor, below) unless the figure passes minText: 0.
 export function figureSvg(opts) {
-  if (!isBi(opts.label)) return kitFigureSvg(opts);
-  return kitFigureSvg({ ...opts, label: opts.label.en }).replace(/aria-label="[^"]*"/, (m) => `${m} data-aria-en="${escAttr(opts.label.en)}" data-aria-es="${escAttr(opts.label.es)}"`);
+  const floor = (svg) => (opts.minText === 0 ? svg : textFloor(svg, opts.width, opts.minText));
+  if (!isBi(opts.label)) return floor(kitFigureSvg(opts));
+  return floor(kitFigureSvg({ ...opts, label: opts.label.en })).replace(/aria-label="[^"]*"/, (m) => `${m} data-aria-en="${escAttr(opts.label.en)}" data-aria-es="${escAttr(opts.label.es)}"`);
 }
 
 // faceTextSvg with bilingual text: text may be t(en, es); both are drawn and CSS shows the current language.
@@ -67,6 +69,23 @@ const BASELINE = { y: [1, 0, 0], x: [0, -1, 0], top: [1, 0, 0], topY: [0, -1, 0]
 // face: "y" | "x" | "top" as for faceText; along: "y" for top text that reads along y.
 export const textSize = (P, px, { width = 700, face = "y", along = "x" } = {}) =>
   +(px / (DESK_STAGE_PX / width) / unitLen(P, BASELINE[face === "top" && along === "y" ? "topY" : face])).toFixed(2);
+
+// The desktop floor for words painted on a machine (src/lessons/README.md, "Text on the machine"): 9 px, which the phone
+// lens's close-up (up to 3× the whole figure's scale) brings to 12 px. A little over, so rounding doesn't land under.
+export const TEXT_FLOOR_PX = 9.2;
+// Raise every <text> in an SVG string (a figure `width` units wide) that would come out under `px` on a desktop: its
+// font-size × the scale of its transform along the baseline, as tools/text-size.cjs measures it. figureSvg applies it;
+// call it on a fragment the live code inserts (a token, a card) with the figure's width.
+export function textFloor(svg, width, px = TEXT_FLOOR_PX) {
+  const min = (px * width) / DESK_STAGE_PX;
+  return svg.replace(/<text\b[^>]*>/g, (tag) => {
+    const fs = +(tag.match(/font-size="([\d.]+)"/)?.[1] ?? NaN);
+    if (!(fs > 0)) return tag;
+    const m = tag.match(/transform="matrix\(([^)]*)\)"/)?.[1].split(/[\s,]+/).map(Number);
+    const scale = m ? Math.hypot(m[0], m[1]) : 1;
+    return fs * scale >= min ? tag : tag.replace(/font-size="[\d.]+"/, `font-size="${+(min / scale).toFixed(3)}"`);
+  });
+}
 
 // A digit counter's wheel height h (world units) whose digits come out at `px` on a desktop (the glyph is 0.68 h).
 export const wheelHeight = (P, px, { width = 700 } = {}) => +((px * DIGIT_EM) / (0.68 * unitLen(P, [0, 0, 1]) * (DESK_STAGE_PX / width))).toFixed(2);

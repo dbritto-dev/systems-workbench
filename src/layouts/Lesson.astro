@@ -24,6 +24,8 @@ import Spinner from "astryx-astro/components/Spinner/Spinner.astro";
 import { pick, type Locale } from "../i18n";
 import { useUi } from "../i18n/ui";
 import { plain, conceptOf, two, type Lesson } from "../lib/lessons";
+import { textFloor } from "../../workbench/kit.mjs";
+import { viewBoxOf } from "../lib/lens";
 import "virtual:workbench.css";
 import "../styles/lesson.css";
 
@@ -34,6 +36,14 @@ const def = lesson.def;
 const ui = useUi(locale);
 const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const path = `lessons/${lesson.slug}/`;
+// The SVG pieces the live code inserts (tokens, cards, parcels) get the figure's text floor too (workbench/kit.mjs).
+const figureWidth = viewBoxOf(def.machine.svg)[2];
+const floorAll = (v: unknown): unknown =>
+  typeof v === "string" ? (v.includes("<text") ? textFloor(v, figureWidth) : v)
+  : Array.isArray(v) ? v.map(floorAll)
+  : v && typeof v === "object" && Object.getPrototypeOf(v) === Object.prototype ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, floorAll(x)]))
+  : v;
+const liveData = def.machine.plate.lens === false ? def.data : floorAll(def.data);
 ---
 <Base locale={locale} title={plain(p.title, locale)} description={plain(p.lede, locale).slice(0, 300)} path={path} bodyClass={p.litFill ? "iso lit-fill" : "iso"} skipTo="main" paintAfter="machine" monoWeights={[400, 500]}>
   <Fragment slot="head">{p.css && <Fragment set:html={`<style>${p.css}</style>`} />}</Fragment>
@@ -70,7 +80,7 @@ const path = `lessons/${lesson.slug}/`;
       <Experiments locale={locale} slug={lesson.slug} experiments={p.predict.experiments} />
     </section>
     <template data-wb-spinner><Spinner size="sm" shade="inherit" aria-hidden="true" /></template>
-    <script type="application/json" data-lesson-data set:html={JSON.stringify(def.data).replace(/</g, "\\u003c")} />
+    <script type="application/json" data-lesson-data set:html={JSON.stringify(liveData).replace(/</g, "\\u003c")} />
     </wb-lesson>
 
     <section id="explain">

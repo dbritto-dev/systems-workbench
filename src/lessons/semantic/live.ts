@@ -112,7 +112,7 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
     run = plan();
     queryText.textContent = run.query.text;
     // A long query shrinks to fit the board (78 units of face; a character is about 0.64 of the font size).
-    queryText.setAttribute("font-size", Math.min(3.9, 78 / (run.query.text.length * 0.64)).toFixed(2));
+    WB.fontSize(queryText, Math.min(3.9, 78 / (run.query.text.length * 0.64)).toFixed(2));
     L.strings.innerHTML = ""; L.rings.innerHTML = ""; L.probe.innerHTML = "";
     pathEl.innerHTML = ""; L.links.appendChild(pathEl);
     if (cfg.search === "exact") L.probe.appendChild(arm); else L.probe.appendChild(bead);

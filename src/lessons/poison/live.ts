@@ -41,13 +41,13 @@ export default function mount({ P, G, PARCEL_SVG }, root) {
     if (s.id !== m.id) {
       s.id = m.id;
       const txt = String(m.v);
-      el.num.textContent = txt; el.num.setAttribute("font-size", txt.length <= 2 ? 3.6 : 2.8);
+      el.num.textContent = txt; WB.fontSize(el.num, txt.length <= 2 ? 3.6 : 2.8);
       el.key.textContent = KEYS[m.key];
       el.bad.style.display = m.bad ? "" : "none";
     }
     if (s.lit !== lit) { s.lit = lit; el.body.toggleAttribute("data-lit", lit); el.body.toggleAttribute("data-lit-fill", lit); for (const x of [el.num, el.key]) x.setAttribute("data-tone", lit ? "on-lit" : "hi"); }
     const tg = tries ? String(tries) : "";
-    if (s.tag !== tg) { s.tag = tg; el.tag.style.display = tg ? "" : "none"; if (tg) { el.tries.textContent = tg; el.tries.setAttribute("font-size", tg.length > 1 ? 2.8 : 3.2); } }
+    if (s.tag !== tg) { s.tag = tg; el.tag.style.display = tg ? "" : "none"; if (tg) { el.tries.textContent = tg; WB.fontSize(el.tries, tg.length > 1 ? 2.8 : 3.2); } }
   }
 
   // ---------- settings and the run ----------

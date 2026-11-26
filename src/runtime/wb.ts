@@ -2,6 +2,7 @@
 // Lessons import what they use; the bundler keeps one copy for the whole site.
 import { iso, pathOf, translateAlong } from "../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import { digitPath, digitsOf, facePoint } from "../../workbench/digits.mjs";
+import { TEXT_FLOOR_PX, DESK_STAGE_PX } from "../lib/lens";
 
 export type Projection = { origin: [number, number]; scale: number; azimuth?: number; elevation?: number };
 type Point3 = [number, number, number];
@@ -30,6 +31,23 @@ export const faceRectX = (P: Projection, x: number, y0: number, y1: number, z0: 
 const geoOf = (el: Element) => JSON.parse(el.getAttribute("data-geo")!);
 
 /** Move an SVG group to a point in the figure's space. */
+/** Set a face text's font-size, raised to the desktop floor for its figure (src/lib/lens.ts TEXT_FLOOR_PX, as
+ *  workbench/kit.mjs textFloor raises the figure's own text at build): live code that resizes a label uses this. */
+export function fontSize(el: Element, size: number | string) {
+  const t = el as SVGTextElement, w = t.ownerSVGElement?.viewBox.baseVal.width || 700;
+  const m = t.transform?.baseVal.consolidate()?.matrix, s = m ? Math.hypot(m.a, m.b) : 1;
+  el.setAttribute("font-size", String(+Math.max(Number(size), (TEXT_FLOOR_PX * w) / DESK_STAGE_PX / s).toFixed(3)));
+}
+/** The same floor on SVG markup the live code builds (a figure `width` units wide): every <text> in it. */
+export function floorText(svg: string, width: number): string {
+  const min = (TEXT_FLOOR_PX * width) / DESK_STAGE_PX;
+  return svg.replace(/<text\b[^>]*>/g, (tag) => {
+    const fs = +(tag.match(/font-size="([\d.]+)"/)?.[1] ?? NaN);
+    const m = tag.match(/transform="matrix\(([^)]*)\)"/)?.[1].split(/[\s,]+/).map(Number);
+    const scale = m ? Math.hypot(m[0], m[1]) : 1;
+    return !(fs > 0) || fs * scale >= min ? tag : tag.replace(/font-size="[\d.]+"/, `font-size="${+(min / scale).toFixed(3)}"`);
+  });
+}
 export const place = (el: Element, P: Projection, p: Point3) => el.setAttribute("transform", translateAlong(P, p));
 
 /** A digit counter: set(v) redraws only the wheels whose digit changed; setClamped(v) keeps v within what the

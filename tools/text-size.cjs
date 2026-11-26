@@ -6,10 +6,15 @@
 // its font-size × the scale of its transform along the baseline (as workbench/kit.mjs textSize() sizes it); a digit is
 // its height / 0.72 (DIGIT_EM: the font-size whose digits stand as tall). Hidden text (another state's) counts at
 // desktop only when drawn; in the close-up every text the figure holds counts, since the lens can show any of it.
-// Exits 1 if a MIGRATED lesson's smallest text or digit is under DESK px on the desktop or CLOSE px in the close-up.
-// tools/site-check.cjs runs the same measurement: a problem for a migrated lesson, a warning for the others.
-const MIGRATED = ["queues", "eventloop", "rrf", "hybrid"];
-const MIN = { desk: 11, close: 12 };
+// Two floors on the desktop: FULL lessons were drawn for 11 px; every other lesson is held to 9 px, which the lens's
+// close-up (at most 3× the whole figure's scale) still brings to 12 px on a phone. Exits 1 if a lesson's smallest text or
+// digit is under its floor on the desktop or under 12 px in the close-up, or a region doesn't fit the close-up; a lesson
+// in PENDING (not yet through the text pass) only gets a warning. tools/site-check.cjs runs the same measurement.
+const FULL = ["queues", "eventloop", "rrf", "hybrid"];
+const PENDING = [];
+const MIN = { desk: 11, light: 9, close: 12 };
+const floorOf = (slug) => (FULL.includes(slug) ? MIN.desk : MIN.light);
+const held = (slug) => !PENDING.includes(slug);
 const DIGIT_EM = 0.72;
 
 /** In the page: sizes in viewBox units of every face text and counter digit in the machine, and px per unit. */
@@ -69,16 +74,16 @@ async function measureClose(page) {
   return { lens: !!r.close, all: stats(pool.map(at)), smallest: pool.sort((a, b) => at(a) - at(b)).slice(0, 3).map((x) => `${x.txt} ${at(x).toFixed(1)}`), tight };
 }
 /** What's wrong for a lesson held to the minimum ("" when nothing). */
-function verdict(desk, close) {
+function verdict(desk, close, slug) {
   const out = [];
-  const dmin = Math.min(desk.text?.min ?? Infinity, desk.digits?.min ?? Infinity);
-  if (dmin < MIN.desk) out.push(`desktop text ${dmin.toFixed(1)} px < ${MIN.desk} (${desk.smallest.join(", ")})`);
+  const dmin = Math.min(desk.text?.min ?? Infinity, desk.digits?.min ?? Infinity), floor = floorOf(slug);
+  if (dmin < floor) out.push(`desktop text ${dmin.toFixed(1)} px < ${floor} (${desk.smallest.join(", ")})`);
   if (close.all && close.all.min < MIN.close) out.push(`close-up text ${close.all.min.toFixed(1)} px < ${MIN.close} (${close.smallest.join(", ")})`);
   if (close.tight.length) out.push(`region(s) bigger than the close-up: ${close.tight.join(", ")}`);
   return out.join("; ");
 }
 
-module.exports = { MIGRATED, MIN, measureDesk, measureClose, verdict };
+module.exports = { FULL, PENDING, MIN, floorOf, held, measureDesk, measureClose, verdict };
 
 if (require.main === module) {
   const { chromium } = require("playwright");
@@ -101,13 +106,13 @@ if (require.main === module) {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.waitForTimeout(500);
       const close = await measureClose(page);
-      const migrated = MIGRATED.includes(l.slug);
-      const bad = verdict(desk, close);
+      const migrated = held(l.slug);
+      const bad = verdict(desk, close, l.slug);
       if (migrated && bad) failed++;
-      console.log(`${(migrated ? "* " : "  ") + l.slug.padEnd(16)} ${f(desk.text?.min)} ${f(desk.text?.med)}   |   ${f(desk.digits?.min)}    |   ${f(close.all?.min)} ${f(close.all?.med)}   | ${close.lens ? "yes" : "no "}${bad ? (migrated ? "  ✗ " : "  · ") + bad : ""}`);
+      console.log(`${(FULL.includes(l.slug) ? "* " : migrated ? "  " : "? ") + l.slug.padEnd(16)} ${f(desk.text?.min)} ${f(desk.text?.med)}   |   ${f(desk.digits?.min)}    |   ${f(close.all?.min)} ${f(close.all?.med)}   | ${close.lens ? "yes" : "no "}${bad ? (migrated ? "  ✗ " : "  · ") + bad : ""}`);
     }
     await browser.close();
-    console.log(`\n* migrated (held to ${MIN.desk} px on the desktop, ${MIN.close} px in the close-up)${failed ? `: ${failed} under` : ": all pass"}`);
+    console.log(`\n* drawn for ${MIN.desk} px on the desktop; the rest held to ${MIN.light} px; ${MIN.close} px in the close-up; ? pending (a warning)${failed ? `. ${failed} under` : ". All held lessons pass"}`);
     process.exit(failed ? 1 : 0);
   })();
 }

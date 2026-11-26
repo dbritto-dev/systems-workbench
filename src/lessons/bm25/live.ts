@@ -33,7 +33,7 @@ export default function mount({ P, G }, root) {
   // ---------- drawing helpers ----------
   const S = (paths, style) => solidSvg(paths, style);
   const L = (d, style) => lineSvg(d, style);
-  const text = (xyz, t, size, tone, anchor = "middle") => faceTextSvg(sideMatrix([xyz[0], xyz[1]], xyz[2], P, "left"), t, { size, tone, anchor });
+  const text = (xyz, t, size, tone, anchor = "middle") => WB.floorText(faceTextSvg(sideMatrix([xyz[0], xyz[1]], xyz[2], P, "left"), t, { size, tone, anchor }), svg.viewBox.baseVal.width);
   const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const radiusOf = (idf) => 2.4 + 1.55 * Math.min(idf, 4.4);
   const DISC = 2.2;   // disc thickness per point of score
@@ -59,7 +59,7 @@ export default function mount({ P, G }, root) {
     total = T_CLEAR + n * T_TERM + T_HOLD;
     t = at;
     queryEl.textContent = cfg.q;
-    queryEl.setAttribute("font-size", cfg.q.length > 34 ? 3 : cfg.q.length > 26 ? 3.6 : 4.4);
+    WB.fontSize(queryEl, cfg.q.length > 34 ? 3 : cfg.q.length > 26 ? 3.6 : 4.4);
     drawRack(-1);
     for (let i = 0; i < 5; i++) {
       const row = plan.top[i];

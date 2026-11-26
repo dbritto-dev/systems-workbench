@@ -164,7 +164,7 @@ export default function mount({ P, G, MARKS }, root) {
     g.innerHTML = MARKS[kind];
     const txt = g.querySelector("[data-mark-text]");
     if (label === "OFF") label = L("OFF", "LIBRE");
-    if (txt) { txt.textContent = label; txt.setAttribute("font-size", label.length > 4 ? 3.4 : 4.4); }
+    if (txt) { txt.textContent = label; WB.fontSize(txt, label.length > 4 ? 3.4 : 4.4); }
     return g;
   }
   function spanEl() {

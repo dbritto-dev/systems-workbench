@@ -96,7 +96,7 @@ export default function mount({ P, G }, root) {
     };
     for (const [n, tg] of Object.entries(tags)) {
       const w = words[n], size = w.length <= 4 ? 2.8 : w.length <= 6 ? 2.4 : 2;
-      for (const el of [tg.text, tg.litText]) { el.textContent = w; el.setAttribute("font-size", size); }
+      for (const el of [tg.text, tg.litText]) { el.textContent = w; WB.fontSize(el, size); }
     }
   }
 

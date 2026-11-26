@@ -46,7 +46,7 @@ export default function mount({ P, G, SLIP_SVG, FLAT_SVG, DISH_SVG, CUSTOMER_SVG
   function dressSlip(rec, id, flat, lit) {
     const el = rec.el, s = el.shown;
     if (s.flat !== flat) { s.flat = flat; show(el.hang.g, !flat); show(el.flat.g, flat); }
-    if (s.id !== id) { s.id = id; const txt = String(id % 1000); for (const p of [el.hang, el.flat]) { p.num.textContent = txt; p.num.setAttribute("font-size", txt.length <= 2 ? 3.4 : 2.7); } }
+    if (s.id !== id) { s.id = id; const txt = String(id % 1000); for (const p of [el.hang, el.flat]) { p.num.textContent = txt; WB.fontSize(p.num, txt.length <= 2 ? 3.4 : 2.7); } }
     if (s.lit !== lit) { s.lit = lit; for (const p of [el.hang, el.flat]) { p.body.toggleAttribute("data-lit", lit); p.num.setAttribute("data-tone", lit ? "on-lit" : "hi"); } }
   }
   const setLitAll = (el, lit) => { if (el.shown.lit !== lit) { el.shown.lit = lit; el.g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", lit)); } };

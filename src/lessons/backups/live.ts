@@ -48,7 +48,7 @@ export default function mount({ P, G, FLY_SEG, FLY_SNAP }, root) {
   const fit = (el, text, big = el.big ??= Number(el.getAttribute("font-size"))) => {
     const room = el.closest("[data-crate]") ? G.CRATE.w - 1 : G.BLOCK.w - 0.8;     // the face's width, in model units
     const size = Math.round(100 * Math.min(big, room / (0.7 * text.length))) / 100;
-    if (el.size !== size) { el.size = size; el.setAttribute("font-size", String(size)); }
+    if (el.size !== size) { el.size = size; WB.fontSize(el, String(size)); }
   };
   // kind: "" hidden, "solid" a write the node holds, "dash" one it hasn't got
   function setSlot(s, kind, label = "", lit = false) {
