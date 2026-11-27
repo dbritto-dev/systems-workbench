@@ -2,7 +2,7 @@
 // A filing machine: folders on a long rail, newest at the left, and a reader carriage that fetches one page at a time.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) through the shared workbench layer.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, track, carriage as sled } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { needlePath } from "./sim";
@@ -43,12 +43,9 @@ function plate() {
     + labelPlate(P, { x: 110, y: 46, w: 52, d: 12, r: 1.5 }, [[116, 50, 34], [116, 54, 24]]);
 }
 
-// The folder rail: two bars on a low bed, one stop at each end.
+// The folder rail (the kit's track): two bars on a low bed.
 function folderRail() {
-  const out = [S(k.slabOf({ x: RAIL_FROM, y: -11, w: RAIL_TO - RAIL_FROM, d: 22, r: 1.5 }, 0, 1.2, P, 3, 0.3), { tone: "lo", crease: "none" })];
-  for (const y of [-7, 4]) out.push(S(k.slabOf({ x: RAIL_FROM, y, w: RAIL_TO - RAIL_FROM, d: 3, r: 0.6 }, 1.2, RAIL_Z - 1.2, P, 2), { tone: "mid", crease: "none" }));
-  out.push(D([RAIL_FROM + 4, 0, RAIL_TO - 4].map((x) => at([x, -5.5, RAIL_Z])), { size: 0.4 }));
-  return out.join("");
+  return track(P, { x0: RAIL_FROM, x1: RAIL_TO, y: -11, d: 22, bed: 1.2, bar: { d: 3, h: RAIL_Z - 1.2 }, stops: false });
 }
 
 // The feed: a hopper at the newest end where new folders come in.
@@ -84,19 +81,12 @@ function cardIndex() {
 }
 
 function readerRail() {
-  const out = [];
-  for (const y of [28, 44]) out.push(S(k.slabOf({ x: RAIL_FROM, y, w: RAIL_TO - RAIL_FROM, d: 4, r: 0.8 }, 0, 2.5, P, 3, 0.3), { tone: "mid" }));
-  for (const x of [RAIL_FROM - 4, RAIL_TO]) {
-    out.push(S(k.slabOf({ x, y: 25, w: 4, d: 26, r: 1 }, 0, 6, P, 3, 0.4), { tone: "mid" }));
-    out.push(D([at([x + 2, 28, 6]), at([x + 2, 48, 6])], { size: 0.4 }));
-  }
-  return out.join("");
+  return track(P, { x0: RAIL_FROM, x1: RAIL_TO, y: 28, d: 20, bar: { d: 4, h: 2.5 }, screws: false });
 }
 
 // The reader carriage, built at x = 0 and moved along x: base, post, beam over the folders, reading head.
 export function carriageSvg() {
-  const out = [`<path class="iso-halo" d="${k.haloOf({ x: -8, y: 28, w: 16, d: 18, r: 2 }, 2.5, 0.1, P)}" style="filter:blur(4px)"/>`];
-  out.push(S(k.slabOf({ x: -10, y: 26, w: 20, d: 22, r: 2.5 }, 2.5, 4.5, P, 4, 0.5), { tone: "mid" }));
+  const out = [sled(P, { y: 26, w: 20, d: 22, z: 2.5, h: 4.5, r: 2.5, halo: true })];
   out.push(S(k.cylinder(-4, 34, 2.2, 7, READER.beamZ - 7, P, 18), { tone: "mid", crease: "none" }));
   out.push(L(k.sideArc(-4, 34, 2.2, 20, P, 12), { tone: "faint" }));
   out.push(S(k.slabOf({ x: -6.5, y: -3, w: 5, d: 40, r: 1 }, READER.beamZ, 3, P, 3, 0.4), { tone: "mid" }));

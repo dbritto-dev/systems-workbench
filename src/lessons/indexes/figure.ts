@@ -2,7 +2,7 @@
 // A small library: bookcases along the back (the table), card catalogue cabinets at the front (the indexes),
 // a book trolley that does the reading, and a desk with a stopwatch. Built with the Anatomy kit (MIT).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, cabinet as drawerCabinet } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { INDEXES, needlePath } from "./sim";
@@ -24,7 +24,7 @@ export const CAB = { w: 34, d: 24, h: 28, y0: -6 };
 export const CABS = INDEXES.map((index, i) => ({ id: index.id, x0: -112 + i * 40, cx: -112 + i * 40 + 17 }));
 export const CAB_NAMES = { isbn: ["ISBN"], author: [t("AUTHOR", "AUTOR")], authorYear: [t("AUTHOR,", "AUTOR,"), t("YEAR", "AÑO")], loan: [t("ON LOAN", "PRESTADO")], authorTitle: [t("AUTHOR", "AUTOR"), t("+ TITLE", "+ TÍTULO")] };
 // The top drawer of every cabinet stands open: a tray of sorted cards, its tabs stepping across like A to Z.
-export const TRAY = { out: 14, z0: 20, h: 6, cards: 8, gap: 1.3, cardH: 6.6, slot: 11.6, rise: 9 };
+export const TRAY = { out: 14, cards: 8, gap: 1.3, cardH: 6.6, slot: 11.6, rise: 9 };
 const CAB_FRONT = CAB.y0 + CAB.d;
 
 export const HOME = [-146, 58];
@@ -90,39 +90,27 @@ function tag(c, index) {
   return `<g class="wb-lit-group" data-tag="${index}">${plaque}${text}</g>`;
 }
 
+// A catalogue cabinet (the kit's): three drawers, the top one pulled out on a tray of sorted cards, the index's name
+// engraved on the lid. Drawn in two parts so an open tray sticks out in front of its right-hand neighbour.
+export const cabName = (i) => "idx-" + i;
+function cabSpec(cab, i, part) {
+  return {
+    x: cab.x0, y: CAB.y0, w: CAB.w, d: CAB.d, h: CAB.h - 2.4, plinth: 2.4, r: 1.2, cap: { h: 1.6, over: 1 }, lid: false,
+    drawers: { rows: 3, pad: 2, vgap: 1.2, bottom: 3, top: 2.2 }, pull: TRAY.out,
+    tray: { wall: 4.2, inside: (_, box) => trayCards(cab, i, box.z) }, name: cabName(i), part,
+  };
+}
 function cabinet(cab, i) {
-  const out = [];
-  const plan = { x: cab.x0, y: CAB.y0, w: CAB.w, d: CAB.d, r: 1.2 };
-  const front = CAB_FRONT;
-  out.push(S(k.slabOf(k.insetPlan(plan, 1.5), 0, 2.4, P, 3), { tone: "lo" }));
-  out.push(S(k.slabOf(plan, 2.4, CAB.h - 2.4, P, 3, 0.5), { tone: "mid", inner: L(k.faceRectY(P, cab.x0 + 2, cab.x0 + CAB.w - 2, front, TRAY.z0 - 0.4, TRAY.z0 + TRAY.h + 0.4), { tone: "lo" }) }));
-  // Two closed drawers below the open one.
-  const rows = [], dots = [];
-  for (const z0 of [12.6, 5.4]) {
-    rows.push(k.faceRectY(P, cab.x0 + 2, cab.x0 + CAB.w - 2, front, z0, z0 + 6));
-    dots.push(at([cab.cx, front, z0 + 3]));
-  }
-  out.push(L(rows.join(""), { tone: "lo" }), D(dots, { size: 0.55, tone: "mid" }));
-  const cap = k.insetPlan(plan, -1);
-  out.push(S(k.slabOf(cap, CAB.h, 1.6, P, 3, 0.4), { tone: "mid" }));
-  // The index name, engraved on the lid.
-  const names = CAB_NAMES[cab.id];
-  names.forEach((line, n) => out.push(text(cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2, CAB.h + 1.6, line, { face: "top", size: 5.6, tone: "hi" })));
-  return `<g data-cab="${i}">${out.join("")}</g>`;
+  const names = CAB_NAMES[cab.id].map((line, n) => text(cab.x0 + 3, CAB.y0 + 9.5 + n * 7.2, CAB.h + 1.6, line, { face: "top", size: 5.6, tone: "hi" }));
+  return `<g data-cab="${i}">${drawerCabinet(P, cabSpec(cab, i, "back"))}${names.join("")}</g>`;
 }
 
-// The open drawer: a tray of standing cards, back to front. The lit card (data-card) sits in the front slot.
-function tray(cab, i) {
+// What stands in the open tray: sorted cards, back to front, and the lit card (data-card) in the front slot.
+function trayCards(cab, i, z0) {
   const out = [];
-  const x0 = cab.x0 + 2, x1 = cab.x0 + CAB.w - 2, y0 = CAB_FRONT, y1 = CAB_FRONT + TRAY.out, z0 = TRAY.z0, wall = 4.2;
-  out.push(S(k.slabOf({ x: x0, y: y0, w: x1 - x0, d: TRAY.out, r: 0.3 }, z0, 0.8, P, 2), { tone: "lo", crease: "none" }));
-  out.push(S(k.slabOf({ x: x0, y: y0, w: 1, d: TRAY.out, r: 0.2 }, z0, wall, P, 2), { tone: "mid", crease: "none" }));
-  for (let j = 0; j < TRAY.cards; j++) out.push(card(cab.x0 + 4, y0 + 1.2 + j * TRAY.gap, z0 + 0.8, j, false));
-  out.push(`<g class="wb-lit-group" data-card="${i}" style="display:none">${card(cab.x0 + 4, y0 + TRAY.slot, z0 + 0.8, 3, true)}${k.faceTextSvg(k.sideMatrix([cab.cx, y0 + TRAY.slot + 0.6], z0 + 0.8 + 1.5, P, "left"), "SHELF 1", { size: 5, tone: "lit", anchor: "middle" })}</g>`);
-  out.push(S(k.slabOf({ x: x1 - 1, y: y0, w: 1, d: TRAY.out, r: 0.2 }, z0, wall, P, 2), { tone: "mid", crease: "none" }));
-  const face = S(k.slabOf({ x: x0 - 0.4, y: y1 - 1.2, w: x1 - x0 + 0.8, d: 1.2, r: 0.3 }, z0 - 0.2, TRAY.h, P, 2), { tone: "mid" });
-  out.push(`<g data-drawer="${i}">${face}</g>`);
-  out.push(S(k.slabOf({ x: cab.cx - 3, y: y1, w: 6, d: 1, r: 0.4 }, z0 + 1.8, 1.4, P, 2), { tone: "mid", crease: "none" }));
+  const y0 = CAB_FRONT;
+  for (let j = 0; j < TRAY.cards; j++) out.push(card(cab.x0 + 4, y0 + 1.2 + j * TRAY.gap, z0, j, false));
+  out.push(`<g class="wb-lit-group" data-card="${i}" style="display:none">${card(cab.x0 + 4, y0 + TRAY.slot, z0, 3, true)}${k.faceTextSvg(k.sideMatrix([cab.cx, y0 + TRAY.slot + 0.6], z0 + 1.5, P, "left"), "SHELF 1", { size: 5, tone: "lit", anchor: "middle" })}</g>`);
   return out.join("");
 }
 
@@ -208,7 +196,7 @@ function trolley() {
 export function buildFigure() {
   const shelves = CASES.map((c, i) => bookcase(c, i)).join("");
   // Bodies first, then the open drawers: a drawer sticks out in front of its right-hand neighbour.
-  const cabs = CABS.map((cab, i) => cabinet(cab, i)).join("") + CABS.map((cab, i) => `<g data-cab="${i}">${tray(cab, i)}</g>`).join("");
+  const cabs = CABS.map((cab, i) => cabinet(cab, i)).join("") + CABS.map((cab, i) => `<g data-cab="${i}">${drawerCabinet(P, cabSpec(cab, i, "front"))}</g>`).join("");
   return k.figureSvg({
     width: WIDTH,
     height: HEIGHT,

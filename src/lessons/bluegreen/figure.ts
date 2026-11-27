@@ -3,7 +3,7 @@
 // all traffic to one side at once, with a shared records cabinet (the database) behind both.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, cabinet as drawerCabinet } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -34,7 +34,6 @@ export const P = k.fitProjection(
 );
 
 const { S, L, D, at, faceY, text } = shorthand(P);
-const faceRectX = (x, y0, y1, z0, z1) => k.faceRectX(P, x, y0, y1, z0, z1);
 
 function plate() {
   return basePlate(P, PLATE, { height: PLATE_H, foot: FOOT_H, footInset: 24 })
@@ -144,16 +143,10 @@ function duct(name) {
   return sign < 0 ? parts.join("") : parts.reverse().join("");
 }
 
+// The records cabinet (the kit's): four drawers on its +x face, and a schema plate on its +y face.
 function cabinet() {
   const out = [];
-  out.push(S(k.slabOf(k.insetPlan(CAB, 2), 0, 3, P, 4, 0.3), { tone: "lo" }));
-  out.push(S(k.slabOf(CAB, 3, CAB_H - 3, P, 4, 0.6), { tone: "mid", inner: L(k.sideSeam(CAB, 30, P, 4), { tone: "faint" }) }));
-  out.push(S(k.slabOf(k.insetPlan(CAB, -1.5), CAB_H, 3, P, 4, 0.8), { tone: "mid" }));
-  out.push(L(k.planOutline(k.insetPlan(CAB, 4), CAB_H + 3, P), { tone: "faint" }));
-  // Drawers on the +x face and a version plate on the +y face.
-  const fx = CAB.x + CAB.w;
-  out.push(L([8, 18].map((z) => faceRectX(fx, CAB.y + 6, CAB.y + CAB.d - 6, z, z + 8)).join("") + [38, 46].map((z) => faceRectX(fx, CAB.y + 6, CAB.y + CAB.d - 6, z, z + 6)).join(""), { tone: "lo" }));
-  out.push(L([12, 22, 41, 49].map((z) => faceRectX(fx, -4, 4, z, z + 1.6)).join(""), { tone: "mid" }));
+  out.push(drawerCabinet(P, { ...CAB, z: 0, plinth: 3, h: CAB_H - 3, face: "x", cap: { h: 3, over: 1.5 }, drawers: { rows: 4, pad: 6, vgap: 2, bottom: 5, top: 6 }, name: "records" }));
   const fy = CAB.y + CAB.d;
   out.push(S(k.slabOf({ x: CAB.x + 10, y: fy, w: 30, d: 1, r: 0.3 }, 36, 12, P, 2), { tone: "hi", crease: "none" }));
   out.push(D([at([CAB.x + 12, fy + 1, 46]), at([CAB.x + 38, fy + 1, 46]), at([CAB.x + 12, fy + 1, 38]), at([CAB.x + 38, fy + 1, 38])], { size: 0.4, tone: "lo" }));

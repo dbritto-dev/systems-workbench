@@ -24,7 +24,9 @@ export default function mount({ P, G }, root) {
   const lamp = q("[data-lamp] .iso-solid");
   const cabEls = G.CABS.map((_, i) => qa('[data-cab="' + i + '"]'));
   const cardEls = G.CABS.map((_, i) => q('[data-card="' + i + '"]'));
-  const drawerEls = G.CABS.map((_, i) => q('[data-drawer="' + i + '"] .iso-solid'));
+  // Each catalogue's top drawer stands open; reading it lights its front.
+  const cabinets = G.CABS.map((_, i) => WB.cabinet(svg, "idx-" + i));
+  cabinets.forEach((c) => c.pull(0, true));
   const tagEls = G.CASES.map((_, i) => q('[data-tag="' + i + '"]'));
   const stat = (key, value) => root.stat(key, value);
 
@@ -61,7 +63,7 @@ export default function mount({ P, G }, root) {
   const COUNT = { books: T("BOOKS CHECKED", "LIBROS REVISADOS"), drawers: T("DRAWER READS", "CAJONES LEÍDOS"), trips: T("SHELF TRIPS", "VIAJES A ESTANTES"), cards: T("CARDS FILED", "FICHAS ARCHIVADAS") };
   function setCount(label, value) { const l = L(label); if (countLabel.textContent !== l) countLabel.textContent = l; const v = String(value); if (countEl.textContent !== v) countEl.textContent = v; }
   const shelfCard = (n) => T("SHELF " + n, "EST. " + n);   // "ESTANTE 1" is wider than the card
-  function setDrawerLit(i, on) { drawerEls[i].toggleAttribute("data-lit", on); }
+  function setDrawerLit(i, on) { cabinets[i].pull(0, true, { lit: on }); }
   function setCard(i, on, text, rise = 1) {
     const el = cardEls[i];
     el.style.display = on ? "" : "none";

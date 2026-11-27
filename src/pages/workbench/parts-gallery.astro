@@ -1,6 +1,6 @@
 ---
 // Every shared part from workbench/parts.mjs, in light and dark, at two sizes, with the live helpers
-// (counter, dial, meter, pose, lane, gate, rack, bin, tube, cabinet) running. A reference for building figures.
+// (counter, dial, meter, pose, lane, gate, rack, bin, tube, cabinet, rail, track) running. A reference for building figures.
 import * as k from "../../../workbench/kit.mjs";
 import * as p from "../../../workbench/parts.mjs";
 
@@ -116,15 +116,43 @@ const SCENES = [
   {
     id: "storage",
     name: "tube · cabinet",
-    api: 'tube(P, { x, y, z, shape: "round" | "square", r, w, d, h, socket, headroom, name, value, lit })  ·  cabinet(P, { x, y, w, d, h, z, plinth, drawers: { cols, rows, pad, gap, vgap, top, bottom }, pull, labels, labelSize, name })  ·  cabinetDrawer(spec, i)',
+    api: 'tube(P, { x, y, z, shape: "round" | "square", r, w, d, h, socket, headroom, name, value, lit })  ·  cabinet(P, { x, y, w, d, h, z, plinth, face: "y" | "x", cap, drawers: { cols, rows, pad, left, gap, vgap, top, bottom }, pull, labels, labelSize, tray: { wall, labels, inside }, part, name })  ·  cabinetDrawer(spec, i)',
     live: "WB.tube(svg, name, P).set(frac, { lit })  ·  WB.cabinet(svg, name).pull(i, out, { lit })",
-    note: "Glass tubes whose fill rises and falls (round on a socket, square straight on a plinth), and a cabinet whose drawers slide out and light, one at a time.",
+    note: "Glass tubes whose fill rises and falls (round on a socket, square straight on a plinth), a cabinet whose drawers slide out and light, one at a time, and one with drawers on its +x face that open as trays of cards.",
     ...scene({ x: -70, y: -40, w: 140, d: 80 }, 34, (P) => [
       p.cabinet(P, { x: -62, y: -34, w: 58, d: 20, h: 26, drawers: { cols: 3, rows: 2 }, labels: ["A", "B", "C", "D", "E", "F"], labelSize: 4.4, pull: 4, name: "files" }),
       S(k.slabOf({ x: 6, y: -30, w: 56, d: 14, r: 1.2 }, 0, 4, P, 3, 0.4), { tone: "mid" }),
       [16, 30, 44].map((x, i) => p.tube(P, { x, y: -23, z: 4, r: 2.6, h: 22, name: "t" + i, value: [0.3, 0.6, 0.9][i] })).join(""),
       S(k.slabOf({ x: 14, y: 6, w: 22, d: 14, r: 1.2 }, 0, 4, P, 3, 0.4), { tone: "mid" }),
       p.tube(P, { x: 25, y: 13, z: 4, shape: "square", w: 10, d: 6, h: 20, socket: 0, name: "sq", value: 0.5 }),
+      p.cabinet(P, { x: -62, y: 6, w: 14, d: 28, h: 22, face: "x", cap: { h: 1.4, over: 0.8 }, drawers: { rows: 2, pad: 2.4 }, pull: 12, name: "trays",
+        tray: { wall: 4, inside: (_i, b) => [0, 1, 2, 3].map((j) => S(k.slabOf({ x: b.x0 + 1.4 + j * 2.4, y: b.y0 + 1.2, w: 0.6, d: b.y1 - b.y0 - 2.4, r: 0 }, b.z, 5, P, 1), { tone: "hi", crease: "none" })).join("") } }),
+    ].join("")),
+  },
+  {
+    id: "rails",
+    name: "ticketRail · ticket",
+    api: 'ticketRail(P, { x0, x1, y, z, d, bar, posts: "round" | "square" | false, foot, panel: { z0, z1 }, marks, slots, first, pitch, ticket: { w, h }, size, name })  ·  railSlot(spec, i)  ·  ticket(P, { w, h, text, sub, lit })',
+    live: 'WB.rail(svg, name).show(i, text | null, { lit })',
+    note: "A rail on posts with tickets the lesson hangs itself (a ticket's origin is its hanging point), and a board of two rails whose places fill and empty, a lit ticket being a duplicate.",
+    ...scene({ x: -66, y: -40, w: 132, d: 80 }, 40, (P) => {
+      const front = { x0: -58, x1: 2, y: 18, z: 16, foot: 0 };
+      const hung = [["12", false], ["13", true], ["14", false]].map(([n, lit], i) => `<g transform="${k.translateAlong(P, p.railSlot(front, i))}">${p.ticket(P, { text: n, lit })}</g>`).join("");
+      const board = [34, 16].map((z, r) => ({ x0: -8, x1: 58, y: -26, z, posts: false, marks: true, panel: r === 0 ? { z0: 3, z1: 42 } : false, slots: 6, first: 6, pitch: 10.6, ticket: { w: 7.4, h: 10 }, size: 5, name: "board-" + r }));
+      return [...board.map((b) => p.ticketRail(P, b)), p.ticketRail(P, front), hung].join("");
+    }),
+  },
+  {
+    id: "tracks",
+    name: "track · carriage",
+    api: 'track(P, { x0, x1, y, d, bars: 2 | 1, bar: { d, h }, bed, stops, stop: { w, h, over }, screws })  ·  carriage(P, { y, w, d, z, h, r, label, size, lit, attr, halo })',
+    live: "WB.place(g, P, [x, 0, 0])",
+    note: "A two-bar track with end stops and a sled that the lesson loads and moves, and a single-bar track whose labelled carriage lights while it runs.",
+    ...scene({ x: -70, y: -34, w: 140, d: 68 }, 16, (P) => [
+      p.track(P, { x0: -58, x1: 58, y: -24, d: 16, bar: { d: 4, h: 2.5 } }),
+      `<g data-sled>${p.carriage(P, { y: -26, w: 18, d: 20, z: 2.5, h: 4, halo: true })}${S(k.slabOf({ x: -5, y: -21, w: 10, d: 10, r: 1 }, 6.5, 6, P, 2, 0.3), { tone: "hi", crease: "lo" })}</g>`,
+      p.track(P, { x0: -58, x1: 58, y: 14, d: 2.8, bars: 1, bar: { d: 2.8, h: 1.4 }, stops: false, screws: false }),
+      `<g data-car>${p.carriage(P, { y: 11.4, w: 16, d: 8, z: 1.4, h: 6, r: 1, label: "0", size: 3.4, lit: true, attr: "data-car-text" })}</g>`,
     ].join("")),
   },
   {
@@ -223,12 +251,15 @@ h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;margin:0 0 4px}
         lanes.push({ items, lane: WB.lane(svg, "line"), gate: WB.gate(svg, "door") });
       });
       const racks = []; each("racks", (svg) => racks.push({ rack: WB.rack(svg, "shelf"), blocks: WB.bin(svg, "blocks"), balls: WB.bin(svg, "balls") }));
-      const stores = []; each("storage", (svg, Pr) => stores.push({ tubes: [0, 1, 2].map((i) => WB.tube(svg, "t" + i, Pr)), sq: WB.tube(svg, "sq", Pr), cab: WB.cabinet(svg, "files") }));
+      const boards = []; each("rails", (svg) => boards.push([0, 1].map((r) => WB.rail(svg, "board-" + r))));
+      const sleds = []; each("tracks", (svg, Pr) => sleds.push({ Pr, sled: svg.querySelector("[data-sled]"), car: svg.querySelector("[data-car]"), text: svg.querySelector("[data-car-text]") }));
+      const stores = []; each("storage", (svg, Pr) => stores.push({ tubes: [0, 1, 2].map((i) => WB.tube(svg, "t" + i, Pr)), sq: WB.tube(svg, "sq", Pr), cab: WB.cabinet(svg, "files"), trays: WB.cabinet(svg, "trays") }));
       const tick = (q) => {
         // the line: 0 → 11 waiting and back, the gate down while it's full
         const n = q % 24 < 12 ? q % 24 : 24 - (q % 24), full = n >= 8;
         lanes.forEach((l) => { l.items.forEach((g, i) => g.toggleAttribute("data-off", i >= n)); l.lane.more(Math.max(0, n - 8)); l.gate.set(!full, { lit: full }); });
-        stores.forEach((st) => { for (let i = 0; i < 6; i++) st.cab.pull(i, i === q % 6, { lit: i === q % 6 }); });
+        stores.forEach((st) => { for (let i = 0; i < 6; i++) st.cab.pull(i, i === q % 6, { lit: i === q % 6 }); [0, 1].forEach((i) => st.trays.pull(i, i === (q >> 1) % 2, { lit: i === (q >> 1) % 2 })); });
+        boards.forEach((b) => { for (let n = 0; n < 12; n++) b[Math.floor(n / 6)].show(n % 6, n < q % 13 ? String(((n * 5) % 6) + 1) : null, { lit: n % 4 === 3 }); });
         racks.forEach((r) => { r.rack.clear(); r.rack.mark(q % 16); r.blocks.set(q % 22, { lit: 1 }); r.balls.set((q * 2) % 26, { lit: 1 }); });
       };
       tick(9);
@@ -237,6 +268,13 @@ h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;margin:0 0 4px}
         t += 1 / 60;
         if (Math.floor(t * 4) !== Math.floor((t - 1 / 60) * 4)) { n++; parts.forEach((c) => { c.big.set(n); c.side.set(n % 1000); }); }
         if (Math.floor(t * 2) !== Math.floor((t - 1 / 60) * 2)) tick(Math.floor(t * 2) + 9);
+        sleds.forEach((sl) => {
+          const a = (t / 6) % 1, run = a < 0.8;
+          WB.place(sl.sled, sl.Pr, [-44 + 88 * (0.5 - 0.5 * Math.cos(t * 0.8)), 0, 0]);
+          WB.place(sl.car, sl.Pr, [-48 + 96 * Math.min(1, a / 0.8), 0, 0]);
+          const v = String(Math.round(1000 * Math.min(1, a / 0.8))); if (sl.text.textContent !== v) sl.text.textContent = v;
+          sl.car.querySelector(".iso-solid").toggleAttribute("data-lit", run);
+        });
         stores.forEach((st) => { st.tubes.forEach((tb, i) => tb.set(0.5 + 0.45 * Math.sin(t * 0.9 + i * 1.7), { lit: i === 1 })); st.sq.set((t / 5) % 1); });
         dials.forEach((d) => { d.sw.set((t / 6) % 1); d.sm.set(0.5 + 0.5 * Math.sin(t)); d.load.set(0.55 + 0.4 * Math.sin(t * 0.8)); });
         const pz = Math.floor(t / 1.5) % 3; if (pz !== pose) { pose = pz; waiters.forEach((svg) => WB.pose(svg, "waiter", ["idle", "tray", "clipboard"][pz])); }

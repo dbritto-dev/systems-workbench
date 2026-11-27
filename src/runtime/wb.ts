@@ -116,13 +116,15 @@ export function tube(root: ParentNode, name: string, P: any) {
     },
   };
 }
-/** A cabinet (parts.mjs cabinet): pull(i, out, { lit }) slides drawer i out (or back in) and lights it. */
+/** A cabinet (parts.mjs cabinet): pull(i, out, { lit }) slides drawer i out (or back in) and lights it (a tray drawer
+ *  lights only its front). The cabinet may be drawn in two parts (back and front); both are found by name. */
 export function cabinet(root: ParentNode, name: string) {
-  const el = root.querySelector(`[data-cabinet="${name}"]`);
-  const drawers = el ? [...el.querySelectorAll('[data-cab-drawer][data-drawer-state="in"]')].map((inEl) => {
-    const outEl = el.querySelector(`[data-cab-drawer="${inEl.getAttribute("data-cab-drawer")}"][data-drawer-state="out"]`)!;
-    return { inEl, outEl, solids: [...inEl.querySelectorAll(".iso-solid"), ...outEl.querySelectorAll(".iso-solid")], key: "in" };
-  }) : [];
+  const sel = `[data-cabinet="${name}"] [data-cab-drawer]`;
+  const drawers = [...root.querySelectorAll(`${sel}[data-drawer-state="in"]`)].map((inEl) => {
+    const outEl = root.querySelector(`[data-cabinet="${name}"] [data-cab-drawer="${inEl.getAttribute("data-cab-drawer")}"][data-drawer-state="out"]`)!;
+    const face = outEl.querySelector("[data-drawer-face]");
+    return { inEl, outEl, solids: [...inEl.querySelectorAll(".iso-solid"), ...(face ?? outEl).querySelectorAll(".iso-solid")], key: "in" };
+  });
   return {
     count: drawers.length,
     pull(i: number, out: boolean, { lit = false } = {}) {
@@ -134,6 +136,27 @@ export function cabinet(root: ParentNode, name: string) {
       d.inEl.toggleAttribute("data-off", out);
       d.outEl.toggleAttribute("data-off", !out);
       d.solids.forEach((s) => s.toggleAttribute("data-lit", lit));
+    },
+  };
+}
+/** A ticket rail (parts.mjs ticketRail with slots and a name): show(i, text, { lit }) hangs a ticket in slot i with
+ *  that text (null or "" takes it down). */
+export function rail(root: ParentNode, name: string) {
+  const el = root.querySelector(`[data-rail="${name}"]`);
+  const slots = el ? [...el.querySelectorAll("[data-rail-slot]")].map((g) => ({ g, solid: g.querySelector(".iso-solid"), text: g.querySelector("[data-rail-text]"), key: "" })) : [];
+  return {
+    count: slots.length,
+    show(i: number, text: string | null, { lit = false } = {}) {
+      const s = slots[i];
+      if (!s) return;
+      const key = text ? text + (lit ? "L" : "") : "";
+      if (key === s.key) return;
+      s.key = key;
+      s.g.toggleAttribute("data-off", !text);
+      if (!text) return;
+      if (s.text && s.text.textContent !== text) s.text.textContent = text;
+      s.solid?.toggleAttribute("data-lit", lit);
+      s.text?.setAttribute("data-tone", lit ? "on-lit" : "hi");
     },
   };
 }

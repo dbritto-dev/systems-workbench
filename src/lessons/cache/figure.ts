@@ -3,7 +3,7 @@
 // joined by a carriage on rails. Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
 import { t } from "../../../workbench/i18n.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, track, carriage as sled } from "../../../workbench/parts.mjs";
 import { shorthand } from "../../lib/draw";
 
 export const WIDTH = 700;
@@ -179,21 +179,11 @@ function rack() {
 }
 
 function rails() {
-  const out = [];
-  for (const y of RAIL_Y) {
-    out.push(S(k.slabOf({ x: RAIL_FROM, y, w: RAIL_TO - RAIL_FROM, d: 5, r: 1 }, 0, 3, P, 3, 0.4), { tone: "mid" }));
-    out.push(D([RAIL_FROM + 6, (RAIL_FROM + RAIL_TO) / 2, RAIL_TO - 6].map((x) => at([x, y + 2.5, 3])), { size: 0.4 }));
-  }
-  for (const x of [RAIL_FROM - 5, RAIL_TO]) {
-    out.push(S(k.slabOf({ x, y: 37, w: 5, d: 25, r: 1.2 }, 0, 7, P, 3, 0.5), { tone: "mid" }));
-    out.push(D([at([x + 2.5, 40, 7]), at([x + 2.5, 59, 7])], { size: 0.45 }));
-  }
-  return out.join("");
+  return track(P, { x0: RAIL_FROM, x1: RAIL_TO, y: RAIL_Y[0], d: RAIL_Y[1] + 5 - RAIL_Y[0], bar: { d: 5, h: 3 }, stop: { w: 5, h: 7 } });
 }
 
 function carriage() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(k.insetPlan(CARRIAGE, 3), CARRIAGE_Z, 0.1, P)}" style="filter:blur(4px)"/>`];
-  out.push(S(k.slabOf(CARRIAGE, CARRIAGE_Z, CARRIAGE_TOP - CARRIAGE_Z, P, 5, 0.6), { tone: "mid" }));
+  const out = [sled(P, { y: CARRIAGE.y, w: CARRIAGE.w, d: CARRIAGE.d, z: CARRIAGE_Z, h: CARRIAGE_TOP - CARRIAGE_Z, r: CARRIAGE.r, halo: true })];
   out.push(D([-10, -3.5, 3.5, 10].map((x) => at([x, CARRIAGE.y + CARRIAGE.d - 2.4, CARRIAGE_TOP])), { size: 0.4, tone: "lo" }));
   out.push(L(k.planOutline({ x: -10, y: 45.5, w: 20, d: 5, r: 0.8 }, CARRIAGE_TOP, P, 2), { tone: "lo" }));
   // Two jaws that hold a card upright.

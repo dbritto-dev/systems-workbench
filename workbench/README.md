@@ -30,7 +30,7 @@ the caller keeps the painter's order. Faces: `"y"` is the face of constant y (te
 of constant x (reads along -y), `"top"` lies on a top face.
 
 ```js
-import { digitCounter, person, figurine, dial, meter, card, plaque, sign, pennant, lamp, keyPart, faceText, faceRect, variants, gate, lane, laneSlot, rack, rackSlot, bin, binSlots, tube, cabinet, cabinetDrawer, litFill, LIT_FILL_CSS } from "../../workbench/parts.mjs";
+import { digitCounter, person, figurine, dial, meter, card, plaque, sign, pennant, lamp, keyPart, faceText, faceRect, variants, gate, lane, laneSlot, rack, rackSlot, bin, binSlots, tube, cabinet, cabinetDrawer, ticketRail, railSlot, ticket, track, carriage, litFill, LIT_FILL_CSS } from "../../workbench/parts.mjs";
 
 digitCounter(P, { x: -15, y: 20, z: 6, count: 4, w: 9, h: 13, name: "balance", value: 40 })  // wheels on a face, in a housing (pad: n or [across, below, above])
 person(P, [x, y, 0], { scale: 0.8, hat: "cap", holding: "slip", slipText: "40", lit })        // hat: cap | brim; holding: tray | clipboard | slip | key
@@ -51,6 +51,12 @@ rack(P, { x, y, w, d, h: 8, cols: 6, rows: 1, cell: { w: 8, d: 8 }, title, name:
 bin(P, { x, y, w, d, h: 6, cap: 12, token: "ball", size: 5, gap: 0.6, name: "done" })        // walled tray that piles up to cap tokens, "+N" on the front
 tube(P, { x, y, z, shape: "round", r: 2, h: 20, socket: 1.2, name: "p99", value: 0.4 })         // glass tube with a live fill; shape "square" takes w, d
 cabinet(P, { x, y, w, d, h, drawers: { cols: 3, rows: 2 }, labels, pull: 5, name: "pages" })   // drawers on the +y face, each drawn in and out; cabinetDrawer(spec, i) gives one's box
+cabinet(P, { ..., face: "x", cap: { h: 3, over: 1.5 }, tray: { wall: 4, inside: (i, box) => cards }, part: "back" })  // drawers on +x; pulled drawers as open trays; back/front halves
+ticketRail(P, { x0, x1, y, z, foot: 1.4 })                                                       // a bar on posts that tickets hang from; railSlot(spec, i) gives a hanging point
+ticketRail(P, { x0, x1, y, z, posts: false, panel: { z0, z1 }, slots: 8, pitch: 9, name: "top" }) // on a board, with places marked and hidden tickets to fill
+ticket(P, { w: 8, h: 11, text: "97", sub: "×15", lit })                                          // a card on a clip; its origin is the hanging point
+track(P, { x0, x1, y, d: 19, bar: { d: 5, h: 3 } })                                             // two bars, end stops, screws; bars: 1 for one bar with a groove, bed for a low bed
+carriage(P, { y, w: 32, d: 26, z: 3, h: 5, halo: true })                                       // a sled built at x = 0; label puts a word on its front
 ```
 
 Live (in the lesson script, `svg` is the figure's svg element):
@@ -61,7 +67,8 @@ WB.dial(svg, "watch", P).set(0.5);  WB.meter(svg, "load", P).set(0.9);
 WB.pose(svg, "waiter-2", "carry");
 WB.gate(svg, "cap").set(open, { lit });   WB.lane(svg, "q").more(n);   // "+n" past the last slot, "" at 0
 WB.rack(svg, "results").mark(i, on);      WB.bin(svg, "done").set(n, { lit: 1 });   // shows n tokens, lights the newest
-WB.tube(svg, "p99", P).set(0.7, { lit });  WB.cabinet(svg, "pages").pull(i, true, { lit });
+WB.tube(svg, "p99", P).set(0.7, { lit });  WB.cabinet(svg, "pages").pull(i, true, { lit });   // a tray drawer lights only its front
+WB.rail(svg, "top").show(i, "7", { lit });  WB.place(carriageGroup, P, [x, 0, 0]);
 ```
 
 The tube's fill is drawn by `workbench/tube-fill.mjs`, which uses only the vendored kit, so the browser can redraw it.

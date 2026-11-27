@@ -116,8 +116,8 @@ function benchB() {
   out.push(L(k.planOutline(k.insetPlan(BENCH_B, 2.2), BENCH_H, P), { tone: "faint" }));
   const f = BENCH_B.y + BENCH_B.d, x = BENCH_B.x;
   out.push(counterCol(x + 5, f, "waB", 2, t("WRITE AMP", "AMP. ESCR.")));
-  out.push(counterCol(x + 26, f, "rdB", 2, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
-  out.push(counterCol(x + 51, f, "spB", 3, t("SPACE %", "ESPACIO %")));
+  out.push(counterCol(x + 29.5, f, "rdB", 2, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
+  out.push(counterCol(x + 55, f, "spB", 3, t("SPACE %", "ESP. %")));
   out.push(meter(P, { x: x + 77, y: f, z: 1.4, r: 6.4, ticks: 10, zone: 0.8, name: "diskB" }));
   out.push(text(x + 77, f - 3.2, BENCH_H, t("DISK", "DISCO"), SIZE, { face: "top", anchor: "middle" }));
   return out.join("");
@@ -193,8 +193,8 @@ function benchL() {
   out.push(L(k.planOutline(k.insetPlan(BENCH_L, 2.2), BENCH_H, P), { tone: "faint" }));
   const f = BENCH_L.y + BENCH_L.d, x = BENCH_L.x;
   out.push(counterCol(x + 5, f, "waL", 2, t("WRITE AMP", "AMP. ESCR."), { tenths: true }));
-  out.push(counterCol(x + 26, f, "rdL", 2, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
-  out.push(counterCol(x + 51, f, "spL", 3, t("SPACE %", "ESPACIO %")));
+  out.push(counterCol(x + 29.5, f, "rdL", 2, t("PAGES/READ", "PÁG./LECT."), { tenths: true }));
+  out.push(counterCol(x + 55, f, "spL", 3, t("SPACE %", "ESP. %")));
   out.push(meter(P, { x: x + 77, y: f, z: 1.4, r: 6.4, ticks: 10, zone: 0.8, name: "diskL" }));
   out.push(text(x + 77, f - 3.2, BENCH_H, t("DISK", "DISCO"), SIZE, { face: "top", anchor: "middle" }));
   return out.join("");

@@ -36,7 +36,7 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG }, root) {
   const shipSolid = q("[data-ship] .iso-solid");
   const needle = q("[data-needle]");
   const timerEl = q("[data-timer]");
-  const drawerOpen = q('[data-drawer="open"]'), drawerClosed = q('[data-drawer="closed"]');
+  const ledger = WB.cabinet(svg, "ledger");
   const dedupeEl = q("[data-dedupe]");
   const extraLabels = { twice: q('[data-extra-label="twice"]'), caught: q('[data-extra-label="caught"]') };
 
@@ -71,7 +71,7 @@ export default function mount({ P, G, RAIL_SVG, DROP_SVG }, root) {
     const outbox = cfg.mode === "outbox";
     actors.relay.g.style.display = outbox ? "" : "none";
     timerEl.style.display = outbox ? "" : "none";
-    drawerOpen.style.display = outbox ? "" : "none"; drawerClosed.style.display = outbox ? "none" : "";
+    ledger.pull(0, outbox);
     dedupeEl.style.display = cfg.dedupe !== "off" ? "" : "none";
     const caughtDial = cfg.dedupe === "on" && !cfg.wh;
     extraLabels.twice.style.display = caughtDial ? "none" : ""; extraLabels.caught.style.display = caughtDial ? "" : "none";

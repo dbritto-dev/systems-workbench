@@ -20,7 +20,8 @@ export default function mount({ P, G }, root) {
 
   const trays = Array.from({ length: G.KEYS }, (_, i) => ({ loaf: q('[data-loaf="' + i + '"]'), old: q('[data-loaf="' + i + '"] [data-old]'), dial: q('[data-dial="' + i + '"]'), fill: q('[data-dial-fill="' + i + '"]') }));
   const shelves = G.SHELVES.map((_, i) => ({ tag: q('[data-shelf-tag="' + i + '"]'), tagLit: q('[data-shelf-tag="' + i + '"] [data-shelf-lit]'), num: q('[data-shelf-tag="' + i + '"] [data-shelf-num]'), tray: q('[data-shelf-tray="' + i + '"]') }));
-  const slots = G.RACK_SLOTS.map((_, n) => ({ g: q('[data-slot="' + n + '"]'), plain: q('[data-slot="' + n + '"] [data-plain]'), lit: q('[data-slot="' + n + '"] [data-lit]'), nums: qa('[data-slot="' + n + '"] [data-ticket-num]') }));
+  // The ticket rail: two bars of eight places; order n hangs on bar n / 8.
+  const rails = [0, 1].map((r) => WB.rail(svg, "rail-" + r));
   const spots = G.SPOTS.map((row, key) => row.map((_, n) => q('[data-spot="' + key + "-" + n + '"]')));
   const gauge = q("[data-gauge]");
   const digits = Object.fromEntries(G.BOARD_ROWS.map((r) => [r.name, [0, 1, 2].map((n) => q('[data-digit="' + r.name + n + '"]'))]));
@@ -74,10 +75,7 @@ export default function mount({ P, G }, root) {
       if (job) { const t = String(job.key + 1); if (s.num.textContent !== t) s.num.textContent = t; show(s.tagLit, job.dup); }
     });
     // Rack.
-    slots.forEach((s, n) => {
-      const job = m.rack[n]; show(s.g, !!job);
-      if (job) { show(s.plain, !job.dup); show(s.lit, job.dup); const t = String(job.key + 1); for (const el of s.nums) if (el.textContent !== t) el.textContent = t; }
-    });
+    for (let n = 0; n < 16; n++) { const job = m.rack[n]; rails[n >> 3].show(n & 7, job ? String(job.key + 1) : null, { lit: !!job?.dup }); }
     // Gauge.
     setD(gauge, gaugePath(m.load() / G.GAUGE.max));
     // Customers waiting, in front of their tray.

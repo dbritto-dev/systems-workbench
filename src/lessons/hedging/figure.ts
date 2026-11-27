@@ -10,7 +10,7 @@
 //   Front: the console (p50, p99, share of requests with a copy, extra work) and the bin where unwanted work ends up.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy) and the shared workbench parts.
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, digitCounter, person, figurine, dial, card, sign, faceRect } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, digitCounter, person, figurine, dial, sign, faceRect, ticket, ticketRail } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { HEAVY_X } from "./sim";
@@ -82,9 +82,7 @@ function lane(i) {
   const ly = LY[i], out = [`<g data-lane="${i}">`];
   const bed = { x: RAIL.x0 - 2, y: ly - 5, w: STOVE.x - RAIL.x0 + 2, d: 10, r: 1 };
   out.push(S(k.slabOf(bed, 0, 1.4, P, 2, 0.3), { tone: "mid", crease: "none" }));
-  const post = (x) => S(k.cylinder(x, ly - 0.8, 0.8, 1.4, RAIL.z - 1.4, P, 12), { tone: "mid", crease: "none" });
-  out.push(post(RAIL.x0), post(RAIL.x1 - 1));
-  out.push(S(k.slabOf({ x: RAIL.x0 - 1.5, y: ly - 1.6, w: RAIL.x1 - RAIL.x0 + 1.5, d: 1.6, r: 0.4 }, RAIL.z, 1.4, P, 2, 0.2), { tone: "hi", crease: "lo" }));
+  out.push(ticketRail(P, { x0: RAIL.x0 - 1.5, x1: RAIL.x1, y: ly, z: RAIL.z, foot: 1.4 }));
   out.push(`<g data-tickets="${i}"></g>`);
   // The cook behind the stove.
   out.push(`<g data-cook="${i}">${figurine(P, [STOVE.x + COOK.dx, ly + COOK.dy, 0], { scale: 1.05 })}</g>`);
@@ -125,7 +123,7 @@ function bin() {
 // at the origin (its top centre on the face toward the viewer); the live code places it. A copy is the lit one.
 export function ticketSvg() {
   const w = TICKET.w, h = TICKET.h;
-  return `<g class="wb-lit-group">${card(P, { x: -w / 2, y: 0, z: -h, w, h, text: "000", sub: "×" + HEAVY_X, size: 3.8, subSize: 2.6, clip: true, attr: "data-num", subAttr: "data-sub" })}</g>`;
+  return `<g class="wb-lit-group">${ticket(P, { w, h, text: "000", sub: "×" + HEAVY_X, size: 3.8, subSize: 2.6, attr: "data-num", subAttr: "data-sub" })}</g>`;
 }
 
 export function buildFigure({ mark }) {

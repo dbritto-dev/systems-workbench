@@ -7,7 +7,7 @@
 //   Back: a console showing n and the cost of one step, and a clock dial that sweeps the decades.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, faceText, sign, pennant, dial } from "../../../workbench/parts.mjs";
+import { basePlate, faceText, sign, pennant, dial, track as railTrack, carriage as sled } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 import { compact } from "./sim";
@@ -45,9 +45,7 @@ const sup = ["", "", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
 
 // A carriage: a block riding the rail with its step count printed on the front.
 export function carriage(lane, lit, label, attr = "") {
-  const c = LANE_Y[lane];
-  return S(k.slabOf({ x: -CAR.w / 2, y: c - CAR.d / 2, w: CAR.w, d: CAR.d, r: 1 }, RAIL_H, CAR.h, P, 4, 0.4), { tone: "hi", crease: "lo", lit })
-    + text(0, c + CAR.d / 2, RAIL_H + 1.7, label, { size: 3, tone: "hi", anchor: "middle", attr });
+  return sled(P, { y: LANE_Y[lane] - CAR.d / 2, w: CAR.w, d: CAR.d, z: RAIL_H, h: CAR.h, r: 1, label, size: 3, lit, attr });
 }
 
 function track(first) {
@@ -68,8 +66,7 @@ function track(first) {
   LANE_Y.forEach((c, i) => {
     const label = i === 3 && first.constant !== 1 ? LANE_LABEL[i] + " ×" + first.constant : LANE_LABEL[i];
     out.push(sign(P, { x: -139, y: c + 4.6, z: 1.2, w: 34, h: 7.4, text: label, size: 3.2, attr: i === 3 ? "data-nlog-sign" : "" }));
-    out.push(S(k.slabOf({ x: RAIL.x, y: c - 1.4, w: RAIL.w, d: 2.8, r: 0.6 }, 0, RAIL_H, P, 3, 0.2), { tone: "mid", crease: "none" }));
-    out.push(L(k.segment([RAIL.x + 1, c, RAIL_H], [RAIL.x + RAIL.w - 1, c, RAIL_H], P), { tone: "faint" }));
+    out.push(railTrack(P, { x0: RAIL.x, x1: RAIL.x + RAIL.w, y: c - 1.4, d: 2.8, bars: 1, bar: { d: 2.8, h: RAIL_H }, stops: false, screws: false }));
     // Finish post behind the rail; the live script slides it to xOf(steps).
     out.push(`<g data-post="${i}" transform="${k.translateAlong(P, [xOf(first.steps[i]), 0, 0])}">`
       + S(k.cylinder(0, c - 4.6, 1.3, 0, 0.8, P, 14), { tone: "mid", crease: "none" })

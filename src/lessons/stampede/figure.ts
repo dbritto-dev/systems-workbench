@@ -4,7 +4,7 @@
 // A scoreboard on the back wall counts waiting customers, duplicate orders and stale loaves served.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, ticketRail } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { shorthand } from "../../lib/draw";
 
@@ -29,7 +29,6 @@ export const GAUGE = { x: -84, y: OVEN_FRONT, z: 46.5, r: 7.2, max: 16 };
 const RAIL = { x: -46, y: -90, w: 76, d: 3 };
 const RAIL_Z = [44, 26];                    // bar height of the upper and lower rail
 export const TICKET = { w: 7.4, h: 11 };
-export const RACK_SLOTS = RAIL_Z.flatMap((z) => Array.from({ length: 8 }, (_, i) => ({ x: RAIL.x + 4 + i * 9, y: RAIL.y + RAIL.d, z: z - 1 - TICKET.h })));
 
 // Scoreboard on the back wall.
 const BOARD = { x: 36, y: -92, w: 82, d: 4, r: 0.8 };
@@ -139,29 +138,13 @@ function oven() {
   return out.join("");
 }
 
-// An order ticket: an upright card hanging from a clip, the tray number printed on its front.
-export function ticketSvg(lit) {
-  const card = k.slabOf({ x: 0, y: 0, w: TICKET.w, d: 0.6, r: 0.2 }, 0, TICKET.h, P, 2);
-  return S(card, { tone: "hi", crease: "none", lit })
-    + S(k.slabOf({ x: TICKET.w / 2 - 1.2, y: -0.4, w: 2.4, d: 1.4, r: 0.3 }, TICKET.h - 1, 2, P, 2), { tone: "mid", crease: "none" })
-    + `<text class="iso-face-text" data-ticket-num data-tone="hi" transform="${k.sideMatrix([TICKET.w / 2, 0.6], 2.6, P, "left")}" font-size="6.4" text-anchor="middle">1</text>`;
-}
-
+// The ticket rail (the kit's): a board with two bars, eight ticket places each; the live code hangs the orders.
+export const RAILS = RAIL_Z.map((z, r) => ({
+  x0: RAIL.x, x1: RAIL.x + RAIL.w, y: RAIL.y + RAIL.d, z, d: RAIL.d, bar: 1.6, posts: false, marks: true,
+  panel: r === 0 ? { z0: 4, z1: RAIL_Z[0] + 8 } : false, slots: 8, first: 4 + TICKET.w / 2, pitch: 9, ticket: TICKET, size: 6.4, name: "rail-" + r,
+}));
 function rail() {
-  const out = [];
-  // Two posts and a back panel, then each bar with its faint ticket places and tickets.
-  const panel = { x: RAIL.x, y: RAIL.y - 1.6, w: RAIL.w, d: 1.6, r: 0.4 };
-  out.push(S(k.slabOf(panel, 4, RAIL_Z[0] + 4, P, 2, 0.3), { tone: "mid", crease: "none" }));
-  for (const x of [RAIL.x + 3, RAIL.x + RAIL.w - 3]) out.push(S(k.slabOf({ x: x - 1.2, y: RAIL.y - 1.6, w: 2.4, d: 2.4, r: 0.3 }, 0, 4, P, 2), { tone: "lo", crease: "none" }));
-  RAIL_Z.forEach((z, r) => {
-    out.push(S(k.slabOf({ x: RAIL.x + 1, y: RAIL.y, w: RAIL.w - 2, d: RAIL.d, r: 0.6 }, z, 1.6, P, 2), { tone: "hi", crease: "lo" }));
-    out.push(L(RACK_SLOTS.slice(r * 8, r * 8 + 8).map((s) => k.faceRectY(P, s.x, s.x + TICKET.w, RAIL.y, s.z, s.z + TICKET.h)).join(""), { tone: "lo", dashed: true }));
-    RACK_SLOTS.slice(r * 8, r * 8 + 8).forEach((s, i) => {
-      const n = r * 8 + i;
-      out.push(`<g data-slot="${n}" style="display:none" transform="${k.translateAlong(P, [s.x, s.y, s.z])}"><g data-plain>${ticketSvg(false)}</g><g data-lit class="wb-lit-group" style="display:none">${ticketSvg(true)}</g></g>`);
-    });
-  });
-  return out.join("");
+  return RAILS.map((spec) => ticketRail(P, spec)).join("");
 }
 
 function displayCase() {
@@ -223,4 +206,4 @@ export function buildFigure() {
   });
 }
 
-export const GEOMETRY = { KEYS, SHELVES, RACK_SLOTS, GAUGE, TRAY_X, DIAL, SPOTS, BOARD_ROWS, TICKET };
+export const GEOMETRY = { KEYS, SHELVES, GAUGE, TRAY_X, DIAL, SPOTS, BOARD_ROWS, TICKET };

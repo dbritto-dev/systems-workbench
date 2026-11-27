@@ -445,41 +445,158 @@ export function tube(P, spec) {
 }
 
 // ---------- cabinet ----------
-// A cabinet of drawers on its front (the +y face): a body with a lid line, an optional plinth, and a grid of drawers
-// (cols × rows, drawer 0 at the top left). Each drawer is drawn in, and out by `pull` with its sides showing; the
-// live code slides one out and lights it (WB.cabinet(svg, name).pull(i, out, { lit })). labels: a word per drawer,
-// on its left; without them the handle sits in the middle.
+// A cabinet of drawers on its front (the +y face, or the +x face with face: "x"): a body with a lid line (or a `cap`
+// that overhangs), an optional plinth, and a grid of drawers (cols × rows, drawer 0 at the top left as you face it).
+// Each drawer is drawn in, and out by `pull` with its sides showing; the live code slides one out and lights it
+// (WB.cabinet(svg, name).pull(i, out, { lit })). labels: a word per drawer, on its left; without them the handle sits
+// in the middle. tray: pulled drawers are open trays (floor, low side walls, the front), and tray.inside(i, box) draws
+// what lies in one, between its walls (box: x0, x1, y0, y1 and the floor's top z); only the front lights. tray.labels:
+// words for the pulled-out fronts instead of `labels` (a drawer that is only named when open).
+// part: "back" (the body and the shut drawers) or "front" (the pulled ones), for when a neighbour has to go between.
 //   cabinet(P, { x: -102, y: -82, w: 94, d: 18, h: 36, drawers: { cols: 6, rows: 4 }, pull: 2, name: "btree" })
-// cabinetDrawer(spec, i): drawer i's left x, bottom z, width, height and the cabinet's front y. drawers.pad is the margin
-// at the sides (and top and bottom unless given), gap between drawers (vgap between rows, if different).
-export function cabinetDrawer({ x, y, w, d, h, z = 0, plinth = 0, drawers: { cols = 1, rows = 1, pad = 3, gap = 1.4, vgap = gap, top = pad, bottom = pad } = {} }, i) {
-  const dw = (w - 2 * pad - (cols - 1) * gap) / cols, z0 = z + plinth + bottom, dh = (h - bottom - top - (rows - 1) * vgap) / rows;
-  const col = i % cols, row = Math.floor(i / cols);
-  return { x: x + pad + col * (dw + gap), z: z0 + (rows - 1 - row) * (dh + vgap), w: dw, h: dh, front: y + d };
+//   cabinet(P, { x, y, w: 34, d: 24, h: 26, plinth: 2.4, cap: { h: 1.6, over: 1 }, drawers: { rows: 3 }, pull: 14,
+//                tray: { wall: 4.2, inside: (i, box) => cards(box) }, name: "isbn" })
+// cabinetDrawer(spec, i): drawer i's box: x0, x1 (along the face as you face it, world x on "y", world -y on "x"),
+// bottom z, h, and front (the face's y, or x). drawers.pad is the margin at the sides (and top and bottom unless
+// given; left, if given, for the left side), gap between drawers (vgap between rows, if different).
+export function cabinetDrawer({ x, y, w, d, h, z = 0, plinth = 0, face = "y", drawers: { cols = 1, rows = 1, pad = 3, left = pad, gap = 1.4, vgap = gap, top = pad, bottom = pad } = {} }, i) {
+  const span = face === "x" ? d : w, u0 = face === "x" ? -(y + d) : x;
+  const dw = (span - left - pad - (cols - 1) * gap) / cols, z0 = z + plinth + bottom, dh = (h - bottom - top - (rows - 1) * vgap) / rows;
+  const col = i % cols, row = Math.floor(i / cols), a = u0 + left + col * (dw + gap);
+  return { x0: a, x1: a + dw, x: a, w: dw, z: z0 + (rows - 1 - row) * (dh + vgap), h: dh, front: face === "x" ? x + w : y + d };
 }
 export function cabinet(P, spec) {
-  const { x, y, w, d, h, z = 0, r = 1.4, plinth = 0, drawers = {}, pull = 5, labels = [], labelSize = 3, name = "", lid = true } = spec;
+  const { x, y, w, d, h, z = 0, r = 1.4, plinth = 0, face = "y", drawers = {}, pull = 5, labels = [], labelSize = 3, name = "", lid = true, cap, tray, part = "all" } = spec;
+  // (u along the face, n out of it) to world: the +y face reads along +x, the +x face along -y
+  const F = face === "x"
+    ? { pt: (u, n, zz) => [n, -u, zz], plan: (u0, u1, n0, n1, rr) => ({ x: n0, y: -u1, w: n1 - n0, d: u1 - u0, r: rr }) }
+    : { pt: (u, n, zz) => [u, n, zz], plan: (u0, u1, n0, n1, rr) => ({ x: u0, y: n0, w: u1 - u0, d: n1 - n0, r: rr }) };
+  const slab = (u0, u1, n0, n1, z0, zh, opts, rr = 0.3) => S(k.slabOf(F.plan(u0, u1, n0, n1, rr), z0, zh, P, 2, 0.2), opts);
   const out = [];
-  if (plinth > 0) out.push(S(k.slabOf(k.insetPlan({ x, y, w, d, r }, 1.5), z, plinth, P, 3), { tone: "lo" }));
+  const body = { x, y, w, d, r };
+  if (plinth > 0) out.push(S(k.slabOf(k.insetPlan(body, 1.5), z, plinth, P, 3), { tone: "lo" }));
   const top = z + plinth + h;
-  out.push(S(k.slabOf({ x, y, w, d, r }, z + plinth, h, P, 3, 0.5), { tone: "mid", inner: lid ? Ln(k.planOutline(k.insetPlan({ x, y, w, d, r }, 2), top, P), { tone: "faint" }) : "" }));
-  const n = (drawers.cols ?? 1) * (drawers.rows ?? 1), shut = [], pulled = [];
-  for (let i = 0; i < n; i++) {
-    const dr = cabinetDrawer(spec, i);
-    const at = (dy) => {
-      const fy = dr.front + dy, parts = [S(k.slabOf({ x: dr.x, y: fy - 1, w: dr.w, d: 1.4 + Math.max(0, dy), r: 0.4 }, dr.z, dr.h, P, 2, 0.2), { tone: "hi", crease: "lo" })];
-      const label = labels[i];
-      const hx = label ? [dr.x + dr.w * 0.55, dr.x + dr.w - 2.4] : [dr.x + dr.w / 2 - 2.4, dr.x + dr.w / 2 + 2.4];
-      if (label) parts.push(faceText(P, [dr.x + 2, fy + 0.4, dr.z + dr.h / 2 - labelSize * 0.36], label, { size: labelSize, tone: "hi" }));
-      parts.push(Ln(k.segment([hx[0], fy + 0.4, dr.z + dr.h * 0.55], [hx[1], fy + 0.4, dr.z + dr.h * 0.55], P), { tone: "mid" }));
+  const n = (drawers.cols ?? 1) * (drawers.rows ?? 1), boxes = Array.from({ length: n }, (_, i) => cabinetDrawer(spec, i));
+  // each drawer's opening on the face, seen when it is pulled out
+  const holes = boxes.map((b) => face === "x"
+    ? k.faceRectX(P, b.front, -b.x1, -b.x0, b.z, b.z + b.h)
+    : k.faceRectY(P, b.x0, b.x1, b.front, b.z, b.z + b.h)).join("");
+  const lidLine = (zz) => (lid ? Ln(k.planOutline(k.insetPlan(body, 2), zz, P), { tone: "faint" }) : "");
+  out.push(S(k.slabOf(body, z + plinth, h, P, 3, 0.5), { tone: "mid", inner: Ln(holes, { tone: "lo" }) + (cap ? "" : lidLine(top)) }));
+  if (cap) out.push(S(k.slabOf(k.insetPlan(body, -(cap.over ?? 1)), top, cap.h ?? 1.6, P, 3, 0.4), { tone: "mid", inner: lidLine(top + (cap.h ?? 1.6)) }));
+  const shut = [], pulled = [];
+  boxes.forEach((b, i) => {
+    const handle = (fn, label) => {
+      const hu = label ? [b.x0 + b.w * 0.55, b.x1 - 2.4] : [b.x0 + b.w / 2 - 2.4, b.x0 + b.w / 2 + 2.4];
+      const parts = [];
+      if (label) parts.push(faceText(P, F.pt(b.x0 + 2, fn + 0.4, b.z + b.h / 2 - labelSize * 0.36), label, { face, size: labelSize, tone: "hi" }));
+      parts.push(Ln(k.segment(F.pt(hu[0], fn + 0.4, b.z + b.h * 0.55), F.pt(hu[1], fn + 0.4, b.z + b.h * 0.55), P), { tone: "mid" }));
       return parts.join("");
     };
-    shut.push(`<g data-cab-drawer="${i}" data-drawer-state="in">${at(0)}</g>`);
-    pulled.push([k.depthOf([dr.x + dr.w / 2, dr.front + pull, dr.z + dr.h / 2], P), `<g data-cab-drawer="${i}" data-drawer-state="out" data-off>${at(pull)}</g>`]);
-  }
+    const drawn = (dn) => {
+      const fn = b.front + dn;
+      if (!tray || dn === 0) return slab(b.x0, b.x1, b.front - 1, fn + 0.4, b.z, b.h, { tone: "hi", crease: "lo" }, 0.4) + handle(fn, labels[i]);
+      // an open tray: floor, the far wall, what lies in it, the near wall, then the front with its handle
+      const wall = tray.wall ?? b.h * 0.7, fl = tray.floor ?? 0.8, n0 = b.front, n1 = fn - 1.2, side = 1;
+      const near = face === "x" ? 0 : 1; // which side wall is nearer the viewer: the +x one on "y", the -y one on "x"
+      const walls = [slab(b.x0, b.x0 + side, n0, n1, b.z, wall, { tone: "mid", crease: "none" }), slab(b.x1 - side, b.x1, n0, n1, b.z, wall, { tone: "mid", crease: "none" })];
+      const box = face === "x" ? { x0: n0, x1: n1, y0: -b.x1 + side, y1: -b.x0 - side, z: b.z + fl } : { x0: b.x0 + side, x1: b.x1 - side, y0: n0, y1: n1, z: b.z + fl };
+      return [
+        slab(b.x0, b.x1, n0, n1, b.z, fl, { tone: "lo", crease: "none" }),
+        walls[1 - near],
+        tray.inside ? tray.inside(i, box) : "",
+        walls[near],
+        `<g data-drawer-face>${slab(b.x0 - 0.4, b.x1 + 0.4, n1, fn + 0.4, b.z - 0.2, b.h, { tone: "hi", crease: "lo" }, 0.4)}</g>`,
+        handle(fn, (tray.labels ?? labels)[i]),
+      ].join("");
+    };
+    shut.push(`<g data-cab-drawer="${i}" data-drawer-state="in">${drawn(0)}</g>`);
+    pulled.push([k.depthOf(F.pt((b.x0 + b.x1) / 2, b.front + pull, b.z + b.h / 2), P), `<g data-cab-drawer="${i}" data-drawer-state="out" data-off>${drawn(pull)}</g>`]);
+  });
   // every drawer shut first, then the pulled-out ones (nearest last): one sticking out covers its neighbours
   pulled.sort((a, b) => a[0] - b[0]);
-  return `<g class="wb-cabinet" data-cabinet="${name}">${out.join("")}${shut.join("")}${pulled.map((e) => e[1]).join("")}</g>`;
+  const back = part === "front" ? "" : out.join("") + shut.join(""), front = part === "back" ? "" : pulled.map((e) => e[1]).join("");
+  return `<g class="wb-cabinet" data-cabinet="${name}">${back}${front}</g>`;
+}
+
+// ---------- ticket rail ----------
+// A bar along x that order tickets hang from, facing +y. y is the bar's front, z its bottom. posts: "round" (on the
+// floor at `foot`), "square" or false; panel: { z0, z1 } a board behind the bar (with feet under it), on which `slots`
+// places are marked dashed (marks: true marks them on a panel drawn by another rail). With slots and a name, a hidden ticket hangs in each place for the live code to fill
+// (WB.rail(svg, name).show(i, "7", { lit })). railSlot(spec, i): slot i's hanging point, slot 0 at x0 + first.
+//   ticketRail(P, { x0: -66, x1: 36, y: 10, z: 17, foot: 1.4 })                       // tickets placed by the lesson
+//   ticketRail(P, { x0: -46, x1: 30, y: -87, z: 44, posts: false, panel: { z0: 4, z1: 52 }, slots: 8, pitch: 9, name: "top" })
+// ticket(P, { w, h, text, sub, lit }): an upright card on a clip whose hanging point (top centre, front) is the origin,
+// so the live code can move a copy along a rail with one translate.
+export function ticket(P, { w = 8, h = 11, text = "", sub = "", size, subSize, lit = false, attr = "", subAttr = "" } = {}) {
+  return card(P, { x: -w / 2, y: 0, z: -h, w, h, text, sub, size, subSize, clip: true, lit, attr, subAttr });
+}
+export function railSlot({ x0, y, z, bar = 1.4, ticket: tk = {}, first, pitch }, i) {
+  const w = tk.w ?? 8;
+  return [x0 + (first ?? w / 2 + 2) + i * (pitch ?? w + 1.6), y, z + bar / 2];
+}
+export function ticketRail(P, spec) {
+  const { x0, x1, y, z, d = 1.6, bar = 1.4, posts = "round", foot = 0, panel = false, slots = 0, ticket: tk = {}, name = "", size } = spec;
+  const out = [];
+  const tw = tk.w ?? 8, th = tk.h ?? 11;
+  if (panel) {
+    const back = { x: x0, y: y - d - 1.6, w: x1 - x0, d: 1.6, r: 0.4 };
+    for (const fx of [x0 + 3, x1 - 3]) out.push(S(k.slabOf({ x: fx - 1.2, y: back.y, w: 2.4, d: 2.4, r: 0.3 }, foot, panel.z0 - foot, P, 2), { tone: "lo", crease: "none" }));
+    out.push(S(k.slabOf(back, panel.z0, panel.z1 - panel.z0, P, 2, 0.3), { tone: "mid", crease: "none" }));
+  }
+  if (spec.marks ?? !!panel) {
+    const marks = Array.from({ length: slots }, (_, i) => { const [sx, , sz] = railSlot(spec, i); return k.faceRectY(P, sx - tw / 2, sx + tw / 2, y - d, sz - th, sz); });
+    if (marks.length) out.push(Ln(marks.join(""), { tone: "lo", dashed: true }));
+  }
+  if (posts) {
+    const post = (px) => posts === "round"
+      ? S(k.cylinder(px, y - d / 2, 0.8, foot, z - foot, P, 12), { tone: "mid", crease: "none" })
+      : S(k.slabOf({ x: px - 0.9, y: y - d / 2 - 0.9, w: 1.8, d: 1.8, r: 0.3 }, foot, z - foot, P, 2), { tone: "mid", crease: "none" });
+    out.push(post(x0 + 1.5), post(x1 - 1.5));
+  }
+  out.push(S(k.slabOf({ x: x0, y: y - d, w: x1 - x0, d, r: 0.4 }, z, bar, P, 2, 0.2), { tone: "hi", crease: "lo" }));
+  if (name) for (let i = 0; i < slots; i++) {
+    out.push(`<g class="wb-lit-group" data-rail-slot="${i}" data-off transform="${k.translateAlong(P, railSlot(spec, i))}">${ticket(P, { w: tw, h: th, text: " ", size, attr: "data-rail-text" })}</g>`);
+  }
+  return `<g class="wb-rail" data-rail="${name}">${out.join("")}</g>`;
+}
+
+const Dots = (pts, P, size) => k.dotsSvg(pts.map((p) => k.iso(p, P)), { size });
+// ---------- track and carriage ----------
+// A track along x from x0 to x1, d wide (y to y + d): two bars at its edges (or one in the middle with a groove), an
+// optional low bed under them, screws along the bars and an end stop at each end. carriage(): a sled built at x = 0
+// that rides it; the lesson puts its own load on top and moves it with WB.place(g, P, [x, 0, 0]).
+//   track(P, { x0: -146, x1: 136, y: 40, d: 19, bar: { d: 5, h: 3 } })
+//   track(P, { x0: -101, x1: 125, y: -43.4, d: 2.8, bars: 1, bar: { h: 1.4 }, stops: false, screws: false })
+//   carriage(P, { y: 35, w: 32, d: 26, z: 3, h: 5, halo: true })   carriage(P, { y: -4, w: 15, d: 8, z: 1.4, h: 6, label: "1,000", lit })
+export function track(P, spec) {
+  const { x0, x1, y, d, bars = 2, bed = 0, stops = true, screws = true } = spec;
+  const bar = { d: 4, h: 2.5, ...spec.bar }, stop = { w: 4, h: 6, over: 3, ...spec.stop };
+  const out = [];
+  const top = bed + bar.h, len = x1 - x0;
+  if (bed > 0) out.push(S(k.slabOf({ x: x0, y, w: len, d, r: 1.5 }, 0, bed, P, 3, 0.3), { tone: "lo", crease: "none" }));
+  const lines = bars === 1 ? [y + d / 2 - bar.d / 2] : [y + (bed > 0 ? bar.inset ?? 4 : 0), y + d - bar.d - (bed > 0 ? bar.inset ?? 4 : 0)];
+  const barD = bars === 1 ? Math.min(bar.d, d) : bar.d;
+  for (const by of lines) out.push(S(k.slabOf({ x: x0, y: by, w: len, d: barD, r: Math.min(1, barD / 3) }, bed, bar.h, P, 3, 0.3), { tone: "mid", crease: bed > 0 ? "none" : undefined }));
+  if (bars === 1) out.push(Ln(k.segment([x0 + 1, y + d / 2, top], [x1 - 1, y + d / 2, top], P), { tone: "faint" }));
+  if (screws) {
+    const sx = [x0 + 5, (x0 + x1) / 2, x1 - 5];
+    out.push(Dots(lines.flatMap((by) => sx.map((x) => [x, by + barD / 2, top])), P, 0.4));
+  }
+  if (stops) for (const sx of [x0 - stop.w, x1]) {
+    out.push(S(k.slabOf({ x: sx, y: y - stop.over, w: stop.w, d: d + 2 * stop.over, r: 1 }, 0, stop.h, P, 3, 0.4), { tone: "mid" }));
+    out.push(Dots([[sx + stop.w / 2, y, stop.h], [sx + stop.w / 2, y + d, stop.h]], P, 0.45));
+  }
+  return out.join("");
+}
+export function carriage(P, { y, w, d, z = 0, h = 5, r = 2, label = "", size = 3, lit = false, attr = "", halo = false }) {
+  const plan = { x: -w / 2, y, w, d, r };
+  const out = [];
+  if (halo) out.push(`<path class="iso-halo" d="${k.haloOf(k.insetPlan(plan, Math.min(w, d) / 8), z, 0.1, P)}" style="filter:blur(4px)"/>`);
+  out.push(S(k.slabOf(plan, z, h, P, 4, Math.min(0.6, h / 10)), { tone: label || lit ? "hi" : "mid", crease: label || lit ? "lo" : undefined, lit }));
+  if (label !== "" || attr) out.push(faceText(P, [0, y + d, z + h / 2 - size * 0.36], label, { size, tone: "hi", anchor: "middle", attr }));
+  // a lit-group, so the label turns to the page colour when the live code lights the block
+  return `<g class="wb-lit-group">${out.join("")}</g>`;
 }
 
 // ---------- variants ----------
@@ -505,6 +622,6 @@ export const PARTS_CSS = `
 .wb-pennant[data-lit]{fill:var(--anatomy-lit);stroke:var(--anatomy-lit)}
 .iso-face-text[data-tone="on-lit"]{fill:var(--anatomy-strong)}
 [data-variant][data-off]{display:none}
-.wb-gate [data-off],.wb-bin [data-off],.wb-cabinet [data-off]{display:none}
+.wb-gate [data-off],.wb-bin [data-off],.wb-cabinet [data-off],.wb-rail [data-off]{display:none}
 .wb-rack [data-rack-slot][data-marked]{stroke:var(--anatomy-lit);stroke-width:1.4}
 `;

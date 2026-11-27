@@ -5,7 +5,7 @@
 // Every number that matters is printed on counter wheels: orders in the ledger, shipments, duplicates.
 // Built with the Anatomy kit (MIT, github.com/wheresryan22/anatomy).
 import * as k from "../../../workbench/kit.mjs";
-import { basePlate, rulerStrip, labelPlate } from "../../../workbench/parts.mjs";
+import { basePlate, rulerStrip, labelPlate, cabinet as drawerCabinet } from "../../../workbench/parts.mjs";
 import { t } from "../../../workbench/i18n.mjs";
 import { digitPath, counterCells, digitsOf } from "../../../workbench/digits.mjs";
 import { shorthand } from "../../lib/draw";
@@ -21,9 +21,11 @@ const FOOT_H = 5;
 const CAB = { x: -96, y: -66, w: 54, d: 18, r: 2 };
 const CAB_H = 42;
 const CAB_FRONT = CAB.y + CAB.d;                 // -48
-const DRAWER = { x0: -73, x1: -45, z0: 4, z1: 15 };
-const TRAY = { x: -72, y: CAB_FRONT, w: 26, d: 12, r: 1 };
-const TRAY_Z = [7, 13];
+// Its one drawer (the outbox) sits low on the right, under the counter; out, it is a tray of pending letters.
+const LEDGER = {
+  ...CAB, h: CAB_H, drawers: { left: 23, pad: 3, bottom: 4, top: CAB_H - 15 }, pull: 12,
+  tray: { wall: 6, labels: ["OUTBOX"], inside: (_, box) => trayLetters(box) }, labelSize: 3.2, name: "ledger",
+};
 export const TRAY_CARDS = 6;
 
 // The warehouse (back right), its front face at y = WH_FRONT, and the intake desk in front of it.
@@ -97,35 +99,21 @@ function rail() {
 }
 
 function cabinet() {
-  const out = [];
-  out.push(S(k.slabOf(CAB, 0, CAB_H, P, 4, 0.6), {
-    tone: "mid",
-    inner: L(k.faceRectY(P, DRAWER.x0, DRAWER.x1, CAB_FRONT, DRAWER.z0, DRAWER.z1) + k.faceRectY(P, CAB.x + 3, CAB.x + CAB.w - 3, CAB_FRONT, 17.5, CAB_H - 2), { tone: "lo" }),
-  }));
+  const out = [drawerCabinet(P, { ...LEDGER, part: "back" })];
+  out.push(L(k.faceRectY(P, CAB.x + 3, CAB.x + CAB.w - 3, CAB_FRONT, 17.5, CAB_H - 2), { tone: "lo" }));
   out.push(text(CAB.x + 4, CAB_FRONT, 35, t("IN THE LEDGER", "EN EL LIBRO"), { size: 3, tone: "hi" }));
   out.push(`<g data-commit>${counter(COUNTERS.orders, "orders", 0)}</g>`);
-  // The drawer's handle; in outbox mode the drawer is pulled out into a tray of pending letters.
-  out.push(`<g data-drawer="closed">${S(k.slabOf({ x: -63, y: CAB_FRONT, w: 8, d: 1.2, r: 0.4 }, 9, 1.6, P, 2), { tone: "hi", crease: "none" })}</g>`);
-  out.push(`<g data-drawer="open" style="display:none">${tray()}</g>`);
+  out.push(drawerCabinet(P, { ...LEDGER, part: "front" }));
   return out.join("");
 }
 
-function tray() {
+// The pending letters standing in the outbox tray, shown one by one (data-card).
+function trayLetters(box) {
   const out = [];
-  const [z0, z1] = TRAY_Z;
-  // runners under the tray, then the tray: a floor, a back lip and two sides, the front face with its label.
-  out.push(S(k.slabOf({ x: TRAY.x + 2, y: TRAY.y, w: 2, d: TRAY.d - 1, r: 0.3 }, 5, z0 - 5, P, 2), { tone: "lo", crease: "none" }));
-  out.push(S(k.slabOf({ x: TRAY.x + TRAY.w - 4, y: TRAY.y, w: 2, d: TRAY.d - 1, r: 0.3 }, 5, z0 - 5, P, 2), { tone: "lo", crease: "none" }));
-  out.push(S(k.slabOf(TRAY, z0, 1, P, 3), { tone: "mid" }));
-  out.push(S(k.slabOf({ x: TRAY.x, y: TRAY.y, w: 1.2, d: TRAY.d, r: 0.3 }, z0 + 1, z1 - z0 - 1, P, 2), { tone: "mid", crease: "none" }));
   for (let i = 0; i < TRAY_CARDS; i++) {
-    const x = TRAY.x + 3.2 + i * 3.8;
-    out.push(`<g data-card="${i}" style="display:none">${S(k.slabOf({ x, y: TRAY.y + 1.8, w: 1, d: TRAY.d - 4, r: 0.2 }, z0 + 1, 7.5, P, 1), { tone: "hi", crease: "lo" })}</g>`);
+    const x = box.x0 + 2.2 + i * 3.8;
+    out.push(`<g data-card="${i}" style="display:none">${S(k.slabOf({ x, y: box.y0 + 1.8, w: 1, d: 8, r: 0.2 }, box.z, 7.5, P, 1), { tone: "hi", crease: "lo" })}</g>`);
   }
-  out.push(S(k.slabOf({ x: TRAY.x + TRAY.w - 1.2, y: TRAY.y, w: 1.2, d: TRAY.d, r: 0.3 }, z0 + 1, z1 - z0 - 1, P, 2), { tone: "mid", crease: "none" }));
-  const front = TRAY.y + TRAY.d;
-  out.push(S(k.slabOf({ x: TRAY.x - 0.5, y: front - 1.4, w: TRAY.w + 1, d: 1.4, r: 0.4 }, z0 - 1, z1 - z0 + 2, P, 2), { tone: "hi", crease: "lo" }));
-  out.push(text(TRAY.x + 2, front, z0 + 1.6, "OUTBOX", { size: 3.2, tone: "hi" }));
   return out.join("");
 }
 
