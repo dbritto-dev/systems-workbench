@@ -145,7 +145,7 @@ export default defineLesson({
     svg: buildFigure(),
     stats: [["query", t("Query", "Consulta")], ["top", t("Top result", "Primer resultado")], ["sim", t("Similarity", "Similitud")], ["compared", t("Compared", "Comparados")], ["kept", t("Kept", "Conservados")], ["recall", t("True nearest found", "Vecinos reales hallados")]],
     controls: [
-      { seg: "q", label: t("Query", "Consulta"), options: QUERIES.map((q) => [q.id, q.text]), value: "twice" },
+      { seg: "q", label: t("Query", "Consulta"), options: QUERIES.map((q) => [q.id, q.text]), value: "twice", list: true },
       { seg: "k", label: t("Results (k)", "Resultados (k)"), options: [["1", "1"], ["3", "3"], ["5", "5"]], value: "3" },
       { seg: "size", label: t("Chunk", "Fragmento"), options: [["sentence", t("Sentence", "Oración")], ["section", t("Section", "Sección")], ["doc", t("Whole document", "Documento completo")]], value: "sentence" },
       { seg: "search", label: t("Search", "Búsqueda"), options: [["exact", t("Every chunk", "Cada fragmento")], ["narrow", t("Graph, narrow", "Grafo, estrecho")], ["wide", t("Graph, wide", "Grafo, amplio")]], value: "exact" },

@@ -4,6 +4,8 @@
 // astryx-astro components (src/elements/wb-controls.ts wraps them for the lesson API):
 //   - a one-of-N choice (the speed control is one): a SegmentedControl in <wb-seg>; its segments carry data-set /
 //     data-value; the selected one is ink-filled; one Tab stop, ← → / Home / End select, "← → to navigate" hint;
+//     with `list` (long options, such as queries) it takes a full row and lays the segments out as a grid of
+//     choices, each shown whole with a radio mark, and ↑ ↓ move too;
 //   - a toggle group (multiple): a ToggleButtonGroup type="multiple" of ToggleButtons in <wb-seg multiple>;
 //   - a row of action buttons <wb-actions role="group"> (an HStack): Buttons with data-act, one maybe primary;
 //     Pause is a ToggleButton (aria-pressed);
@@ -29,7 +31,7 @@ const { stats, controls, note, locale } = Astro.props;
 const L = (v: Parameters<typeof pick<string>>[0]) => pick(v, locale);
 const SPEEDS: [number, string][] = [[0.5, "×0.5"], [1, "×1"], [3, "×3"], [8, "×8"]];
 const segs = controls.map((c) =>
-  "seg" in c ? { name: c.seg, label: L(c.label), options: c.options, value: c.value, multiple: !!c.multiple }
+  "seg" in c ? { name: c.seg, label: L(c.label), options: c.options, value: c.value, multiple: !!c.multiple, list: !!c.list && !c.multiple }
   : "speed" in c ? { name: "speed", label: L({ en: "Speed", es: "Velocidad" }), options: c.options ?? SPEEDS, value: c.value ?? 1, multiple: false }
   : null,
 );
@@ -45,7 +47,7 @@ const numText = (v: number, digits = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + 
     {controls.map((c, i) => {
       const s = segs[i];
       if (s) return (
-        <wb-control class="control" for={c.for} hidden={c.hidden || undefined}><span id={id(i, "label")}>{s.label}</span>
+        <wb-control class:list={["control", s.list && "control-list"]} for={c.for} hidden={c.hidden || undefined}><span id={id(i, "label")}>{s.label}</span>
           {s.multiple ? (
             <wb-seg name={s.name} multiple>
               <ToggleButtonGroup label={s.label} aria-labelledby={id(i, "label")} type="multiple" value={String(s.value).split(" ").filter(Boolean)}>
@@ -53,7 +55,7 @@ const numText = (v: number, digits = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + 
               </ToggleButtonGroup>
             </wb-seg>
           ) : (
-            <wb-seg name={s.name}>
+            <wb-seg name={s.name} list={s.list || undefined}>
               <SegmentedControl label={s.label} aria-labelledby={id(i, "label")} value={String(s.value)} locale={locale}>
                 {s.options.map(([value, text]) => <SegmentedControlItem value={String(value)} label={L(text)} data-set={s.name} />)}
               </SegmentedControl>

@@ -16,7 +16,8 @@ export type { Bi, LensRegion };
 /** A control under the figure: a <wb-control> row. `for` puts it in a group, so the live code can show one group at a
  *  time (root.controls.showFor(group)); `hidden` starts it hidden. An action with `{ primary: true }` is drawn as the panel's primary button (an Astryx Button, variant "primary"); "pause" is a ToggleButton. */
 export type Control = (
-  | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number; /** Options switch on and off independently; value: the ones on at first, space-separated. */ multiple?: boolean }
+  | { seg: string; label: Bi; options: [value: string | number, label: Bi][]; value: string | number; /** Options switch on and off independently; value: the ones on at first, space-separated. */ multiple?: boolean; /** Long options (sentences, queries): a full-width row of choices in a grid, each shown whole and wrapping,
+   *  with a radio mark; still one Tab stop, ← → ↑ ↓ to move. Not with `multiple`. */ list?: boolean }
   | { speed: true; options?: [value: number, label: string][]; value?: number }
   | { actions: [act: string, label: Bi, opts?: { primary?: boolean }][]; label: Bi }
   /** A text box: <input data-input="name">; live code listens to it with root.$('[data-input="name"]'). */

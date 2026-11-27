@@ -13,6 +13,7 @@
 //                "wb-change" { name, value, button, pressed: true }, which bubbles to the lesson; if a listener
 //                cancels it (preventDefault) or presses options itself (root.press), the control keeps that, else
 //                Astryx applies the choice. seg.value = "3" selects an option without an event (Astryx slides).
+//                With the list attribute (Panel's `list`) the same control is laid out as a grid of whole choices.
 //   <wb-seg name multiple>  wraps a ToggleButtonGroup type="multiple" (aria-pressed toggles, each its own Tab stop):
 //                its "astryx-change" { value: [...] } becomes "wb-change" { name, value: the toggled option,
 //                button, pressed: its new state }, with the same veto. seg.value is the pressed values separated by
@@ -105,7 +106,11 @@ export class WbSeg extends HTMLElement {
     if (reason !== undefined && this.buttons[0]) setDisabled(this.buttons[0], on, reason);
   }
 
-  connectedCallback() { this.addEventListener("astryx-change", this.#change); }
+  connectedCallback() {
+    this.addEventListener("astryx-change", this.#change);
+    // A list of long choices is laid out in rows and columns, so ↑ ↓ move through it as well as ← →.
+    if (this.hasAttribute("list")) this.group?.setAttribute("data-astryx-roving", "both");
+  }
   disconnectedCallback() { this.removeEventListener("astryx-change", this.#change); }
 
   #change = (e: Event) => {

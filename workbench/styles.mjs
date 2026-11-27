@@ -57,6 +57,15 @@ body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:15px
 .control>span,.control .astryx-field-label{font-family:var(--anatomy-mono);font-size:10.5px;line-height:1.65;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted)}
 /* A row's segmented control wraps on a narrow panel instead of running past it. */
 wb-seg .astryx-segmented-control{flex-wrap:wrap;align-items:flex-start;max-width:100%}
+/* A list of long choices (a seg with list: queries, sentences): the whole row, a grid of choices each shown whole
+   (wrapping, never cut), left-aligned, with a radio mark that fills for the chosen one. */
+.controls>.control-list{grid-column:1/-1}
+wb-seg[list] .astryx-segmented-control{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,20rem),1fr));gap:6px;width:100%}
+wb-seg[list] .astryx-segmented-control-item{justify-content:flex-start;gap:9px;text-align:start;white-space:normal;overflow-wrap:anywhere;padding-block:9px;line-height:1.35;font-size:13px;margin:0}
+wb-seg[list] .astryx-segmented-control-item+.astryx-segmented-control-item{margin:0}
+wb-seg[list] .astryx-segmented-control-item::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;border:1.5px solid currentColor;box-sizing:border-box}
+wb-seg[list] .astryx-segmented-control-item[data-selected="selected"]::before{background:currentColor;box-shadow:inset 0 0 0 2px var(--anatomy-strong)}
+wb-seg[list] .ax-segmented-control-label{overflow:visible;text-overflow:clip;white-space:normal}
 .actions{--ux-hit-gap-block:4px;--ux-hit-gap-inline:4px}
 /* A long button label wraps on a narrow row rather than truncating (Astryx keeps a Button to one line). */
 .actions .astryx-button{white-space:normal}

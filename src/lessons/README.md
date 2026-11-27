@@ -53,6 +53,7 @@ What they are and how they behave (Astryx's behaviour, our look):
 |---|---|---|
 | `seg` | SegmentedControl in `<wb-seg>` | radiogroup, one Tab stop, ← → / Home / End select, sliding selected surface, "← → to navigate" hint; choosing the selected option again sends nothing |
 | `seg` + `multiple: true` | ToggleButtonGroup (`type="multiple"`) of ToggleButtons | each option its own Tab stop, `aria-pressed` |
+| `seg` + `list: true` | the same SegmentedControl, laid out as a full-width grid of choices with a radio mark | for long options (queries, sentences): each shown whole and wrapping, never cut; one Tab stop, ← → ↑ ↓ move |
 | `speed` | SegmentedControl | as `seg` |
 | `actions` | Buttons in `<wb-actions>` (an HStack); `primary: true` is the primary variant | separate Tab stops; `pause` is a ToggleButton that keeps its label |
 | `input` | TextInput (its `<input>` has `data-input`) | the row's label is the field's |
