@@ -206,7 +206,7 @@ function desk() {
     const r = 13.4, cy = DESK.y + 24;
     for (const [a, v] of [[-0.75, "0"], [0.75, "50%"]]) out.push(faceText(P, [x + Math.sin(a * Math.PI) * r, cy - Math.cos(a * Math.PI) * r + 1.4, dz], v, { face: "top", size: 3.4, tone: "hi", anchor: "middle" }));
   }
-  out.push(faceText(P, [DESK.x + 87, DESK.y + 6.4, dz], t("ERROR RATE", "TASA DE ERROR"), { face: "top", size: 3.8, tone: "hi", anchor: "middle" }));
+  out.push(faceText(P, [DESK.x + 92, DESK.y + 6.4, dz], t("ERROR RATE", "TASA DE ERROR"), { face: "top", size: 3.8, tone: "hi", anchor: "middle" }));
   return out.join("");
 }
 

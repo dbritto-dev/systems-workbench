@@ -149,7 +149,7 @@ function door() {
   out.push(L(k.planOutline(k.insetPlan(DOOR, 2), FRONT_H, P), { tone: "faint" }));
   const f = DOOR.y + DOOR.d;
   out.push(digitCounter(P, { x: DOOR.x + 5, y: f, z: 2.2, count: 2, w: 4.4, h: 5.8, gap: 0.7, pad: 1.2, name: "waiting" }));
-  out.push(caption(DOOR.x + 3.8, f, 11.4, t("WAITING", "EN ESPERA")));
+  out.push(caption(DOOR.x + 3.8, f, 11.4, t("WAITING", "ESPERAN")));
   out.push(digitCounter(P, { x: DOOR.x + 28, y: f, z: 2.2, count: 4, w: 4.4, h: 5.8, gap: 0.7, pad: 1.2, name: "gaveup" }));
   out.push(caption(DOOR.x + 26.8, f, 11.4, t("GAVE UP", "ABANDONOS")));
   return out.join("");

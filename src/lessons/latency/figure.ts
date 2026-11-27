@@ -123,7 +123,7 @@ function station(s) {
   out.push(S(k.slabOf(plan, 0, ST_H, P, 3, 0.4), { tone: "mid" }));
   out.push(meter(P, { x: cx, y: front, z: 0.9, r: 4.6, ticks: 4, name: "share-" + s.id, value: 0 }));
   const lines = NAMES[s.id];
-  lines.forEach((name, i) => out.push(faceText(P, [cx, front, lines.length === 1 ? 7.8 : 10.4 - i * 2.6], name, { size: lines.length === 1 ? 2.9 : 2.3, tone: "mid", anchor: "middle" })));
+  lines.forEach((name, i) => out.push(faceText(P, [cx, front, lines.length === 1 ? 7.8 : 10.2 - i * 3.2], name, { size: lines.length === 1 ? 2.9 : 2.3, tone: "mid", anchor: "middle" })));
   out.push(topper(s.id, cx, ST_Y + ST_D / 2));
   out.push(`</g>`);
   return out.join("");
@@ -136,7 +136,7 @@ function signs() {
   out.push(sign(P, { x: -114, y: SIGN_Y, z: 3, w: 42, h: 9, text: "0 ns", size: 4.4, attr: "data-total" }));
   out.push(faceText(P, [-93, SIGN_Y, 13.4], t("TOTAL SO FAR", "TOTAL HASTA AHORA"), { size: 2.4, tone: "mid", anchor: "middle" }));
   out.push(sign(P, { x: -62, y: SIGN_Y, z: 3, w: 54, h: 9, text: "1 s", size: 4.4, attr: "data-human" }));
-  out.push(faceText(P, [-35, SIGN_Y, 13.4], t("ONE TRIP IF L1 TOOK 1 S", "UN VIAJE SI L1 TARDARA 1 S"), { size: 2.4, tone: "mid", anchor: "middle" }));
+  out.push(faceText(P, [-35, SIGN_Y, 13.4], t("ONE TRIP IF L1 TOOK 1 S", "UN VIAJE SI L1 = 1 S"), { size: 2.4, tone: "mid", anchor: "middle" }));
   return out.join("");
 }
 

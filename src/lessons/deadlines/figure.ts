@@ -100,7 +100,7 @@ function desk(i) {
     out.push(digitCounter(P, { x: d.x + 4, y: front, z: 2, count: 4, w: 4, h: 5.4, gap: 0.6, pad: 1.2, name: "ok" }));
     out.push(faceText(P, [d.x + 3, front, 12.2], t("IN TIME", "A TIEMPO"), { size: 3.2, tone: "mid" }));
     out.push(digitCounter(P, { x: d.x + 29, y: front, z: 2, count: 3, w: 4, h: 5.4, gap: 0.6, pad: 1.2, name: "late" }));
-    out.push(faceText(P, [d.x + 28, front, 12.2], t("GAVE UP", "SE RINDIÓ"), { size: 3.2, tone: "mid" }));
+    out.push(faceText(P, [d.x + 26.5, front, 12.2], t("GAVE UP", "SE RINDIÓ"), { size: 3.2, tone: "mid" }));
   } else {
     out.push(digitCounter(P, { x: d.x + 4, y: front, z: 2, count: 3, w: 4, h: 5.4, gap: 0.6, pad: 1.2, name: "waste" + i }));
     out.push(faceText(P, [d.x + 3, front, 12.2], t("WASTED S", "S PERDIDOS"), { size: 3.2, tone: "mid" }));

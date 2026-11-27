@@ -44,7 +44,7 @@ const CELL_H = 3.6;
 // ---------- desks, at the two back corners ----------
 const IN_DESK = { x: -92, y: -70, w: 30, d: 20, r: 1.6 };
 const OUT_DESK = { x: 54, y: -70, w: 40, d: 20, r: 1.6 };
-const DESK_H = 10;
+const DESK_H = 12;
 export const IN_PAD = { x: IN_DESK.x + 20, y: IN_DESK.y + 9, z: DESK_H };       // where a new job appears
 export const OUT_PAD = { x: OUT_DESK.x + 10, y: OUT_DESK.y + 9, z: DESK_H };    // where the served job lands
 
@@ -126,9 +126,9 @@ function outDesk(state) {
   const out = [person(P, [OUT_DESK.x + 30, OUT_DESK.y - 4, 0], { scale: 0.85, hat: "cap" })];
   out.push(S(k.slabOf(OUT_DESK, 0, DESK_H, P, 4, 0.6), { tone: "mid" }));
   out.push(Ln(k.ring(OUT_PAD.x, OUT_PAD.y, 6, DESK_H, P, 28), { tone: "lo" }));
-  out.push(text(COUNTERS.swaps.x, OUT_DESK.y + OUT_DESK.d, 6.4, t("SWAPS", "INTERCAMBIOS"), { size: 1.7, tone: "mid" }));
+  out.push(text(COUNTERS.swaps.x, OUT_DESK.y + OUT_DESK.d, 6.4, t("SWAPS", "CAMBIOS"), { size: 1.7, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.swaps, housing: false, name: "swaps", value: state.swaps }));
-  out.push(text(COUNTERS.oldest.x, OUT_DESK.y + OUT_DESK.d, 8.4, t("OLDEST", "RUTINA MÁS"), { size: 1.7, tone: "mid" }));
+  out.push(text(COUNTERS.oldest.x, OUT_DESK.y + OUT_DESK.d, 9.2, t("OLDEST", "RUTINA MÁS"), { size: 1.7, tone: "mid" }));
   out.push(text(COUNTERS.oldest.x, OUT_DESK.y + OUT_DESK.d, 6.4, t("ROUTINE, S", "ANTIGUA, S"), { size: 1.7, tone: "mid" }));
   out.push(digitCounter(P, { ...COUNTERS.oldest, housing: false, name: "oldest", value: state.oldest }));
   out.push(`<g data-served${hidden(state.served != null)} transform="${place([OUT_PAD.x, OUT_PAD.y, OUT_PAD.z])}">${tokenSvg(state.served ?? "", false, "data-served-label")}</g>`);

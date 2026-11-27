@@ -8,6 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check:site": "node tools/site-check.cjs",
+    "check:words": "node tools/text-overlap.cjs",
     "previews": "node workbench/collection/previews.cjs",
     "shot": "node tools/shot.cjs"
   },

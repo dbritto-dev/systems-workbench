@@ -173,8 +173,8 @@ function quay() {
     const x0 = COMP_X[i] + 2;
     out.push(text(x0, FRONT, 3, NAMES[i], 4.2, { tone: "hi" }));
     out.push(digitCounter(P, { x: x0 + 31, y: FRONT, z: 2.2, count: 3, w: 4.2, h: 5.6, gap: 0.6, pad: 1.1, name: "ok" + i }));
-    out.push(text(x0 + 48.6, FRONT, 5.2, t("IN TIME", "A TIEMPO")));
-    out.push(text(x0 + 48.6, FRONT, 1.4, "%"));
+    out.push(text(x0 + 47.2, FRONT, 5.2, t("IN TIME", "A TIEMPO")));
+    out.push(text(x0 + 47.2, FRONT, 1.4, "%"));
   });
   return out.join("");
 }

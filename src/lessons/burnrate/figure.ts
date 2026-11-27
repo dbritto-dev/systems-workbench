@@ -136,7 +136,6 @@ function drain() {
 }
 // ---------- the console ----------
 const BURNS = ["14.4×", "6×", "1×"];
-const KIND = [t("PAGE", "AVISO"), t("PAGE", "AVISO"), t("TICKET", "TICKET")];
 const WINDOWS = [["1 H", "5 MIN"], ["6 H", "30 MIN"], ["3 D", "6 H"]];
 function consoleBody() {
   const out = [S(k.slabOf(CON, 0, CON_H, P, 3, 0.6), { tone: "mid" })];
@@ -146,7 +145,6 @@ function consoleBody() {
   COLS.forEach((x, i) => {
     out.push(L(k.faceRectY(P, x - 12.8, x + 12.8, f, 10.4, CON_H - 6.4), { tone: "faint" }));
     out.push(text(x - 11.4, f, CON_H - 11, BURNS[i], 3.4, { tone: "hi" }));
-    out.push(text(x + 11.4, f, CON_H - 11, KIND[i], 2.8, { anchor: "end" }));
     const mx = x + METER.dx;
     out.push(meter(P, { x: mx, y: f, z: METER.long, r: METER.r, ticks: 8, zone: 0.5, name: "long" + i, value: 0 }));
     out.push(meter(P, { x: mx, y: f, z: METER.short, r: METER.r, ticks: 8, zone: 0.5, name: "short" + i, value: 0 }));
@@ -158,7 +156,8 @@ function consoleBody() {
   out.push(counterWord(COLS[2] - 12, f, 2.2, "tickets", 2, t("TICKETS", "TICKETS")));
   return out.join("");
 }
-// A beacon over each tier, lit while that tier fires.
+// A beacon over each tier, lit while that tier fires. (What a tier sends shows in the counters under it: AVISOS under
+// the two paging tiers, TICKETS under the third; a PAGE / TICKET word beside each rate didn't fit at the 9 px floor.)
 function consoleTop() {
   return COLS.map((x, i) => beacon("lamp-tier" + i, [x, CON.y + CON.d - 5, CON_H], 2.6)).join("");
 }

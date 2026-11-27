@@ -88,7 +88,7 @@ function tower(i) {
   const roles = {
     leader: t("LEADER", "LÍDER"), candidate: t("CANDIDATE", "CANDIDATA"), follower: t("FOLLOWER", "SEGUIDORA"), down: t("DOWN", "CAÍDA"),
   };
-  for (const [key, words] of Object.entries(roles)) out.push(`<g data-role-word="${key}">${text([x, front, TOWER.h - 22.4], words, { size: 3, anchor: "middle" })}</g>`);
+  for (const [key, words] of Object.entries(roles)) out.push(`<g data-role-word="${key}">${text([x + 1, front, TOWER.h - 22.4], words, { size: 3, anchor: "middle" })}</g>`);
   // the term on the right face
   out.push(digitCounter(P, { x: side, y: y + 5.6, z: 14, count: 2, face: "x", w: 5.2, h: 7, gap: 0.6, pad: 1.1, name: `term-${i}`, value: 1 }));
   out.push(faceText(P, [side, y + 6.6, 7.4], t("TERM", "MANDATO"), { face: "x", size: 2.8, tone: "mid" }));

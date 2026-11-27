@@ -179,8 +179,8 @@ function hpaBox() {
   out.push(L(k.planOutline(k.insetPlan(HPA_BOX, 2.2), HPA_H, P), { tone: "faint" }));
   const f = HPA_FRONT, x0 = HPA_BOX.x;
   out.push(text(x0 + 4, f, HPA_H - 7.4, "HPA", TITLE));
-  out.push(meter(P, { x: x0 + 34, y: f, z: 13.6, r: 6.4, zone: 1 / 1.5, name: "load", value: 20 / 30 / 1.5 }));
-  out.push(text(x0 + 34, f, 8.6, t("LOAD", "CARGA"), LABEL, { anchor: "middle" }));
+  out.push(meter(P, { x: x0 + 35, y: f, z: 13.6, r: 6.4, zone: 1 / 1.5, name: "load", value: 20 / 30 / 1.5 }));
+  out.push(text(x0 + 35, f, 8.6, t("LOAD", "CARGA"), LABEL, { anchor: "middle" }));
   // the pods it wants: the same word as lesson 76's HPA (READY / STARTING / WANTED)
   out.push(counter({ x: x0 + 5.2, y: f, z: 2, count: 2, name: "wants", value: 3 }));
   out.push(text(x0 + 4, f, 11.6, t("WANTED", "DESEADOS")));

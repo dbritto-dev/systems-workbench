@@ -34,7 +34,7 @@ export const ENTER_Y = 8;                             // where couriers come out
 const COUNTER = { x: -62, y: 20, w: 124, d: 40, r: 2 };
 const COUNTER_H = 12;
 const COUNTER_FRONT = COUNTER.y + COUNTER.d;
-const MONITOR = { x: -62, y: 27, w: 50, d: 4, r: 0.6 };
+const MONITOR = { x: -62, y: 27, w: 56, d: 4, r: 0.6 };
 const MONITOR_H = 30;
 const SCREEN_FACE = MONITOR.y + MONITOR.d;
 export const BUTTON = [-46, 50];
@@ -149,7 +149,7 @@ function monitor() {
   out.push(L(k.faceRectY(P, MONITOR.x + 2, MONITOR.x + MONITOR.w - 2, SCREEN_FACE, z0 + 2, top - 2), { tone: "faint" }));
   out.push(text(MONITOR.x + 4, SCREEN_FACE, top - 7.6, t("SCREEN", "PANTALLA"), 3.6));
   out.push(text(MONITOR.x + MONITOR.w - 4, SCREEN_FACE, top - 7.6, t("SAVING", "GUARDANDO"), 2.8, { anchor: "end" }));
-  out.push(pill(MONITOR.x + 9, SCREEN_FACE, z0 + 10.4, 32, 10, "screen", 4.4));
+  out.push(pill(MONITOR.x + 12, SCREEN_FACE, z0 + 10.4, 32, 10, "screen", 4.4));
   // the toast: lit when the app tells the user a save failed
   const toast = { x: MONITOR.x + 6, y: SCREEN_FACE, w: MONITOR.w - 12, d: 1, r: 0.4 };
   out.push(`<g class="wb-lit-group" data-toast style="display:none">${S(k.slabOf(toast, z0 + 3.4, 6, P, 2, 0.2), { tone: "hi", crease: "lo", lit: true })}`

@@ -123,6 +123,10 @@ the figure's scale, so a layout change keeps them right.
 - **The check.** `node tools/text-size.cjs [base-url] [slug…]` reports each lesson's smallest and median text at
   1100 px and in the close-up, and any lens region bigger than the close-up. It fails a lesson under its floor: 11 px
   for those in `FULL`, 9 px for the rest; one listed in `PENDING` only warns. `tools/site-check.cjs` runs it too.
+- **Words that collide.** Raising words to the floor makes them wider, and Spanish words are often longer still.
+  `node tools/text-overlap.cjs [base-url] [slug…]` checks both languages for words on the machine that run into each
+  other (things the live code moves, which pass each other on purpose, aren't counted). `GAP=-1.5` also lists words
+  closer than 1.5 px, for a tighter look.
 
 ## Shared code: import it, don't copy it
 

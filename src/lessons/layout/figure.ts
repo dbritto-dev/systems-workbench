@@ -75,7 +75,8 @@ function desk() {
     out.push(`<g data-lamp="${name}">${lamp(P, p, { r: 2.4 })}</g><g data-lamp-on="${name}" style="display:none">${litFill(lamp(P, p, { r: 2.4, lit: true }))}</g>`);
   }
   out.push(text(LAMPS.read[0], DESK_FRONT, 5.6, t("READ", "LECTURA"), 2.8, { anchor: "middle" }));
-  out.push(text(LAMPS.write[0], DESK_FRONT, 5.6, t("WRITE", "ESCRITURA"), 2.8, { anchor: "middle" }));
+  // a line lower than READ: the desk's face is short on screen, and the two words are wider than the gap between lamps
+  out.push(text(LAMPS.write[0], DESK_FRONT, 1.8, t("WRITE", "ESCRITURA"), 2.8, { anchor: "middle" }));
   // the rAF tray: deferred callbacks wait here as slips
   out.push(S(k.slabOf(TRAY, DESK_H, 1, P, 2, 0.2), { tone: "lo", inner: L(k.planOutline(k.insetPlan(TRAY, 1), DESK_H + 1, P), { tone: "faint" }) }));
   out.push(text(TRAY.x + TRAY.w / 2, DESK_FRONT, 5.6, "rAF", 2.8, { anchor: "middle" }));

@@ -109,9 +109,9 @@ function writingDesk() {
   // counters on the front
   const y = W_FRONT;
   out.push(counter(WDESK.x + 5, y, 5, "wms", "MS"));
-  out.push(counter(WDESK.x + 33, y, 4, "tokens", t("TOKENS", "TOKENS")));
-  out.push(counter(WDESK.x + 57, y, 4, "rejected", t("REJECTED", "RECHAZADAS")));
-  out.push(counter(WDESK.x + 81, y, 4, "wwrong", t("WRONG", "ERRÓNEAS")));
+  out.push(counter(WDESK.x + 31, y, 4, "tokens", t("TOKENS", "TOKENS")));
+  out.push(counter(WDESK.x + 53, y, 4, "rejected", t("REJECTED", "RECHAZADAS")));
+  out.push(counter(WDESK.x + 81.5, y, 4, "wwrong", t("WRONG", "ERRÓNEAS")));
   return out.join("");
 }
 // The token tiles: drawn once, shown by the live code as tokens are written.
