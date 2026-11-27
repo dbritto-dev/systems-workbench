@@ -25,7 +25,7 @@ export const FIELD = { x: MAP.x + 4, y: MAP.y + 4, w: MAP.w - 8, d: MAP.d - 8, p
 
 const CONSOLE = { x: -114, y: 28, w: 92, d: 22, r: 2 };
 const CONSOLE_H = 8;
-const BOARD = { x: CONSOLE.x + 4, y: CONSOLE.y + 6, w: 84, h: 17 };
+const BOARD = { x: CONSOLE.x + 4, y: CONSOLE.y + 6, w: 84, h: 21 };
 
 const RACK = { x: -14, y: 28, w: 126, d: 22, r: 2 };
 const RACK_H = 7.5;
@@ -59,19 +59,27 @@ function table() {
   return out.join("");
 }
 
-// The query console: a desk with the query printed on a standing board, and counters for how many
-// chunks the search compared out of how many there are.
+// The size a word on the board, or on the map, actually comes out at: raised to the 9 px floor (k.textFloor), the size
+// the line spacing and the wrapping have to go by.
+const flooredSize = (svg) => +k.textFloor(svg, WIDTH).match(/font-size="([\d.]+)"/)[1];
+const QUERY_SIZE = 3.9;
+const QUERY_FS = flooredSize(faceText(P, [BOARD.x, BOARD.y, CONSOLE_H], "x", { size: QUERY_SIZE }));
+// the board's lines, from the bottom: a query that fits one line sits in the middle
+const QUERY_MID = CONSOLE_H + 1.4 + BOARD.h / 2 - 0.36 * QUERY_FS;   // baseline of a line centred on the board
+const QUERY_LINES = { two: [QUERY_MID - 0.75 * QUERY_FS, QUERY_MID + 0.75 * QUERY_FS], one: QUERY_MID };
+
+// The query console: a desk with QUERY on its front and the query printed on a standing board, on one line or two.
 function consoleDesk() {
   const out = [S(k.slabOf(CONSOLE, 0, CONSOLE_H, P, 3, 0.5), { tone: "mid" })];
   const front = CONSOLE.y + CONSOLE.d;
-  // (how many chunks the search compared is in the stats strip)
+  out.push(faceText(P, [CONSOLE.x + 4, front, 2], t("QUERY", "CONSULTA"), { size: 2.2, tone: "mid" }));
   // the board: two legs and a panel; the query reads across its face
   const by = BOARD.y, z0 = CONSOLE_H + 1.4;
   for (const x of [BOARD.x + 6, BOARD.x + BOARD.w - 6]) out.push(S(k.slabOf({ x: x - 1, y: by - 1, w: 2, d: 2, r: 0.3 }, CONSOLE_H, 1.6, P, 2), { tone: "mid", crease: "none" }));
   out.push(S(k.slabOf({ x: BOARD.x, y: by - 1.2, w: BOARD.w, d: 1.2, r: 0.2 }, z0, BOARD.h, P, 2), { tone: "hi", crease: "lo" }));
-  out.push(faceText(P, [BOARD.x + 3, by, z0 + BOARD.h - 5], t("QUERY", "CONSULTA"), { size: 2.2, tone: "mid" }));
-  out.push(faceText(P, [BOARD.x + 3, by, z0 + 6.6], "", { size: 3.9, tone: "hi", attr: "data-query" }));
-  out.push(faceText(P, [BOARD.x + 3, by, z0 + 1.8], "", { size: 3.9, tone: "hi", attr: "data-query2" }));
+  out.push(faceText(P, [BOARD.x + 3, by, QUERY_LINES.two[1]], "", { size: QUERY_SIZE, tone: "hi", attr: "data-query" }));
+  out.push(faceText(P, [BOARD.x + 3, by, QUERY_LINES.one], "", { size: QUERY_SIZE, tone: "hi", attr: "data-query1" }));
+  out.push(faceText(P, [BOARD.x + 3, by, QUERY_LINES.two[0]], "", { size: QUERY_SIZE, tone: "hi", attr: "data-query2" }));
   return out.join("");
 }
 
@@ -141,8 +149,26 @@ export function buildFigure() {
   });
 }
 
-export const LABEL_SIZE = 3.1;
-// How many characters of the query fit a line of the board at the text floor (live.ts wraps it in two lines).
-const QUERY_CHARS = Math.floor((BOARD.w - 6) / (0.66 * k.textSize(P, k.TEXT_FLOOR_PX, { width: WIDTH })));
-export const GEOMETRY = { MAP, MAP_H, FIELD, SLOT_X, SLOTS, PIN, LAMP_TOP, LABEL_SIZE, QUERY_CHARS };
-export const labelSvg = () => faceText(P, [0, 0, MAP_H], "", { face: "top", size: LABEL_SIZE, tone: "mid", anchor: "middle", attr: "data-label" });
+export const labelSvg = () => faceText(P, [0, 0, MAP_H], "", { face: "top", size: 3.1, tone: "mid", anchor: "middle", attr: "data-label" });
+// The size a constellation's name comes out at on the map (raised to the floor): live.ts keeps the names apart by it.
+export const LABEL_SIZE = flooredSize(faceText(P, [0, 0, MAP_H], "x", { face: "top", size: 3.1 }));
+// How many characters of the query fit a line of the board (a monospace character is 0.6 em; live.ts wraps in two lines).
+const QUERY_CHARS = Math.floor((BOARD.w - 6) / (0.62 * QUERY_FS));
+// What the query board and its desk hide of the map, on screen: a name placed there would be cut off.
+const z0 = CONSOLE_H + 1.4;
+const HIDDEN = (() => {
+  const pts = [[BOARD.x, BOARD.y, z0], [BOARD.x + BOARD.w, BOARD.y, z0], [BOARD.x + BOARD.w, BOARD.y, z0 + BOARD.h], [BOARD.x, BOARD.y, z0 + BOARD.h],
+    ...k.boxCorners(CONSOLE, 0, CONSOLE_H)].map((p) => k.iso(p, P));
+  // convex hull (monotone chain), so live.ts can test a point with a cross product per edge
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list) => { const h = []; for (const p of list) { while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], p) <= 0) h.pop(); h.push(p); } h.pop(); return h; };
+  return [...half(pts), ...half([...pts].reverse())].map(([x, y]) => [+x.toFixed(2), +y.toFixed(2)]);
+})();
+export const GEOMETRY = { MAP, MAP_H, FIELD, SLOT_X, SLOTS, PIN, LAMP_TOP, LABEL_SIZE, QUERY_CHARS, HIDDEN };
+
+// The phone close-up's regions: the query on its board, and the results rack. (Otherwise it follows what is lit.)
+export const REGIONS = [
+  { id: "query", label: t("Query", "Consulta"), box: k.screenBox(P, k.boxCorners(CONSOLE, 0, z0 + BOARD.h), 2) },
+  { id: "results", label: t("Results", "Resultados"), box: k.screenBox(P, k.boxCorners(RACK, 0, RACK_H + CARD.h), 2) },
+];

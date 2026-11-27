@@ -2,7 +2,7 @@
 // The star-map table in the browser: chunks the help centre at the chosen size, lays it out, runs each query's
 // search (an exact sweep or graph hops) step by step, and answers the controls. mount() gets the build-time data
 // from page.ts (geometry, part drawings) and root, the <wb-lesson>.
-import { translateAlong, depthOf, segment, lineSvg, ring } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
+import { translateAlong, depthOf, segment, lineSvg, ring, iso } from "../../../workbench/vendor-anatomy/kit/iso-kit.mjs";
 import * as WB from "../../runtime/wb";
 import { L as tr } from "../../runtime/wb";   // L is taken by the layers below
 import { playPause } from "../../runtime/dom";
@@ -20,7 +20,7 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
   const L = { links: layer("links"), labels: layer("labels"), rings: layer("rings"), pins: layer("pins"), probe: layer("probe"), strings: layer("strings") };
   const make = (html) => { const g = document.createElementNS(NS, "g"); g.innerHTML = html; return g; };
   const counters = { sims: [0, 1, 2, 3, 4].map((i) => WB.counter(svg, "sim" + i, P)) };
-  const queryText = q("[data-query]"), queryText2 = q("[data-query2]");
+  const queryText = q("[data-query]"), queryText1 = q("[data-query1]"), queryText2 = q("[data-query2]");
   const slots = [0, 1, 2, 3, 4].map((i) => ({ card: q('[data-card="' + i + '"]'), body: q('[data-card="' + i + '"] .iso-solid'), text: q('[data-card-text="' + i + '"]'), cut: q('[data-cut="' + i + '"]'), lid: q('[data-lid="' + i + '"]'), simbox: q('[data-simbox="' + i + '"]'), rank: q('[data-rank="' + i + '"]') }));
 
   // ---------- the collection at each chunk size: chunks, map positions, graph ----------
@@ -64,9 +64,12 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
       const x0 = cx - w / 2 - 1, x1 = cx + w / 2 + 1, y0 = cy - LS - 0.6, y1 = cy + 1;
       let bad = 0;
       if (x0 < F.x + 2 || x1 > F.x + F.w - 2 || y0 < F.y + 2 || y1 > F.y + F.d - 2) bad += 100;
-      // a stud covers its own footprint and, on screen, the strip of map just behind it
-      for (const p of COL.pos) for (const [ox, oy] of [[0, 0], [-1.5, -2.5], [-3, -5]]) { const px = p[0] + ox, py = p[1] + oy, nx = Math.max(x0, Math.min(px, x1)), ny = Math.max(y0, Math.min(py, y1)); if (Math.hypot(px - nx, py - ny) < r + 0.8) { bad += 10; break; } }
+      // a stud covers its own footprint and, on screen, the strip of map just behind it: a name under one goes unread
+      for (const p of COL.pos) for (const [ox, oy] of [[0, 0], [-1.5, -2.5], [-3, -5]]) { const px = p[0] + ox, py = p[1] + oy, nx = Math.max(x0, Math.min(px, x1)), ny = Math.max(y0, Math.min(py, y1)); if (Math.hypot(px - nx, py - ny) < r + 0.8) { bad += 50; break; } }
       for (const b of placed) if (x0 < b[1] && x1 > b[0] && y0 < b[3] && y1 > b[2]) bad += 50;
+      // behind the query board on screen (G.HIDDEN, a convex outline, counter-clockwise or clockwise)
+      const H = G.HIDDEN, inside = ([px, py]) => { let pos = 0, neg = 0; H.forEach((a, i) => { const b = H[(i + 1) % H.length], c = (b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0]); if (c > 0) pos++; else if (c < 0) neg++; }); return !pos || !neg; };
+      if ([[x0, y0], [x1, y0], [x1, y1], [x0, y1], [(x0 + x1) / 2, (y0 + y1) / 2]].some(([wx, wy]) => inside(iso([wx, wy, G.MAP_H], P)))) bad += 50;
       return [bad, [x0, x1, y0, y1]];
     };
     Object.entries(groups).sort((a, b) => b[1].length - a[1].length).forEach(([t, idx]) => {
@@ -109,10 +112,10 @@ export default function mount({ P, G, STUD, LAMP_SVG, ARM_SVG, BEAD_SVG, LABEL_S
   function start(fresh) {
     if (fresh) build(cfg.size);
     run = plan();
-    // The query on the board at 9 px: two lines when it doesn't fit one (QUERY_CHARS a line).
+    // The query on the board at 9 px: one line in the middle, or two when it doesn't fit one (QUERY_CHARS a line).
     const words = run.query.text.split(" "), lines = [""];
     for (const w of words) { const cur = lines[lines.length - 1]; if (cur && (cur + " " + w).length > G.QUERY_CHARS && lines.length < 2) lines.push(w); else lines[lines.length - 1] = cur ? cur + " " + w : w; }
-    queryText.textContent = lines.length > 1 ? lines[0] : ""; queryText2.textContent = lines[lines.length - 1];
+    queryText.textContent = lines.length > 1 ? lines[0] : ""; queryText2.textContent = lines.length > 1 ? lines[1] : ""; queryText1.textContent = lines.length > 1 ? "" : lines[0];
     L.strings.innerHTML = ""; L.rings.innerHTML = ""; L.probe.innerHTML = "";
     pathEl.innerHTML = ""; L.links.appendChild(pathEl);
     if (cfg.search === "exact") L.probe.appendChild(arm); else L.probe.appendChild(bead);

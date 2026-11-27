@@ -3,7 +3,7 @@
 import { t } from "../../i18n";
 import { defineLesson, withResults } from "../types";
 import { n0, pct, int } from "../../lib/format";
-import { buildFigure, studSvg, lampSvg, armSvg, beadSvg, labelSvg, P, GEOMETRY } from "./figure";
+import { buildFigure, studSvg, lampSvg, armSvg, beadSvg, labelSvg, P, GEOMETRY, REGIONS } from "./figure";
 import { paraphraseRun, codeRun, chunkRun, annRun, thresholdRun, QUERIES } from "./sim";
 
 // English ordinals for ranks: 1st, 2nd, 3rd, 4th … 11th, 12th, 13th … 21st, 22nd.
@@ -129,6 +129,7 @@ export default defineLesson({
       "Cada perno es un fragmento del centro de ayuda, ubicado de modo que los fragmentos con significado parecido queden juntos. La lámpara de cada consulta se para donde cae su consulta en el mapa; los hilos marcan los k más cercanos, y el estante los lista con su similitud coseno. Prueba la consulta del código de error, fragmentos más grandes, el índice de grafo y el umbral de 0.80. El centro de ayuda y las consultas están en inglés para que las cifras coincidan con el modelo."),
     plate: {
       title: t("Star-map table", "Mesa del mapa estelar"),
+      regions: REGIONS,
       keys: [
         { mark: "lit", label: t("The k nearest chunks with their rank; the query lamp; the sweep arm or the graph probe", "Los k fragmentos más cercanos con su puesto; la lámpara de la consulta; el brazo de barrido o la sonda del grafo") },
         { mark: "raised", label: t("Chunks as studs, placed by meaning; bigger chunks are bigger studs", "Fragmentos como pernos, ubicados por significado; los fragmentos más grandes son pernos más grandes") },
@@ -144,7 +145,7 @@ export default defineLesson({
     svg: buildFigure(),
     stats: [["query", t("Query", "Consulta")], ["top", t("Top result", "Primer resultado")], ["sim", t("Similarity", "Similitud")], ["compared", t("Compared", "Comparados")], ["kept", t("Kept", "Conservados")], ["recall", t("True nearest found", "Vecinos reales hallados")]],
     controls: [
-      { seg: "q", label: t("Query", "Consulta"), options: QUERIES.map((q) => [q.id, q.text.length > 26 ? q.text.slice(0, 24) + "…" : q.text]), value: "twice" },
+      { seg: "q", label: t("Query", "Consulta"), options: QUERIES.map((q) => [q.id, q.text]), value: "twice" },
       { seg: "k", label: t("Results (k)", "Resultados (k)"), options: [["1", "1"], ["3", "3"], ["5", "5"]], value: "3" },
       { seg: "size", label: t("Chunk", "Fragmento"), options: [["sentence", t("Sentence", "Oración")], ["section", t("Section", "Sección")], ["doc", t("Whole document", "Documento completo")]], value: "sentence" },
       { seg: "search", label: t("Search", "Búsqueda"), options: [["exact", t("Every chunk", "Cada fragmento")], ["narrow", t("Graph, narrow", "Grafo, estrecho")], ["wide", t("Graph, wide", "Grafo, amplio")]], value: "exact" },
@@ -160,7 +161,7 @@ export default defineLesson({
     `Figura dibujada con el kit isométrico <a href="https://github.com/wheresryan22/anatomy" target="_blank" rel="noopener">Anatomy</a> (MIT). Modelo de embeddings de juguete y centro de ayuda escritos para esta lección.`),
   css: `
 .iso-stage [data-layer] text{pointer-events:none}
-@media (max-width:640px){wb-stat[key="query"]{grid-column:1/-1}}
+wb-stat[key="query"]{grid-column:1/-1}
 [data-layer="links"] path{opacity:.7}
 `,
   data: {
